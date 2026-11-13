@@ -90,8 +90,11 @@
             <template lwc:if={asksSchedule}>
               <!-- Its name shown too, not only read out (Greg's pick, 2026-11-12). -->
               <span class="rail-word" aria-hidden="true">Schedule</span>
+              <!-- Its choice stops at about 8em; the whole name on hover and read out. -->
               <c-shoresh-rail-picker
+                class="schedule-picker"
                 data-id="schedule"
+                title={scheduleName}
                 label="Schedule"
                 value={scheduleId}
                 options={scheduleOptions}
@@ -161,36 +164,47 @@
             </c-shoresh-rail-pop>
             <span class="shoresh-rail-line" role="presentation"></span>
           </template>
-          <template lwc:if={showsPickers}>
-            <template lwc:if={showsBringIn}>
-              <button
-                type="button"
-                class="shoresh-item"
-                onclick={handleBringIn}
-                disabled={busy}
-                data-id="bring-in"
-              >
-                <svg
-                  class="shoresh-glyph"
-                  viewBox="0 0 16 16"
-                  aria-hidden="true"
-                >
-                  <path d="M8 11V3M5 6l3-3 3 3M3 13h10"></path>
-                </svg>
-                <span>Import choices</span>
-              </button>
-            </template>
-          </template>
-          <template lwc:if={showsAssignAgain}>
-            <button
-              type="button"
-              class="shoresh-item"
-              onclick={handleAssignAgain}
+          <!-- Import choices and Assign again under one menu, as Generated Schedule's Build:
+               the rail keeps to one row at 1440 with the schedule picker shown. -->
+          <template lwc:if={showsBuildMenu}>
+            <c-shoresh-rail-pop
+              label="Build"
+              menu
+              align="right"
               disabled={busy}
-              data-id="assign-again"
+              onselect={handleBuildMenu}
+              data-id="build-menu"
             >
-              Assign again
-            </button>
+              <template lwc:if={showsBringInRow}>
+                <button
+                  type="button"
+                  class="shoresh-pop-row"
+                  role="menuitem"
+                  data-value="bring-in"
+                  data-id="bring-in"
+                >
+                  <svg
+                    class="shoresh-glyph"
+                    viewBox="0 0 16 16"
+                    aria-hidden="true"
+                  >
+                    <path d="M8 11V3M5 6l3-3 3 3M3 13h10"></path>
+                  </svg>
+                  <span>Import choices</span>
+                </button>
+              </template>
+              <template lwc:if={showsAssignAgain}>
+                <button
+                  type="button"
+                  class="shoresh-pop-row"
+                  role="menuitem"
+                  data-value="assign-again"
+                  data-id="assign-again"
+                >
+                  Assign again
+                </button>
+              </template>
+            </c-shoresh-rail-pop>
           </template>
           <template lwc:if={showsBoard}>
             <span class="shoresh-rail-line" role="presentation"></span>

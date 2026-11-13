@@ -151,6 +151,13 @@ describe("the start", () => {
     expect($(element, '[data-id="counter"]')).toBeNull();
     expect($(element, '[data-id="assign-again"]')).toBeNull();
     expect(text($(element, '[data-id="bring-in"]'))).toBe("Import choices");
+    // Import choices is in the rail's Build menu, a menu item, not a button of its own.
+    expect(
+      $(
+        element,
+        'c-shoresh-rail-pop[data-id="build-menu"] [data-id="bring-in"]'
+      ).getAttribute("role")
+    ).toBe("menuitem");
     await expect(element).toBeAccessible();
   });
 
@@ -268,6 +275,14 @@ describe("the start", () => {
       "Generated Schedule"
     ]);
     expect(picker.value).toBe("s1");
+    // Its choice stops at about 8em (the rail keeps to one row at 1440): the whole name is on
+    // hover and read out.
+    expect(picker.classList.contains("schedule-picker")).toBe(true);
+    expect(picker.title).toBe("Manual Build");
+    const word = picker.shadowRoot
+      .querySelector("c-shoresh-rail-pop")
+      .shadowRoot.querySelector('[data-id="button"]');
+    expect(word.getAttribute("aria-label")).toBe("Manual Build");
   });
 
   // Word walk W6: Week 1's choices may be on its other schedule, so the one shown is named.
@@ -701,6 +716,12 @@ describe("Assign seats", () => {
     const counter = $(element, 'c-shoresh-rail-pop[data-id="counter"]');
     expect([counter.count, counter.label]).toEqual(["3", "of 4 placed"]);
     expect(text($(element, '[data-id="assign-again"]'))).toBe("Assign again");
+    expect(
+      $(
+        element,
+        'c-shoresh-rail-pop[data-id="build-menu"] [data-id="assign-again"]'
+      ).getAttribute("role")
+    ).toBe("menuitem");
     expect(text($(element, '[data-id="primary"]'))).toBe("Finalize");
     // The main button was held while saving: the cursor is back on it, not lost.
     expect(element.shadowRoot.activeElement).toBe(
@@ -708,15 +729,39 @@ describe("Assign seats", () => {
     );
   });
 
-  it("Assign again puts the cursor back on Assign again once saved", async () => {
+  it("Assign again, from the Build menu, puts the cursor back on the menu once saved", async () => {
     const element = await render({ view: assignedView() });
     assignSeats.mockResolvedValue(assignedView({ revision: 3 }));
     $(element, '[data-id="assign-again"]').click();
     await flush();
     expect(assignSeats).toHaveBeenCalled();
     expect(element.shadowRoot.activeElement).toBe(
-      $(element, '[data-id="assign-again"]')
+      $(element, '[data-id="build-menu"]')
     );
+  });
+
+  it("the Build menu holds Import choices and Assign again, opened and chosen by keys", async () => {
+    const element = await render({ view: assignedView() });
+    assignSeats.mockResolvedValue(assignedView({ revision: 3 }));
+    const menu = $(element, 'c-shoresh-rail-pop[data-id="build-menu"]');
+    expect(menu.label).toBe("Build");
+    const rows = $$(element, '[data-id="build-menu"] [role="menuitem"]');
+    expect(rows.map((r) => r.dataset.id)).toEqual(["bring-in", "assign-again"]);
+    // Neither is a button of its own on the rail any more.
+    expect(
+      $$(element, '.rail > .side > button[data-id="assign-again"]')
+    ).toEqual([]);
+    const word = menu.shadowRoot.querySelector('[data-id="button"]');
+    word.dispatchEvent(
+      new KeyboardEvent("keydown", { key: "ArrowUp", bubbles: true })
+    );
+    await flush();
+    expect(word.getAttribute("aria-expanded")).toBe("true");
+    rows[1].click();
+    await flush();
+    expect(assignSeats).toHaveBeenCalled();
+    expect(word.getAttribute("aria-expanded")).toBe("false");
+    expect(element.shadowRoot.activeElement).toBe(menu);
   });
 
   it("assigns even when an offering's seats aren't filled in", async () => {
@@ -914,6 +959,34 @@ describe("c-shoresh-elective-seats: the names' column", () => {
     );
     // The heading row's empty corner left a ~70 px band above the times: it isn't a seat's height.
     expect(css).toMatch(/\.offer-table \.corner\s*{\s*height: auto;/);
+  });
+});
+
+// The rail wrapped onto two rows at 1440 once the Schedule picker showed (~1236 px of contents
+// in ~1140): Import choices and Assign again went under one Build menu, and the picker's choice
+// stops at about 8em.
+describe("the rail at 1440", () => {
+  it("keeps to one row: one Build menu, and the schedule's name cut at 8em", () => {
+    const read = (name) =>
+      require("fs").readFileSync(
+        require("path").join(__dirname, "..", name),
+        "utf8"
+      );
+    const css = read("shoreshElectiveSeats.css");
+    expect(css.match(/\n\.schedule-picker \{([^}]*)\}/)[1]).toMatch(
+      /--shoresh-pop-label-max: 8em;/
+    );
+    const html = read("shoreshElectiveSeats.html");
+    const rail = html.slice(
+      html.indexOf('data-id="rail"'),
+      html.indexOf('data-id="status"')
+    );
+    // On the rail's right: the counter, Build, the state, and the one main button; no other
+    // plain buttons.
+    expect(rail.match(/class="shoresh-item[^"]*"/g)).toEqual([
+      'class="shoresh-item shoresh-item_primary"'
+    ]);
+    expect(rail).toMatch(/label="Build"[^>]*data-id="build-menu"/);
   });
 });
 
