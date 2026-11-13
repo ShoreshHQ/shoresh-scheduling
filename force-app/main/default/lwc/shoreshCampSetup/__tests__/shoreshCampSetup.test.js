@@ -5608,7 +5608,7 @@ describe("an archived season", () => {
   }, 60000); // axe over the whole page: 4 s on a quiet Mac, past 20 s on CI
 
   // WEEK-1.10 (ADR 0029: read-only must look read-only)
-  it("WEEK-1.10: every screen of an archived season is told it is read-only, and no import or fill is offered", async () => {
+  it("WEEK-1.10: every screen of an archived season is told it is read-only, and no import or fill is offered, but every download is", async () => {
     getSeasons.mockResolvedValue(nsRecord([OLD, LIVE]));
     getSeasonSetup.mockResolvedValue(
       nsRecord(setupWith({ season: OLD, weeks: [] }))
@@ -5623,9 +5623,37 @@ describe("an archived season", () => {
     ];
     expect(screens.length).toBeGreaterThan(5);
     screens.forEach((screen) => expect(screen.readOnly).toBe(true));
+    // Read-only takes away edits, not downloads: every setup list keeps "Download this list" and
+    // Roots its "Download worksheet"; no list offers "Import a list".
+    const lists = [
+      ...element.shadowRoot.querySelectorAll("c-shoresh-list-import")
+    ];
+    expect(lists.map((list) => list.dataset.id).sort()).toEqual(
+      [
+        "activities",
+        "divisions",
+        "electives",
+        "fixedActivities",
+        "groups",
+        "locations",
+        "programs",
+        "recurringActivities",
+        "specialEvents",
+        "timeBlocks"
+      ].map((key) => `${key}-list-import`)
+    );
+    lists.forEach((list) => {
+      expect(list.readOnly).toBe(true);
+      expect(
+        list.shadowRoot.querySelector('[data-id="download"]')
+      ).not.toBeNull();
+      expect(list.shadowRoot.querySelector('[data-id="open"]')).toBeNull();
+    });
+    const roots = q(element, "c-shoresh-roots");
     expect(
-      element.shadowRoot.querySelectorAll("c-shoresh-list-import")
-    ).toHaveLength(0);
+      roots.shadowRoot.querySelector('[data-id="download-workbook"]')
+    ).not.toBeNull();
+    expect(roots.shadowRoot.querySelector("c-shoresh-list-import")).toBeNull();
     expect(q(element, "c-shoresh-import")).toBeNull();
     expect(q(element, '[data-id="fill-weeks"]')).toBeNull();
   });

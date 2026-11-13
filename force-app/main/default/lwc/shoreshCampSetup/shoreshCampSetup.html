@@ -646,19 +646,18 @@
                     data-id="rail-saved"
                     silent
                   ></c-shoresh-saved-mark>
-                  <template lwc:if={editable}>
-                    <span class="shoresh-rail-line" role="presentation"></span>
-                    <c-shoresh-list-import
-                      class="rail-import"
-                      data-id="programs-list-import"
-                      variant="rail"
-                      screen-key="programs"
-                      setup={setup}
-                      terms={terms}
-                      onimported={handleImported}
-                      onlistopen={handleListOpen}
-                    ></c-shoresh-list-import>
-                  </template>
+                  <span class="shoresh-rail-line" role="presentation"></span>
+                  <c-shoresh-list-import
+                    class="rail-import"
+                    data-id="programs-list-import"
+                    variant="rail"
+                    read-only={readOnly}
+                    screen-key="programs"
+                    setup={setup}
+                    terms={terms}
+                    onimported={handleImported}
+                    onlistopen={handleListOpen}
+                  ></c-shoresh-list-import>
                 </div>
                 <div class="shoresh-hairline" role="presentation"></div>
                 <div class="setup-list list_narrow">
@@ -730,19 +729,18 @@
                     data-id="rail-saved"
                     silent
                   ></c-shoresh-saved-mark>
-                  <template lwc:if={editable}>
-                    <span class="shoresh-rail-line" role="presentation"></span>
-                    <c-shoresh-list-import
-                      class="rail-import"
-                      data-id="divisions-list-import"
-                      variant="rail"
-                      screen-key="divisions"
-                      setup={setup}
-                      terms={terms}
-                      onimported={handleImported}
-                      onlistopen={handleListOpen}
-                    ></c-shoresh-list-import>
-                  </template>
+                  <span class="shoresh-rail-line" role="presentation"></span>
+                  <c-shoresh-list-import
+                    class="rail-import"
+                    data-id="divisions-list-import"
+                    variant="rail"
+                    read-only={readOnly}
+                    screen-key="divisions"
+                    setup={setup}
+                    terms={terms}
+                    onimported={handleImported}
+                    onlistopen={handleListOpen}
+                  ></c-shoresh-list-import>
                 </div>
                 <div class="shoresh-hairline" role="presentation"></div>
                 <div class="setup-list list_narrow">
@@ -801,19 +799,18 @@
                     data-id="rail-saved"
                     silent
                   ></c-shoresh-saved-mark>
-                  <template lwc:if={editable}>
-                    <span class="shoresh-rail-line" role="presentation"></span>
-                    <c-shoresh-list-import
-                      class="rail-import"
-                      data-id="groups-list-import"
-                      variant="rail"
-                      screen-key="groups"
-                      setup={setup}
-                      terms={terms}
-                      onimported={handleImported}
-                      onlistopen={handleListOpen}
-                    ></c-shoresh-list-import>
-                  </template>
+                  <span class="shoresh-rail-line" role="presentation"></span>
+                  <c-shoresh-list-import
+                    class="rail-import"
+                    data-id="groups-list-import"
+                    variant="rail"
+                    read-only={readOnly}
+                    screen-key="groups"
+                    setup={setup}
+                    terms={terms}
+                    onimported={handleImported}
+                    onlistopen={handleListOpen}
+                  ></c-shoresh-list-import>
                 </div>
                 <div class="shoresh-hairline" role="presentation"></div>
                 <div class="setup-list list_narrow">
@@ -878,19 +875,18 @@
                     data-id="rail-saved"
                     silent
                   ></c-shoresh-saved-mark>
-                  <template lwc:if={editable}>
-                    <span class="shoresh-rail-line" role="presentation"></span>
-                    <c-shoresh-list-import
-                      class="rail-import"
-                      data-id="timeBlocks-list-import"
-                      variant="rail"
-                      screen-key="timeBlocks"
-                      setup={setup}
-                      terms={terms}
-                      onimported={handleImported}
-                      onlistopen={handleListOpen}
-                    ></c-shoresh-list-import>
-                  </template>
+                  <span class="shoresh-rail-line" role="presentation"></span>
+                  <c-shoresh-list-import
+                    class="rail-import"
+                    data-id="timeBlocks-list-import"
+                    variant="rail"
+                    read-only={readOnly}
+                    screen-key="timeBlocks"
+                    setup={setup}
+                    terms={terms}
+                    onimported={handleImported}
+                    onlistopen={handleListOpen}
+                  ></c-shoresh-list-import>
                 </div>
                 <div class="shoresh-hairline" role="presentation"></div>
                 <div class="setup-list list_narrow">
@@ -969,19 +965,18 @@
                     data-id="rail-saved"
                     silent
                   ></c-shoresh-saved-mark>
-                  <template lwc:if={editable}>
-                    <span class="shoresh-rail-line" role="presentation"></span>
-                    <c-shoresh-list-import
-                      class="rail-import"
-                      data-id="locations-list-import"
-                      variant="rail"
-                      screen-key="locations"
-                      setup={setup}
-                      terms={terms}
-                      onimported={handleImported}
-                      onlistopen={handleListOpen}
-                    ></c-shoresh-list-import>
-                  </template>
+                  <span class="shoresh-rail-line" role="presentation"></span>
+                  <c-shoresh-list-import
+                    class="rail-import"
+                    data-id="locations-list-import"
+                    variant="rail"
+                    read-only={readOnly}
+                    screen-key="locations"
+                    setup={setup}
+                    terms={terms}
+                    onimported={handleImported}
+                    onlistopen={handleListOpen}
+                  ></c-shoresh-list-import>
                 </div>
                 <div class="shoresh-hairline" role="presentation"></div>
                 <div class="setup-list list_narrow" data-id="locations-list">
@@ -1081,19 +1076,18 @@
                     data-id="rail-saved"
                     silent
                   ></c-shoresh-saved-mark>
-                  <template lwc:if={editable}>
-                    <span class="shoresh-rail-line" role="presentation"></span>
-                    <c-shoresh-list-import
-                      class="rail-import"
-                      data-id="activities-list-import"
-                      variant="rail"
-                      screen-key="activities"
-                      setup={setup}
-                      terms={terms}
-                      onimported={handleImported}
-                      onlistopen={handleListOpen}
-                    ></c-shoresh-list-import>
-                  </template>
+                  <span class="shoresh-rail-line" role="presentation"></span>
+                  <c-shoresh-list-import
+                    class="rail-import"
+                    data-id="activities-list-import"
+                    variant="rail"
+                    read-only={readOnly}
+                    screen-key="activities"
+                    setup={setup}
+                    terms={terms}
+                    onimported={handleImported}
+                    onlistopen={handleListOpen}
+                  ></c-shoresh-list-import>
                 </div>
                 <div class="shoresh-hairline" role="presentation"></div>
                 <div class="setup-split">
@@ -1176,19 +1170,18 @@
                     data-id="rail-saved"
                     silent
                   ></c-shoresh-saved-mark>
-                  <template lwc:if={editable}>
-                    <span class="shoresh-rail-line" role="presentation"></span>
-                    <c-shoresh-list-import
-                      class="rail-import"
-                      data-id="fixedActivities-list-import"
-                      variant="rail"
-                      screen-key="fixedActivities"
-                      setup={setup}
-                      terms={terms}
-                      onimported={handleImported}
-                      onlistopen={handleListOpen}
-                    ></c-shoresh-list-import>
-                  </template>
+                  <span class="shoresh-rail-line" role="presentation"></span>
+                  <c-shoresh-list-import
+                    class="rail-import"
+                    data-id="fixedActivities-list-import"
+                    variant="rail"
+                    read-only={readOnly}
+                    screen-key="fixedActivities"
+                    setup={setup}
+                    terms={terms}
+                    onimported={handleImported}
+                    onlistopen={handleListOpen}
+                  ></c-shoresh-list-import>
                 </div>
                 <div class="shoresh-hairline" role="presentation"></div>
                 <div class="setup-list">
@@ -1254,19 +1247,18 @@
                     data-id="rail-saved"
                     silent
                   ></c-shoresh-saved-mark>
-                  <template lwc:if={editable}>
-                    <span class="shoresh-rail-line" role="presentation"></span>
-                    <c-shoresh-list-import
-                      class="rail-import"
-                      data-id="recurringActivities-list-import"
-                      variant="rail"
-                      screen-key="recurringActivities"
-                      setup={setup}
-                      terms={terms}
-                      onimported={handleImported}
-                      onlistopen={handleListOpen}
-                    ></c-shoresh-list-import>
-                  </template>
+                  <span class="shoresh-rail-line" role="presentation"></span>
+                  <c-shoresh-list-import
+                    class="rail-import"
+                    data-id="recurringActivities-list-import"
+                    variant="rail"
+                    read-only={readOnly}
+                    screen-key="recurringActivities"
+                    setup={setup}
+                    terms={terms}
+                    onimported={handleImported}
+                    onlistopen={handleListOpen}
+                  ></c-shoresh-list-import>
                 </div>
                 <div class="shoresh-hairline" role="presentation"></div>
                 <div class="setup-list">
@@ -1350,22 +1342,18 @@
                       data-id="rail-saved"
                       silent
                     ></c-shoresh-saved-mark>
-                    <template lwc:if={editable}>
-                      <span
-                        class="shoresh-rail-line"
-                        role="presentation"
-                      ></span>
-                      <c-shoresh-list-import
-                        class="rail-import"
-                        data-id="specialEvents-list-import"
-                        variant="rail"
-                        screen-key="specialEvents"
-                        setup={setup}
-                        terms={terms}
-                        onimported={handleImported}
-                        onlistopen={handleListOpen}
-                      ></c-shoresh-list-import>
-                    </template>
+                    <span class="shoresh-rail-line" role="presentation"></span>
+                    <c-shoresh-list-import
+                      class="rail-import"
+                      data-id="specialEvents-list-import"
+                      variant="rail"
+                      read-only={readOnly}
+                      screen-key="specialEvents"
+                      setup={setup}
+                      terms={terms}
+                      onimported={handleImported}
+                      onlistopen={handleListOpen}
+                    ></c-shoresh-list-import>
                   </div>
                   <div class="shoresh-hairline" role="presentation"></div>
                   <div class="setup-split">
@@ -1468,20 +1456,19 @@
                     data-id="rail-saved"
                     silent
                   ></c-shoresh-saved-mark>
-                  <template lwc:if={editable}>
-                    <span class="shoresh-rail-line" role="presentation"></span>
-                    <c-shoresh-list-import
-                      class="rail-import"
-                      data-id="electives-list-import"
-                      variant="rail"
-                      screen-key="electives"
-                      setup={setup}
-                      terms={terms}
-                      onimported={handleImported}
-                      onlistopen={handleListOpen}
-                      onbringinchoices={handleBringInChoices}
-                    ></c-shoresh-list-import>
-                  </template>
+                  <span class="shoresh-rail-line" role="presentation"></span>
+                  <c-shoresh-list-import
+                    class="rail-import"
+                    data-id="electives-list-import"
+                    variant="rail"
+                    read-only={readOnly}
+                    screen-key="electives"
+                    setup={setup}
+                    terms={terms}
+                    onimported={handleImported}
+                    onlistopen={handleListOpen}
+                    onbringinchoices={handleBringInChoices}
+                  ></c-shoresh-list-import>
                 </div>
                 <div class="shoresh-hairline" role="presentation"></div>
                 <div class="setup-split">

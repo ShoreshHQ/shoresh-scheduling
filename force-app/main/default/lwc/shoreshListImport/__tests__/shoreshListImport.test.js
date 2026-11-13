@@ -1128,6 +1128,39 @@ describe("Download this list", () => {
     delete URL.revokeObjectURL;
   });
 
+  // WEEK-1.10: an archived season's list is downloaded, never imported.
+  it("WEEK-1.10: read-only, the rail offers Download this list and no Import a list", async () => {
+    window.XLSX = require("xlsx");
+    URL.createObjectURL = () => "blob:test";
+    URL.revokeObjectURL = () => undefined;
+    const saved = [];
+    const spy = jest
+      .spyOn(HTMLAnchorElement.prototype, "click")
+      .mockImplementation(function click() {
+        saved.push(this);
+      });
+    const element = createElement("c-shoresh-list-import", {
+      is: ShoreshListImport
+    });
+    element.screenKey = "activities";
+    element.variant = "rail";
+    element.readOnly = true;
+    element.setup = nsRecord(SETUP);
+    element.terms = buildTerms([]);
+    document.body.appendChild(element);
+    await flush();
+    expect($(element, '[data-id="open"]')).toBeNull();
+    $(element, 'button[data-id="download"]').click();
+    await flush();
+    expect(saved.map((a) => a.download)).toEqual([
+      "Activities - Summer 2027.xlsx"
+    ]);
+    spy.mockRestore();
+    delete window.XLSX;
+    delete URL.createObjectURL;
+    delete URL.revokeObjectURL;
+  });
+
   it("says so in a message when the list can't be written, naming the item", async () => {
     window.XLSX = require("xlsx");
     const toasts = [];
