@@ -296,7 +296,7 @@ describe("c-shoresh-learned: one row per answer", () => {
     expect(element.shadowRoot.activeElement.dataset.id).toBe("forget");
   });
 
-  // MEMO-6.4, MEMO-7.3
+  // MEMO-6.4, MEMO-7.3, MEMO-7.2 (Greg 2026-11-12: a Change here reads "Set by you", dated)
   it("Change shows the new answer on its row with Undo; nothing of the one before stays", async () => {
     const lunch = answer("1", "kind|Lunch", "activity");
     const answered = event(
@@ -350,7 +350,7 @@ describe("c-shoresh-learned: one row per answer", () => {
       answer: "fixed"
     });
     expect(lines(element)).toEqual([
-      ["Lunch is a fixed activity", "Answered as before", "Oct 26", null]
+      ["Lunch is a fixed activity", "Set by you", "Oct 26", null]
     ]);
     expect($(element, '[data-id="said"]').textContent.trim()).toBe("Updated.");
     expect(element.shadowRoot.activeElement.dataset.id).toBe("undo");

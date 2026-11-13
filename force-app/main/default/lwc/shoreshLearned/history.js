@@ -1,8 +1,8 @@
 /**
  * "What Shoresh has learned" as one row per answer, newest first (repo ADR 0023, as changed by
  * the word walk of 2026-11-12: no history log on screen). Each row says what is learned now in
- * camp words, when, and its state: "Answered as before", "Asks first" once forgotten, "Guessed in
- * an import", a pattern's band. Pure: the same history and answers always give the same rows
+ * camp words, when, and its state: "Answered as before", "Set by you" once changed here, "Asks
+ * first" once forgotten, "Guessed in an import", a pattern's band. Pure: the same history and answers always give the same rows
  * (MEMO-7.6).
  *
  * The rows come from the camp's stored events (LearnedEvents.cls: answered, changed, forgotten,
@@ -55,8 +55,13 @@ function heldBy(row, group) {
 /** A line's state, in words: what its newest event left. */
 function howOf(kind, row, group, extra = {}) {
   switch (kind) {
-    case "answered":
     case "changed":
+      // MEMO-7.2 (Greg 2026-11-12): a Change made here is the director's own setting, never
+      // "Answered as before" (that is an answer Shoresh reapplied); the row's date is the change's.
+      return group === null || group === "deleted" || group === "guessed"
+        ? howOf("answered", row, group)
+        : `Set by ${who(row)}`;
+    case "answered":
     case "undone":
       return group === null ? `Undone by ${who(row)}` : heldBy(row, group);
     case "forgotten":

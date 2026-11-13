@@ -86,6 +86,7 @@ describe("one row per answer", () => {
   });
 
   // MEMO-7.3 (word walk 2026-11-12: one row per answer, no history log)
+  // MEMO-7.2 (Greg 2026-11-12): a Change made here reads "Set by you", dated by the change.
   it("a change leaves one row: the answer now, and nothing of the one before", () => {
     const events = [
       ev("1", "answered", "kind|Lunch", "activity", "2026-07-03"),
@@ -98,7 +99,38 @@ describe("one row per answer", () => {
       spell
     );
     expect(view(lines)).toEqual([
-      ["Lunch is a fixed activity", "Answered as before", "Jul 20", true]
+      ["Lunch is a fixed activity", "Set by you", "Jul 20", true]
+    ]);
+  });
+
+  // MEMO-7.2 (Greg 2026-11-12): "Set by" only for a Change made in Settings; an answer the
+  // import asked and Shoresh reapplies keeps "Answered as before", and another person's Change
+  // says whose.
+  it("says Set by for a change made here and Answered as before for an answer reapplied", () => {
+    const events = [
+      ev("1", "answered", "kind|Lunch", "fixed", "2026-07-03", {
+        byYou: true
+      }),
+      ev("2", "answered", "kind|Swim", "activity", "2026-07-04", {
+        byYou: true
+      }),
+      ev("3", "changed", "kind|Swim", "fixed", "2026-07-21", {
+        byYou: false,
+        byName: "Dana"
+      })
+    ];
+    const lines = historyLines(
+      events,
+      [
+        now("a1", "kind|Lunch", "fixed", "2026-07-03"),
+        now("a3", "kind|Swim", "fixed", "2026-07-21", { fromLearned: true })
+      ],
+      t,
+      spell
+    );
+    expect(view(lines).map((row) => row.slice(1, 3))).toEqual([
+      ["Set by Dana", "Jul 21"],
+      ["Answered as before", "Jul 3"]
     ]);
   });
 
