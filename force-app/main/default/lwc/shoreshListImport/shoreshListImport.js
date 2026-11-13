@@ -100,6 +100,11 @@ export default class ShoreshListImport extends LightningElement {
    * whole width under them (the host is marked list-open, which the page's rail wraps).
    */
   @api variant;
+  /**
+   * An archived season (WEEK-1.10): the list is downloaded but nothing is imported, so only
+   * "Download this list" is offered.
+   */
+  @api readOnly = false;
 
   open = false;
   downloading = false;
@@ -245,6 +250,9 @@ export default class ShoreshListImport extends LightningElement {
   /** Roots has its own "Download worksheet". */
   get showDownload() {
     return !this.workbook;
+  }
+  get importable() {
+    return !this.readOnly;
   }
   get openLabel() {
     return this.workbook ? "Import worksheet" : "Import a list";
