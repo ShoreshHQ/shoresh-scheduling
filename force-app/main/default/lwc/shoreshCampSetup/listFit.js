@@ -5,15 +5,19 @@
  */
 const TOO_WIDE = "too-wide";
 
-/**
- * Not while the cursor is in the list: an open list or calendar would count as width and turn
- * the scrolling on under it. The list is measured again when the cursor leaves it.
- */
 function fit(list) {
-  if (list.matches(":focus-within")) {
-    return;
-  }
   list.classList.toggle(TOO_WIDE, list.scrollWidth > list.clientWidth + 1);
+}
+
+/**
+ * On a redraw, not while the cursor is in the list: an open list or calendar would count as
+ * width and turn the scrolling on under it. It is measured when the cursor leaves the list, and
+ * whenever the list or what is in it really changes size (a row's details, a narrower window).
+ */
+function fitAtRest(list) {
+  if (!list.matches(":focus-within")) {
+    fit(list);
+  }
 }
 
 export class ListFit {
@@ -34,8 +38,11 @@ export class ListFit {
         : null;
     this.onFocusOut = (event) => {
       const list = event.currentTarget;
-      // After the cursor has moved: still inside, it is measured when it leaves for good.
-      Promise.resolve().then(() => fit(list));
+      // Moving to another field in the same list isn't leaving it.
+      if (event.relatedTarget && list.contains(event.relatedTarget)) {
+        return;
+      }
+      Promise.resolve().then(() => fitAtRest(list));
     };
   }
 
@@ -43,7 +50,7 @@ export class ListFit {
   watch(root) {
     this.forgetGone();
     root.querySelectorAll(".setup-list").forEach((list) => {
-      fit(list);
+      fitAtRest(list);
       if (!this.watched.has(list)) {
         list.addEventListener("focusout", this.onFocusOut);
       }

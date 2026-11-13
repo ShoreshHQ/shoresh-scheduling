@@ -59,21 +59,39 @@ describe("a setup list scrolls sideways only while too wide", () => {
     expect(el.classList.contains("too-wide")).toBe(false);
   });
 
-  it("not while the cursor is in it: an open calendar is no width; measured when it leaves", async () => {
+  it("a redraw with the cursor in it doesn't measure: an open calendar is no width", async () => {
     const { root, el } = list(800, 800);
-    const input = document.createElement("input");
-    el.appendChild(input);
+    const first = document.createElement("input");
+    const second = document.createElement("input");
+    el.append(first, second);
     document.body.appendChild(root);
     const fit = new ListFit();
     fit.watch(root);
-    input.focus();
+    first.focus();
     // A calendar open under the cursor makes the list read wider than it is.
     Object.defineProperty(el, "scrollWidth", { value: 1100 });
     fit.watch(root);
     expect(el.classList.contains("too-wide")).toBe(false);
-    // A longer value typed in did widen it: measured once the cursor leaves.
-    input.blur();
+    // On to the next field in the same list: not leaving it, nothing measured.
+    second.focus();
     await Promise.resolve();
+    expect(el.classList.contains("too-wide")).toBe(false);
+    // Out of the list (a longer value typed in did widen it): measured.
+    second.blur();
+    await Promise.resolve();
+    expect(el.classList.contains("too-wide")).toBe(true);
+    root.remove();
+  });
+
+  it("a real change of size is measured even with the cursor in the list (a row's details)", () => {
+    const { root, el, table } = list(800, 800);
+    const button = document.createElement("button");
+    table.appendChild(button);
+    document.body.appendChild(root);
+    new ListFit().watch(root);
+    button.focus();
+    Object.defineProperty(el, "scrollWidth", { value: 1100 });
+    callback([{ target: table }]);
     expect(el.classList.contains("too-wide")).toBe(true);
     root.remove();
   });
