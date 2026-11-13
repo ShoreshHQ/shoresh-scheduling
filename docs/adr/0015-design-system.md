@@ -137,6 +137,12 @@ than cut off, and a solid dot field for Roots' table._
       only fields in cells Shoresh marks `shoresh-cell`, keeps the highlight edge on the field
       with the cursor and Salesforce's error edge on a refused one. Without it the fields show
       as boxes and everything still works.
+      **The one exception (2026-11-13):** how Salesforce builds its fields inside isn't
+      supported and may change, so nothing of Shoresh's may depend on it for working. This
+      stylesheet is the only place Shoresh styles inside Salesforce's fields, and is allowed
+      because it changes looks only and falls back safely to ordinary boxes; the date boxes'
+      larger calendar button was dropped for the same reason (ADR 0013 choice 24).
+      `npm run check:salesforce-insides` (CI) fails on any other stylesheet that does.
     - **A section's heading, never a repeated column.** Each division's groups, each location
       type's places, and (with more than one program) each program's tables are a section
       headed by its name and its count ("Juniors 3"; read "Juniors, 3"). The column names show
