@@ -284,6 +284,40 @@ private class IncomingCamperElectiveChoiceTest {
     );
   }
 
+  // ELECT-2.5: a run left on a saved version beside one on the current schedule: choices go to
+  // the current one.
+  @IsTest
+  static void choicesGoToTheRunOnTheCurrentScheduleNotOneOnASavedVersion() {
+    IncomingTestData camp = new IncomingTestData().withElectives();
+    Camper__c maya = camp.camper('Maya Cohen', 'SYN-1');
+    ElectiveRun__c old = camp.run.clone(false, true, false, false);
+    old.Schedule__c = ShoreshTestData.version(
+        camp.ids.get('Main'),
+        camp.ids.get('Week 1'),
+        'Last summer'
+      )
+      .Id;
+    // Named to sort first, so the old run would be found first.
+    old.Name = 'A Chugim · Week 1';
+    Database.insert(old, AccessLevel.SYSTEM_MODE);
+    System.runAs(camp.sender('Send_Elective_Choices')) {
+      Map<String, Object> answer = send(
+        new List<Map<String, Object>>{ record('Archery', 'Swim') }
+      );
+      Assert.areEqual('saved: Saved.', IncomingTestData.said(answer, 1));
+    }
+    Assert.areEqual(
+      camp.run.Id,
+      [
+        SELECT ElectiveRun__c
+        FROM Preference__c
+        WHERE Camper__c = :maya.Id
+        WITH SYSTEM_MODE
+      ]
+      .ElectiveRun__c
+    );
+  }
+
   // API-4.4: only "Send elective choices" sends choices.
   @IsTest
   static void anotherPieceCannotSendChoices() {

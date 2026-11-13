@@ -98,14 +98,22 @@ public with sharing class IncomingRuns {
     return result;
   }
 
-  /** The named set's run in the named week, or null. */
+  /**
+   * The named set's run in the named week, or null. A run on a current schedule first (ELECT-2.5):
+   * one left on a saved version from before the rule is the answer only when there is no other.
+   */
   public ElectiveRun__c run(String electiveSet, String week) {
+    ElectiveRun__c first = null;
     for (ElectiveRun__c run : inWeek(week)) {
-      if (!String.isBlank(week) && same(run.ElectiveSet__r.Name, electiveSet)) {
+      if (String.isBlank(week) || !same(run.ElectiveSet__r.Name, electiveSet)) {
+        continue;
+      }
+      if (!onVersion(run)) {
         return run;
       }
+      first = first == null ? run : first;
     }
-    return null;
+    return first;
   }
 
   /** The season's group of that name, or null (none, or two with the name). */
