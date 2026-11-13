@@ -155,25 +155,21 @@ export function locksOf(days) {
 }
 
 /**
- * How the engine builds for each action (Greg 2026-10-27, protocol section 10): Rebuild keeps the
- * week as it is and changes only what setup forces; Generate and Try another build it fresh;
- * Fill the open cells keeps every filled cell.
+ * How the engine builds for each action: Fill the open cells keeps every filled cell; Generate,
+ * Try another and Rebuild build the week fresh, keeping only the director's locks and hand-placed
+ * cells (a hand edit locks its cell), so Rebuild is Generate on the same option (protocol 10.13,
+ * Greg 2026-11-12).
  */
 function modeOf(action) {
-  if (action === ACTION.FILL_OPEN) {
-    return MODE.FILL_OPEN;
-  }
-  return action === ACTION.REBUILD ? MODE.KEEP : MODE.FULL;
+  return action === ACTION.FILL_OPEN ? MODE.FILL_OPEN : MODE.FULL;
 }
 
 /**
  * generateWeek's whole input for building the loaded week (not Start over, which builds nothing):
- * the action's mode, the option, the camp's words (terms) and the season's setup. The engine's
- * notes are the ones the server kept with the week (loaded.engineNotes), so every build of the
- * same records is the same, after a reload or through an agent.
+ * the action's mode, the option, the camp's words (terms) and the season's setup: only what the
+ * server keeps, so every build of the same records is the same, after a reload or through an agent.
  */
 export function buildInputOf(loaded, { action, option, terms, setup }) {
-  const notes = loaded.engineNotes;
   return {
     ...engineInputOf(inputFor(loaded, action), {
       days: loaded.input.days,
@@ -181,10 +177,7 @@ export function buildInputOf(loaded, { action, option, terms, setup }) {
       setup
     }),
     option,
-    mode: modeOf(action),
-    // Each weekly minimum as the week was built: Rebuild moves cells only for a minimum the
-    // setup change left short (rule 10.6). Unknown for a week built before they were kept.
-    builtMinimums: notes && notes.mins.length ? notes.mins : null
+    mode: modeOf(action)
   };
 }
 
@@ -222,8 +215,8 @@ export function buildWeek(loaded, how) {
 
 /**
  * A week built for an agent (API-1.19), as Generated Schedule's own buttons build it: Generate
- * when the week has never been built, else Rebuild (it keeps the week, changing only what setup
- * forces), on the option the week was built with, locks kept. read: what /v1/build_week answers
+ * when the week has never been built, else Rebuild (built fresh, as Generate builds it, protocol
+ * 10.13), on the option the week was built with, locks kept. read: what /v1/build_week answers
  * ({ inputs, setup, labels }: getInputs, the season's setup and the camp's words). Answers
  * { ok: true, save } (save: what /v1/build_week takes back) or { ok: false, error } in the
  * engine's own words.
