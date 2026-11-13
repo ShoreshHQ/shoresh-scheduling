@@ -220,6 +220,28 @@ export const BuildScreen = (Base) =>
         }
       }
     }
+    /**
+     * Something other screens show was just saved here (WEEK-6.7): a version kept, renamed,
+     * deleted or restored, a week built or published. season: the season's schedules themselves
+     * changed (one started or published), so the page reads the season again. Fires:
+     * scheduleschanged { weekId, programId, season }.
+     */
+    tellSchedulesChanged(season = false) {
+      this.dispatchEvent(
+        new CustomEvent("scheduleschanged", {
+          detail: { weekId: this.weekId, programId: this.programId, season }
+        })
+      );
+    }
+    /** Whether a change on another screen ({ weekId, programId }) is about the week shown here. */
+    showsWeekOf(changed) {
+      const { weekId, programId } = changed || {};
+      return (
+        this.canChoose &&
+        (!weekId || weekId === this.weekId) &&
+        (!programId || programId === this.programId)
+      );
+    }
     /** ‹ Roots on this screen's rail: said again to the page, which goes home (repo ADR 0020). */
     handleBackToRoots(event) {
       event.stopPropagation();

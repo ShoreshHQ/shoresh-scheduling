@@ -71,6 +71,8 @@ export default class ShoreshSchedules extends LightningElement {
   // { event: event Id }.
   focusAfter = null;
   pending = 0;
+  // Another screen changed this week's versions while a read was on its way (readAgain).
+  readWhenDone = false;
   // From choosing a week until its newest version is open (or it has none).
   loading = false;
   // The floating refusal at the window's foot: one at a time on the page, and Close puts the
@@ -286,6 +288,16 @@ export default class ShoreshSchedules extends LightningElement {
       }
       this.dispatchEvent(
         new ShowToastEvent({ title: "Renamed.", variant: "success" })
+      );
+      // Manual Build's and Generated Schedule's Versions lists say the new name (WEEK-6.7).
+      this.dispatchEvent(
+        new CustomEvent("scheduleschanged", {
+          detail: {
+            weekId: this.weekId,
+            programId: this.programId,
+            season: false
+          }
+        })
       );
     }, "Not renamed. The name is as it was.");
     onDone(saved);
@@ -753,15 +765,27 @@ export default class ShoreshSchedules extends LightningElement {
   }
 
   /**
-   * The screen opened again from the menu (CampSetup): the week's versions read again, so ones
-   * kept, renamed or deleted on another screen meanwhile show (word walk W6), the one open staying
-   * open while it is still there.
+   * The screen opened again from the menu (CampSetup), or a version of a week kept, renamed or
+   * deleted on another screen ({ weekId, programId }, WEEK-6.7): the week's versions read again,
+   * so they show without a reload (word walk W6), the one open staying open while it is still
+   * there. A change to another week is not this one's; while a read or rename is on its way, it
+   * is read once that is done.
    */
   @api
-  readAgain() {
-    if (!this.canChoose || this.busy) {
+  readAgain(changed) {
+    const { weekId, programId } = changed || {};
+    if (
+      !this.canChoose ||
+      (weekId && weekId !== this.weekId) ||
+      (programId && programId !== this.programId)
+    ) {
       return;
     }
+    if (this.busy) {
+      this.readWhenDone = true;
+      return;
+    }
+    this.readWhenDone = false;
     this.versionToOpen = this.openId;
     this.loadedFor = null;
     this.loadVersions();
@@ -795,6 +819,10 @@ export default class ShoreshSchedules extends LightningElement {
       return false;
     } finally {
       this.pending -= 1;
+      // A change on another screen came while this was on its way (WEEK-6.7).
+      if (!this.busy && this.readWhenDone) {
+        this.readAgain();
+      }
     }
   }
 

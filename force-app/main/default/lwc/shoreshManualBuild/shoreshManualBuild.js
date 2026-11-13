@@ -366,6 +366,17 @@ export default class ShoreshManualBuild extends BuildScreen(LightningElement) {
   }
 
   /**
+   * Another screen kept, renamed, deleted or restored a version of a week (WEEK-6.7): this
+   * week's Versions list is read again, without a reload. Only a week started has the list.
+   */
+  @api
+  readVersions(changed) {
+    if (this.draft && this.showsWeekOf(changed)) {
+      this.loadVersions();
+    }
+  }
+
+  /**
    * Opens this screen on a week of the season, as choosing it in the week picker does (the
    * Schedules doorway, wiki decision 61). Not while the picker waits on work under way: the
    * week shown stays, and the picker says which it is. True when that week is the one shown.
@@ -608,6 +619,10 @@ export default class ShoreshManualBuild extends BuildScreen(LightningElement) {
       this.show(draft, true);
       this.focusGridAfterStart = !!draft;
       this.loadVersions();
+      // A schedule started: Bring in choices and Elective seats offer it (WEEK-6.7).
+      if (draft) {
+        this.tellSchedulesChanged(true);
+      }
       return draft;
     } catch (e) {
       if (ticket === this.loadTicket) {
@@ -730,8 +745,10 @@ export default class ShoreshManualBuild extends BuildScreen(LightningElement) {
   async versionsAction(what, work) {
     this.versionsWorking = true;
     this.error = null;
+    let done = false;
     try {
       await work();
+      done = true;
       return true;
     } catch (e) {
       this.error = failed(what, e);
@@ -739,6 +756,10 @@ export default class ShoreshManualBuild extends BuildScreen(LightningElement) {
     } finally {
       await this.loadVersions();
       this.versionsWorking = false;
+      // Saved versions and the other schedule show the same list (WEEK-6.7).
+      if (done) {
+        this.tellSchedulesChanged();
+      }
     }
   }
 
@@ -761,6 +782,7 @@ export default class ShoreshManualBuild extends BuildScreen(LightningElement) {
   rainyWith = async (name) => {
     await keepWeekBeforeRain({ scheduleId: this.schedule.schedule.id, name });
     this.loadVersions();
+    this.tellSchedulesChanged();
   };
 
   /**
@@ -994,6 +1016,8 @@ export default class ShoreshManualBuild extends BuildScreen(LightningElement) {
       this.say(`Unpublished ${this.weekName}.`);
       // The copy is a version now: Versions lists it straight away.
       await this.loadVersions();
+      // No published schedule for the week now, on every screen (WEEK-6.7).
+      this.tellSchedulesChanged(true);
     } finally {
       this.readAgain(reload, ask.week);
     }
@@ -1049,6 +1073,8 @@ export default class ShoreshManualBuild extends BuildScreen(LightningElement) {
       if (!result.unchanged) {
         // A published schedule it replaced is a version now: Versions lists it straight away.
         await this.loadVersions();
+        // The week's published schedule, on every screen (WEEK-6.7).
+        this.tellSchedulesChanged(true);
       }
     } finally {
       this.readAgain(reload, week);
@@ -1367,8 +1393,9 @@ export default class ShoreshManualBuild extends BuildScreen(LightningElement) {
       this.restoreRefused = false;
       kept = kept || !!result.kept;
       if (result.kept) {
-        // Versions lists the week as it was, kept just now.
+        // Versions lists the week as it was, kept just now, here and elsewhere (WEEK-6.7).
         this.loadVersions();
+        this.tellSchedulesChanged();
       }
       const done =
         keys.length === 1
