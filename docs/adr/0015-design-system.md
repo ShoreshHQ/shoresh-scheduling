@@ -51,7 +51,7 @@ than cut off, and a solid dot field for Roots' table._
    from Fontsource 5.2.8, unchanged, with their SIL Open Font License 1.1 texts beside them (and
    in `docs/licenses/`, named in `NOTICE`). No font CDN: Lightning's Content Security Policy
    allows fonts from the org itself, and a static resource is served from the org. The camp setup
-   page loads `fonts.css` once with `loadStyle` (as it loads the date box style); `@font-face` is
+   page loads `fonts.css` once with `loadStyle` (as it loads the table style); `@font-face` is
    document-wide, so every component can name the families. `font-display: swap`: words show at
    once in the system font, and a page that can't load the fonts still works. 13 px body,
    14 px for the camp name, 11 px for the menu's section titles. Numbers that must line up use

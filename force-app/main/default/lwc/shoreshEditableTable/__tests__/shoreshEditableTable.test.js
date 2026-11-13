@@ -3133,7 +3133,7 @@ describe("c-shoresh-editable-table", () => {
     });
   });
 
-  it("leaves each date box as Salesforce makes it: nothing of ours reaches inside it", async () => {
+  it("marks no date box for a style of its own: the calendar button keeps Salesforce's size", async () => {
     const element = render({
       objectApiName: "Week__c",
       columns: [
