@@ -206,13 +206,14 @@ there.
     delete button (ADR 0012 choice 5). Every setup table, on its own screen or in a program
     card, deletes through the same path (`shoreshCampSetup.askAndDelete` calls the table's
     `onDeleted`). The question itself is still Salesforce's confirm box.
-24. **Date boxes' calendar buttons are at least 24 by 24 pixels** (WCAG 2.5.8; axe
-    `target-size`) on Weeks, New season, Copy this season and the season's own dates. The button
-    is inside Salesforce's date box, out of reach of a component's own CSS, so the camp setup
-    page loads one small stylesheet (static resource `ShoreshDateBox`) that sizes the button only
-    in date boxes Shoresh marks `shoresh-date`; Salesforce's date boxes elsewhere are untouched.
-    The icon keeps its size and the box keeps its SLDS padding, which already holds the larger
-    button.
+24. **Date boxes are Salesforce's own, as Salesforce makes them** (changed 2026-11-13). Until
+    then a small stylesheet (static resource `ShoreshDateBox`) reached inside Salesforce's date
+    box to make its calendar button 24 by 24 pixels (axe `target-size`). That reach depended on
+    how Salesforce builds the box inside, which it does not support and may change, and nothing
+    of Shoresh's may depend on that (Greg 2026-11-13). Salesforce offers no supported way to size
+    the button, so the stylesheet is gone and the button keeps Salesforce's size. WCAG 2.5.8
+    still holds by its "equivalent" exception: the date box itself, a full-size target, takes the
+    date typed in, so the small button is never the only way to set it.
 25. **A deleted program card is said, and the cursor moves to its neighbour** (added
     2026-10-20, the loose end of choice 23). A program card is not a table row, so choice 23
     did not cover it: after **OK** on **Delete this program** the cursor fell to the page and

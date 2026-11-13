@@ -2,8 +2,7 @@
  * Shoresh's setup tables (c-shoresh-editable-table): a field in a row reads as words until the
  * pointer or the cursor is on its row (docs/design/setup/groups.html). The edge, the fill and the
  * chevron or calendar of Salesforce's fields live inside Salesforce's components, where a
- * component's own CSS can't reach, so the camp setup page loads this once (loadStyle), as it
- * loads ShoreshDateBox. Only fields inside cells Shoresh marks shoresh-cell, in rows it marks
+ * component's own CSS can't reach, so the camp setup page loads this once (loadStyle). Only fields inside cells Shoresh marks shoresh-cell, in rows it marks
  * shoresh-row, change; Salesforce's fields elsewhere stay as they are. ADR 0015 choice 11.
  * Colours come from the table's own tokens (c/shoreshTokens), with the same values as fallbacks.
  */

@@ -2,7 +2,6 @@ import { LightningElement, wire } from "lwc";
 import { CurrentPageReference } from "lightning/navigation";
 import { ShowToastEvent } from "lightning/platformShowToastEvent";
 import { loadStyle } from "lightning/platformResourceLoader";
-import DATE_BOX from "@salesforce/resourceUrl/ShoreshDateBox";
 import TABLE from "@salesforce/resourceUrl/ShoreshTable";
 import FONTS from "@salesforce/resourceUrl/ShoreshFonts";
 import getCamps from "@salesforce/apex/SeasonSetupController.getCamps";
@@ -415,8 +414,6 @@ export default class ShoreshCampSetup extends LightningElement {
   }
 
   connectedCallback() {
-    // Date boxes' calendar buttons at least 24 by 24 (WCAG 2.5.8); without it they work, smaller.
-    loadStyle(this, DATE_BOX).catch(() => {});
     // Setup tables' fields read as words at rest; without it they show as boxes, and work.
     loadStyle(this, TABLE).catch(() => {});
     // Inter and the one mono (ADR 0015); without them every word shows in the system font.

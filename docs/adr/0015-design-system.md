@@ -133,7 +133,7 @@ than cut off, and a solid dot field for Roots' table._
       edited, as a grid cell. Their fields read as words at rest: a field's edge, its chevron,
       clock or calendar show only while the row is pointed at or edited. Salesforce's fields
       keep their insides out of a component's reach, so the page loads one small stylesheet,
-      static resource `ShoreshTable` (as `ShoreshDateBox`, ADR 0013 choice 24), that reaches
+      static resource `ShoreshTable`, that reaches
       only fields in cells Shoresh marks `shoresh-cell`, keeps the highlight edge on the field
       with the cursor and Salesforce's error edge on a refused one. Without it the fields show
       as boxes and everything still works.
