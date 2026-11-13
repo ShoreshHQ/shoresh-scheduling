@@ -669,6 +669,12 @@ table {
   font-size: var(--shoresh-font-size-label);
 }
 
+/* The schedule picker's choice stops at about 8em, so the rail keeps to one row at 1440 (its
+   whole name on hover, read out, and in the open menu). */
+.schedule-picker {
+  --shoresh-pop-label-max: 8em;
+}
+
 /* The schedule picker's name, shown beside it (Greg's pick, 2026-11-12: "Schedule"). */
 .rail-word {
   align-self: center;

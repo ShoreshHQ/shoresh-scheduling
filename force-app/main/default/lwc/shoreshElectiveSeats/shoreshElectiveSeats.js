@@ -47,7 +47,8 @@ const CHANGED = "Changed since";
 const FINAL = "Final";
 const ROSTER_HEADING = '[data-id="roster-heading"]';
 const PRIMARY = '[data-id="primary"]';
-const ASSIGN_AGAIN = '[data-id="assign-again"]';
+// Import choices and Assign again: one rail menu, where the cursor goes back after Assign again.
+const BUILD_MENU = '[data-id="build-menu"]';
 // The run's menu: where the cursor goes after Finalize (the main button is then held for good)
 // and after Start a new version (the menu it was chosen from).
 const STATE_MENU = '[data-id="state"]';
@@ -80,7 +81,7 @@ const ICONS = {
  *
  * The rail: the week and the set on the left (and "Schedule" when the week has more than
  * one schedule); By offering and By camper in the middle; on the right the counter ("212 of 214
- * placed", opening to the problems), Import choices, Assign again, the seats' state (Draft;
+ * placed", opening to the problems), Build (Import choices, Assign again), the seats' state (Draft;
  * Final · Oct 14 · Greg; Changed since), and the one main button: Assign seats, then Finalize, then
  * Download (slice E10). Seats are worked out in the browser (c/shoreshElectiveEngine) and checked
  * by the server as it saves them; locks and hand moves always beat the engine.
@@ -357,6 +358,11 @@ export default class ShoreshElectiveSeats extends LightningElement {
   /** The week's working schedules (Bring in choices' list): a run names the one it assigns against. */
   get scheduleOptions() {
     return scheduleOptions(this._setup, this.weekId);
+  }
+  /** The schedule picker's whole name, on hover (its choice stops at about 8em). */
+  get scheduleName() {
+    const shown = this.scheduleOptions.find((o) => o.value === this.scheduleId);
+    return shown ? shown.label : null;
   }
   /** "Schedule:" only when the week has more than one schedule (desktop D2.7). */
   get asksSchedule() {
@@ -652,6 +658,20 @@ export default class ShoreshElectiveSeats extends LightningElement {
   get showsBringIn() {
     return this.editable && !this.isFinal;
   }
+  get showsBringInRow() {
+    return this.showsPickers && this.showsBringIn;
+  }
+  /** The rail's Build menu: Import choices and Assign again, when either can be done. */
+  get showsBuildMenu() {
+    return this.showsBringInRow || this.showsAssignAgain;
+  }
+  handleBuildMenu(event) {
+    if (event.detail.value === "bring-in") {
+      this.handleBringIn();
+    } else if (event.detail.value === "assign-again") {
+      this.handleAssignAgain();
+    }
+  }
 
   async handlePrimary() {
     if (this.isFinal) return;
@@ -662,7 +682,7 @@ export default class ShoreshElectiveSeats extends LightningElement {
     }
   }
   async handleAssignAgain() {
-    await this.assign([ASSIGN_AGAIN, PRIMARY]);
+    await this.assign([BUILD_MENU, PRIMARY]);
   }
   async handleErrorAction() {
     if (this.errorAction === "assign") {

@@ -1211,8 +1211,9 @@ The campers are made up: `docs/samples/electives/chugim-choices.csv` in the proj
    Tuesday's Period 2 for Bunk 1, then for Bunk 2: the two cells join into one wide cell,
    _Chugim (3)_, with the set's mark.
 5. **Bring in the campers' choices.** Open **Elective seats**, pick the same week and _Chugim_
-   (if the week has more than one schedule with Chugim on it, **Assign against** asks which).
-   Click **Bring in choices** (it opens on that week and set), then **Choose a file** and pick
+   (if the week has more than one schedule with Chugim on it, **Schedule** asks which).
+   Open the **Build** menu on the rail and click **Import choices** (it opens on that week
+   and set), then **Choose a file** and pick
    `docs/samples/electives/chugim-choices.csv`. Three cards follow, _1 of 3_ to _3 of 3_:
    - **How the sheet was read**: which column is the name, the number, the bunk and the
      choices, and one camper read back (_Maya Fernwood: 1 Archery, 2 Drama, 3 Pottery_). Click
@@ -1228,7 +1229,7 @@ The campers are made up: `docs/samples/electives/chugim-choices.csv` in the proj
    Click a cell to see who is there. **By camper** shows each camper's seat; the speech bubble
    beside Eli is the parent's comment.
 7. **By hand.** In a roster, **Move to…** moves a camper to another offering: the move is
-   locked (the padlock). **Assign again** keeps every lock.
+   locked (the padlock). **Assign again** (in the **Build** menu) keeps every lock.
 8. **Finalize.** The main button now reads **Finalize**. Click it: the week's seats are fixed,
    the state reads _Final ·_ with the date and your name, and the main button becomes
    **Download**. (If the
@@ -1239,7 +1240,7 @@ The campers are made up: `docs/samples/electives/chugim-choices.csv` in the proj
    who is in it at each time, by bunk), **Print rosters** (the same, one page per offering, for
    paper), **Camper schedules** (each camper's week: their bunk's schedule with their seat in
    it), **Full report** (schedules, rosters, exceptions and a summary) and **Campers** (to edit
-   and bring back with Bring in choices). File names carry the set and the week, for example
+   and import again with Import choices). File names carry the set and the week, for example
    _Chugim Week 1 rosters.xlsx_, never a child's name, and no file has a parent's comment.
 10. **End of season.** In the **Download** menu, under a line, **Clear at season end…** takes
     over the screen: _Clear Summer 2026_, **Whole season** or the week on screen, _Can't be
