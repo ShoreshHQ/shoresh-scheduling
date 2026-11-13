@@ -139,8 +139,9 @@ describe("INGEST-3.11: a recurring activity in a fixed activity's time block", (
   });
 
   it("INGEST-3.11: a file that prints Lunch on Friday splits the run itself: nothing to ask", () => {
-    const printed = (g, d, b) =>
-      d === 4 && b === 2 ? "Lunch" : fieldDay(g, d, b);
+    const printed = (g, d, b) => {
+      return d === 4 && b === 2 ? "Lunch" : fieldDay(g, d, b);
+    };
     const p = propose(printed, {});
     expect(p.fixed.map((f) => f.name)).toEqual(["Lunch"]);
     expect(clashCards(p, {})).toEqual([]);

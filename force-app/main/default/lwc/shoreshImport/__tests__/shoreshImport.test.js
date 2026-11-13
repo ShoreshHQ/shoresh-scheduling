@@ -284,6 +284,100 @@ describe("c-shoresh-import", () => {
     );
   });
 
+  // INGEST-3.11, CORE-6.12
+  it("INGEST-3.11: a recurring activity over the camp's fixed Lunch is a row in Needs a look, its answer pre-selected, and Add saves no clash", async () => {
+    const element = createElement("c-shoresh-import", { is: ShoreshImport });
+    const at = (h, m = 0) => h * 60 * 60000 + m * 60000;
+    element.setup = nsRecord({
+      ...SETUP,
+      programs: [
+        {
+          program: {
+            Id: "p1",
+            Name: "Main",
+            Monday__c: true,
+            Tuesday__c: true,
+            Wednesday__c: true,
+            Thursday__c: true,
+            Friday__c: true
+          },
+          timeBlocks: [
+            ["tb1", "Period 1", at(9), at(9, 45)],
+            ["tb2", "Period 2", at(9, 50), at(10, 35)],
+            ["tb3", "Lunch", at(11, 30), at(12, 15)],
+            ["tb4", "Period 3", at(13), at(13, 45)]
+          ].map(([Id, Name, StartTime__c, EndTime__c], i) => ({
+            Id,
+            Name,
+            StartTime__c,
+            EndTime__c,
+            SortOrder__c: i + 1
+          })),
+          divisions: [],
+          fixedActivities: [
+            { Id: "f1", Name: "Lunch", TimeBlock__c: "tb3", Length__c: 1 }
+          ],
+          recurringActivities: []
+        }
+      ]
+    });
+    element.terms = buildTerms([]);
+    document.body.appendChild(element);
+    await flush();
+    // Two weeks: Field day fills each Friday, the Lunch block too.
+    const rotation = ["Swim", "Art", "Soccer", "Drama"];
+    const texts = {};
+    [1, 2].forEach((w) =>
+      ["Bunk 1", "Bunk 2"].forEach((g, gi) => {
+        const rows = [
+          "Period 1 9:00-9:45",
+          "Period 2 9:50-10:35",
+          "Lunch 11:30-12:15",
+          "Period 3 1:00-1:45"
+        ].map((b, bi) =>
+          [
+            b,
+            ...[0, 1, 2, 3, 4].map((d) => {
+              if (d === 4) return "Field day";
+              return bi === 2 ? "Lunch" : rotation[(gi + bi + d) % 4];
+            })
+          ].join(",")
+        );
+        texts[`Camp - ${g} - Week ${w}.csv`] = [
+          "Time,Monday,Tuesday,Wednesday,Thursday,Friday",
+          ...rows
+        ].join("\n");
+      })
+    );
+    await choose(element, Object.keys(texts), texts);
+
+    const id = "clash|Main|Field day";
+    const row = $(element, `[data-id="questions"] [data-card="${id}"]`);
+    expect(row.textContent).toContain(
+      "What is “Field day” at Lunch on Friday, where “Lunch” is?"
+    );
+    // Pre-selected, so not counted as left.
+    expect(
+      row.querySelector('button[aria-pressed="true"]').textContent.trim()
+    ).toContain("A recurring activity, not at Lunch");
+    const left = $$(element, '[data-id="questions"] [data-card]').filter((r) =>
+      r.querySelector(".corner .shoresh-look-mark")
+    );
+    expect(left.map((r) => r.dataset.card)).not.toContain(id);
+
+    await answer(element, id, "special");
+    expect($(element, '[data-id="not-set-up"]').textContent).toContain(
+      "Field day"
+    );
+    add(element).click();
+    await flush();
+    await flush();
+    const plan = JSON.parse(saveSetup.mock.calls[0][0].plan);
+    expect(plan.recurringActivities.map((r) => r.name)).not.toContain(
+      "Field day"
+    );
+  });
+
   // CORE-6.12: the questions are headed Needs a look, and its count drops to nothing as they are answered.
   it("one page: the questions first, then what comes in as counts; Add says how many, then the summary", async () => {
     const element = await render();
