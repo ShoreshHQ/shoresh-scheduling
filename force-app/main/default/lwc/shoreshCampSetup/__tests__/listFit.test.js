@@ -72,10 +72,16 @@ describe("a setup list scrolls sideways only while too wide", () => {
     Object.defineProperty(el, "scrollWidth", { value: 1100 });
     fit.watch(root);
     expect(el.classList.contains("too-wide")).toBe(false);
-    // On to the next field in the same list: not leaving it, nothing measured.
-    second.focus();
+    // On to the next field in the same list: not leaving it, so not measured at all, even in
+    // the moment between the two when nothing has the cursor (as a browser runs it).
+    const measured = jest.spyOn(el, "matches");
+    first.dispatchEvent(
+      new FocusEvent("focusout", { relatedTarget: second, bubbles: true })
+    );
     await Promise.resolve();
+    expect(measured).not.toHaveBeenCalled();
     expect(el.classList.contains("too-wide")).toBe(false);
+    second.focus();
     // Out of the list (a longer value typed in did widen it): measured.
     second.blur();
     await Promise.resolve();
