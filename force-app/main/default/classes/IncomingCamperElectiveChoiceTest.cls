@@ -250,6 +250,40 @@ private class IncomingCamperElectiveChoiceTest {
     );
   }
 
+  // ELECT-2.5: choices sent for a run on a saved version (last year's imported one, from before
+  // the rule) are refused as the screen refuses them, naming the one thing to do; nothing is saved.
+  @IsTest
+  static void choicesForARunOnASavedVersionAreRefusedAsOnTheScreen() {
+    IncomingTestData camp = new IncomingTestData().withElectives();
+    camp.camper('Maya Cohen', 'SYN-1');
+    Database.update(
+      new ElectiveRun__c(
+        Id = camp.run.Id,
+        Schedule__c = ShoreshTestData.version(
+            camp.ids.get('Main'),
+            camp.ids.get('Week 1'),
+            'Last summer'
+          )
+          .Id
+      ),
+      AccessLevel.SYSTEM_MODE
+    );
+    System.runAs(camp.sender('Send_Elective_Choices')) {
+      Map<String, Object> answer = send(
+        new List<Map<String, Object>>{ record('Archery', 'Swim') }
+      );
+      Assert.areEqual(
+        'problem: Restore a saved version or build Week 1 first.',
+        IncomingTestData.said(answer, 1)
+      );
+    }
+    Assert.areEqual(
+      0,
+      [SELECT COUNT() FROM Preference__c WITH SYSTEM_MODE],
+      'Nothing saved'
+    );
+  }
+
   // API-4.4: only "Send elective choices" sends choices.
   @IsTest
   static void anotherPieceCannotSendChoices() {

@@ -11,6 +11,8 @@ public with sharing class IncomingRuns {
   // The season's elective set and week names, folded; read once, only to say a refusal.
   private Set<String> setNames;
   private Set<String> weekNames;
+  // ELECT-2.5: the runs on a saved version, read once when first asked.
+  private Set<Id> versionRuns;
 
   private IncomingRuns(List<ElectiveRun__c> runs) {
     this.runs = runs;
@@ -61,6 +63,28 @@ public with sharing class IncomingRuns {
       groups.put(key, groups.containsKey(key) ? null : item.Id);
     }
     return this;
+  }
+
+  /**
+   * ELECT-2.5: whether a run's schedule is a saved version, which never takes choices. Read in
+   * system mode: a key that sends choices can't read schedules, and only this yes or no comes
+   * back, to refuse with; nothing of the schedule is returned or written.
+   */
+  public Boolean onVersion(ElectiveRun__c run) {
+    if (versionRuns == null) {
+      // Only runs this user can already see (read in user mode, above).
+      Set<Id> runIds = new Map<Id, ElectiveRun__c>(runs).keySet();
+      versionRuns = new Map<Id, ElectiveRun__c>(
+          [
+            SELECT Id
+            FROM ElectiveRun__c
+            WHERE Id IN :runIds AND Schedule__r.Status__c = 'Version'
+            WITH SYSTEM_MODE
+          ]
+        )
+        .keySet();
+    }
+    return versionRuns.contains(run.Id);
   }
 
   /** The runs in the named week (every run with none named). */

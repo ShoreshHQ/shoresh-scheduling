@@ -58,15 +58,23 @@ public class IncomingTestData {
       Name = 'Chugim · Week 1',
       ElectiveSet__c = chugim.Id,
       Week__c = ids.get('Week 1'),
-      Schedule__c = ShoreshTestData.version(
-          ids.get('Main'),
-          ids.get('Week 1'),
-          'Imported'
-        )
-        .Id
+      Schedule__c = draft().Id
     );
     Database.insert(run, AccessLevel.SYSTEM_MODE);
     return this;
+  }
+
+  /** Week 1's Generated Schedule draft: choices go only against a current schedule (ELECT-2.5). */
+  private Schedule__c draft() {
+    Schedule__c schedule = new Schedule__c(
+      Program__c = ids.get('Main'),
+      Week__c = ids.get('Week 1'),
+      Name = 'Generated Schedule',
+      Status__c = 'Draft',
+      Origin__c = 'Generated'
+    );
+    Database.insert(schedule, AccessLevel.SYSTEM_MODE);
+    return schedule;
   }
 
   /** A camper already in the season, from the sending system. */
