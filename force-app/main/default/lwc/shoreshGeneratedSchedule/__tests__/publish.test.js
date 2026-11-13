@@ -902,6 +902,96 @@ describe("Publish on the Generated Schedule screen", () => {
     expect(q(element, '[data-id="build-error"]')).toBeNull();
   });
 
+  // WEEK-6.7: a publish is told to the page (which reads the season again for the other
+  // screens), also one that answers once another week is shown; the season read it asked for
+  // doesn't read this screen's own week again.
+  it("WEEK-6.7: a publish is told to the page, and the season read it asks for doesn't read the week again here", async () => {
+    const element = await render(cleanWeek());
+    const heard = [];
+    element.addEventListener("scheduleschanged", (e) => heard.push(e.detail));
+    previewPublish.mockResolvedValue(preview());
+    publish.mockResolvedValue({ published: PUBLISHED, unchanged: false });
+    await clickPublish(element);
+    expect(heard).toEqual([{ weekId: WEEK, programId: PROGRAM, season: true }]);
+    const reads = getInputs.mock.calls.length;
+    element.setup = { ...SETUP };
+    await flush();
+    expect(getInputs.mock.calls.length).toBe(reads);
+    // The next season read (setup changed elsewhere) reads the week as usual.
+    element.setup = { ...SETUP };
+    await flush();
+    expect(getInputs.mock.calls.length).toBe(reads + 1);
+  });
+
+  it("WEEK-6.7: a publish or unpublish that answers once another week is shown is still told, for the week it was for", async () => {
+    const element = await render(cleanWeek());
+    const heard = [];
+    element.addEventListener("scheduleschanged", (e) => heard.push(e.detail));
+    const held = slow();
+    previewPublish.mockResolvedValue(preview());
+    publish.mockReturnValue(held.promise);
+    await clickPublish(element);
+    await showWeek2(element, cleanWeek({ published: PUBLISHED }));
+    held.answer({ published: PUBLISHED, unchanged: false });
+    await flush();
+    expect(heard).toEqual([{ weekId: WEEK, programId: PROGRAM, season: true }]);
+    // Unpublished on Week 2, answered once Week 1 is shown again.
+    const unheld = slow();
+    unpublish.mockReturnValue(unheld.promise);
+    unpublishButton(element).click();
+    await flush();
+    await answer(unpublishAsk(element), true);
+    getInputs.mockResolvedValue(cleanWeek());
+    element.setup = SETUP;
+    await flush();
+    unheld.answer({ publishedChanged: false });
+    await flush();
+    expect(heard[heard.length - 1]).toEqual({
+      weekId: WEEK_2,
+      programId: PROGRAM,
+      season: true
+    });
+  });
+
+  it("WEEK-6.7: a refused publish answered once another week is shown tells no one", async () => {
+    const element = await render(cleanWeek());
+    const heard = [];
+    element.addEventListener("scheduleschanged", (e) => heard.push(e.detail));
+    const held = slow();
+    previewPublish.mockResolvedValue(preview());
+    publish.mockReturnValue(held.promise);
+    await clickPublish(element);
+    await showWeek2(element, cleanWeek());
+    held.answer({ draftChanged: true });
+    await flush();
+    expect(heard).toEqual([]);
+  });
+
+  it("WEEK-6.7: a build saved once another week is shown is still told, for the week it built", async () => {
+    const element = await render(cleanWeek());
+    const heard = [];
+    element.addEventListener("scheduleschanged", (e) => heard.push(e.detail));
+    const held = slow();
+    saveWeekOnServer.mockImplementationOnce(({ request }) =>
+      held.promise.then(() => ({
+        engineNotes: request.engineNotes,
+        conflict: false,
+        scheduleId: SCHEDULE,
+        revision: "2026-06-29:2",
+        versionId: "a0S000000000026AAA",
+        locks: []
+      }))
+    );
+    action(element, "Rebuild").click();
+    await until(() => saveWeekOnServer.mock.calls.length > 0);
+    await showWeek2(element, cleanWeek());
+    held.answer();
+    await flush();
+    expect(heard).toEqual([
+      { weekId: WEEK, programId: PROGRAM, season: false }
+    ]);
+  });
+
   it("a preview that answers once another week is shown refuses nothing on that week", async () => {
     const element = await render(cleanWeek());
     const held = slow();

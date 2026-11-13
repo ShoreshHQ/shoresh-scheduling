@@ -147,15 +147,19 @@ export default class ShoreshManualBuild extends BuildScreen(LightningElement) {
     // the week is read again, as on coming back to the window, so its dots and names catch up.
     // While it can't be (an edit saving or answering, a Publish), its setup changes are still
     // read: nothing later would catch them up. Not while the update list is open or working,
-    // which reads them itself.
+    // which reads them itself. Its Versions list is read too: a list read disturbs no work
+    // (WEEK-6.7). Not when this screen's own save asked for this season read: it already has
+    // its answer.
+    const own = this.seasonReadIsOwn();
     if (`${this.programId}|${this.weekId}` === this.loadedFor) {
-      if (
-        !this.refresh() &&
-        this.draft &&
-        !this.setupWorking &&
-        !this.setupAsk
-      ) {
-        this.loadSetupChanges();
+      if (own) {
+        return;
+      }
+      if (!this.refresh() && this.draft) {
+        this.loadVersions();
+        if (!this.setupWorking && !this.setupAsk) {
+          this.loadSetupChanges();
+        }
       }
     } else {
       this.load();
@@ -609,11 +613,16 @@ export default class ShoreshManualBuild extends BuildScreen(LightningElement) {
   async startWith(work) {
     this.loadTicket += 1;
     const ticket = this.loadTicket;
+    const week = this.weekKey;
     this.starting = true;
     this.error = null;
     try {
       const draft = await work();
       if (ticket !== this.loadTicket) {
+        // Started, though the screen has moved on: the other screens still show it (WEEK-6.7).
+        if (draft) {
+          this.tellSchedulesChanged(true, week);
+        }
         return null;
       }
       this.show(draft, true);
@@ -1003,6 +1012,11 @@ export default class ShoreshManualBuild extends BuildScreen(LightningElement) {
         seenPublishedId: ask.publishedId
       });
       if (ask.week !== this.weekKey) {
+        // Unpublished, though another week is shown now: the other screens still show it
+        // (WEEK-6.7).
+        if (!result.publishedChanged) {
+          this.tellSchedulesChanged(true, ask.week);
+        }
         return;
       }
       if (result.publishedChanged) {
@@ -1053,6 +1067,15 @@ export default class ShoreshManualBuild extends BuildScreen(LightningElement) {
         seenPublishedId: preview.published ? preview.published.id : null
       });
       if (week !== this.weekKey) {
+        // Published, though another week is shown now: the other screens still show it
+        // (WEEK-6.7).
+        if (
+          !result.draftChanged &&
+          !result.publishedChanged &&
+          !result.unchanged
+        ) {
+          this.tellSchedulesChanged(true, week);
+        }
         return;
       }
       if (result.draftChanged || result.publishedChanged) {

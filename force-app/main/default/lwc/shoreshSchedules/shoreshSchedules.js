@@ -28,6 +28,18 @@ import { noScheduleYet } from "c/shoreshScheduleExport";
 // Activity View's picker: every activity's card, before one is chosen.
 const ALL_ACTIVITIES = "all";
 
+// What the Versions list says of a version: the same in both, it hasn't changed since it opened.
+const VERSION_FIELDS = [
+  "name",
+  "origin",
+  "reason",
+  "savedAt",
+  "publishedAt",
+  "namedByPublish"
+];
+const sameVersion = (a, b) =>
+  VERSION_FIELDS.every((field) => (a[field] ?? null) === (b[field] ?? null));
+
 /**
  * The schedule page (desktop: the schedule screen): pick a program and a week; its newest version
  * opens by itself, Versions switches to another, and the director looks at it in Daily View (all groups for one day), Group View (one
@@ -786,9 +798,49 @@ export default class ShoreshSchedules extends LightningElement {
       return;
     }
     this.readWhenDone = false;
-    this.versionToOpen = this.openId;
-    this.loadedFor = null;
-    this.loadVersions();
+    if (this.loadedFor !== `${this.programId}|${this.weekId}`) {
+      // The week's list never came: read it as on choosing the week.
+      this.versionToOpen = this.openId;
+      this.loadedFor = null;
+      this.loadVersions();
+      return;
+    }
+    this.readListAgain();
+  }
+
+  /**
+   * The week's versions read again in place: the list and the version open stay on screen
+   * meanwhile. The one open stays as it is while it is still there unchanged; one changed is
+   * read again, and one gone gives way to the newest. A version opened meanwhile is left open.
+   */
+  async readListAgain() {
+    const key = this.loadedFor;
+    const ticket = this.openTicket;
+    let versions = null;
+    await this.run(async () => {
+      versions =
+        (await getVersions({
+          programId: this.programId,
+          weekId: this.weekId
+        })) || [];
+    }, "Couldn't open the saved schedules.");
+    if (!versions || key !== this.loadedFor) {
+      return;
+    }
+    this.versions = versions;
+    if (ticket !== this.openTicket) {
+      return;
+    }
+    const open = this.opened && this.opened.schedule;
+    const row = open && versions.find((v) => v.id === open.id);
+    if (row && sameVersion(row, open)) {
+      return;
+    }
+    if (versions.length) {
+      await this.open(row ? row.id : versions[0].id);
+    } else {
+      this.opened = null;
+    }
   }
 
   /** The screen was left (CampSetup): its floating refusal was about that visit, so it goes. */

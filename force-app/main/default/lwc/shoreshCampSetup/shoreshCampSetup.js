@@ -905,8 +905,10 @@ export default class ShoreshCampSetup extends LightningElement {
    * programId, season }: every other screen showing that week's versions reads them again now,
    * with no reload and no trip through the menu (word walk W6). season: the season's schedules
    * themselves changed, so the season is read again, and with it Bring in choices' and Elective
-   * seats' schedules, and Manual Build's and Generated Schedule's week (each as on coming back to
-   * the window: not while work is under way there).
+   * seats' schedules, and Manual Build's and Generated Schedule's week with its Versions list
+   * (each as on coming back to the window: not while work is under way there), so they aren't
+   * also told to read the list: each other screen reads once per change. Saved versions reads
+   * its list either way (the season doesn't change which week it shows).
    */
   handleSchedulesChanged(event) {
     const from = event.currentTarget;
@@ -923,6 +925,9 @@ export default class ShoreshCampSetup extends LightningElement {
           return;
         }
         if (typeof screen.readVersions === "function") {
+          if (changed.season) {
+            return;
+          }
           screen.readVersions(changed);
         } else if (typeof screen.readAgain === "function") {
           screen.readAgain(changed);

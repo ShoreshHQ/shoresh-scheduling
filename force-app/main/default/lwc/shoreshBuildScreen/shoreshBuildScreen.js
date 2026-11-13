@@ -223,15 +223,32 @@ export const BuildScreen = (Base) =>
     /**
      * Something other screens show was just saved here (WEEK-6.7): a version kept, renamed,
      * deleted or restored, a week built or published. season: the season's schedules themselves
-     * changed (one started or published), so the page reads the season again. Fires:
+     * changed (one started or published), so the page reads the season again; this screen
+     * already has its own answer, so that season read doesn't read its week again. week: the
+     * "programId|weekId" saved, when the screen has moved on to another since. Fires:
      * scheduleschanged { weekId, programId, season }.
      */
-    tellSchedulesChanged(season = false) {
+    tellSchedulesChanged(season = false, week = null) {
+      const [programId, weekId] = week
+        ? week.split("|")
+        : [this.programId, this.weekId];
+      if (season) {
+        this.ownSeasonRead = `${programId}|${weekId}`;
+      }
       this.dispatchEvent(
         new CustomEvent("scheduleschanged", {
-          detail: { weekId: this.weekId, programId: this.programId, season }
+          detail: { weekId, programId, season }
         })
       );
+    }
+    /**
+     * Whether this season read is the one this screen asked for, for the week it shows (it has
+     * its own answer already). Asked once per season read: the next one is read as usual.
+     */
+    seasonReadIsOwn() {
+      const own = this.ownSeasonRead === `${this.programId}|${this.weekId}`;
+      this.ownSeasonRead = null;
+      return own;
     }
     /** Whether a change on another screen ({ weekId, programId }) is about the week shown here. */
     showsWeekOf(changed) {

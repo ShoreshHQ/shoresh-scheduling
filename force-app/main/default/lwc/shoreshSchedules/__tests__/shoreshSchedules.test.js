@@ -803,6 +803,47 @@ describe("c-shoresh-schedules", () => {
       expect(list.label).toBe("Before my changes");
     });
 
+    it("WEEK-6.7: the version open stays on screen while the list is read again, and is read again only if it changed or went", async () => {
+      getVersions.mockResolvedValue(VERSIONS);
+      openSchedule.mockImplementation(answerFor);
+      const element = await render();
+      const list = () => q(element, "c-shoresh-versions");
+      expect(list().label).toBe("Before my changes");
+      // Still there as it was: never blanked, not read again.
+      openSchedule.mockClear();
+      const reading = later();
+      getVersions.mockReturnValueOnce(reading.promise);
+      element.readAgain({ weekId: "w1", programId: "p1" });
+      await flush();
+      expect(list().label).toBe("Before my changes");
+      expect(list().versions).toHaveLength(3);
+      reading.answer(VERSIONS);
+      await flush();
+      expect(openSchedule).not.toHaveBeenCalled();
+      expect(list().label).toBe("Before my changes");
+      // Renamed on another screen: read again, under its new name.
+      const renamed = { ...VERSIONS[0], name: "Trip week" };
+      getVersions.mockResolvedValue([renamed, ...VERSIONS.slice(1)]);
+      openSchedule.mockImplementation(({ scheduleId }) =>
+        answerFor({ scheduleId }).then((view) => ({
+          ...view,
+          schedule: { ...view.schedule, name: "Trip week" }
+        }))
+      );
+      element.readAgain({ weekId: "w1", programId: "p1" });
+      await flush();
+      expect(openSchedule).toHaveBeenCalledWith({ scheduleId: "s3" });
+      expect(list().label).toBe("Trip week");
+      // Deleted on another screen: the newest left opens.
+      openSchedule.mockClear();
+      openSchedule.mockImplementation(answerFor);
+      getVersions.mockResolvedValue(VERSIONS.slice(1));
+      element.readAgain({ weekId: "w1", programId: "p1" });
+      await flush();
+      expect(openSchedule).toHaveBeenCalledWith({ scheduleId: "s2" });
+      expect(list().label).toBe("Imported again");
+    });
+
     it("WEEK-6.7: a change told while a read is on its way is read once it is done", async () => {
       getVersions.mockResolvedValue(VERSIONS);
       openSchedule.mockImplementation(answerFor);

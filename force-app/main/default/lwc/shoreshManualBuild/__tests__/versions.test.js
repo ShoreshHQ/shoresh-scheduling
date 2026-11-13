@@ -1057,6 +1057,28 @@ describe("c-shoresh-manual-build: versions and Start from another week", () => {
       expect(heard).toEqual([{ weekId: "w1", programId: "p1", season: true }]);
     });
 
+    it("WEEK-6.7: a week started that answers once another week is shown is still told, for the week started", async () => {
+      getWeekSources.mockResolvedValue([]);
+      const element = await render(null);
+      const heard = told(element);
+      let answer;
+      startBlankWeek.mockReturnValue(
+        new Promise((resolve) => {
+          answer = resolve;
+        })
+      );
+      q(element, '[data-id="start-week"]').click();
+      await flush();
+      getDraft.mockResolvedValue(null);
+      q(element, '[data-id="week"]').dispatchEvent(
+        new CustomEvent("change", { detail: { value: "w2" } })
+      );
+      await flush();
+      answer(draft(WITH_SWIM, ["1,,", "1,,"]));
+      await flush();
+      expect(heard).toEqual([{ weekId: "w1", programId: "p1", season: true }]);
+    });
+
     it("WEEK-6.7: a version deleted here is told; a refused one is not", async () => {
       const element = await render(draft(WITH_SWIM, ["1,2,", "1,,"]));
       const heard = told(element);

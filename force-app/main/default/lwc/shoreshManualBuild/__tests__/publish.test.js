@@ -602,6 +602,73 @@ describe("c-shoresh-manual-build: Publish", () => {
     expect(q(element, '[data-id="published"]')).toBeNull();
   });
 
+  // WEEK-6.7: a publish or unpublish is told to the page (which reads the season again for the
+  // other screens), also one answered once another week is shown, for the week it was for; the
+  // season read it asked for doesn't read this screen's own week again.
+  it("WEEK-6.7: a publish is told to the page, and the season read it asks for doesn't read the week again here", async () => {
+    const element = await render(finished());
+    const heard = [];
+    element.addEventListener("scheduleschanged", (e) => heard.push(e.detail));
+    previewPublish.mockResolvedValue(FIRST_PREVIEW);
+    publish.mockResolvedValue(DONE);
+    await clickPublish(element);
+    expect(heard).toEqual([{ weekId: "w1", programId: "p1", season: true }]);
+    getDraft.mockClear();
+    getVersions.mockClear();
+    element.setup = nsRecord(SETUP);
+    await flush();
+    expect(getDraft).not.toHaveBeenCalled();
+    expect(getVersions).not.toHaveBeenCalled();
+    // The next season read (setup changed elsewhere) reads the week as usual.
+    element.setup = nsRecord(SETUP);
+    await flush();
+    expect(getDraft).toHaveBeenCalledTimes(1);
+  });
+
+  it("WEEK-6.7: a publish answered after another week is shown is still told, for the week published; a refused one is not", async () => {
+    const element = await render(finished());
+    const heard = [];
+    element.addEventListener("scheduleschanged", (e) => heard.push(e.detail));
+    previewPublish.mockResolvedValue(FIRST_PREVIEW);
+    const sent = pending();
+    publish.mockReturnValue(sent.promise);
+    await clickPublish(element);
+    await chooseWeek2(element, finished());
+    sent.resolve(DONE);
+    await flush();
+    expect(heard).toEqual([{ weekId: "w1", programId: "p1", season: true }]);
+    // Refused: nothing changed, so no one is told.
+    const refused = pending();
+    publish.mockReturnValue(refused.promise);
+    await clickPublish(element);
+    getDraft.mockResolvedValue(finished());
+    q(element, '[data-id="week"]').dispatchEvent(
+      new CustomEvent("change", { detail: { value: "w1" } })
+    );
+    await flush();
+    refused.resolve({ ...DONE, draftChanged: true });
+    await flush();
+    expect(heard).toHaveLength(1);
+  });
+
+  it("WEEK-6.7: an unpublish answered after another week is shown is still told, for the week it was for", async () => {
+    const element = await render(finished(PUBLISHED));
+    const heard = [];
+    element.addEventListener("scheduleschanged", (e) => heard.push(e.detail));
+    const sent = pending();
+    unpublish.mockReturnValue(sent.promise);
+    q(element, '[data-id="unpublish"]').click();
+    await flush();
+    q(element, '[data-id="unpublish-ask"]').dispatchEvent(
+      new CustomEvent("answer", { detail: { yes: true } })
+    );
+    await flush();
+    await chooseWeek2(element, finished());
+    sent.resolve({ published: null, publishedChanged: false });
+    await flush();
+    expect(heard).toEqual([{ weekId: "w1", programId: "p1", season: true }]);
+  });
+
   it("after a Restore, the toolbar says whether the week matches what was published", async () => {
     const element = await render(finished(PUBLISHED));
     getVersions.mockResolvedValue([
