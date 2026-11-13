@@ -9,22 +9,31 @@
 import { FIELD } from "./engine.shoreshSchema.shoreshSchema.mjs";
 import { blockRecordKey } from "./engine.shoreshImportEngine.items.mjs";
 import { LEAVE_OUT, blocksOf } from "./engine.shoreshImportEngine.reading-constants.mjs";
+import { WEEKDAYS } from "./engine.shoreshImportEngine.text.mjs";
 
 /** Recurring at its other time blocks, not the fixed activity's. */
 export const AROUND = "around";
 /** Noted as a special day of its name (SPECIAL-1.5), set up later. */
 export const SPECIAL = "special";
 
-export function clashId(t, name) {
-  return `clash|${t.name}|${name}`;
+/** A name in one program: "Program|Name". */
+export function specialKey(t, name) {
+  return `${t.name}|${name}`;
 }
 
-/** The names answered "special day": noted as one before anything is read as fixed. */
+export function clashId(t, name) {
+  return `clash|${specialKey(t, name)}`;
+}
+
+/**
+ * The names answered "special day", each in its own program ("Program|Name"): noted as one in that
+ * program's timetable only, before anything is read as fixed.
+ */
 export function specialByAnswer(answers) {
   return new Set(
     Object.entries(answers || {})
       .filter(([key, value]) => key.startsWith("clash|") && value === SPECIAL)
-      .map(([key]) => key.split("|").slice(2).join("|"))
+      .map(([key]) => key.slice("clash|".length))
   );
 }
 
@@ -71,10 +80,11 @@ function fixedIn(t, setTime, ctx) {
       continue;
     }
     const length = update ? update.length : record[f.Length] || 1;
-    const early = update || {
-      earlyDay: record[f.EarlyDay],
-      earlyBlocks: record[f.EarlyBlocks]
-    };
+    // An update from a file with no early day keeps the director's own (INGEST-4.13).
+    const early =
+      update && update.earlyDay
+        ? update
+        : { earlyDay: record[f.EarlyDay], earlyBlocks: record[f.EarlyBlocks] };
     result.push(
       holder(record.Name, block, length, early.earlyDay, early.earlyBlocks)
     );
@@ -93,23 +103,54 @@ function fillsTheDay(cells, t) {
   return [...covered.values()].every((n) => n * 4 >= blocks * 3);
 }
 
-/** Where a name's cells sit in a fixed activity's block: { fixed names, days, block indexes }. */
-function overlapOf(cells, fixed) {
+/** Each { name, day, block } a name's cells cover. */
+function cellSpots(cells) {
+  return cells.flatMap((c) =>
+    blocksOf(c).map((block) => ({ name: c.text, day: c.day, block }))
+  );
+}
+
+/** Each { name, day, block } recurring records cover. */
+function recordSpots(records) {
+  return records.flatMap((r) =>
+    r.days.flatMap((day) =>
+      Array.from({ length: r.length }, (_, k) => ({
+        name: r.name,
+        day,
+        block: r.block + k
+      }))
+    )
+  );
+}
+
+/** Where a name's spots sit in a fixed activity's block: { fixed names, days, block indexes }. */
+function overlapOf(spots, fixed) {
   const names = new Set();
   const days = new Set();
   const blocks = new Set();
-  for (const c of cells) {
-    for (const b of blocksOf(c)) {
-      for (const f of fixed.filter((x) => x.name !== c.text)) {
-        if (f.holds(c.day, b)) {
-          names.add(f.name);
-          days.add(c.day);
-          blocks.add(b);
-        }
+  for (const s of spots) {
+    for (const f of fixed.filter((x) => x.name !== s.name)) {
+      if (f.holds(s.day, s.block)) {
+        names.add(f.name);
+        days.add(s.day);
+        blocks.add(s.block);
       }
     }
   }
-  return { names: [...names].sort(), days: [...days], blocks: [...blocks] };
+  return {
+    names: [...names].sort(),
+    days: WEEKDAYS.filter((d) => days.has(d)),
+    blocks: [...blocks].sort((a, b) => a - b)
+  };
+}
+
+/** Questions in the same order for the same files: by day, time block, then name. */
+function byDayAndBlock(a, b) {
+  return (
+    WEEKDAYS.indexOf(a.days[0]) - WEEKDAYS.indexOf(b.days[0]) ||
+    a.blocks[0] - b.blocks[0] ||
+    a.name.localeCompare(b.name)
+  );
 }
 
 /** A recurring record without the blocks a fixed activity holds on any of its days. */
@@ -145,7 +186,12 @@ function candidates(t, decisions, usable, asSpecial) {
         d.timetable === t && d.kind === "recurring" && !d.existing && !d.leftOut
     )
     .map((d) => ({ name: d.name, cells: d.cells, decision: d }));
-  for (const name of asSpecial) {
+  const prefix = specialKey(t, "");
+  const special = [...asSpecial]
+    .filter((key) => key.startsWith(prefix))
+    .map((key) => key.slice(prefix.length))
+    .sort();
+  for (const name of special) {
     const cells = usable.filter(
       (p) => p.timetable === t.index && p.text === name
     );
@@ -168,25 +214,27 @@ export function settleClashes(setTime, decisions, usable, ctx, asSpecial) {
     if (!fixed.length) {
       continue;
     }
+    const asks = [];
     for (const c of candidates(t, decisions, usable, asSpecial)) {
-      // A special day's own days are its own (INGEST-4.3), unless it is this name's.
-      const cells = c.cells.filter(
-        (p) =>
-          c.decision === null ||
-          !ctx.specialDays.has(`${t.index}|${p.week}|${p.day}`)
+      const mine = (r) =>
+        r.kind === "recurring" && r.timetable === t && r.name === c.name;
+      // What the import writes (the first week's patterns, never a stray cell), or, once answered
+      // a special day, the cells it is noted on.
+      const overlap = overlapOf(
+        c.decision !== null
+          ? recordSpots(records.filter(mine))
+          : cellSpots(c.cells),
+        fixed
       );
-      const overlap = overlapOf(cells, fixed);
       if (!overlap.names.length) {
         continue;
       }
       const clashing = fixed.filter((f) => overlap.names.includes(f.name));
-      const mine = (r) =>
-        r.kind === "recurring" && r.timetable === t && r.name === c.name;
       const trimmed = records.filter(mine).flatMap((r) => around(r, clashing));
       const id = clashId(t, c.name);
       const canGoAround = c.decision !== null ? trimmed.length > 0 : true;
       const preselected = canGoAround ? AROUND : null;
-      ctx.asks.push({
+      asks.push({
         id,
         type: "clash",
         name: c.name,
@@ -194,7 +242,7 @@ export function settleClashes(setTime, decisions, usable, ctx, asSpecial) {
         timetable: t,
         fixed: overlap.names,
         days: overlap.days,
-        blocks: overlap.blocks.sort((a, b) => a - b),
+        blocks: overlap.blocks,
         special: fillsTheDay(c.cells, t),
         around: canGoAround,
         preselected
@@ -210,6 +258,7 @@ export function settleClashes(setTime, decisions, usable, ctx, asSpecial) {
         c.decision.leftOut = true;
       }
     }
+    ctx.asks.push(...asks.sort(byDayAndBlock));
   }
   return records;
 }
