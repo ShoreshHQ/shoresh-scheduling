@@ -40,6 +40,38 @@ describe("salesforce-insides", () => {
     ]);
   });
 
+  it("an SLDS class after an element name, or matched by name, fails too", () => {
+    write(
+      `${RES}/Other.css`,
+      'input.slds-input { color: red; }\n[class*="slds-input"] { border: 0; }\n[class^=slds-] { x: y; }\n'
+    );
+    expect(findInsides(root)).toEqual([
+      `${RES}/Other.css:1: input.slds-input { color: red; }`,
+      `${RES}/Other.css:2: [class*="slds-input"] { border: 0; }`,
+      `${RES}/Other.css:3: [class^=slds-] { x: y; }`
+    ]);
+  });
+
+  it("a light DOM component's CSS reaches the page too, so it is checked; a shadow one's isn't", () => {
+    const LWC = "force-app/main/default/lwc";
+    write(
+      `${LWC}/lightOne/lightOne.js`,
+      'export default class LightOne { static renderMode = "light"; }\n'
+    );
+    write(
+      `${LWC}/lightOne/lightOne.css`,
+      "lightning-input .slds-input { x: y; }\n"
+    );
+    write(
+      `${LWC}/shadowOne/shadowOne.js`,
+      "export default class ShadowOne {}\n"
+    );
+    write(`${LWC}/shadowOne/shadowOne.css`, ".slds-box { padding: 0; }\n");
+    expect(findInsides(root)).toEqual([
+      `${LWC}/lightOne/lightOne.css:1: lightning-input .slds-input { x: y; }`
+    ]);
+  });
+
   it("Salesforce's supported styling hooks and our own classes are fine", () => {
     write(
       `${RES}/ShoreshPrint.css`,

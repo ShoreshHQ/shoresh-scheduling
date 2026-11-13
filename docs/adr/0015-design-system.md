@@ -142,7 +142,8 @@ than cut off, and a solid dot field for Roots' table._
       stylesheet is the only place Shoresh styles inside Salesforce's fields, and is allowed
       because it changes looks only and falls back safely to ordinary boxes; the date boxes'
       larger calendar button was dropped for the same reason (ADR 0013 choice 24).
-      `npm run check:salesforce-insides` (CI) fails on any other stylesheet that does.
+      `npm run check:salesforce-insides` (CI) fails on any other stylesheet that does: a static
+      resource, or a light DOM component's own (its CSS isn't kept to the component).
     - **A section's heading, never a repeated column.** Each division's groups, each location
       type's places, and (with more than one program) each program's tables are a section
       headed by its name and its count ("Juniors 3"; read "Juniors, 3"). The column names show
