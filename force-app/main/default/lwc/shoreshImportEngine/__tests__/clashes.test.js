@@ -23,13 +23,13 @@ const GROUPS = [
 const ROTATION = ["Swim", "Art", "Soccer", "Drama"];
 const ID = "clash|Main|Field day";
 
-/** Two weeks of by-group files: cell(group, day, block) -> text. */
-function twoWeeks(cell) {
+/** Two weeks of by-group files: cell(group, day, block, week) -> text. */
+function twoWeeks(cell, groups = GROUPS, blocks = BLOCKS) {
   return [1, 2].flatMap((n) =>
-    GROUPS.map((g, gi) =>
+    groups.map((g, gi) =>
       csv(`Camp - ${g} - Week ${n}.csv`, [
         ["Time", ...DAYS],
-        ...BLOCKS.map((b, bi) => [b, ...DAYS.map((_, d) => cell(gi, d, bi))])
+        ...blocks.map((b, bi) => [b, ...DAYS.map((_, d) => cell(gi, d, bi, n))])
       ])
     )
   );
@@ -41,15 +41,22 @@ const fieldDay = (g, d, b) => {
   return b === 2 ? "Lunch" : ROTATION[(g + b + d) % 4];
 };
 
-function propose(cell, answers = {}, existing = null) {
-  return buildProposal({ files: twoWeeks(cell), existing, terms, answers });
+function propose(cell, answers = {}, existing = null, files = null) {
+  return buildProposal({
+    files: files || twoWeeks(cell),
+    existing,
+    terms,
+    answers
+  });
 }
 
 /** The answers with Lunch answered fixed (it is asked: not there on Fridays). */
-function withLunchFixed(cell, more = {}, existing = null) {
-  const first = propose(cell, {}, existing);
-  const kind = first.asks.find((a) => a.type === "kind" && a.name === "Lunch");
-  return kind ? { [kind.id]: "fixed", ...more } : more;
+function withLunchFixed(cell, more = {}, existing = null, files = null) {
+  const first = propose(cell, {}, existing, files);
+  const kinds = first.asks.filter(
+    (a) => a.type === "kind" && a.name === "Lunch"
+  );
+  return { ...Object.fromEntries(kinds.map((k) => [k.id, "fixed"])), ...more };
 }
 
 function clashCards(p, answers) {
@@ -158,5 +165,111 @@ describe("INGEST-3.11: a recurring activity in a fixed activity's time block", (
     const [card] = clashCards(p, answers);
     expect(card.options.map((o) => o.value)).toEqual([LEAVE_OUT]);
     expect(card.answer).toBeNull();
+  });
+
+  it("INGEST-3.11: a special day answered in one program leaves the other program's same name as it was", () => {
+    const later = [
+      "Period 1 9:15-10:00",
+      "Period 2 10:05-10:50",
+      "Lunch 12:15-1:00",
+      "Period 3 1:05-1:50"
+    ];
+    const files = [
+      ...twoWeeks(fieldDay, GROUPS.slice(0, 2)),
+      ...twoWeeks(fieldDay, ["Seniors - Bunk 5", "Seniors - Bunk 6"], later)
+    ];
+    const answers = withLunchFixed(fieldDay, { [ID]: "special" }, null, files);
+    const p = propose(fieldDay, answers, null, files);
+    expect(p.timetables.map((t) => t.name)).toEqual(["Main", "Program 2"]);
+    expect(
+      p.recurring
+        .filter((r) => r.name === "Field day")
+        .map((r) => [r.timetable.name, r.block, r.length])
+    ).toEqual([
+      ["Program 2", 0, 2],
+      ["Program 2", 3, 1]
+    ]);
+    expect(clashCards(p, answers).map((c) => [c.id, c.answer])).toEqual([
+      [ID, "special"],
+      ["clash|Program 2|Field day", "around"]
+    ]);
+    expect(p.noted.map((n) => [n.name, n.kind, n.groups])).toEqual([
+      ["Field day", "D", 2]
+    ]);
+  });
+
+  it("INGEST-3.11: a cell once in a fixed activity's block in a later week is not asked about: the import writes the first week's pattern", () => {
+    // Swim every Juniors morning; once at Lunch for Bunk 1 on a Monday of week 2.
+    const stray = (g, d, b, week) => {
+      if (week === 2 && g === 0 && d === 0 && b === 2) return "Swim";
+      if (b === 2) return "Lunch";
+      if (b === 0 && g < 2) return "Swim";
+      return ["Art", "Soccer", "Drama"][(g + b + d) % 3];
+    };
+    const answers = withLunchFixed(stray, { "kind|Swim": "recurring" });
+    const p = propose(stray, answers);
+    expect(p.fixed.map((f) => f.name)).toEqual(["Lunch"]);
+    expect(recurringAt(p, "Swim")).toEqual([0]);
+    expect(clashCards(p, answers)).toEqual([]);
+  });
+
+  it("INGEST-3.11: the camp's early day for its fixed activity counts when the file has none", () => {
+    // Lunch set up at Period 2, one time block earlier on Friday; the file moves it to Lunch.
+    const existing = existingSetup({
+      programs: [
+        program("p1", "Main", {
+          blocks: [
+            ["tb1", "Period 1", 540, 585],
+            ["tb2", "Period 2", 590, 635],
+            ["tb3", "Lunch", 690, 735],
+            ["tb4", "Period 3", 780, 825]
+          ],
+          fixed: [
+            {
+              Id: "f1",
+              Name: "Lunch",
+              TimeBlock__c: "tb2",
+              Length__c: 1,
+              EarlyDay__c: "Friday",
+              EarlyBlocks__c: 1
+            }
+          ]
+        })
+      ]
+    });
+    const first = propose(fieldDay, {}, existing);
+    const move = first.asks.find((a) => a.type === "fixed");
+    expect(move.earlyDay).toBeUndefined();
+    const answers = { [move.id]: "change" };
+    const p = propose(fieldDay, answers, existing);
+    const plan = planFor(p, existing, "season1");
+    expect(plan.fixedActivities).toEqual([
+      {
+        id: "f1",
+        blockKey: "tb3",
+        length: 1
+      }
+    ]);
+    // On Friday the save keeps Lunch at Period 2 and Lunch: Field day is around both.
+    const [card] = clashCards(p, answers);
+    expect(card.title).toBe(
+      "What is “Field day” at Period 2 and Lunch on Friday, where “Lunch” is?"
+    );
+    expect(recurringAt(p, "Field day")).toEqual([0, 3]);
+  });
+
+  it("INGEST-3.11: the questions come in the same order whatever order they were answered in", () => {
+    // Carnival fills every Wednesday, Field day every Friday.
+    const twoDays = (g, d, b) => (d === 2 ? "Carnival" : fieldDay(g, d, b));
+    const carnival = "clash|Main|Carnival";
+    const order = (answers) => {
+      const all = withLunchFixed(twoDays, answers);
+      return clashCards(propose(twoDays, all), all).map((c) => c.id);
+    };
+    const expected = [carnival, ID];
+    expect(order({})).toEqual(expected);
+    expect(order({ [ID]: "special", [carnival]: "special" })).toEqual(expected);
+    expect(order({ [carnival]: "special", [ID]: "special" })).toEqual(expected);
+    expect(order({ [ID]: "special" })).toEqual(expected);
   });
 });

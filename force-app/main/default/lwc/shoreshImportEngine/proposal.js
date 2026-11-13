@@ -11,6 +11,7 @@ import {
   campItems,
   decideKinds,
   earlyOf,
+  notedKind,
   notedNames,
   setTimeRecords,
   usablePlacements
@@ -457,10 +458,10 @@ function deletedItems(decisions, groups, timetables, places) {
   );
 }
 
-function notedList(usable, kinds) {
+function notedList(usable, noted) {
   const result = new Map();
   for (const p of usable) {
-    const kind = kinds.get(p.text);
+    const kind = notedKind(noted, p.timetable, p.text);
     // Electives are set up (electives.js), not noted.
     if (kind && kind !== "E") {
       const entry = result.get(p.text) || {
@@ -597,7 +598,7 @@ export function buildProposal(input) {
     divisionOf: people.divisionOf,
     availability,
     baseOf: new Map(people.groups.map((g) => [g.name, g.base || g.name])),
-    noted: noted.kinds,
+    noted,
     similar: unansweredSimilar(reading.pairs, answers)
   };
   const decisions = decideKinds(usable, ctx);
@@ -640,7 +641,7 @@ export function buildProposal(input) {
     reading,
     usable,
     camp: ctx.camp,
-    notedKinds: noted.kinds,
+    notedOf: noted,
     timetables: programs.timetables,
     groups: people.groups,
     availability,
@@ -651,7 +652,7 @@ export function buildProposal(input) {
     locations: places.locations,
     offeredPlaces: places.offered,
     updates: ctx.updates,
-    noted: notedList(usable, noted.kinds),
+    noted: notedList(usable, noted),
     electives,
     leftOutNames: leftOutNames(decisions),
     deleted: deletedItems(decisions, people.groups, programs.timetables, [
