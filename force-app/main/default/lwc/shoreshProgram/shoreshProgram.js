@@ -10,6 +10,7 @@ import groupPlacements from "@salesforce/apex/SetupTablesController.groupPlaceme
 import { WEEKDAYS, weekOrder } from "c/shoreshImportEngine";
 import { spokenWeekday } from "c/shoreshDayNames";
 import { moveNote } from "./groupMoves";
+import { fixedOver } from "./fixedOver";
 
 /**
  * DIV-1.1 (Greg 2026-10-27): a group may be in no division. It is held alone in a division record
@@ -84,6 +85,8 @@ export default class ShoreshProgram extends LightningElement {
   // time a move would take it out of an activity: groupId -> the answer, or "failed".
   placements = {};
   askedPlacements = new Set();
+  // CORE-3.9: a fixed activity's save held while it asks about the recurring activities under it.
+  fixedAsk = null;
   _entry;
 
   /** { program, timeBlocks, divisions: [{ division, groups }] } from SeasonSetupController. */
@@ -734,6 +737,20 @@ export default class ShoreshProgram extends LightningElement {
   handleChildSave(event) {
     event.stopPropagation();
     const detail = event.detail;
+    // CORE-3.9: a fixed activity over a recurring one asks first, as the import does.
+    const ask = this.isFixed
+      ? fixedOver(
+          this.entry,
+          detail,
+          this.weeks,
+          this.weekExceptions,
+          this.terms
+        )
+      : null;
+    if (ask) {
+      this.fixedAsk = { ...ask, detail };
+      return;
+    }
     // A recurring activity whose save moves it to another section (who it covers changed), or a
     // group moved to another division, may hold the cursor: once the season is read again, the
     // cursor follows it there.
@@ -773,6 +790,25 @@ export default class ShoreshProgram extends LightningElement {
           }
         : base;
     this.dispatchEvent(new CustomEvent("save", { detail: sent }));
+  }
+
+  /**
+   * CORE-3.9: the recurring activities keep their other time blocks and the fixed activity saves
+   * with them; Cancel saves nothing and leaves the row as typed.
+   */
+  handleFixedAnswer(event) {
+    const { detail, around } = this.fixedAsk;
+    this.fixedAsk = null;
+    if (!event.detail.yes) {
+      detail.onFailure();
+      detail.onDone();
+      return;
+    }
+    this.dispatchEvent(
+      new CustomEvent("save", {
+        detail: { ...detail, extras: { ...detail.extras, around } }
+      })
+    );
   }
 
   /** This screen's sectioned tables: a recurring activity's, or each division's groups. */
