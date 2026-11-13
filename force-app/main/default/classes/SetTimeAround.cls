@@ -102,7 +102,7 @@ public with sharing class SetTimeAround {
       throw ScreenErrors.of(
         '"' +
           item.Name +
-          '" was changed by someone else since you saw it. Nothing was saved; save again to see it as it is now.'
+          '" was changed by someone else since you saw it. Nothing was saved. Reload the page.'
       );
     }
   }
@@ -132,7 +132,7 @@ public with sharing class SetTimeAround {
         String name = byTarget.get(target)[0].seenName;
         throw ScreenErrors.of(
           (String.isBlank(name) ? 'That' : '"' + name + '"') +
-          ' is no longer there. Nothing was saved.'
+          ' is no longer there. Nothing was saved. Reload the page.'
         );
       }
     }
