@@ -20,6 +20,7 @@ public with sharing class ChoicesImportPlace {
     GeneratedDrafts.GENERATED => 'Generated Schedule',
     ManualDrafts.MANUAL => 'Manual Build'
   };
+  private static final String VERSION_STATUS = 'Version';
   // Of otherRuns: those on this program's other schedule (then the schedule is named).
   private Integer otherHere = 0;
 
@@ -73,7 +74,7 @@ public with sharing class ChoicesImportPlace {
       WITH USER_MODE
     ];
     List<Schedule__c> schedules = [
-      SELECT Id, Name, Program__c, Program__r.Name, Origin__c
+      SELECT Id, Name, Program__c, Program__r.Name, Origin__c, Status__c
       FROM Schedule__c
       WHERE
         Id = :request.scheduleId
@@ -95,6 +96,24 @@ public with sharing class ChoicesImportPlace {
     electiveSet = sets[0];
     week = weeks[0];
     schedule = schedules[0];
+    refuseVersion();
+  }
+
+  /**
+   * ELECT-2.5 (Greg 2026-11-12): a saved version, last year's imported one included, is never the
+   * week's schedule, so choices go only against a current one (a draft or the published one).
+   */
+  private void refuseVersion() {
+    if (schedule.Status__c == VERSION_STATUS) {
+      CampLabels labels = CampLabels.forCamp(campId);
+      throw new ShoreshException(
+        'Restore a saved ' +
+          labels.singularInSentence('Version') +
+          ' or build ' +
+          week.Name +
+          ' first.'
+      );
+    }
   }
 
   /** The committed run for this set, week and schedule, if any; a final one alone refuses. */
@@ -183,7 +202,7 @@ public with sharing class ChoicesImportPlace {
       name += ' · ' + schedule.Program__r.Name;
     }
     if (otherHere > 0) {
-      // "Generated Schedule", "Manual Build", or a kept schedule's own name (last year's).
+      // "Generated Schedule", "Manual Build", or the schedule's own name (a copied one).
       name += ' · ' + (SCHEDULE_WORDS.get(schedule.Origin__c) ?? schedule.Name);
     }
     return name.left(80);

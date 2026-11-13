@@ -32,6 +32,19 @@ describe("scheduleOptions", () => {
     ]);
   });
 
+  // ELECT-2.5 (Greg 2026-11-12): Elective seats' and Bring in choices' list never offers a saved
+  // version, last year's imported one included; with only that, nothing is offered.
+  it("never offers last year's imported version as the week's schedule", () => {
+    const setup = {
+      programs: [program("p1", "Main")],
+      schedules: [
+        schedule("v1", "Imported", "Version"),
+        schedule("v2", "Manual", "Version")
+      ]
+    };
+    expect(scheduleOptions(setup, "w1")).toEqual([]);
+  });
+
   it("says the program when the camp has more than one", () => {
     const setup = {
       programs: [program("p1", "Main"), program("p2", "Teens")],

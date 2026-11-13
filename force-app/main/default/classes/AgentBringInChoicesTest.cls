@@ -81,11 +81,15 @@ private class AgentBringInChoicesTest {
         ),
         AccessLevel.USER_MODE
       );
-      Schedule__c schedule = ShoreshTestData.version(
-        ids.get('Main'),
-        ids.get('Week 1'),
-        'Week 1 draft'
+      // The week's current schedule, a Manual Build draft: never a saved version (ELECT-2.5).
+      Schedule__c schedule = new Schedule__c(
+        Program__c = ids.get('Main'),
+        Week__c = ids.get('Week 1'),
+        Name = 'Week 1 draft',
+        Status__c = 'Draft',
+        Origin__c = 'Manual'
       );
+      Database.insert(schedule, AccessLevel.SYSTEM_MODE);
       String name = [SELECT Name FROM Season__c WHERE Id = :season.Id].Name;
       ids.put('Season', season.Id);
       ids.put('Chugim', chugim.Id);
