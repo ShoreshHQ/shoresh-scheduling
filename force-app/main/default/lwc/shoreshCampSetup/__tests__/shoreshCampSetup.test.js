@@ -31,6 +31,15 @@ import startBlankWeek from "@salesforce/apex/ManualBuildController.startBlankWee
 import getTable from "@salesforce/apex/RootsController.getTable";
 import getVersions from "@salesforce/apex/SchedulesController.getVersions";
 import openSchedule from "@salesforce/apex/SchedulesController.openSchedule";
+import previewPublish from "@salesforce/apex/ManualBuildController.previewPublish";
+import publish from "@salesforce/apex/ManualBuildController.publish";
+import getInputs from "@salesforce/apex/GeneratedScheduleController.getInputs";
+import getSetupChanges from "@salesforce/apex/SetupMatchController.getSetupChanges";
+import { camp as generatedCamp } from "../../shoreshGeneratedSchedule/__tests__/data/camp";
+import {
+  day as draftDay,
+  draft as manualDraft
+} from "../../shoreshWeekEditor/__tests__/data/draftFixture";
 import { bareName, bareRecord, nsName, nsRecord } from "shoresh-jest/namespace";
 
 /** The page's address as Lightning hands it to the page (its wire), with this state. */
@@ -44,6 +53,24 @@ const apex = () => ({ default: jest.fn() });
 jest.mock("@salesforce/apex/SchedulesController.getVersions", () => apex(), {
   virtual: true
 });
+jest.mock(
+  "@salesforce/apex/ManualBuildController.previewPublish",
+  () => apex(),
+  { virtual: true }
+);
+jest.mock("@salesforce/apex/ManualBuildController.publish", () => apex(), {
+  virtual: true
+});
+jest.mock(
+  "@salesforce/apex/GeneratedScheduleController.getInputs",
+  () => apex(),
+  { virtual: true }
+);
+jest.mock(
+  "@salesforce/apex/SetupMatchController.getSetupChanges",
+  () => apex(),
+  { virtual: true }
+);
 jest.mock("@salesforce/apex/SchedulesController.openSchedule", () => apex(), {
   virtual: true
 });
@@ -5690,5 +5717,240 @@ describe("an archived season", () => {
     expect(q(element, '[data-id="season-picker"]').value).toBe("s0");
     expect(q(element, '[data-id="archived-mark"]')).toBeNull();
     expect(q(element, '[data-id="edit-season"]')).not.toBeNull();
+  });
+});
+
+// WEEK-6.7 (word walk W6, combined.md "Screens show stale data until reload"): a change made on
+// one screen shows on every other open screen, with no reload and no trip through the menu.
+describe("a change on one screen shows on the others", () => {
+  const MANUAL = {
+    Id: "sc1",
+    Program__c: "p1",
+    Week__c: "w1",
+    Status__c: "Draft",
+    Origin__c: "Manual"
+  };
+  const GENERATED = { ...MANUAL, Id: "sc2", Origin__c: "Generated" };
+  const ELECTIVES = {
+    sets: [{ Id: "es1", Name: "Chugim" }],
+    offerings: [],
+    linkedChoices: []
+  };
+  const VERSION = {
+    id: "v1",
+    name: "Before the trip",
+    origin: "Manual",
+    reason: "SavedByHand",
+    savedAt: "2026-10-17T14:00:00.000Z"
+  };
+  const KEPT = {
+    id: "v2",
+    name: "Before Rebuild",
+    origin: "Generated",
+    reason: "BeforeRebuild",
+    savedAt: "2026-10-17T15:00:00.000Z"
+  };
+  const season = (schedules) =>
+    nsRecord(setupWith({ electives: ELECTIVES, schedules }));
+  /** A screen saying it changed something, as each says it (scheduleschanged). */
+  const changedOn = async (element, tag, seasonToo = false) => {
+    q(element, tag).dispatchEvent(
+      new CustomEvent("scheduleschanged", {
+        detail: { weekId: "w1", programId: "p1", season: seasonToo }
+      })
+    );
+    await flush();
+  };
+  const go = async (element, screen) => {
+    q(element, "c-shoresh-menu").dispatchEvent(
+      new CustomEvent("navigate", { detail: { screen } })
+    );
+    await flush();
+  };
+  /** Reads of the season from now on never answer: a screen shows only what it already had. */
+  const noMoreSeasonReads = () =>
+    getSeasonSetup.mockReturnValue(new Promise(() => {}));
+
+  beforeEach(() => {
+    getLabels.mockResolvedValue(nsRecord(LABELS));
+    getCamps.mockResolvedValue(nsRecord([CAMP]));
+    getSeasons.mockResolvedValue(nsRecord([SEASON]));
+    getDraft.mockResolvedValue(null);
+    getVersions.mockResolvedValue([VERSION]);
+    openSchedule.mockResolvedValue(null);
+    choicesSetup.mockResolvedValue({
+      sets: [{ id: "es1", name: "Chugim" }],
+      runs: [],
+      answers: []
+    });
+    seatsSetup.mockResolvedValue({ runs: [] });
+  });
+
+  afterEach(() => {
+    while (document.body.firstChild) {
+      document.body.removeChild(document.body.firstChild);
+    }
+    jest.clearAllMocks();
+    getVersions.mockResolvedValue([]);
+  });
+
+  it("WEEK-6.7: a week started on Manual Build is offered on Bring in choices at once", async () => {
+    getSeasonSetup.mockResolvedValue(season([]));
+    const element = await render();
+    const reads = getSeasonSetup.mock.calls.length;
+    getSeasonSetup.mockResolvedValueOnce(season([MANUAL]));
+    await changedOn(element, "c-shoresh-manual-build", true);
+    expect(getSeasonSetup.mock.calls.length).toBe(reads + 1);
+    noMoreSeasonReads();
+    await go(element, "bringInChoices");
+    const choices = q(element, "c-shoresh-choices-import").shadowRoot;
+    expect(choices.querySelector('[data-id="no-schedule"]')).toBeNull();
+    expect(choices.querySelector('[data-id="drop"]')).not.toBeNull();
+  });
+
+  it("WEEK-6.7: a week's second schedule, built on Generated Schedule, is in Elective seats' picker at once", async () => {
+    getSeasonSetup.mockResolvedValue(season([MANUAL]));
+    const element = await render();
+    getSeasonSetup.mockResolvedValueOnce(season([MANUAL, GENERATED]));
+    await changedOn(element, "c-shoresh-generated-schedule", true);
+    noMoreSeasonReads();
+    await go(element, "electiveSeats");
+    const picker = q(
+      element,
+      "c-shoresh-elective-seats"
+    ).shadowRoot.querySelector('c-shoresh-rail-picker[data-id="schedule"]');
+    expect(picker.options.map((o) => o.value)).toEqual(["sc1", "sc2"]);
+  });
+
+  it("WEEK-6.7: a Rebuild on Generated Schedule lists its kept version on Saved versions, already open, without the menu", async () => {
+    getSeasonSetup.mockResolvedValue(season([GENERATED]));
+    const element = await render();
+    await go(element, "schedules");
+    const list = q(element, "c-shoresh-schedules").shadowRoot.querySelector(
+      "c-shoresh-versions"
+    );
+    expect(list.versions.map((v) => v.id)).toEqual(["v1"]);
+    // Off to Generated Schedule (shown, the frame's own way, not through the menu) for a Rebuild.
+    const reads = getSeasonSetup.mock.calls.length;
+    getVersions.mockResolvedValue([KEPT, VERSION]);
+    await changedOn(element, "c-shoresh-generated-schedule");
+    expect(list.versions.map((v) => v.id)).toEqual(["v2", "v1"]);
+    // Only the versions changed: the season isn't read again for it.
+    expect(getSeasonSetup.mock.calls.length).toBe(reads);
+  });
+
+  it("WEEK-6.7: a version deleted on Manual Build leaves Saved versions at once; one renamed on Saved versions isn't read back there", async () => {
+    getSeasonSetup.mockResolvedValue(season([MANUAL]));
+    const element = await render();
+    await go(element, "schedules");
+    const list = q(element, "c-shoresh-schedules").shadowRoot.querySelector(
+      "c-shoresh-versions"
+    );
+    getVersions.mockResolvedValue([]);
+    await changedOn(element, "c-shoresh-manual-build");
+    expect(list.versions).toEqual([]);
+    // The screen that made the change is not told it again.
+    getVersions.mockClear();
+    await changedOn(element, "c-shoresh-schedules");
+    expect(getVersions).not.toHaveBeenCalled();
+  });
+
+  // Review of #398: one Publish read every version list twice. Each other open screen now reads
+  // once per change, and the screen that published reads nothing more than its own answer.
+  it("WEEK-6.7: one Publish on Manual Build, with Generated Schedule and Saved versions open, reads each other screen once", async () => {
+    // Each read of the season answers a new setup, as the server's does.
+    getSeasonSetup.mockImplementation(() =>
+      Promise.resolve(season([MANUAL, GENERATED]))
+    );
+    const items = [
+      { kind: "F", id: "f1", name: "Flagpole", gone: false },
+      { kind: "A", id: "a2", name: "Boating", gone: false }
+    ];
+    const finished = manualDraft();
+    finished.schedule.revisions = "2026-06-29:1";
+    finished.schedule.days = [draftDay("2026-06-29", items, ["1,2,2", "1,2,"])];
+    getDraft.mockResolvedValue(finished);
+    getInputs.mockResolvedValue(
+      generatedCamp({
+        bunks: [{ name: "Bunk 1" }],
+        days: 1,
+        blocks: [{ name: "Flag", start: "08:30", end: "09:00" }],
+        activities: [],
+        scheduleId: "sc2",
+        option: 1
+      })
+    );
+    getSetupChanges.mockResolvedValue(null);
+    openSchedule.mockResolvedValue({
+      schedule: VERSION,
+      days: [],
+      activities: []
+    });
+    const element = await render();
+    await go(element, "schedules");
+    await go(element, "manualBuild");
+    const manual = q(element, "c-shoresh-manual-build");
+    const publishButton = manual.shadowRoot.querySelector(
+      '[data-id="publish"]'
+    );
+    expect(publishButton).not.toBeNull();
+    const reads = [
+      getSeasonSetup,
+      getDraft,
+      getVersions,
+      openSchedule,
+      getInputs,
+      getSetupChanges,
+      choicesSetup,
+      seatsSetup,
+      getTable,
+      previewPublish,
+      publish
+    ];
+    reads.forEach((mock) => mock.mockClear());
+    previewPublish.mockResolvedValue({
+      revisions: "2026-06-29:1",
+      published: null,
+      changes: [],
+      changeCount: 0
+    });
+    publish.mockResolvedValue({
+      published: {
+        id: "pub1",
+        publishedAt: "2026-10-18T10:00:00.000Z",
+        publishedBy: "Pat Director",
+        origin: "Manual",
+        changedSince: false
+      },
+      draftChanged: false,
+      publishedChanged: false,
+      unchanged: false
+    });
+    publishButton.click();
+    await flush();
+    const askFirst = manual.shadowRoot.querySelector('[data-id="publish-ask"]');
+    if (askFirst) {
+      askFirst.dispatchEvent(
+        new CustomEvent("answer", { detail: { yes: true } })
+      );
+    }
+    // The publish, then the season read again, then each screen's read of it.
+    await flush();
+    await flush();
+    await flush();
+    const total = reads.reduce((sum, mock) => sum + mock.mock.calls.length, 0);
+    expect(previewPublish).toHaveBeenCalledTimes(1);
+    expect(publish).toHaveBeenCalledTimes(1);
+    // The season once, for Bring in choices and Elective seats and the week on Generated Schedule.
+    expect(getSeasonSetup).toHaveBeenCalledTimes(1);
+    // Manual Build has its own answer: its list read once, the week not read again.
+    expect(getDraft).not.toHaveBeenCalled();
+    // One list each: Manual Build's own, Generated Schedule's with its week, Saved versions'.
+    expect(getVersions).toHaveBeenCalledTimes(3);
+    expect(getInputs).toHaveBeenCalledTimes(1);
+    expect(getSetupChanges).toHaveBeenCalledTimes(1);
+    // The version open on Saved versions is still there as it was: it stays, not read again.
+    expect(openSchedule).not.toHaveBeenCalled();
+    expect(total).toBe(8);
   });
 });

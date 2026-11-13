@@ -90,6 +90,10 @@ export default class ShoreshChoicesImport extends LightningElement {
     if (season && season !== seasonBefore) {
       this.startOver();
       this.loadSituation();
+    } else if (season && this.phase === "pick" && this.isLoaded) {
+      // The season read again after a schedule was started or published on another screen
+      // (WEEK-6.7): the week's schedule is offered at once; a file under way keeps its own.
+      this.pickSchedule();
     }
   }
 

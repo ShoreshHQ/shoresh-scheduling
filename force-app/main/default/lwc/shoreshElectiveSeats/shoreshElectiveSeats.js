@@ -713,6 +713,19 @@ export default class ShoreshElectiveSeats extends LightningElement {
       });
       this.status = `Finalized: ${this.stateLabel}.`;
       await this.refreshRuns();
+      // Finalize kept the week as a version: every screen's Versions lists it (WEEK-6.7).
+      const schedule = this.scheduleOptions.find(
+        (o) => o.value === this.scheduleId
+      );
+      this.dispatchEvent(
+        new CustomEvent("scheduleschanged", {
+          detail: {
+            weekId: this.weekId,
+            programId: schedule ? schedule.programId : null,
+            season: false
+          }
+        })
+      );
     } catch (e) {
       this.error = failed("Not finalized.", e);
       if (/Assign again first/.test(this.error)) this.errorAction = "assign";

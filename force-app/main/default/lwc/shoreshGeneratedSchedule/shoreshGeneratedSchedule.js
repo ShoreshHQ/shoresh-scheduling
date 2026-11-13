@@ -251,8 +251,13 @@ export default class ShoreshGeneratedSchedule extends BuildScreen(
     // The season was read again (setup changed): read the week's inputs again too. For this same
     // week, a build under way goes on first (it is the director's own action),
     // then the week is read again; a conflict stays until the director answers it (Reload reads
-    // the week). A build for a week that is gone stops.
+    // the week). A build for a week that is gone stops. Not under a hand edit or a box open in
+    // the editor either (read once it has settled), and not when this screen's own save asked
+    // for this season read: it already has its answer (WEEK-6.7).
     const same = `${this.programId}|${this.weekId}` === this.loadedFor;
+    if (this.seasonReadIsOwn() && same) {
+      return;
+    }
     if (
       same &&
       (this.busy ||
@@ -261,7 +266,8 @@ export default class ShoreshGeneratedSchedule extends BuildScreen(
         this.publishing ||
         this.versionsWorking ||
         this.setupWorking ||
-        this.setupAsk)
+        this.setupAsk ||
+        (this.weekEditor && !this.weekEditor.settled))
     ) {
       this.readAfterRun = true;
       return;
@@ -358,6 +364,17 @@ export default class ShoreshGeneratedSchedule extends BuildScreen(
     this.startedOver = null;
     if (this.weekEditor) {
       this.weekEditor.clearMessages();
+    }
+  }
+
+  /**
+   * Another screen kept, renamed, deleted or restored a version of a week (WEEK-6.7): this
+   * week's Versions list is read again, without a reload.
+   */
+  @api
+  readVersions(changed) {
+    if (this.loaded && this.showsWeekOf(changed)) {
+      this.loadVersions();
     }
   }
 
@@ -861,6 +878,7 @@ export default class ShoreshGeneratedSchedule extends BuildScreen(
     this.reading = false;
     this.loading = false;
     const loaded = this.loaded;
+    const week = this.loadedFor;
     this.error = null;
     this.errorFromRead = false;
     // No number until a long build first says how far it has got (a short one never does).
@@ -950,6 +968,10 @@ export default class ShoreshGeneratedSchedule extends BuildScreen(
         engineNotes: built ? built.notes : null
       });
       if (ticket !== this.loadTicket) {
+        // Saved, though the screen has moved on: the other screens still show it (WEEK-6.7).
+        if (saved.status === SAVED) {
+          this.tellSchedulesChanged(!loaded.scheduleId, week);
+        }
         return;
       }
       if (saved.status === SAVED) {
@@ -986,8 +1008,10 @@ export default class ShoreshGeneratedSchedule extends BuildScreen(
         if (saved.notesDropped) {
           this.sayWhenShown = this.notesDroppedText;
         }
-        // Rebuild, Try another and Start over kept a version first: Versions lists it.
+        // Rebuild, Try another and Start over kept a version first: Versions lists it, here and
+        // on every other screen; a first Generate started the week's schedule (WEEK-6.7).
         this.loadVersions();
+        this.tellSchedulesChanged(!loaded.scheduleId, week);
         // What still doesn't match setup in the week just built (locks and leftovers stay).
         this.loadSetupChanges();
         // Said when it ends, not only when it starts (the bar's progress changes silently).
@@ -1452,6 +1476,7 @@ export default class ShoreshGeneratedSchedule extends BuildScreen(
   rainyWith = async (name) => {
     await keepWeekBeforeRain({ scheduleId: this.loaded.scheduleId, name });
     this.loadVersions();
+    this.tellSchedulesChanged();
   };
 
   /** The editor is told of a week from this screen (a read, a build, a Lock) once it is drawn. */
@@ -1869,8 +1894,9 @@ export default class ShoreshGeneratedSchedule extends BuildScreen(
       }
       kept = kept || result.kept;
       if (result.kept) {
-        // Versions lists the week as it was, kept just now.
+        // Versions lists the week as it was, kept just now, here and elsewhere (WEEK-6.7).
         this.loadVersions();
+        this.tellSchedulesChanged();
       }
       const done =
         keys.length === 1
@@ -2113,6 +2139,14 @@ export default class ShoreshGeneratedSchedule extends BuildScreen(
       seenPublishedId: preview.published ? preview.published.id : null
     });
     if (week !== this.loadedFor) {
+      // Published, though another week is shown now: the other screens still show it (WEEK-6.7).
+      if (
+        !result.draftChanged &&
+        !result.publishedChanged &&
+        !result.unchanged
+      ) {
+        this.tellSchedulesChanged(true, week);
+      }
       return;
     }
     if (result.draftChanged || result.publishedChanged) {
@@ -2126,6 +2160,10 @@ export default class ShoreshGeneratedSchedule extends BuildScreen(
     this.publishState = { ...result.published, changedSince: false };
     // A published schedule it replaced is a version now: Versions lists it straight away.
     this.loadVersions();
+    // The week's published schedule, on every screen (WEEK-6.7).
+    if (!result.unchanged) {
+      this.tellSchedulesChanged(true);
+    }
     const published = result.unchanged
       ? `${this.weekName} is already published as it is.`
       : `Published ${this.weekName}.`;
@@ -2179,6 +2217,10 @@ export default class ShoreshGeneratedSchedule extends BuildScreen(
       seenPublishedId: ask.publishedId
     });
     if (ask.week !== this.loadedFor) {
+      // Unpublished, though another week is shown now: the other screens still show it.
+      if (!result.publishedChanged) {
+        this.tellSchedulesChanged(true, ask.week);
+      }
       return;
     }
     if (result.publishedChanged) {
@@ -2190,6 +2232,7 @@ export default class ShoreshGeneratedSchedule extends BuildScreen(
     this.publishState = null;
     // The copy is a version now, marked Published: Versions lists it straight away.
     this.loadVersions();
+    this.tellSchedulesChanged(true);
     this.sayDone(`Unpublished ${this.weekName}.`);
   }
 
@@ -2287,15 +2330,18 @@ export default class ShoreshGeneratedSchedule extends BuildScreen(
   /**
    * Runs a versions action, then reads the list again before it is done (so the list never shows
    * a version just deleted as if it were there); refused ones say why. A read asked for meanwhile
-   * (the season read again) is done after it.
+   * (the season read again) is done after it. Done, the other screens are told (WEEK-6.7);
+   * season: it started the week's schedule.
    */
-  async versionsAction(what, work) {
+  async versionsAction(what, work, season = false) {
     this.versionsWorking = true;
     this.error = null;
     this.errorFromRead = false;
     this.focusAfterVersions = null;
+    let done = false;
     try {
       await work();
+      done = true;
       return true;
     } catch (e) {
       // What didn't happen, then why (what: words, or a function for words known only later).
@@ -2313,6 +2359,10 @@ export default class ShoreshGeneratedSchedule extends BuildScreen(
       this.readAfterRun = false;
       if (readNow) {
         this.load(true);
+      }
+      // Saved versions and Manual Build show the same list (WEEK-6.7).
+      if (done) {
+        this.tellSchedulesChanged(season);
       }
     }
   }
@@ -2421,7 +2471,9 @@ export default class ShoreshGeneratedSchedule extends BuildScreen(
         } else if (focus) {
           this.focusAfterVersions = focus;
         }
-      }
+      },
+      // On a week not generated yet the version becomes its schedule: a schedule started.
+      !loaded.scheduleId
     );
   }
 

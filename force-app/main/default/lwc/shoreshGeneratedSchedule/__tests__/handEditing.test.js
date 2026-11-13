@@ -666,6 +666,27 @@ describe("hand editing on the Generated Schedule screen", () => {
     expect(getInputs.mock.calls.length).toBe(reads);
   });
 
+  // WEEK-6.7 (review of #398): the season read again after a change on any screen, this one's
+  // own Publish included, waits for the editor as coming back to the window does.
+  it("WEEK-6.7: the season read again doesn't read the week over a typing box; it is read once the edit typed there is saved", async () => {
+    const element = await render();
+    await press(cellAt(element, "0-2"), "Enter");
+    expect(q(element, '[data-id="slot-editor"]')).not.toBeNull();
+    const reads = getInputs.mock.calls.length;
+    element.setup = { ...SETUP };
+    await flush();
+    expect(getInputs.mock.calls.length).toBe(reads);
+    saveSlots.mockResolvedValueOnce(slotAnswer(["1,2,2,", "1,,,"], []));
+    const input = q(element, '[data-id="slot-input"]');
+    input.value = "Swim";
+    input.dispatchEvent(new CustomEvent("input"));
+    await flush();
+    await press(input, "Enter");
+    await flush();
+    expect(saveSlots).toHaveBeenCalledTimes(1);
+    expect(getInputs.mock.calls.length).toBe(reads + 1);
+  });
+
   it("the engine's reasons kept with the week show after a reload; a cell changed by hand loses its own, for good", async () => {
     // Saved after a build that left Bunk 1's Monday Period 2 and Period 3 Open: everything for
     // Bunk 1 was taken then (codes and Ids, worded when shown).

@@ -900,6 +900,42 @@ export default class ShoreshCampSetup extends LightningElement {
   }
 
   /**
+   * A screen saved something other screens show (WEEK-6.7: a schedule started, built or published;
+   * a version kept, renamed, deleted or restored; seats finalized), scheduleschanged { weekId,
+   * programId, season }: every other screen showing that week's versions reads them again now,
+   * with no reload and no trip through the menu (word walk W6). season: the season's schedules
+   * themselves changed, so the season is read again, and with it Bring in choices' and Elective
+   * seats' schedules, and Manual Build's and Generated Schedule's week with its Versions list
+   * (each as on coming back to the window: not while work is under way there), so they aren't
+   * also told to read the list: each other screen reads once per change. Saved versions reads
+   * its list either way (the season doesn't change which week it shows).
+   */
+  handleSchedulesChanged(event) {
+    const from = event.currentTarget;
+    const changed = event.detail || {};
+    if (changed.season) {
+      this.loadSeason().catch(() => {});
+    }
+    this.template
+      .querySelectorAll(
+        "c-shoresh-manual-build, c-shoresh-generated-schedule, c-shoresh-schedules"
+      )
+      .forEach((screen) => {
+        if (screen === from) {
+          return;
+        }
+        if (typeof screen.readVersions === "function") {
+          if (changed.season) {
+            return;
+          }
+          screen.readVersions(changed);
+        } else if (typeof screen.readAgain === "function") {
+          screen.readAgain(changed);
+        }
+      });
+  }
+
+  /**
    * "Set it up" on Roots' card for a special day or event last year's schedule named (repo ADR
    * 0027): made by name on no day, the season read again, then its details open on Special
    * events, where it is put on a day.
@@ -971,6 +1007,7 @@ export default class ShoreshCampSetup extends LightningElement {
    */
   handleBringInChoices() {
     if (canOpen("bringInChoices", !!this.setup, this.preview)) {
+      this.readAgainFor("bringInChoices");
       this.choicesOpening = null;
       this.openScreen("bringInChoices");
     }

@@ -28,6 +28,18 @@ import { noScheduleYet } from "c/shoreshScheduleExport";
 // Activity View's picker: every activity's card, before one is chosen.
 const ALL_ACTIVITIES = "all";
 
+// What the Versions list says of a version: the same in both, it hasn't changed since it opened.
+const VERSION_FIELDS = [
+  "name",
+  "origin",
+  "reason",
+  "savedAt",
+  "publishedAt",
+  "namedByPublish"
+];
+const sameVersion = (a, b) =>
+  VERSION_FIELDS.every((field) => (a[field] ?? null) === (b[field] ?? null));
+
 /**
  * The schedule page (desktop: the schedule screen): pick a program and a week; its newest version
  * opens by itself, Versions switches to another, and the director looks at it in Daily View (all groups for one day), Group View (one
@@ -71,6 +83,8 @@ export default class ShoreshSchedules extends LightningElement {
   // { event: event Id }.
   focusAfter = null;
   pending = 0;
+  // Another screen changed this week's versions while a read was on its way (readAgain).
+  readWhenDone = false;
   // From choosing a week until its newest version is open (or it has none).
   loading = false;
   // The floating refusal at the window's foot: one at a time on the page, and Close puts the
@@ -286,6 +300,16 @@ export default class ShoreshSchedules extends LightningElement {
       }
       this.dispatchEvent(
         new ShowToastEvent({ title: "Renamed.", variant: "success" })
+      );
+      // Manual Build's and Generated Schedule's Versions lists say the new name (WEEK-6.7).
+      this.dispatchEvent(
+        new CustomEvent("scheduleschanged", {
+          detail: {
+            weekId: this.weekId,
+            programId: this.programId,
+            season: false
+          }
+        })
       );
     }, "Not renamed. The name is as it was.");
     onDone(saved);
@@ -753,18 +777,70 @@ export default class ShoreshSchedules extends LightningElement {
   }
 
   /**
-   * The screen opened again from the menu (CampSetup): the week's versions read again, so ones
-   * kept, renamed or deleted on another screen meanwhile show (word walk W6), the one open staying
-   * open while it is still there.
+   * The screen opened again from the menu (CampSetup), or a version of a week kept, renamed or
+   * deleted on another screen ({ weekId, programId }, WEEK-6.7): the week's versions read again,
+   * so they show without a reload (word walk W6), the one open staying open while it is still
+   * there. A change to another week is not this one's; while a read or rename is on its way, it
+   * is read once that is done.
    */
   @api
-  readAgain() {
-    if (!this.canChoose || this.busy) {
+  readAgain(changed) {
+    const { weekId, programId } = changed || {};
+    if (
+      !this.canChoose ||
+      (weekId && weekId !== this.weekId) ||
+      (programId && programId !== this.programId)
+    ) {
       return;
     }
-    this.versionToOpen = this.openId;
-    this.loadedFor = null;
-    this.loadVersions();
+    if (this.busy) {
+      this.readWhenDone = true;
+      return;
+    }
+    this.readWhenDone = false;
+    if (this.loadedFor !== `${this.programId}|${this.weekId}`) {
+      // The week's list never came: read it as on choosing the week.
+      this.versionToOpen = this.openId;
+      this.loadedFor = null;
+      this.loadVersions();
+      return;
+    }
+    this.readListAgain();
+  }
+
+  /**
+   * The week's versions read again in place: the list and the version open stay on screen
+   * meanwhile. The one open stays as it is while it is still there unchanged; one changed is
+   * read again, and one gone gives way to the newest. A version opened meanwhile is left open.
+   */
+  async readListAgain() {
+    const key = this.loadedFor;
+    const ticket = this.openTicket;
+    let versions = null;
+    await this.run(async () => {
+      versions =
+        (await getVersions({
+          programId: this.programId,
+          weekId: this.weekId
+        })) || [];
+    }, "Couldn't open the saved schedules.");
+    if (!versions || key !== this.loadedFor) {
+      return;
+    }
+    this.versions = versions;
+    if (ticket !== this.openTicket) {
+      return;
+    }
+    const open = this.opened && this.opened.schedule;
+    const row = open && versions.find((v) => v.id === open.id);
+    if (row && sameVersion(row, open)) {
+      return;
+    }
+    if (versions.length) {
+      await this.open(row ? row.id : versions[0].id);
+    } else {
+      this.opened = null;
+    }
   }
 
   /** The screen was left (CampSetup): its floating refusal was about that visit, so it goes. */
@@ -795,6 +871,10 @@ export default class ShoreshSchedules extends LightningElement {
       return false;
     } finally {
       this.pending -= 1;
+      // A change on another screen came while this was on its way (WEEK-6.7).
+      if (!this.busy && this.readWhenDone) {
+        this.readAgain();
+      }
     }
   }
 

@@ -239,6 +239,31 @@ describe("c-shoresh-choices-import", () => {
     expect($(element, '[data-id="drop"]')).toBeNull();
   });
 
+  // WEEK-6.7: a schedule started on another screen while this one shows a week without one.
+  it("WEEK-6.7: a week's schedule started elsewhere is offered once the season is read again", async () => {
+    const element = await render();
+    const week = $(element, '[data-id="week"]');
+    week.dispatchEvent(new CustomEvent("change", { detail: { value: "w2" } }));
+    await flush();
+    expect($(element, '[data-id="no-schedule"]')).not.toBeNull();
+    element.setup = nsRecord({
+      ...SETUP,
+      schedules: [
+        ...SETUP.schedules,
+        {
+          Id: "c2",
+          Program__c: "p1",
+          Week__c: "w2",
+          Status__c: "Draft",
+          Origin__c: "Manual"
+        }
+      ]
+    });
+    await flush();
+    expect($(element, '[data-id="no-schedule"]')).toBeNull();
+    expect($(element, '[data-id="drop"]')).not.toBeNull();
+  });
+
   // ELECT-2.5 (Greg 2026-11-12): a saved version, last year's imported one included, is never the
   // week's schedule: it is not offered, and the screen says to restore it or build the week.
   it("never takes choices against a saved version, last year's imported one included", async () => {

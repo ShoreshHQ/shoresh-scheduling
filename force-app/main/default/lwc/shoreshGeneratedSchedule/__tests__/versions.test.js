@@ -1283,4 +1283,47 @@ describe("Versions on the Generated Schedule screen", () => {
     await flush();
     expect(versions(element).versions).toEqual([]);
   });
+
+  // WEEK-6.7: a change made here is told to the page, which tells the other screens; one made
+  // elsewhere is read here without a reload.
+  describe("WEEK-6.7: a change on one screen shows on the others", () => {
+    it("WEEK-6.7: a Rebuild tells the page its week's versions changed (the one it kept)", async () => {
+      const element = await render(week());
+      const heard = [];
+      element.addEventListener("scheduleschanged", (e) => heard.push(e.detail));
+      saveWeekOnServer.mockImplementationOnce(
+        keeping({
+          conflict: false,
+          scheduleId: SCHEDULE,
+          revision: "2026-06-29:2",
+          versionId: "a0S000000000026AAA",
+          locks: []
+        })
+      );
+      action(element, "Rebuild").click();
+      await until(() => !q(element, '[data-id="busy"]'));
+      expect(heard).toEqual([
+        { weekId: WEEK, programId: PROGRAM, season: false }
+      ]);
+    });
+
+    it("WEEK-6.7: a version renamed on another screen is read again here, for this week only", async () => {
+      const element = await render(week());
+      getVersions.mockClear();
+      element.readVersions({
+        weekId: "a0W000000000099AAA",
+        programId: PROGRAM
+      });
+      await flush();
+      expect(getVersions).not.toHaveBeenCalled();
+      getVersions.mockResolvedValue([{ ...VERSIONS[0], name: "Trip week" }]);
+      element.readVersions({ weekId: WEEK, programId: PROGRAM });
+      await flush();
+      expect(getVersions).toHaveBeenCalledWith({
+        programId: PROGRAM,
+        weekId: WEEK
+      });
+      expect(versions(element).versions[0].name).toBe("Trip week");
+    });
+  });
 });
