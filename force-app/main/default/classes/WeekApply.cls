@@ -8,9 +8,10 @@
  * each is listed. The target's draft goes to its Versions first; a week with none gets one; a
  * published copy is another record, untouched until the week is published again (PUB-4.2).
  *
- * What it fills is not locked, on Generated Schedule too (a hand edit's would be, LOCK-1.1):
- * otherwise a lock would keep every cell the next time the week is applied, and a later change to
- * the grid could never reach it. Only a person's own lock keeps a cell.
+ * It is the director's own action, so on Generated Schedule what it fills is locked, as a hand
+ * edit locks its cell (LOCK-1.1): the next Rebuild keeps it (GEN-10.13). Open cells and fixed or
+ * recurring activities are not locked. Applying again keeps those cells too, each listed, until
+ * the director unlocks them.
  *
  * The preview changes nothing; what it hands back (seen) is both weeks as they are, and the apply
  * is refused with nothing changed if either was saved since. Runs in user mode.

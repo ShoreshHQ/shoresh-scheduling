@@ -184,37 +184,51 @@ private class WeekApplyTest {
     }
   }
 
-  // WEEK-6.2: what it fills on Generated isn't locked, so applying again still reaches it.
+  // WEEK-6.2, LOCK-1.1: on Generated what it fills is locked, as a hand edit's is (the source's
+  // own lock doesn't come along); an Open cell isn't; applying again keeps it and lists it.
   @IsTest
-  static void applyingAgainReachesWhatTheLastApplyFilled() {
+  static void whatItFillsOnGeneratedIsLockedSoApplyingAgainKeepsIt() {
     System.runAs(ShoreshTestData.scheduler()) {
       WeekApplyTestData.camp();
       Id source = WeekApplyTestData.generatedDraft('Week 1');
       WeekApplyTestData.put(
         source,
         WeekApplyTestData.W1,
-        new List<String>{ 'Swim', 'Group A', 'Period 2', 'lock' }
+        new List<String>{ 'Swim', 'Group A', 'Period 2' }
       );
       Test.startTest();
       Assert.isTrue(WeekApplyTestData.applied(source, 'Week 2').applied);
       Id target = WeekApplyTestData.drafts('Week 2', 'Generated')[0].Id;
-      Assert.isFalse(
+      Assert.isTrue(
         WeekApplyTestData.isLocked(
           target,
           WeekApplyTestData.W2,
           new List<String>{ 'Group A', 'Period 2' }
         ),
-        'A lock on the other week does not come along'
+        'What Apply filled is locked'
+      );
+      Assert.isFalse(
+        WeekApplyTestData.isLocked(
+          target,
+          WeekApplyTestData.W2,
+          new List<String>{ 'Group B', 'Period 2' }
+        ),
+        'An Open cell is not'
       );
       WeekApplyTestData.put(
         source,
         WeekApplyTestData.W1,
         new List<String>{ 'Soccer', 'Group A', 'Period 2' }
       );
-      Assert.isTrue(WeekApplyTestData.applied(source, 'Week 2').applied);
+      WeekApply.Outcome again = WeekApplyTestData.applied(source, 'Week 2');
       Test.stopTest();
+      Assert.isFalse(again.applied, 'The only cell that differs is locked');
+      Assert.isTrue(
+        again.keptLocked.contains('Swim · Group A · Day 1 · Period 2'),
+        String.join(again.keptLocked, '; ')
+      );
       Assert.areEqual(
-        WeekApplyTestData.a('Soccer'),
+        WeekApplyTestData.a('Swim'),
         WeekApplyTestData.slot(
           target,
           WeekApplyTestData.W2,
@@ -222,6 +236,78 @@ private class WeekApplyTest {
         )
       );
     }
+  }
+
+  // WEEK-6.2, GEN-10.13: Rebuild keeps what Apply filled, as it keeps a hand edit: a build that
+  // changes it is refused, and one around it is saved with the cell and its lock kept.
+  @IsTest
+  static void aRebuildAfterApplyKeepsTheCellsItFilled() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      WeekApplyTestData.camp();
+      GeneratedTestData.ids = WeekApplyTestData.ids;
+      Id source = WeekApplyTestData.generatedDraft('Week 1');
+      WeekApplyTestData.put(
+        source,
+        WeekApplyTestData.W1,
+        new List<String>{ 'Swim', 'Group A', 'Period 2' }
+      );
+      Assert.isTrue(WeekApplyTestData.applied(source, 'Week 2').applied);
+      Id target = WeekApplyTestData.drafts('Week 2', 'Generated')[0].Id;
+      Test.startTest();
+      // A Rebuild that puts something else there.
+      GeneratedWeek.Save over = rebuildOfWeek2();
+      GeneratedTestData.put(
+        over.days[0],
+        GeneratedTestData.at(
+          GeneratedTestData.GROUP_A,
+          GeneratedTestData.PERIOD_2
+        ),
+        'Soccer'
+      );
+      String refused = GeneratedTestData.refusal(over);
+      Assert.isTrue(refused.endsWith('is locked.'), refused);
+      // A Rebuild around it.
+      GeneratedWeek.Save around = rebuildOfWeek2();
+      GeneratedTestData.put(
+        around.days[0],
+        GeneratedTestData.at(
+          GeneratedTestData.GROUP_B,
+          GeneratedTestData.PERIOD_2
+        ),
+        'Soccer'
+      );
+      Assert.isFalse(GeneratedTestData.save(around).conflict);
+      Test.stopTest();
+      Assert.areEqual(
+        WeekApplyTestData.a('Swim'),
+        WeekApplyTestData.slot(
+          target,
+          WeekApplyTestData.W2,
+          new List<String>{ 'Group A', 'Period 2' }
+        )
+      );
+      Assert.isTrue(
+        WeekApplyTestData.isLocked(
+          target,
+          WeekApplyTestData.W2,
+          new List<String>{ 'Group A', 'Period 2' }
+        )
+      );
+    }
+  }
+
+  /** Week 2's Generated draft as read, sent back as a Rebuild. */
+  private static GeneratedWeek.Save rebuildOfWeek2() {
+    GeneratedWeek.Save save = GeneratedTestData.request(
+      GeneratedScheduleController.getInputs(
+        WeekApplyTestData.ids.get('Main'),
+        WeekApplyTestData.ids.get('Week 2')
+      ),
+      GeneratedSaves.REBUILD,
+      2
+    );
+    save.weekId = WeekApplyTestData.ids.get('Week 2');
+    return save;
   }
 
   // WEEK-6.2: the target's draft goes to its Versions first, and Restore brings it back.
