@@ -790,6 +790,19 @@ describe("Finalize, Final, and a new version", () => {
     expect($(element, "c-shoresh-rail-pop.move")).toBeNull();
   });
 
+  // WEEK-6.7: Finalize keeps the week as a version; the page tells the screens that list them.
+  it("WEEK-6.7: a Finalize tells the page its week's versions changed", async () => {
+    const element = await render({ view: assignedView() });
+    const heard = [];
+    element.addEventListener("scheduleschanged", (e) => heard.push(e.detail));
+    finalizeRun.mockResolvedValue(
+      assignedView({ revision: 3, run: { ...RUN_INFO, status: "Final" } })
+    );
+    $(element, '[data-id="primary"]').click();
+    await flush();
+    expect(heard).toEqual([{ weekId: "w1", programId: "p1", season: false }]);
+  });
+
   it("a refused Finalize says why, with Assign again in place", async () => {
     const element = await render({
       view: assignedView({ scheduleChanged: true })

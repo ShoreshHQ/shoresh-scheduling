@@ -1037,4 +1037,62 @@ describe("c-shoresh-manual-build: versions and Start from another week", () => {
       );
     });
   });
+
+  // WEEK-6.7: a change made here is told to the page, which tells the other screens; one made
+  // elsewhere is read here without a reload.
+  describe("WEEK-6.7: a change on one screen shows on the others", () => {
+    const told = (element) => {
+      const heard = [];
+      element.addEventListener("scheduleschanged", (e) => heard.push(e.detail));
+      return heard;
+    };
+
+    it("WEEK-6.7: Start a blank week tells the page a schedule was started", async () => {
+      getWeekSources.mockResolvedValue([]);
+      const element = await render(null);
+      const heard = told(element);
+      startBlankWeek.mockResolvedValue(draft(WITH_SWIM, ["1,,", "1,,"]));
+      q(element, '[data-id="start-week"]').click();
+      await flush();
+      expect(heard).toEqual([{ weekId: "w1", programId: "p1", season: true }]);
+    });
+
+    it("WEEK-6.7: a version deleted here is told; a refused one is not", async () => {
+      const element = await render(draft(WITH_SWIM, ["1,2,", "1,,"]));
+      const heard = told(element);
+      deleteVersion.mockRejectedValueOnce({ body: { message: "No." } });
+      const panel = await versionsPanel(element);
+      const deleteTwice = async () => {
+        panel.querySelector('[data-action="delete"]').click();
+        await flush();
+        panel.querySelector('[data-action="delete"]').click();
+        await flush();
+      };
+      await deleteTwice();
+      expect(heard).toEqual([]);
+      deleteVersion.mockResolvedValue(undefined);
+      await deleteTwice();
+      expect(deleteVersion).toHaveBeenCalledTimes(2);
+      expect(heard).toEqual([{ weekId: "w1", programId: "p1", season: false }]);
+    });
+
+    it("WEEK-6.7: a version changed on another screen is read again here, for this week only", async () => {
+      const element = await render(draft(WITH_SWIM, ["1,2,", "1,,"]));
+      getVersions.mockClear();
+      element.readVersions({ weekId: "w2", programId: "p1" });
+      await flush();
+      expect(getVersions).not.toHaveBeenCalled();
+      getVersions.mockResolvedValue([
+        { ...VERSIONS[0], name: "Before the rain" }
+      ]);
+      element.readVersions({ weekId: "w1", programId: "p1" });
+      await flush();
+      expect(getVersions).toHaveBeenCalledWith({
+        programId: "p1",
+        weekId: "w1"
+      });
+      const panel = await versionsPanel(element);
+      expect(panel.textContent).toContain("Before the rain");
+    });
+  });
 });

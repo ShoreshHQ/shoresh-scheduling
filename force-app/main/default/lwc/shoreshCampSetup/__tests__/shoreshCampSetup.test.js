@@ -5692,3 +5692,139 @@ describe("an archived season", () => {
     expect(q(element, '[data-id="edit-season"]')).not.toBeNull();
   });
 });
+
+// WEEK-6.7 (word walk W6, combined.md "Screens show stale data until reload"): a change made on
+// one screen shows on every other open screen, with no reload and no trip through the menu.
+describe("a change on one screen shows on the others", () => {
+  const MANUAL = {
+    Id: "sc1",
+    Program__c: "p1",
+    Week__c: "w1",
+    Status__c: "Draft",
+    Origin__c: "Manual"
+  };
+  const GENERATED = { ...MANUAL, Id: "sc2", Origin__c: "Generated" };
+  const ELECTIVES = {
+    sets: [{ Id: "es1", Name: "Chugim" }],
+    offerings: [],
+    linkedChoices: []
+  };
+  const VERSION = {
+    id: "v1",
+    name: "Before the trip",
+    origin: "Manual",
+    reason: "SavedByHand",
+    savedAt: "2026-10-17T14:00:00.000Z"
+  };
+  const KEPT = {
+    id: "v2",
+    name: "Before Rebuild",
+    origin: "Generated",
+    reason: "BeforeRebuild",
+    savedAt: "2026-10-17T15:00:00.000Z"
+  };
+  const season = (schedules) =>
+    nsRecord(setupWith({ electives: ELECTIVES, schedules }));
+  /** A screen saying it changed something, as each says it (scheduleschanged). */
+  const changedOn = async (element, tag, seasonToo = false) => {
+    q(element, tag).dispatchEvent(
+      new CustomEvent("scheduleschanged", {
+        detail: { weekId: "w1", programId: "p1", season: seasonToo }
+      })
+    );
+    await flush();
+  };
+  const go = async (element, screen) => {
+    q(element, "c-shoresh-menu").dispatchEvent(
+      new CustomEvent("navigate", { detail: { screen } })
+    );
+    await flush();
+  };
+  /** Reads of the season from now on never answer: a screen shows only what it already had. */
+  const noMoreSeasonReads = () =>
+    getSeasonSetup.mockReturnValue(new Promise(() => {}));
+
+  beforeEach(() => {
+    getLabels.mockResolvedValue(nsRecord(LABELS));
+    getCamps.mockResolvedValue(nsRecord([CAMP]));
+    getSeasons.mockResolvedValue(nsRecord([SEASON]));
+    getDraft.mockResolvedValue(null);
+    getVersions.mockResolvedValue([VERSION]);
+    openSchedule.mockResolvedValue(null);
+    choicesSetup.mockResolvedValue({
+      sets: [{ id: "es1", name: "Chugim" }],
+      runs: [],
+      answers: []
+    });
+    seatsSetup.mockResolvedValue({ runs: [] });
+  });
+
+  afterEach(() => {
+    while (document.body.firstChild) {
+      document.body.removeChild(document.body.firstChild);
+    }
+    jest.clearAllMocks();
+    getVersions.mockResolvedValue([]);
+  });
+
+  it("WEEK-6.7: a week started on Manual Build is offered on Bring in choices at once", async () => {
+    getSeasonSetup.mockResolvedValue(season([]));
+    const element = await render();
+    const reads = getSeasonSetup.mock.calls.length;
+    getSeasonSetup.mockResolvedValueOnce(season([MANUAL]));
+    await changedOn(element, "c-shoresh-manual-build", true);
+    expect(getSeasonSetup.mock.calls.length).toBe(reads + 1);
+    noMoreSeasonReads();
+    await go(element, "bringInChoices");
+    const choices = q(element, "c-shoresh-choices-import").shadowRoot;
+    expect(choices.querySelector('[data-id="no-schedule"]')).toBeNull();
+    expect(choices.querySelector('[data-id="drop"]')).not.toBeNull();
+  });
+
+  it("WEEK-6.7: a week's second schedule, built on Generated Schedule, is in Elective seats' picker at once", async () => {
+    getSeasonSetup.mockResolvedValue(season([MANUAL]));
+    const element = await render();
+    getSeasonSetup.mockResolvedValueOnce(season([MANUAL, GENERATED]));
+    await changedOn(element, "c-shoresh-generated-schedule", true);
+    noMoreSeasonReads();
+    await go(element, "electiveSeats");
+    const picker = q(
+      element,
+      "c-shoresh-elective-seats"
+    ).shadowRoot.querySelector('c-shoresh-rail-picker[data-id="schedule"]');
+    expect(picker.options.map((o) => o.value)).toEqual(["sc1", "sc2"]);
+  });
+
+  it("WEEK-6.7: a Rebuild on Generated Schedule lists its kept version on Saved versions, already open, without the menu", async () => {
+    getSeasonSetup.mockResolvedValue(season([GENERATED]));
+    const element = await render();
+    await go(element, "schedules");
+    const list = q(element, "c-shoresh-schedules").shadowRoot.querySelector(
+      "c-shoresh-versions"
+    );
+    expect(list.versions.map((v) => v.id)).toEqual(["v1"]);
+    // Off to Generated Schedule (shown, the frame's own way, not through the menu) for a Rebuild.
+    const reads = getSeasonSetup.mock.calls.length;
+    getVersions.mockResolvedValue([KEPT, VERSION]);
+    await changedOn(element, "c-shoresh-generated-schedule");
+    expect(list.versions.map((v) => v.id)).toEqual(["v2", "v1"]);
+    // Only the versions changed: the season isn't read again for it.
+    expect(getSeasonSetup.mock.calls.length).toBe(reads);
+  });
+
+  it("WEEK-6.7: a version deleted on Manual Build leaves Saved versions at once; one renamed on Saved versions isn't read back there", async () => {
+    getSeasonSetup.mockResolvedValue(season([MANUAL]));
+    const element = await render();
+    await go(element, "schedules");
+    const list = q(element, "c-shoresh-schedules").shadowRoot.querySelector(
+      "c-shoresh-versions"
+    );
+    getVersions.mockResolvedValue([]);
+    await changedOn(element, "c-shoresh-manual-build");
+    expect(list.versions).toEqual([]);
+    // The screen that made the change is not told it again.
+    getVersions.mockClear();
+    await changedOn(element, "c-shoresh-schedules");
+    expect(getVersions).not.toHaveBeenCalled();
+  });
+});

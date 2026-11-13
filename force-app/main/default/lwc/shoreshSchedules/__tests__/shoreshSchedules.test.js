@@ -753,4 +753,73 @@ describe("c-shoresh-schedules", () => {
       expect(q(element, '[data-id="print"]').disabled).toBe(true);
     });
   });
+
+  // WEEK-6.7: a version changed on another screen shows here without a reload; a rename made
+  // here is told to the page, for the other screens' Versions lists.
+  describe("WEEK-6.7: a change on one screen shows on the others", () => {
+    it("WEEK-6.7: a rename here is told to the page; a refused one is not", async () => {
+      getVersions.mockResolvedValue(VERSIONS);
+      openSchedule.mockImplementation(answerFor);
+      const element = await render();
+      const heard = [];
+      element.addEventListener("scheduleschanged", (e) => heard.push(e.detail));
+      const rename = async (name) => {
+        q(element, "c-shoresh-versions").dispatchEvent(
+          new CustomEvent("rename", {
+            detail: { id: "s3", name, onDone: jest.fn() }
+          })
+        );
+        await flush();
+      };
+      renameSchedule.mockRejectedValueOnce({ body: { message: "No." } });
+      await rename(" ");
+      expect(heard).toEqual([]);
+      renameSchedule.mockResolvedValue();
+      await rename("Last summer");
+      expect(heard).toEqual([{ weekId: "w1", programId: "p1", season: false }]);
+    });
+
+    it("WEEK-6.7: a version kept on another screen for this week is listed, the one open staying open", async () => {
+      getVersions.mockResolvedValue(VERSIONS);
+      openSchedule.mockImplementation(answerFor);
+      const element = await render();
+      // Another week's change isn't this one's.
+      getVersions.mockClear();
+      element.readAgain({ weekId: "w2", programId: "p1" });
+      await flush();
+      expect(getVersions).not.toHaveBeenCalled();
+      const kept = {
+        id: "s4",
+        name: "Before Rebuild",
+        origin: "Generated",
+        reason: "BeforeRebuild",
+        savedAt: "2026-10-16T17:00:00.000Z"
+      };
+      getVersions.mockResolvedValue([kept, ...VERSIONS]);
+      element.readAgain({ weekId: "w1", programId: "p1" });
+      await flush();
+      const list = q(element, "c-shoresh-versions");
+      expect(list.versions.map((v) => v.id)).toEqual(["s4", "s3", "s2", "s1"]);
+      expect(list.label).toBe("Before my changes");
+    });
+
+    it("WEEK-6.7: a change told while a read is on its way is read once it is done", async () => {
+      getVersions.mockResolvedValue(VERSIONS);
+      openSchedule.mockImplementation(answerFor);
+      const element = await render();
+      const opening = later();
+      openSchedule.mockReturnValueOnce(opening.promise);
+      q(element, "c-shoresh-versions").dispatchEvent(
+        new CustomEvent("open", { detail: { id: "s2" } })
+      );
+      await flush();
+      getVersions.mockClear();
+      element.readAgain({ weekId: "w1", programId: "p1" });
+      await flush();
+      expect(getVersions).not.toHaveBeenCalled();
+      opening.answer(await answerFor({ scheduleId: "s2" }));
+      await flush();
+      expect(getVersions).toHaveBeenCalledTimes(1);
+    });
+  });
 });
