@@ -1,9 +1,9 @@
 /**
- * Protocol statements in steps 1, 4 and 10 (docs/engine/protocol.md) that had no test of their
+ * Protocol statements in steps 1 and 4 (docs/engine/protocol.md) that had no test of their
  * own, each pinned on a small camp built for it: the camp is shaped so that breaking the rule
  * changes what it gets.
  */
-import { NOW, generateWeek, generateWeekSteps, MODE } from "c/shoreshEngine";
+import { NOW, generateWeek, generateWeekSteps } from "c/shoreshEngine";
 import { activity, at, block, camp, cellsOf, group } from "./data/camp";
 
 const run = (spec) => generateWeek(camp(spec));
@@ -208,42 +208,5 @@ describe("step 4: placing by priority", () => {
       const got = rowOf(result, "g1").map((row) => row[0]);
       expect(got.sort()).toEqual(["arts", "golf", "swim"]);
     }
-  });
-});
-
-// GEN-10.4
-describe("step 10: Rebuild keeps the week", () => {
-  // Swim is in the week on each of three days; setup now says once a week.
-  const rebuild = (activities) => {
-    const input = camp({
-      days: 3,
-      activities,
-      cells: [0, 1, 2].map((day) => ({
-        day,
-        group: "g1",
-        block: "b0",
-        act: "swim"
-      }))
-    });
-    return generateWeek({ ...input, mode: MODE.KEEP });
-  };
-
-  it("a session over the weekly max is emptied, latest first, when another activity fits bending nothing", () => {
-    const result = rebuild([activity("swim", { max: 1 }), activity("arts")]);
-    expect(
-      result.keep.emptied.map((e) => [e.date, e.activityId, e.why])
-    ).toEqual([
-      ["2026-07-08", "swim", "weeklyMax"],
-      ["2026-07-07", "swim", "weeklyMax"]
-    ]);
-    expect(rowOf(result, "g1")[0]).toEqual(["swim"]);
-    expect(sessionsOf(result, "swim")).toHaveLength(1);
-  });
-
-  it("stays, dotted, when nothing else fits its cell without a bend", () => {
-    const alone = rebuild([activity("swim", { max: 1 })]);
-    expect(alone.keep.emptied).toEqual([]);
-    expect(rowOf(alone, "g1")).toEqual([["swim"], ["swim"], ["swim"]]);
-    expect(alone.flags.length).toBeGreaterThan(0);
   });
 });

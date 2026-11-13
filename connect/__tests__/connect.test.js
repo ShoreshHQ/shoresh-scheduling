@@ -2781,7 +2781,38 @@ describe("Shoresh for AI tools and the command line", () => {
     });
     expect(unbuilt).toMatchObject({
       ok: false,
-      text: "No schedule for Week 2 yet: build it on Generated Schedule or start it on Manual Build first. Nothing was imported."
+      text: "Build Week 2 first. Nothing was imported."
+    });
+    // ELECT-2.5: a saved version (last year's imported one) is never the week's schedule: the
+    // refusal says to restore it or build the week, and nothing is offered to pick.
+    const onlyVersion = await call("bring_in_choices", input, {
+      run: answering(
+        [
+          ok(
+            JSON.stringify({
+              ...read,
+              setup: {
+                ...read.setup,
+                schedules: [
+                  {
+                    Id: "v2",
+                    [S.Week]: "w2",
+                    [S.Program]: "p1",
+                    [S.Origin]: "Imported",
+                    [S.Status]: "Version"
+                  }
+                ]
+              }
+            })
+          )
+        ],
+        []
+      ),
+      choices
+    });
+    expect(onlyVersion).toMatchObject({
+      ok: false,
+      text: "Restore a saved version or build Week 2 first. Nothing was imported."
     });
     // A week with its Generated Schedule both drafted and published: the two are named apart,
     // as the screen's list names them, never both "Generated Schedule" (UX pass 2026-11-10).

@@ -224,6 +224,7 @@ describe("c-shoresh-choices-import", () => {
     expect($(element, '[data-id="drop"]')).not.toBeNull();
   });
 
+  // ELECT-2.5 (Greg 2026-11-12): with no current schedule, the one thing to do.
   it("says when there are no elective sets, or no schedule that week", async () => {
     const none = await render({ sets: [], runs: [], answers: [] });
     expect($(none, '[data-id="no-sets"]').title).toBe("No elective sets yet");
@@ -233,9 +234,73 @@ describe("c-shoresh-choices-import", () => {
     week.dispatchEvent(new CustomEvent("change", { detail: { value: "w2" } }));
     await flush();
     expect($(element, '[data-id="no-schedule"]').title).toBe(
-      "No schedule for this week yet"
+      "Build Week 2 first."
     );
     expect($(element, '[data-id="drop"]')).toBeNull();
+  });
+
+  // ELECT-2.5 (Greg 2026-11-12): a saved version, last year's imported one included, is never the
+  // week's schedule: it is not offered, and the screen says to restore it or build the week.
+  it("never takes choices against a saved version, last year's imported one included", async () => {
+    choicesSetup.mockResolvedValue(SITUATION);
+    const element = createElement("c-shoresh-choices-import", {
+      is: ShoreshChoicesImport
+    });
+    element.terms = buildTerms([]);
+    element.setup = nsRecord({
+      ...SETUP,
+      schedules: [
+        ...SETUP.schedules,
+        {
+          Id: "v2",
+          Program__c: "p1",
+          Week__c: "w2",
+          Status__c: "Version",
+          Origin__c: "Imported"
+        }
+      ]
+    });
+    element.opening = { setId: "e1", weekId: "w2", scheduleId: "v2" };
+    document.body.appendChild(element);
+    await flush();
+    expect($(element, '[data-id="week"]').value).toBe("w2");
+    expect($(element, '[data-id="no-schedule"]').title).toBe(
+      "Restore a saved version or build Week 2 first."
+    );
+    expect($(element, '[data-id="drop"]')).toBeNull();
+  });
+
+  // ELECT-2.5: opened on one program's schedule, another program's saved version of the week
+  // doesn't send the director to restore one: this program's week has none.
+  it("with two programs, only the opened program's saved version is offered to restore", async () => {
+    choicesSetup.mockResolvedValue(SITUATION);
+    const element = createElement("c-shoresh-choices-import", {
+      is: ShoreshChoicesImport
+    });
+    element.terms = buildTerms([]);
+    element.setup = nsRecord({
+      ...SETUP,
+      programs: [
+        ...SETUP.programs,
+        { program: { Id: "p2", Name: "Teens" }, timeBlocks: [], divisions: [] }
+      ],
+      schedules: [
+        ...SETUP.schedules,
+        {
+          Id: "v2",
+          Program__c: "p2",
+          Week__c: "w2",
+          Status__c: "Version",
+          Origin__c: "Manual"
+        }
+      ]
+    });
+    element.opening = { setId: "e1", weekId: "w2", scheduleId: "c1" };
+    document.body.appendChild(element);
+    await flush();
+    expect($(element, '[data-id="no-schedule"]').title).toBe(
+      "Build Week 2 first."
+    );
   });
 
   it("card 1 draws the sheet with its reading and reads two campers back; card 2 settles names; card 3 counts and brings in", async () => {

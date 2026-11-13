@@ -88,9 +88,10 @@ async function bringInChoices(capability, input, { read, send, answer, load }) {
   if (week.problem) return refused(week.problem);
   const schedules = schedulesOf(setup, week.item.Id, m);
   if (schedules.length === 0) {
-    // As the screen's empty state says it ("No schedule for this week yet"), with the step first.
+    // As the screen's empty state says it: the one thing to do (ELECT-2.5). A saved version,
+    // last year's imported one included, never takes choices.
     return refused(
-      `No schedule for ${week.item.Name} yet: build it on Generated Schedule or start it on Manual Build first. Nothing was imported.`
+      `${m.noScheduleLine(setup, week.item.Id, t)} Nothing was imported.`
     );
   }
   const schedule =

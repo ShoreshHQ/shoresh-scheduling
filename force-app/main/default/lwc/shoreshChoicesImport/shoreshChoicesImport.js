@@ -20,6 +20,7 @@ import {
   buildRequest,
   linkedByFold,
   cantTellApartRows,
+  noScheduleLine,
   countLines,
   groupsOfProgram,
   keptCommentRows,
@@ -753,7 +754,12 @@ export default class ShoreshChoicesImport extends LightningElement {
     return `No ${this.t.pIn("ElectiveSet")} yet`;
   }
   get noScheduleText() {
-    return `No schedule for this ${this.t.sIn("Week")} yet`;
+    return noScheduleLine(
+      this._setup,
+      this.weekId,
+      this.t,
+      this._opening && this._opening.scheduleId
+    );
   }
   get statusText() {
     return this.status;

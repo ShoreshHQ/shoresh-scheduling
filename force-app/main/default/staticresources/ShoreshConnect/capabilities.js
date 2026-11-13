@@ -945,7 +945,7 @@ const CAPABILITIES = [
     ...change(
       "build_week",
       "build_week",
-      "Build a week's Generated Schedule, as its Generate button does (or Rebuild, once the week has been built: it keeps the week and changes only what setup now forces). Locked cells and hand edits are kept. The build runs here, on this computer, with the same engine as the screen, so the same week gives the same schedule."
+      "Build a week's Generated Schedule, as its Generate button does (or Rebuild, once the week has been built: the week is built fresh, the same as Generate on the option it was built with). Locked cells and hand edits are kept; nothing else carries over. The week as it was is kept in Versions first. The build runs here, on this computer, with the same engine as the screen, so the same week gives the same schedule."
     ),
     buildsWithEngine: true
   },

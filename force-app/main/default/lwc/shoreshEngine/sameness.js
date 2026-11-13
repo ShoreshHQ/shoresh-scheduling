@@ -3,9 +3,9 @@ import { compareText } from "./setup";
 /**
  * Protocol rule 9.10 (docs/engine/protocol.md): a fresh build never depends on an activity's place
  * in the list or its Id; between activities with identical settings (twins) the name breaks the
- * tie. Replacing one activity without moving anything else is guaranteed by Rebuild keeping the
- * week (weekKeep.js, protocol section 10, Greg 2026-10-27), not here. Greg's swap test (__tests__/swap.test.js): Sports,
- * which has no twin, swapped for an identical Adventure Baseball gives the same week.
+ * tie. Greg's swap test (__tests__/swap.test.js): Sports, which has no twin, swapped for an
+ * identical Adventure Baseball gives the same week. Rebuild builds fresh too (protocol 10.13, Greg
+ * 2026-11-12), so a renamed twin can trade places there as on Generate.
  *
  * So a build never sees the list's order: it works through the activities in settings-key order
  * (settingsKeys), and everything that goes through them in turn follows that order: the

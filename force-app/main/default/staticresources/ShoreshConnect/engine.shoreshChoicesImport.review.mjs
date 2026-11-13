@@ -395,6 +395,31 @@ function apartWords(rows) {
   return `${seen.slice(0, -1).join(", ")} and ${seen[seen.length - 1]}.`;
 }
 
+/**
+ * The one thing to do when the week has no current schedule (ELECT-2.5, Greg 2026-11-12): a saved
+ * version, last year's imported one included, never takes choices, so with one there the line
+ * says to restore it; else to build the week. openedOn: the schedule the screen was opened on, if
+ * any: then only its program's versions count, so another program's never sends the director to
+ * restore one this program doesn't have.
+ */
+export function noScheduleLine(setup, weekId, t, openedOn) {
+  const S = FIELD.Schedule;
+  const week = ((setup && setup.weeks) || []).find((w) => w.Id === weekId);
+  const name = week ? week.Name : t.sIn("Week");
+  const schedules = (setup && setup.schedules) || [];
+  const opened = schedules.find((s) => s.Id === openedOn);
+  const program = opened ? opened[S.Program] : null;
+  const saved = schedules.some(
+    (s) =>
+      s[S.Week] === weekId &&
+      s[S.Status] === "Version" &&
+      (!program || s[S.Program] === program)
+  );
+  return saved
+    ? `Restore a saved ${t.sIn("Version")} or build ${name} first.`
+    : `Build ${name} first.`;
+}
+
 /** Campers Shoresh can't tell apart (the one refusal): [{ key, name, where, why }]. */
 export function cantTellApartRows(reading) {
   return (reading.cantTellApart || []).map((item, i) => ({

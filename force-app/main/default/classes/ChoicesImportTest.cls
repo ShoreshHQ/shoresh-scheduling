@@ -43,11 +43,15 @@ private class ChoicesImportTest {
         },
         AccessLevel.USER_MODE
       );
-      schedule = ShoreshTestData.version(
-        ids.get('Main'),
-        ids.get('Week 1'),
-        'Week 1 draft'
+      // The week's current schedule, a Manual Build draft: never a saved version (ELECT-2.5).
+      schedule = new Schedule__c(
+        Program__c = ids.get('Main'),
+        Week__c = ids.get('Week 1'),
+        Name = 'Week 1 draft',
+        Status__c = 'Draft',
+        Origin__c = 'Manual'
       );
+      Database.insert(schedule, AccessLevel.SYSTEM_MODE);
     }
 
     ChoicesImport.Request request() {
@@ -514,6 +518,57 @@ private class ChoicesImportTest {
   }
 
   // ---------------------------------------------------------------- refused
+
+  // ELECT-2.5 (Greg 2026-11-12): a saved version is never the week's schedule, last year's
+  // imported one included; with no current schedule the refusal names the one thing to do.
+  @IsTest
+  static void aSavedVersionNeverTakesChoicesLastYearsImportedOneIncluded() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      ChoicesCamp camp = new ChoicesCamp();
+      List<Schedule__c> versions = new List<Schedule__c>{
+        ShoreshTestData.version(
+          camp.ids.get('Main'),
+          camp.ids.get('Week 1'),
+          'Last summer'
+        ),
+        ShoreshTestData.savedVersion(
+          camp.ids.get('Main'),
+          camp.ids.get('Week 1'),
+          'Before Rebuild'
+        )
+      };
+      List<String> said = new List<String>();
+
+      Test.startTest();
+      for (Schedule__c version : versions) {
+        ChoicesImport.Request request = camp.request();
+        request.scheduleId = version.Id;
+        request.campers.add(
+          withChoices(
+            camper(2, 'Maya Fernwood', '1001'),
+            archeryThenDrama(camp)
+          )
+        );
+        said.add(refusal(request));
+        try {
+          ChoicesImportController.checkChoices(JSON.serialize(request));
+          said.add('checked');
+        } catch (AuraHandledException e) {
+          said.add(e.getMessage());
+        }
+      }
+      Integer runs = [
+        SELECT COUNT()
+        FROM ElectiveRun__c
+        WHERE ElectiveSet__c = :camp.chugim.Id
+      ];
+      Test.stopTest();
+
+      String line = 'Restore a saved version or build Week 1 first.';
+      Assert.areEqual(new List<String>{ line, line, line, line }, said);
+      Assert.areEqual(0, runs, 'No run is made on a saved version.');
+    }
+  }
 
   @IsTest
   static void aFinalRunTakesNoNewChoices() {

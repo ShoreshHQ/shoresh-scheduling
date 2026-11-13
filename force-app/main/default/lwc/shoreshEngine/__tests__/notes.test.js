@@ -80,8 +80,6 @@ describe("the engine's notes kept with the week", () => {
         ["fit", "l1"]
       ],
       floor: { kind: "emptier", name: "Last summer", built: 10, imported: 12 },
-      keep: null,
-      mins: [],
       cut: 0
     });
     expect(readNotes(notesText(notes))).toEqual(notes);
@@ -171,8 +169,6 @@ describe("the engine's notes kept with the week", () => {
       open: [["d", "g", "b", "full"]],
       blank: [],
       floor: null,
-      keep: null,
-      mins: [],
       cut: 0
     });
   });
@@ -185,138 +181,16 @@ describe("the engine's notes kept with the week", () => {
     ]);
   });
 
-  // Protocol 10.7 (Greg 2026-10-27): what a Rebuild that kept the week changed.
-  // GEN-10.7
-  it("says what a Rebuild that kept the week changed, and reads it back", () => {
-    const at = (blockId) => ({ date: "2026-06-29", groupId: "g1", blockId });
-    const keep = {
-      emptied: [
-        // Sports, deleted since: its name as it was.
-        {
-          ...at("t1"),
-          activityId: "a9",
-          name: "Sports",
-          why: "gone",
-          length: 2,
-          refilled: true
-        },
-        {
-          ...at("t4"),
-          activityId: "a9",
-          name: "Sports",
-          why: "gone",
-          length: 1,
-          refilled: false
-        },
-        {
-          ...at("t5"),
-          activityId: "a2",
-          name: "Arts",
-          why: "weeklyMax",
-          length: 1,
-          refilled: true
-        }
-      ],
-      moved: [
-        {
-          ...at("t6"),
-          from: "a2",
-          to: "a1",
-          shortGroupId: "g1",
-          shortActivityId: "a1",
-          count: 2
-        }
-      ],
-      changed: 6,
-      filled: 1,
-      fresh: false
-    };
-    const notes = notesOf({ ...RESULT, keep });
-    expect(notes.keep).toEqual({
-      emptied: [
-        ["a9", "Sports", "gone", 3, 2, ""],
-        ["a2", "Arts", "weeklyMax", 1, 1, ""]
-      ],
-      moved: [["2026-06-29", "g1", "t6", "g1", "a1", 2]],
-      changed: 6,
-      filled: 1,
-      fresh: false
+  // GEN-10.13 (Greg 2026-11-12): Rebuild builds fresh, so a week saved by an older Rebuild that
+  // kept the week no longer says what it kept: those notes are not read.
+  it("reads no Rebuild-kept lines from a week saved before Rebuild built fresh", () => {
+    const old = JSON.stringify({
+      ...notesOf(RESULT),
+      keep: { emptied: [], moved: [], changed: 0, filled: 0, fresh: false },
+      mins: [["a1", 2]]
     });
-    expect(readNotes(notesText(notes))).toEqual(notes);
-    const input = {
-      ...INPUT,
-      days: [
-        { dateValue: "2026-06-29", blocks: [{ id: "t6", name: "Period 6" }] }
-      ]
-    };
-    expect(whyOf(notes, input, terms).notes.slice(-4)).toEqual([
-      "Sports was removed, so its 3 cells were emptied and 2 refilled.",
-      "Arts was over its weekly limit, so its cell was refilled.",
-      "Bunk 1 · Monday · Period 6: moved so Bunk 1 still gets Swim twice.",
-      "Placed 1 in Open cell. Kept everything else as it was."
-    ]);
-    // Nothing changed: said once, plainly.
-    const none = notesOf({
-      ...RESULT,
-      keep: { emptied: [], moved: [], changed: 0, filled: 0, fresh: false }
-    });
-    expect(whyOf(none, input, terms).notes.slice(-1)).toEqual([
-      "Nothing in setup needed a change, so everything was kept as it was."
-    ]);
-    // A damaged keep note is not read.
-    expect(
-      readNotes('{"v":1,"open":[],"blank":[],"keep":{"emptied":"x"}}').keep
-    ).toBeNull();
-  });
-
-  // Fix 4 and rule 10.9: the replacement is named; a week built fresh says so, never silent.
-  // GEN-10.9
-  it("names the activity that took a deleted one's cells, and says when the week was built fresh", () => {
-    const keep = {
-      emptied: [
-        {
-          date: "2026-06-29",
-          groupId: "g1",
-          blockId: "t1",
-          activityId: "a9",
-          name: "Drama",
-          why: "gone",
-          length: 1,
-          refilled: true,
-          with: "a1"
-        },
-        {
-          date: "2026-06-29",
-          groupId: "g1",
-          blockId: "t2",
-          activityId: "a9",
-          name: "Drama",
-          why: "gone",
-          length: 1,
-          refilled: true,
-          with: "a1"
-        }
-      ],
-      moved: [],
-      changed: 2,
-      filled: 0,
-      fresh: false
-    };
-    const notes = notesOf({ ...RESULT, keep });
-    expect(
-      whyOf(readNotes(notesText(notes)), INPUT, terms).notes.slice(-2)
-    ).toEqual([
-      "Drama was removed; Swim took its 2 cells.",
-      "Kept everything else as it was."
-    ]);
-    const fresh = notesOf({
-      ...RESULT,
-      keep: { emptied: [], moved: [], changed: 0, filled: 0, fresh: true }
-    });
-    expect(
-      whyOf(readNotes(notesText(fresh)), INPUT, terms).notes.slice(-1)
-    ).toEqual([
-      "Couldn't keep your Session: it would have had fewer filled cells than the imported Session, so it was built fresh."
-    ]);
+    const notes = readNotes(old);
+    expect(notes).toEqual(notesOf(RESULT));
+    expect(whyOf(notes, INPUT, terms).notes.join(" ")).not.toMatch(/Kept/);
   });
 });

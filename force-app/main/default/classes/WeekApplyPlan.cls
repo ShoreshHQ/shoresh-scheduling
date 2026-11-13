@@ -2,7 +2,8 @@
  * What Apply to other weeks does to one target week (WeekApply): worked out without saving, on
  * copies of its days, what comes off (WeekApplyClear), what goes in and what can't
  * (ManualWeekCopy), and how many cells end up holding something else; then saved, through the same
- * slot saves as any edit, on the draft locked by the caller.
+ * slot saves as any edit, on the draft locked by the caller (on a Generated draft, what it fills
+ * locked, as a hand edit's is).
  */
 public with sharing class WeekApplyPlan {
   private GeneratedSetup setup;
@@ -42,6 +43,8 @@ public with sharing class WeekApplyPlan {
       prepared.days = days;
     }
     prepared.rules = rules.rulesFor(edits);
+    // On Generated Schedule what it fills is locked, as a hand edit's is (WEEK-6.2).
+    prepared.lockEdits = !manual;
     if (!SlotSaves.makeWith(prepared, edits).conflicts.isEmpty()) {
       throw new ShoreshException(
         'The week could not be applied. Reload the page and try again.'
