@@ -1135,12 +1135,12 @@ describe("c-shoresh-program", () => {
       const { saves } = await saveLunch(element);
       expect(saves).toEqual([]);
       expect(ask(element).heading).toBe(
-        'What is "Field day" at Lunch on Monday, where "Lunch" is?'
+        "What is “Field day” at Lunch on Monday, where “Lunch” is?"
       );
       expect(ask(element).lines).toEqual([
-        '"Field day" keeps its other time blocks; "Lunch" takes Lunch.'
+        "“Field day” keeps its other time blocks every day it runs; “Lunch” keeps Lunch."
       ]);
-      expect(ask(element).confirmLabel).toBe('"Field day", not at Lunch');
+      expect(ask(element).confirmLabel).toBe("“Field day”, not at Lunch");
     });
 
     it("CORE-3.9: the answer saves it with the recurring activity's other time blocks", async () => {
@@ -1153,9 +1153,15 @@ describe("c-shoresh-program", () => {
       expect(ask(element)).toBeNull();
       expect(saves).toHaveLength(1);
       expect(saves[0].record).toBe(lunch);
+      // With Field day as the screen saw it, so the save refuses if it changed since.
+      const seen = {
+        seenName: "Field day",
+        seenTimeBlock: "t1",
+        seenLength: 3
+      };
       expect(saves[0].extras.around).toEqual([
-        { target: "r1", timeBlock: "t1", length: 1 },
-        { target: "r1", timeBlock: "t3", length: 1 }
+        { target: "r1", timeBlock: "t1", length: 1, ...seen },
+        { target: "r1", timeBlock: "t3", length: 1, ...seen }
       ]);
     });
 
@@ -1193,6 +1199,45 @@ describe("c-shoresh-program", () => {
         entryWith([{ ...fieldDay, Monday__c: false, Friday__c: true }])
       );
       expect((await saveLunch(friday)).saves).toHaveLength(1);
+    });
+
+    it("CORE-3.9 counter-case: no question when no group it covers is there, as the save's check counts", async () => {
+      const noGroups = await render("fixedActivities", {
+        ...entryWith([fieldDay]),
+        divisions: []
+      });
+      expect((await saveLunch(noGroups)).saves).toHaveLength(1);
+      expect(ask(noGroups)).toBeNull();
+    });
+
+    it("CORE-3.9: a week ticked back on that meets it asks too", async () => {
+      const element = await render("fixedActivities", {
+        ...entryWith([fieldDay]),
+        fixedActivities: [
+          { Id: "f1", Name: "Lunch", TimeBlock__c: "t2", Length__c: 1 }
+        ]
+      });
+      element.weekExceptions = nsRecord([
+        { Id: "x3", Week__c: "w1", FixedActivity__c: "f1" }
+      ]);
+      await flush();
+      const saves = [];
+      element.addEventListener("save", (e) => saves.push(e.detail));
+      element.shadowRoot
+        .querySelector("c-shoresh-editable-table")
+        .dispatchEvent(
+          new CustomEvent("save", {
+            detail: {
+              record: { Id: "f1" },
+              extras: { weeksBackOn: ["x3"] },
+              onFailure: jest.fn(),
+              onDone: jest.fn()
+            }
+          })
+        );
+      await flush();
+      expect(saves).toEqual([]);
+      expect(ask(element)).not.toBeNull();
     });
   });
 });

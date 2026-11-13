@@ -185,7 +185,7 @@ public with sharing class ScreenSaves {
     }
 
     public void write() {
-      SetTimeAround.split(given.around);
+      SetTimeAround.split(rows, given.around);
       NoDivisions.holdNew(rows, given.noDivisionProgram);
       RunsIn.save(rows, given.weeksOff, given.weeksBackOn);
       SetTimeWho.save(rows, given.who);

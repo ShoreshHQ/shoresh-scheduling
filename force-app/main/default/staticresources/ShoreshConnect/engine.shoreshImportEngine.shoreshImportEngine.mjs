@@ -203,7 +203,7 @@ export function isCsv(name) {
   return /\.(csv|tsv|txt)$/i.test(String(name || ""));
 }
 
-export { questionCards } from "./engine.shoreshImportEngine.questions.mjs";
+export { questionCards, dayList, nameList } from "./engine.shoreshImportEngine.questions.mjs";
 export {
   planFor,
   foundLists,

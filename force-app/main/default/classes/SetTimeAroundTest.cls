@@ -21,25 +21,7 @@ private class SetTimeAroundTest {
   static void core39AFixedActivityOverARecurringOneKeepsItAtItsOtherTimeBlocks() {
     System.runAs(ShoreshTestData.scheduler()) {
       Map<String, Id> ids = SetTimeTestData.camp();
-      RecurringActivity__c fieldDay = SetTimeTestData.recurring(
-        ids,
-        'Field day',
-        'Period 1'
-      );
-      fieldDay.Length__c = 3;
-      fieldDay.Location__c = ids.get('Gym');
-      Id fieldDayId = SetTimeTestData.save(
-        new List<SObject>{ fieldDay },
-        SetTimeTestData.extras(
-          new List<RunsIn.WeekOff>{
-            SetTimeTestData.weekOff(0, null, ids.get('Week 2'))
-          },
-          null,
-          new List<SetTimeWho.Who>{
-            SetTimeTestData.who(0, null, new List<Id>{ ids.get('Group A') })
-          }
-        )
-      )[0];
+      Id fieldDayId = fieldDay(ids);
 
       String refused = SetTimeTestData.refusal(
         new List<SObject>{ SetTimeTestData.fixed(ids, 'Rest', 'Period 2') }
@@ -47,10 +29,7 @@ private class SetTimeAroundTest {
       Assert.isTrue(refused.contains('"Field day"'), refused);
 
       ScreenSaves.Extras around = new ScreenSaves.Extras();
-      around.around = new List<SetTimeAround.Piece>{
-        piece(fieldDayId, ids.get('Period 1'), 1),
-        piece(fieldDayId, ids.get('Lunch'), 1)
-      };
+      around.around = fieldDayAround(ids, fieldDayId);
       Test.startTest();
       RowSaves.Result result = SetupTablesController.saveRow(
         SetTimeTestData.fixed(ids, 'Rest', 'Period 2'),
@@ -102,28 +81,53 @@ private class SetTimeAroundTest {
     }
   }
 
-  /** CORE-3.9: a piece naming no recurring activity the director can see saves nothing. */
+  /**
+   * CORE-3.9: nothing is saved when the recurring activity changed since the screen showed it,
+   * is gone, or the save isn't a fixed activity's.
+   */
   @IsTest
-  static void core39APieceForNothingSavesNothing() {
+  static void core39ARecurringActivityChangedSinceOrGoneSavesNothing() {
     System.runAs(ShoreshTestData.scheduler()) {
       Map<String, Id> ids = SetTimeTestData.camp();
+      Id fieldDayId = fieldDay(ids);
+      // Someone else made it 2 long.
+      update as user new RecurringActivity__c(Id = fieldDayId, Length__c = 2);
       ScreenSaves.Extras around = new ScreenSaves.Extras();
-      around.around = new List<SetTimeAround.Piece>{
-        piece(ids.get('Period 1'), ids.get('Period 1'), 1)
-      };
-      try {
-        SetupTablesController.saveRow(
-          SetTimeTestData.fixed(ids, 'Rest', 'Period 2'),
-          null,
-          around
-        );
-        Assert.fail('Expected the save to be refused');
-      } catch (AuraHandledException e) {
-        Assert.areEqual(
-          0,
-          [SELECT COUNT() FROM FixedActivity__c WITH SYSTEM_MODE]
-        );
-      }
+      around.around = fieldDayAround(ids, fieldDayId);
+      String changed = refusalOf(
+        SetTimeTestData.fixed(ids, 'Rest', 'Period 2'),
+        around
+      );
+      Assert.isTrue(changed.contains('"Field day" was changed'), changed);
+
+      around.around[0].target = ids.get('Period 1');
+      around.around[1].target = ids.get('Period 1');
+      String gone = refusalOf(
+        SetTimeTestData.fixed(ids, 'Rest', 'Period 2'),
+        around
+      );
+      Assert.isTrue(gone.contains('"Field day" is no longer there'), gone);
+
+      around.around = fieldDayAround(ids, fieldDayId);
+      String notFixed = refusalOf(
+        new RecurringActivity__c(Id = fieldDayId, Name = 'Field days'),
+        around
+      );
+      Assert.isTrue(notFixed.contains('can\'t save that'), notFixed);
+      Assert.areEqual(
+        0,
+        [SELECT COUNT() FROM FixedActivity__c WITH SYSTEM_MODE]
+      );
+      Assert.areEqual(
+        2,
+        [
+          SELECT Length__c
+          FROM RecurringActivity__c
+          WHERE Id = :fieldDayId
+          WITH SYSTEM_MODE
+        ]
+        .Length__c
+      );
     }
   }
 }

@@ -1,20 +1,14 @@
 import { FIELD } from "c/shoreshSchema";
-import { WEEKDAYS } from "c/shoreshImportEngine";
-import { spokenWeekday } from "c/shoreshDayNames";
+import { WEEKDAYS, dayList, nameList } from "c/shoreshImportEngine";
+import { coversSomeoneAt } from "c/shoreshSetupRules";
 
 const FIXED = FIELD.FixedActivity;
 const RECURRING = FIELD.RecurringActivity;
 const EXCEPTION = FIELD.WeekException;
 
-/** "A", "A and B", "A, B and C". */
-function listed(words) {
-  return words.length < 2
-    ? words.join("")
-    : `${words.slice(0, -1).join(", ")} and ${words[words.length - 1]}`;
-}
-
+// As the import's question writes them (shoreshImportEngine questions.js).
 function quoted(name) {
-  return `"${name}"`;
+  return `“${name}”`;
 }
 
 /** The weeks a row runs in: every week but its week-off marks. Null when the season has none. */
@@ -41,11 +35,13 @@ export function fixedOver(entry, save, weeks, weekExceptions, terms) {
   const saved = record.Id
     ? (entry.fixedActivities || []).find((f) => f.Id === record.Id)
     : null;
+  const extras = save.extras || {};
   if (
     record.Id &&
     ![FIXED.TimeBlock, FIXED.Length, FIXED.EarlyDay, FIXED.EarlyBlocks].some(
       (field) => field in record
-    )
+    ) &&
+    !(extras.weeksBackOn || []).length
   ) {
     return null;
   }
@@ -65,7 +61,6 @@ export function fixedOver(entry, save, weeks, weekExceptions, terms) {
     return runs(day) && b >= from && b < start + length;
   };
 
-  const extras = save.extras || {};
   const backOn = new Set(extras.weeksBackOn || []);
   const fixedOff = new Set([
     ...(record.Id
@@ -95,7 +90,10 @@ export function fixedOver(entry, save, weeks, weekExceptions, terms) {
     }
     const days = WEEKDAYS.filter((d) => item[RECURRING[d]] && runs(d));
     const span = Math.min(first + (item[RECURRING.Length] || 1), blocks.length);
-    const held = (b) => days.some((d) => holds(d, b));
+    // Only where a group it covers is at camp, as the save's clash check counts.
+    const held = (b) =>
+      days.some((d) => holds(d, b)) &&
+      coversSomeoneAt(entry, item, RECURRING, blocks[b]);
     const at = [];
     const pieces = [];
     for (let b = first; b < span; b++) {
@@ -128,29 +126,31 @@ export function fixedOver(entry, save, weeks, weekExceptions, terms) {
     return null;
   }
 
-  const names = listed(clashing.map((c) => quoted(c.item.Name)));
+  const names = nameList(clashing.map((c) => quoted(c.item.Name)));
   const atBlocks = [...new Set(clashing.flatMap((c) => c.at))].sort(
     (a, b) => a - b
   );
-  const blockNames = listed(atBlocks.map((b) => blocks[b].Name));
-  const onDays = listed(
-    WEEKDAYS.filter((d) => clashing.some((c) => c.days.includes(d))).map(
-      spokenWeekday
-    )
+  const blockNames = nameList(atBlocks.map((b) => blocks[b].Name));
+  const onDays = dayList(
+    WEEKDAYS.filter((d) => clashing.some((c) => c.days.includes(d)))
   );
   const name = quoted(fixed.Name);
   const one = clashing.length === 1;
   return {
     heading: `What ${one ? "is" : "are"} ${names} at ${blockNames} on ${onDays}, where ${name} is?`,
     lines: [
-      `${names} ${one ? "keeps its" : "keep their"} other ${terms.pIn("TimeBlock")}; ${name} takes ${blockNames}.`
+      `${names} ${one ? "keeps its" : "keep their"} other ${terms.pIn("TimeBlock")} every day ${one ? "it runs" : "they run"}; ${name} keeps ${blockNames}.`
     ],
     confirmLabel: `${names}, not at ${blockNames}`,
     around: clashing.flatMap((c) =>
       c.pieces.map((p) => ({
         target: c.item.Id,
         timeBlock: blocks[p.block].Id,
-        length: p.length
+        length: p.length,
+        // As the screen saw it: the save refuses if someone changed it since.
+        seenName: c.item.Name,
+        seenTimeBlock: c.item[RECURRING.TimeBlock],
+        seenLength: c.item[RECURRING.Length] || 1
       }))
     )
   };

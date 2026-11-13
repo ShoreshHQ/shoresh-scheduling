@@ -14,11 +14,25 @@ public with sharing class SetTimeAround {
     public Id timeBlock { get; set; }
     @AuraEnabled
     public Integer length { get; set; }
+    /** The recurring activity as the screen showed it: refused if someone changed it since. */
+    @AuraEnabled
+    public String seenName { get; set; }
+    @AuraEnabled
+    public Id seenTimeBlock { get; set; }
+    @AuraEnabled
+    public Integer seenLength { get; set; }
   }
 
-  public static void split(List<Piece> pieces) {
+  /** Only with one fixed activity's save: nothing else is saved over a recurring activity. */
+  public static void split(List<SObject> rows, List<Piece> pieces) {
     if (pieces == null || pieces.isEmpty()) {
       return;
+    }
+    if (
+      rows.size() != 1 ||
+      rows[0].getSObjectType() != FixedActivity__c.SObjectType
+    ) {
+      throw ScreenErrors.of('These screens can\'t save that.');
     }
     Map<Id, List<Piece>> byTarget = new Map<Id, List<Piece>>();
     for (Piece piece : pieces) {
@@ -54,6 +68,18 @@ public with sharing class SetTimeAround {
       WITH USER_MODE
     ]) {
       List<Piece> runs = byTarget.get(item.Id);
+      Piece seen = runs[0];
+      if (
+        item.TimeBlock__c != seen.seenTimeBlock ||
+        (item.Length__c == null ? 1 : item.Length__c.intValue()) !=
+        seen.seenLength
+      ) {
+        throw ScreenErrors.of(
+          '"' +
+            item.Name +
+            '" was changed by someone else since you saw it. Nothing was saved; save again to see it as it is now.'
+        );
+      }
       changed.add(
         new RecurringActivity__c(
           Id = item.Id,
@@ -71,8 +97,14 @@ public with sharing class SetTimeAround {
       }
       copiesOf.put(item.Id, copies);
     }
-    if (copiesOf.size() != targets.size()) {
-      throw ScreenErrors.of('These screens can\'t save that.');
+    for (Id target : targets) {
+      if (!copiesOf.containsKey(target)) {
+        String name = byTarget.get(target)[0].seenName;
+        throw ScreenErrors.of(
+          (String.isBlank(name) ? 'That' : '"' + name + '"') +
+          ' is no longer there. Nothing was saved.'
+        );
+      }
     }
     UserModeWrites.save(changed);
     UserModeWrites.save(coverageOf(copiesOf));
