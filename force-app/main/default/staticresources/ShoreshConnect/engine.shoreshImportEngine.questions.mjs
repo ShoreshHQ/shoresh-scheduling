@@ -24,6 +24,7 @@ import {
 import { shortDate } from "./engine.shoreshTerms.shoreshTerms.mjs";
 import { LEAVE_OUT } from "./engine.shoreshImportEngine.reading.mjs";
 import { COLOUR_ADD, NO_DIVISION, blocksOf } from "./engine.shoreshImportEngine.reading-constants.mjs";
+import { AROUND as CLASH_AROUND, SPECIAL as CLASH_SPECIAL } from "./engine.shoreshImportEngine.clashes.mjs";
 import { WEEKDAYS, shortClock, weekOrder } from "./engine.shoreshImportEngine.text.mjs";
 
 function quoted(name) {
@@ -822,7 +823,46 @@ function colourCard(ask) {
   };
 }
 
+/**
+ * INGEST-3.11: a new recurring activity in a fixed activity's time block, named with it. Its
+ * answers: recurring at its other time blocks (pre-selected when it has any, as the desktop's
+ * event splits around a fixed Lunch), a special day when it fills the day, or left out.
+ */
+function clashCard(ask, t) {
+  const name = quoted(ask.name);
+  const fixed = nameList(ask.fixed.map(quoted));
+  const blocks = nameList(ask.blocks.map((b) => ask.timetable.blocks[b].name));
+  const days = dayList(ask.days);
+  const options = [];
+  if (ask.around) {
+    options.push({
+      value: CLASH_AROUND,
+      label: `${capital(article(t.sIn("RecurringActivity")))}, not at ${blocks}`,
+      description: `${name} comes in at its other ${t.pIn("TimeBlock")}; ${fixed} keeps ${blocks}.`
+    });
+  }
+  if (ask.special) {
+    options.push({
+      value: CLASH_SPECIAL,
+      label: capital(article(t.sIn("SpecialDay"))),
+      description: `${name} is noted as ${article(t.sIn("SpecialDay"))} on ${days}, to set up from Roots.`
+    });
+  }
+  options.push(leaveOut(`${name} is not added this time.`));
+  return {
+    id: ask.id,
+    stage: "review",
+    lane: "hold",
+    title: `What is ${name} at ${blocks} on ${days}, where ${fixed} is?`,
+    subject: ask.name,
+    subtitle: `${ask.program}: ${fixed} is ${article(t.sIn("FixedActivity"))}, at ${blocks} every day for every ${t.sIn("Group")}.`,
+    preselected: ask.preselected,
+    options
+  };
+}
+
 const CARDS = {
+  clash: clashCard,
   colour: colourCard,
   week: weekCard,
   specialDayClash: specialDayClashCard,

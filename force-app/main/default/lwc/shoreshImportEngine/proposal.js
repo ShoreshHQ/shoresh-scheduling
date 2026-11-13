@@ -11,6 +11,7 @@ import {
   campItems,
   decideKinds,
   earlyOf,
+  notedKind,
   notedNames,
   setTimeRecords,
   usablePlacements
@@ -26,6 +27,7 @@ import { LEAVE_OUT, readImport } from "./reading";
 import { COLOUR_ADD } from "./reading-constants";
 import { WEEKDAYS, looseKey } from "./text";
 import { versionsFor } from "./version";
+import { settleClashes, specialByAnswer } from "./clashes";
 
 const MS_PER_MINUTE = 60000;
 
@@ -456,10 +458,10 @@ function deletedItems(decisions, groups, timetables, places) {
   );
 }
 
-function notedList(usable, kinds) {
+function notedList(usable, noted) {
   const result = new Map();
   for (const p of usable) {
-    const kind = kinds.get(p.text);
+    const kind = notedKind(noted, p.timetable, p.text);
     // Electives are set up (electives.js), not noted.
     if (kind && kind !== "E") {
       const entry = result.get(p.text) || {
@@ -572,11 +574,13 @@ export function buildProposal(input) {
     deletions,
     camp
   });
+  const asSpecial = specialByAnswer(answers);
   const noted = notedNames(
     usable,
     programs.timetables,
     input.terms,
-    electives.texts
+    electives.texts,
+    asSpecial
   );
   const ctx = {
     camp,
@@ -594,12 +598,19 @@ export function buildProposal(input) {
     divisionOf: people.divisionOf,
     availability,
     baseOf: new Map(people.groups.map((g) => [g.name, g.base || g.name])),
-    noted: noted.kinds,
+    noted,
     similar: unansweredSimilar(reading.pairs, answers)
   };
   const decisions = decideKinds(usable, ctx);
   const keyOf = keysFor(people.groups, input.existing, reading.identities);
-  const setTime = setTimeFrom(decisions, ctx, keyOf);
+  // INGEST-3.11: a new recurring activity in a fixed activity's time block is asked about.
+  const setTime = settleClashes(
+    setTimeFrom(decisions, ctx, keyOf),
+    decisions,
+    usable,
+    ctx,
+    asSpecial
+  );
   const activities = activitiesFrom(
     decisions,
     usable,
@@ -630,7 +641,7 @@ export function buildProposal(input) {
     reading,
     usable,
     camp: ctx.camp,
-    notedKinds: noted.kinds,
+    notedOf: noted,
     timetables: programs.timetables,
     groups: people.groups,
     availability,
@@ -641,7 +652,7 @@ export function buildProposal(input) {
     locations: places.locations,
     offeredPlaces: places.offered,
     updates: ctx.updates,
-    noted: notedList(usable, noted.kinds),
+    noted: notedList(usable, noted),
     electives,
     leftOutNames: leftOutNames(decisions),
     deleted: deletedItems(decisions, people.groups, programs.timetables, [

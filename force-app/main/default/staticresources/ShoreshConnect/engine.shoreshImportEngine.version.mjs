@@ -13,7 +13,7 @@
  * has); the server puts in the Ids once everything is saved.
  */
 import { FIELD } from "./engine.shoreshSchema.shoreshSchema.mjs";
-import { fixedKey } from "./engine.shoreshImportEngine.items.mjs";
+import { fixedKey, notedKind } from "./engine.shoreshImportEngine.items.mjs";
 import { LEAVE_OUT } from "./engine.shoreshImportEngine.reading.mjs";
 import { blocksOf } from "./engine.shoreshImportEngine.reading-constants.mjs";
 import { WEEKDAYS, clock, looseKey, tidy } from "./engine.shoreshImportEngine.text.mjs";
@@ -234,7 +234,7 @@ function itemKeyFinder(proposal) {
       }
       return elective.deleted ? { deleted: true } : null;
     }
-    const noted = proposal.notedKinds.get(p.text);
+    const noted = notedKind(proposal.notedOf, t.index, p.text);
     if (noted) {
       return { kind: noted, key: "" };
     }

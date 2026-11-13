@@ -73,9 +73,11 @@ export function usablePlacements(reading, timetables, groups) {
  * Electives (electives.js) are "E" here too, so nothing else decides them; an elective word that is
  * not one after all (the camp has it, or "Not electives") goes the usual way.
  */
-function notedNames(usable, timetables, terms, electiveTexts) {
+function notedNames(usable, timetables, terms, electiveTexts, asSpecial) {
   const kinds = new Map();
   const specialDays = new Map();
+  // "timetable index|name": answered a special day in that program only (INGEST-3.11).
+  const answered = new Set();
   for (const p of usable) {
     const word = notedKindByWords(p.text, terms);
     const kind = electiveTexts.has(p.text) ? "E" : word === "E" ? null : word;
@@ -87,18 +89,34 @@ function notedNames(usable, timetables, terms, electiveTexts) {
     const cells = usable.filter(
       (p) => p.timetable === t.index && !kinds.has(p.text)
     );
-    for (const name of specialDayNames(
-      cells,
-      t.groups.length,
-      t.blocks.length
-    )) {
-      kinds.set(name, "D");
+    const special = specialDayNames(cells, t.groups.length, t.blocks.length);
+    // INGEST-3.11: a name answered "special day" (clashes.js specialByAnswer, "Program|Name") is
+    // one in its own program, on the days the file has it there.
+    const byAnswer = new Set(
+      cells
+        .filter((p) => asSpecial && asSpecial.has(`${t.name}|${p.text}`))
+        .map((p) => p.text)
+    );
+    for (const name of new Set([...special, ...byAnswer])) {
+      if (special.has(name)) {
+        kinds.set(name, "D");
+      } else {
+        answered.add(`${t.index}|${name}`);
+      }
       cells
         .filter((p) => p.text === name)
         .forEach((p) => specialDays.set(`${t.index}|${p.week}|${p.day}`, true));
     }
   }
-  return { kinds, specialDays };
+  return { kinds, specialDays, answered };
+}
+
+/** What a name noted but not set up is in one timetable ("D", "E", "S", "T"), or undefined. */
+function notedKind(noted, timetableIndex, text) {
+  return (
+    noted.kinds.get(text) ||
+    (noted.answered.has(`${timetableIndex}|${text}`) ? "D" : undefined)
+  );
 }
 
 /** "Off" and "away" cells: nothing scheduled for that group then. */
@@ -111,7 +129,7 @@ const OFF = /^(off|away|day off|absent|no camp|closed)$/;
 function busyMap(here, noted) {
   const busy = new Map();
   for (const p of here) {
-    if (noted.has(p.text) || OFF.test(looseKey(p.text))) {
+    if (notedKind(noted, p.timetable, p.text) || OFF.test(looseKey(p.text))) {
       continue;
     }
     for (const b of blocksOf(p)) {
@@ -275,7 +293,7 @@ function verdictFor(name, t, facts, decided, ctx) {
 function cellsByName(usable, t, noted) {
   const byName = new Map();
   for (const p of usable.filter(
-    (x) => x.timetable === t.index && !noted.has(x.text)
+    (x) => x.timetable === t.index && !notedKind(noted, t.index, x.text)
   )) {
     if (!byName.has(p.text)) {
       byName.set(p.text, []);
@@ -530,4 +548,4 @@ export function activityRecord(name, cells, allGroups, divisionOf, keyOf) {
   };
 }
 
-export { notedNames, campItems };
+export { notedNames, notedKind, campItems };

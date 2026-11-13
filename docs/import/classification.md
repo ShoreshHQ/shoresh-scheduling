@@ -193,9 +193,34 @@ example, test.
     …"; `classify.test.js` "INGEST-3.10: camp words never change the reading"; the measure on
     asked cases is `shoreshPatterns/__tests__/campWordsMeasure.test.js`.
 
+11. **A recurring activity in a fixed activity's time block → asked in the review (word walk B,
+    2026-11-12).**
+    Clue: a new recurring activity (rules 3 and 7) has cells, on a day that is not a special day,
+    in a time block a fixed activity of the same program holds that day: one this import adds or
+    one the camp has (at the block an update moves it to; on its early day from earlier,
+    CORE-3.7). A fixed activity holds its block every day for every group, so the save would
+    refuse the two ("would both have Bunk 1 in Lunch on Friday") where nothing can fix it.
+    Meaning: one question per name and program in Needs a look (CORE-6.12), naming both: "What is
+    “Field day” at Lunch on Friday, where “Lunch” is?" (key `clash|<program>|<name>`). Its answers:
+    **A recurring activity, not at Lunch** (its records lose the blocks the fixed activity holds
+    on any of its days, split into the runs left), offered when anything is left, and then
+    pre-selected, so the import saves cleanly unanswered (desktop ADR
+    2026-10-11-import-special-days-and-field-trips: an event never claims a fixed Lunch's block,
+    the run splits around it; a special day only when the director says so); **A special day**,
+    offered when its cells fill each of its group-days (three quarters of the blocks, as a
+    special day's name does): noted as a special day on its days (SPECIAL-1.5, set up later),
+    which also leaves those days out of "every day" for the other names; and **Leave it out for
+    now**. With nothing left around it and not filling the day, only Leave it out is offered and
+    nothing is pre-selected: it is a question left, counted. A file that prints Lunch inside the
+    run already splits it, and nothing is asked. Not covered: a new fixed activity over a
+    recurring activity the camp already has (the save still says it).
+    Code: `clashes.js` (`settleClashes`); the card is `clashCard` in `questions.js`. Test:
+    `__tests__/clashes.test.js` "INGEST-3.11: …"; the screen's "INGEST-3.11: a recurring
+    activity over the camp's fixed Lunch is a row in Needs a look, …".
+
 ## Asked, because the grid supports both readings
 
-Only these three. Each card offers set time, activity, or leave it out.
+Only these three (and rule 11's clash, asked once the kinds are read). Each card offers set time, activity, or leave it out.
 
 - **A. Mostly at a set time, a few times elsewhere.** A strong set time (most days, or most
   groups) holds at least three quarters of the name's cells, and the rest are at other times
