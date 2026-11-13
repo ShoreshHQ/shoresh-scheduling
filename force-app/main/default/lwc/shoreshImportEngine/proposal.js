@@ -26,6 +26,7 @@ import { LEAVE_OUT, readImport } from "./reading";
 import { COLOUR_ADD } from "./reading-constants";
 import { WEEKDAYS, looseKey } from "./text";
 import { versionsFor } from "./version";
+import { settleClashes, specialByAnswer } from "./clashes";
 
 const MS_PER_MINUTE = 60000;
 
@@ -572,11 +573,13 @@ export function buildProposal(input) {
     deletions,
     camp
   });
+  const asSpecial = specialByAnswer(answers);
   const noted = notedNames(
     usable,
     programs.timetables,
     input.terms,
-    electives.texts
+    electives.texts,
+    asSpecial
   );
   const ctx = {
     camp,
@@ -599,7 +602,14 @@ export function buildProposal(input) {
   };
   const decisions = decideKinds(usable, ctx);
   const keyOf = keysFor(people.groups, input.existing, reading.identities);
-  const setTime = setTimeFrom(decisions, ctx, keyOf);
+  // INGEST-3.11: a new recurring activity in a fixed activity's time block is asked about.
+  const setTime = settleClashes(
+    setTimeFrom(decisions, ctx, keyOf),
+    decisions,
+    usable,
+    ctx,
+    asSpecial
+  );
   const activities = activitiesFrom(
     decisions,
     usable,
