@@ -90,11 +90,12 @@
             <template lwc:if={asksSchedule}>
               <!-- Its name shown too, not only read out (Greg's pick, 2026-11-12). -->
               <span class="rail-word" aria-hidden="true">Schedule</span>
-              <!-- Its choice stops at about 8em; the whole name on hover and read out. -->
+              <!-- Its choice stops at about 8em; the whole name on the button's hover, read out,
+                   and in the open menu. -->
               <c-shoresh-rail-picker
                 class="schedule-picker"
                 data-id="schedule"
-                title={scheduleName}
+                hover-text={scheduleName}
                 label="Schedule"
                 value={scheduleId}
                 options={scheduleOptions}
