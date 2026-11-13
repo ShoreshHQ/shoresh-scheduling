@@ -214,14 +214,19 @@
 
 /* The list under the rail; a short list reads as a list, not a band (880 at 1440). Wider than
    the frame (a narrow screen, a row's details open), it scrolls as one, column names and all,
-   never the page (positioned, so its cells' screen-reader words scroll inside it too). */
+   never the page (positioned, so its cells' screen-reader words scroll inside it too). Only
+   then (listFit.js): a box that scrolls cuts off a time block's list or a date's calendar
+   opening below its last row. */
 .setup-list {
   position: relative;
   display: flex;
   flex-direction: column;
   padding: var(--shoresh-space-pad);
-  overflow-x: auto;
   --shoresh-table-scroll: visible;
+}
+
+.setup-list.too-wide {
+  overflow-x: auto;
 }
 
 .list_narrow > * {

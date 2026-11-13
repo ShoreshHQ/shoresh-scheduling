@@ -71,6 +71,7 @@ import {
 import { CHILDREN, childRows, FIELD, OBJECT, PARENT } from "c/shoreshSchema";
 import { RootsTravel } from "c/shoreshRootsTravel";
 import { rememberedPlace, rememberPlace } from "c/shoreshPlace";
+import { ListFit } from "./listFit";
 
 // Names as the package has them (c/shoreshSchema).
 const SEASON = FIELD.Season;
@@ -411,6 +412,8 @@ export default class ShoreshCampSetup extends LightningElement {
   disconnectedCallback() {
     this.traveller?.stop();
     this.traveller = null;
+    this.listFit?.stop();
+    this.listFit = null;
   }
 
   connectedCallback() {
@@ -586,6 +589,11 @@ export default class ShoreshCampSetup extends LightningElement {
   }
 
   renderedCallback() {
+    // Setup lists scroll sideways only while too wide, so nothing opening in them is cut off.
+    if (!this.listFit) {
+      this.listFit = new ListFit();
+    }
+    this.listFit.watch(this.template);
     this.leaveScreen();
     this.startTravel();
     if (this.focusAfter) {

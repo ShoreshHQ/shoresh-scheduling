@@ -2683,9 +2683,15 @@ describe("c-shoresh-editable-table", () => {
       expect(
         read("shoreshEditableTable").replace(/\/\*[\s\S]*?\*\//g, "")
       ).not.toMatch(/(^|[\s,])\.scroll\b/m);
-      const list = read("shoreshCampSetup").match(/\.setup-list\s*{[^}]*}/)[0];
-      expect(list).toMatch(/overflow-x: auto;/);
+      const css = read("shoreshCampSetup");
+      const list = css.match(/\.setup-list\s*{[^}]*}/)[0];
       expect(list).toMatch(/position: relative;/);
+      // It scrolls only while too wide (listFit.js): a box that scrolls cuts off what opens
+      // below its last row.
+      expect(list).not.toMatch(/overflow/);
+      expect(css.match(/\.setup-list\.too-wide\s*{[^}]*}/)[0]).toMatch(
+        /overflow-x: auto;/
+      );
       // A details panel's long name, with its hidden " details", stays inside the panel too.
       for (const panel of [
         "shoreshActivityDetails",
