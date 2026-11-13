@@ -276,13 +276,15 @@ describe("the start", () => {
     ]);
     expect(picker.value).toBe("s1");
     // Its choice stops at about 8em (the rail keeps to one row at 1440): the whole name is on
-    // hover and read out.
+    // the button's hover and read out. Never on the picker itself, where the hover name would
+    // show over the open menu's rows.
     expect(picker.classList.contains("schedule-picker")).toBe(true);
-    expect(picker.title).toBe("Manual Build");
-    const word = picker.shadowRoot
-      .querySelector("c-shoresh-rail-pop")
-      .shadowRoot.querySelector('[data-id="button"]');
+    expect(picker.title).toBe("");
+    const pop = picker.shadowRoot.querySelector("c-shoresh-rail-pop");
+    const word = pop.shadowRoot.querySelector('[data-id="button"]');
     expect(word.getAttribute("aria-label")).toBe("Manual Build");
+    expect(word.title).toBe("Manual Build");
+    expect(pop.shadowRoot.querySelector('[data-id="pop"]').title).toBe("");
   });
 
   // Word walk W6: Week 1's choices may be on its other schedule, so the one shown is named.

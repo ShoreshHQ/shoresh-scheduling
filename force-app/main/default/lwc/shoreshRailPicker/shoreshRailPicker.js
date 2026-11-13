@@ -27,6 +27,8 @@ export default class ShoreshRailPicker extends LightningElement {
   @api options = [];
   @api disabled = false;
   @api arrows = false;
+  /** Words on the button's hover only, never over its open menu (a cut name in full). */
+  @api hoverText;
 
   // The arrow just pressed, while it may be the one that goes (Week 1 has no '‹').
   pressed = null;

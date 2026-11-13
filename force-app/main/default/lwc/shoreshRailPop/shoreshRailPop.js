@@ -31,6 +31,8 @@ export default class ShoreshRailPop extends LightningElement {
   @api count;
   @api mark = false;
   @api alternativeText;
+  /** Words on the button's hover only: never on the host, where they would show over the menu. */
+  @api hoverText;
   @api menu = false;
   @api align = "left";
   @api disabled = false;
