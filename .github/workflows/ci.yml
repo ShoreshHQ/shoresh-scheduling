@@ -80,6 +80,10 @@ jobs:
       - name: No Apex name that is a reserved word
         # scripts/apex-reserved-words.js: `Integer number` fails only in the org's compiler (#46).
         run: npm run check:reserved-words
+      - name: Only ShoreshTable styles inside Salesforce's fields
+        # scripts/salesforce-insides.js: ADR 0015 choice 11's one exception; nothing else may
+        # depend on how Salesforce builds its fields inside.
+        run: npm run check:salesforce-insides
       - name: Install Salesforce CLI and Code Analyzer
         id: install-sf
         run: |

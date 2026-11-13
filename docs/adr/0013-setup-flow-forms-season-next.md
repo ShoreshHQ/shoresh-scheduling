@@ -209,12 +209,13 @@ there.
 24. **Date boxes are Salesforce's own, as Salesforce makes them** (changed 2026-11-13). Until
     then a small stylesheet (static resource `ShoreshDateBox`) reached inside Salesforce's date
     box to make its calendar button 24 by 24 pixels (axe `target-size`). That reach depended on
-    how Salesforce builds the box inside, which it does not support and may change (Greg
-    2026-11-13: nothing of Shoresh's may depend on Salesforce's insides; the setup tables'
-    `ShoreshTable`, ADR 0015 choice 11, is decided apart). Salesforce offers no supported way to size
-    the button, so the stylesheet is gone and the button keeps Salesforce's size. WCAG 2.5.8
-    still holds by its "equivalent" exception: the date box itself, a full-size target, takes the
-    date typed in, so the small button is never the only way to set it.
+    how Salesforce builds the box inside, which it does not support and may change
+    (2026-11-13: nothing of Shoresh's may break when Salesforce changes; the setup tables'
+    `ShoreshTable`, which changes looks only and falls back safely, is the one exception, ADR
+    0015 choice 11). Salesforce offers no supported way to size the button, so the stylesheet
+    is gone and the button keeps Salesforce's size. WCAG 2.5.8 still holds by its "equivalent"
+    exception: the date box itself, a full-size target, takes the date typed in, so the small
+    button is never the only way to set it.
 25. **A deleted program card is said, and the cursor moves to its neighbour** (added
     2026-10-20, the loose end of choice 23). A program card is not a table row, so choice 23
     did not cover it: after **OK** on **Delete this program** the cursor fell to the page and

@@ -19,6 +19,7 @@
     "check:name-clash": "node scripts/apex-name-clash.js",
     "check:reserved-words": "node scripts/apex-reserved-words.js",
     "check:aura-inputs": "node scripts/apex-aura-inputs.js",
+    "check:salesforce-insides": "node scripts/salesforce-insides.js",
     "prettier": "prettier --write \"**/*.{cls,cmp,component,css,html,js,json,md,page,trigger,xml,yaml,yml}\"",
     "prettier:verify": "prettier --check \"**/*.{cls,cmp,component,css,html,js,json,md,page,trigger,xml,yaml,yml}\""
   },
