@@ -42,8 +42,8 @@ public with sharing class GeneratedEngineNotes {
   /**
    * The notes after a hand edit of one cell (date, group Id, block Id), as the screen trims them
    * before it saves the edit (shoreshGeneratedSchedule dropEngineWhy, notes.js notesWithout): the
-   * cell's Open reason goes, and the floor and Rebuild counts go, since any hand edit makes them
-   * stale. Null when there are none to keep.
+   * cell's Open reason goes, and the floor note goes, since any hand edit makes it stale. Null
+   * when there are none to keep.
    */
   public static String withoutCell(String text, List<String> cell) {
     if (kept(text) == null) {
@@ -65,7 +65,6 @@ public with sharing class GeneratedEngineNotes {
     }
     notes.put('open', open);
     notes.put('floor', null);
-    notes.put('keep', null);
     return JSON.serialize(notes);
   }
 
