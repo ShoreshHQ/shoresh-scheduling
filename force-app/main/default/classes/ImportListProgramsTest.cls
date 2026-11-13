@@ -196,7 +196,13 @@ private class ImportListProgramsTest {
               rec(
                 'FixedActivity',
                 'FixedActivity:' + teens + ':Snack',
-                new Map<String, Object>{ 'Name' => 'Snack', 'Length__c' => 1 }
+                // CORE-3.7, INGEST-1.8: its early start, as its list says it.
+                new Map<String, Object>{
+                  'Name' => 'Snack',
+                  'Length__c' => 1,
+                  'EarlyDay__c' => 'Wednesday',
+                  'EarlyBlocks__c' => 1
+                }
               ),
               new Map<String, Object>{
                 'Program__c' => teens,
@@ -224,6 +230,13 @@ private class ImportListProgramsTest {
       Assert.isTrue(added.Monday__c && added.Wednesday__c);
       Assert.isFalse(added.Tuesday__c);
       Assert.areEqual('Trail', added.TimeBlocks__r[0].Name);
+      FixedActivity__c snack = [
+        SELECT EarlyDay__c, EarlyBlocks__c
+        FROM FixedActivity__c
+        WHERE Name = 'Snack'
+      ];
+      Assert.areEqual('Wednesday', snack.EarlyDay__c);
+      Assert.areEqual(1, snack.EarlyBlocks__c);
       Test.startTest();
       ImportController.undoImport(result.importId);
       Test.stopTest();

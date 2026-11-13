@@ -431,7 +431,13 @@ describe("fixed and recurring activities", () => {
       {
         kind: "FixedActivity",
         key: "FixedActivity:p1:Snack",
-        fields: { Name: "Snack", Length__c: 1 },
+        // No early start, as one added by hand (CORE-3.7).
+        fields: {
+          Name: "Snack",
+          Length__c: 1,
+          EarlyDay__c: null,
+          EarlyBlocks__c: null
+        },
         refs: {
           Program__c: "p1",
           TimeBlock__c: "TimeBlock:p1:Period 9",

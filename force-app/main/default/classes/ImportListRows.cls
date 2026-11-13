@@ -29,7 +29,8 @@ public with sharing class ImportListRows {
       Program__c.Sunday__c
     },
     'LocationType' => new Set<Schema.SObjectField>{ LocationType__c.Name },
-    // Only a camp workbook (part D): weeks, and the weeks an item is off.
+    // Only a camp workbook (part D): weeks. The weeks an item is off: a workbook's Which weeks,
+    // and a screen list's Weeks column (INGEST-1.8).
     'Week' => new Set<Schema.SObjectField>{
       Week__c.Name,
       Week__c.StartDate__c,
@@ -47,9 +48,12 @@ public with sharing class ImportListRows {
       TimeBlock__c.EndTime__c,
       TimeBlock__c.PartOfDay__c
     },
+    // CORE-3.7: its early start (the day, and how many time blocks earlier).
     'FixedActivity' => new Set<Schema.SObjectField>{
       FixedActivity__c.Name,
-      FixedActivity__c.Length__c
+      FixedActivity__c.Length__c,
+      FixedActivity__c.EarlyDay__c,
+      FixedActivity__c.EarlyBlocks__c
     },
     'RecurringActivity' => new Set<Schema.SObjectField>{
       RecurringActivity__c.Name,
@@ -171,10 +175,7 @@ public with sharing class ImportListRows {
     Offering__c.ElectiveSet__c,
     Offering__c.Activity__c
   };
-  private static final Set<String> WORKBOOK_ONLY = new Set<String>{
-    'Week',
-    'WeekException'
-  };
+  private static final Set<String> WORKBOOK_ONLY = new Set<String>{ 'Week' };
   private Id seasonId;
   private ImportKeys keys;
   private String kind;
@@ -192,7 +193,7 @@ public with sharing class ImportListRows {
     return PLAIN_FIELDS.containsKey(kind) && !WORKBOOK_ONLY.contains(kind);
   }
 
-  /** Whether a camp workbook can write this kind at all (weeks and weeks off too). */
+  /** Whether a camp workbook can write this kind at all (weeks too). */
   public static Boolean isWorkbookKind(String kind) {
     return PLAIN_FIELDS.containsKey(kind);
   }

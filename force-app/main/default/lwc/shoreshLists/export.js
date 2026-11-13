@@ -23,18 +23,25 @@ function safe(row) {
   });
 }
 
-/** One screen's list: its headings, then a row per item set up, as the import reads them. */
-export function listRows(screenKey, setup, t) {
+/**
+ * One screen's list: its headings, then a row per item set up, as the import reads them; every
+ * field the screen shows, its weeks and a fixed activity's early start among them (INGEST-1.8).
+ * options.withoutWeeks: a camp workbook's sheet, whose weeks are its Which weeks sheet.
+ */
+export function listRows(screenKey, setup, t, options = {}) {
   const screen = listScreen(screenKey, t);
+  const columns = options.withoutWeeks
+    ? screen.columns.filter((c) => c.type !== "weeks")
+    : screen.columns;
   const targets = whoTargets(setup);
   const rows = screen
     .records(setup)
     .map((record) =>
-      screen.columns.map((column) =>
+      columns.map((column) =>
         cellText(column, column.fromRecord(record, setup), targets)
       )
     );
-  const written = [screen.columns.map((c) => c.heading), ...rows].map(safe);
+  const written = [columns.map((c) => c.heading), ...rows].map(safe);
   fitsExcel(written);
   return written;
 }
@@ -152,7 +159,7 @@ export function campWorkbookSheets(setup, t) {
   return uniqueNames([
     ...LIST_SCREENS.map((key) => ({
       name: labels[key],
-      rows: listRows(key, setup, t)
+      rows: listRows(key, setup, t, { withoutWeeks: true })
     })),
     { name: t.p("LocationType"), rows: locationTypeRows(setup, t) },
     { name: "Camp words", rows: campWordRows(setup) },

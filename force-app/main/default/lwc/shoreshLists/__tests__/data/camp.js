@@ -131,7 +131,10 @@ export function camp() {
             Name: "Lunch",
             TimeBlock__c: "tb2",
             Length__c: 1,
-            Location__c: "l2"
+            Location__c: "l2",
+            // An early dismissal: on Wednesday it starts a time block earlier (CORE-3.7).
+            EarlyDay__c: "Wednesday",
+            EarlyBlocks__c: 1
           }
         ],
         recurringActivities: [

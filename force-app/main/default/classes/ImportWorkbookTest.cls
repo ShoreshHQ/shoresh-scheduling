@@ -242,49 +242,83 @@ private class ImportWorkbookTest {
   }
 
   @IsTest
-  static void aScreenListCannotWriteWeeksOrWeeksOff() {
+  static void aScreenListCannotWriteWeeks() {
     Camp c = camp();
     System.runAs(c.scheduler) {
-      for (
-        Map<String, Object> record : new List<Map<String, Object>>{
-          ImportTestPlans.rec(
-            'Week',
-            'Week:2026-07-20',
-            new Map<String, Object>{
-              'Name' => 'Week 4',
-              'StartDate__c' => '2026-07-20',
-              'EndDate__c' => '2026-07-24'
-            }
-          ),
-          ImportTestPlans.linked(
-            ImportTestPlans.rec(
-              'WeekException',
-              'WeekException:x',
-              new Map<String, Object>()
-            ),
-            new Map<String, Object>{
-              'Week__c' => c.weeks[0].Id,
-              'Activity__c' => c.swim.Id
-            }
-          )
-        }
-      ) {
-        try {
-          ImportController.saveList(
-            JSON.serialize(
-              ImportTestPlans.workbookPlan(
-                c.season.Id,
-                new List<Object>{ record },
-                new List<Object>()
-              )
+      try {
+        ImportController.saveList(
+          JSON.serialize(
+            ImportTestPlans.listPlan(
+              c.season.Id,
+              new List<Object>{
+                ImportTestPlans.rec(
+                  'Week',
+                  'Week:2026-07-20',
+                  new Map<String, Object>{
+                    'Name' => 'Week 4',
+                    'StartDate__c' => '2026-07-20',
+                    'EndDate__c' => '2026-07-24'
+                  }
+                )
+              }
             )
-          );
-          Assert.fail('refused: ' + record.get('kind'));
-        } catch (AuraHandledException e) {
-          Assert.isNotNull(e.getMessage());
-        }
+          )
+        );
+        Assert.fail('refused: Week');
+      } catch (AuraHandledException e) {
+        Assert.isNotNull(e.getMessage());
       }
       Assert.areEqual(3, [SELECT COUNT() FROM Week__c]);
+    }
+  }
+
+  /**
+   * INGEST-1.8: a screen's list saves an item's Weeks as its weeks off, as Which weeks does (Swim
+   * off Week 1 now, on in Week 2 again), and Undo puts them back.
+   */
+  @IsTest
+  static void aScreenListSavesWeeksOffAndUndoPutsThemBack() {
+    Camp c = camp();
+    System.runAs(c.scheduler) {
+      ImportSetupSaves.Result result = ImportController.saveList(
+        JSON.serialize(
+          ImportTestPlans.listPlan(
+            c.season.Id,
+            new List<Object>{
+              ImportTestPlans.linked(
+                ImportTestPlans.rec(
+                  'WeekException',
+                  'WeekException:' + c.swim.Id + ':' + c.weeks[0].Id,
+                  new Map<String, Object>()
+                ),
+                new Map<String, Object>{
+                  'Week__c' => c.weeks[0].Id,
+                  'Activity__c' => c.swim.Id
+                }
+              ),
+              new Map<String, Object>{
+                'kind' => 'WeekException',
+                'id' => c.swimOffWeek2.Id,
+                'remove' => true,
+                'fields' => new Map<String, Object>()
+              }
+            }
+          )
+        )
+      );
+      Assert.areEqual(
+        c.weeks[0].Id,
+        [SELECT Week__c FROM WeekException__c WHERE Activity__c = :c.swim.Id]
+        .Week__c
+      );
+      Test.startTest();
+      ImportController.undoImport(result.importId);
+      Test.stopTest();
+      Assert.areEqual(
+        c.weeks[1].Id,
+        [SELECT Week__c FROM WeekException__c WHERE Activity__c = :c.swim.Id]
+        .Week__c
+      );
     }
   }
 
