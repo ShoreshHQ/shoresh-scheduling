@@ -34,20 +34,46 @@ public with sharing class SetTimeAround {
     ) {
       throw ScreenErrors.of('These screens can\'t save that.');
     }
-    Map<Id, List<Piece>> byTarget = new Map<Id, List<Piece>>();
+    Map<Id, List<Piece>> byTarget = byTarget(pieces);
+    List<SObject> changed = new List<SObject>();
+    Map<Id, List<RecurringActivity__c>> copiesOf = new Map<Id, List<RecurringActivity__c>>();
+    for (RecurringActivity__c item : originals(byTarget.keySet())) {
+      List<Piece> runs = byTarget.get(item.Id);
+      refuseChanged(item, runs[0]);
+      changed.add(
+        new RecurringActivity__c(
+          Id = item.Id,
+          TimeBlock__c = runs[0].timeBlock,
+          Length__c = lengthOf(runs[0])
+        )
+      );
+      List<RecurringActivity__c> copies = copiesFor(item, runs);
+      changed.addAll(copies);
+      copiesOf.put(item.Id, copies);
+    }
+    refuseGone(byTarget, copiesOf);
+    UserModeWrites.save(changed);
+    UserModeWrites.save(coverageOf(copiesOf));
+    WeekExceptions.save(weeksOffOf(copiesOf), null);
+  }
+
+  /** The pieces by the recurring activity they keep; a piece missing either Id is refused. */
+  private static Map<Id, List<Piece>> byTarget(List<Piece> pieces) {
+    Map<Id, List<Piece>> result = new Map<Id, List<Piece>>();
     for (Piece piece : pieces) {
       if (piece.target == null || piece.timeBlock == null) {
         throw ScreenErrors.of('These screens can\'t save that.');
       }
-      if (!byTarget.containsKey(piece.target)) {
-        byTarget.put(piece.target, new List<Piece>());
+      if (!result.containsKey(piece.target)) {
+        result.put(piece.target, new List<Piece>());
       }
-      byTarget.get(piece.target).add(piece);
+      result.get(piece.target).add(piece);
     }
-    Set<Id> targets = byTarget.keySet();
-    List<SObject> changed = new List<SObject>();
-    Map<Id, List<RecurringActivity__c>> copiesOf = new Map<Id, List<RecurringActivity__c>>();
-    for (RecurringActivity__c item : [
+    return result;
+  }
+
+  private static List<RecurringActivity__c> originals(Set<Id> targets) {
+    return [
       SELECT
         Id,
         Name,
@@ -66,38 +92,42 @@ public with sharing class SetTimeAround {
       FROM RecurringActivity__c
       WHERE Id IN :targets
       WITH USER_MODE
-    ]) {
-      List<Piece> runs = byTarget.get(item.Id);
-      Piece seen = runs[0];
-      if (
-        item.TimeBlock__c != seen.seenTimeBlock ||
-        (item.Length__c == null ? 1 : item.Length__c.intValue()) !=
-        seen.seenLength
-      ) {
-        throw ScreenErrors.of(
-          '"' +
-            item.Name +
-            '" was changed by someone else since you saw it. Nothing was saved; save again to see it as it is now.'
-        );
-      }
-      changed.add(
-        new RecurringActivity__c(
-          Id = item.Id,
-          TimeBlock__c = runs[0].timeBlock,
-          Length__c = lengthOf(runs[0])
-        )
+    ];
+  }
+
+  /** Refused, naming it, when it no longer sits where the screen showed it. */
+  private static void refuseChanged(RecurringActivity__c item, Piece seen) {
+    Integer length = item.Length__c == null ? 1 : item.Length__c.intValue();
+    if (item.TimeBlock__c != seen.seenTimeBlock || length != seen.seenLength) {
+      throw ScreenErrors.of(
+        '"' +
+          item.Name +
+          '" was changed by someone else since you saw it. Nothing was saved; save again to see it as it is now.'
       );
-      List<RecurringActivity__c> copies = new List<RecurringActivity__c>();
-      for (Integer i = 1; i < runs.size(); i++) {
-        RecurringActivity__c copy = item.clone(false, true, false, false);
-        copy.TimeBlock__c = runs[i].timeBlock;
-        copy.Length__c = lengthOf(runs[i]);
-        copies.add(copy);
-        changed.add(copy);
-      }
-      copiesOf.put(item.Id, copies);
     }
-    for (Id target : targets) {
+  }
+
+  /** Each piece after the first: a copy of the original at its own time blocks. */
+  private static List<RecurringActivity__c> copiesFor(
+    RecurringActivity__c item,
+    List<Piece> runs
+  ) {
+    List<RecurringActivity__c> copies = new List<RecurringActivity__c>();
+    for (Integer i = 1; i < runs.size(); i++) {
+      RecurringActivity__c copy = item.clone(false, true, false, false);
+      copy.TimeBlock__c = runs[i].timeBlock;
+      copy.Length__c = lengthOf(runs[i]);
+      copies.add(copy);
+    }
+    return copies;
+  }
+
+  /** Refused, naming it, when a recurring activity the screen showed is gone (or not this user's). */
+  private static void refuseGone(
+    Map<Id, List<Piece>> byTarget,
+    Map<Id, List<RecurringActivity__c>> copiesOf
+  ) {
+    for (Id target : byTarget.keySet()) {
       if (!copiesOf.containsKey(target)) {
         String name = byTarget.get(target)[0].seenName;
         throw ScreenErrors.of(
@@ -106,9 +136,6 @@ public with sharing class SetTimeAround {
         );
       }
     }
-    UserModeWrites.save(changed);
-    UserModeWrites.save(coverageOf(copiesOf));
-    WeekExceptions.save(weeksOffOf(copiesOf), null);
   }
 
   private static Integer lengthOf(Piece piece) {

@@ -12,6 +12,56 @@ private class SetTimeAroundTest {
     return result;
   }
 
+  /** Field day's pieces, as the screen saw it: Period 1 for 3. */
+  private static List<SetTimeAround.Piece> fieldDayAround(
+    Map<String, Id> ids,
+    Id fieldDayId
+  ) {
+    List<SetTimeAround.Piece> result = new List<SetTimeAround.Piece>{
+      piece(fieldDayId, ids.get('Period 1'), 1),
+      piece(fieldDayId, ids.get('Lunch'), 1)
+    };
+    for (SetTimeAround.Piece one : result) {
+      one.seenName = 'Field day';
+      one.seenTimeBlock = ids.get('Period 1');
+      one.seenLength = 3;
+    }
+    return result;
+  }
+
+  /** Field day: Period 1 for 3, on Mondays, for Group A, in the Gym, off Week 2. */
+  private static Id fieldDay(Map<String, Id> ids) {
+    RecurringActivity__c fieldDay = SetTimeTestData.recurring(
+      ids,
+      'Field day',
+      'Period 1'
+    );
+    fieldDay.Length__c = 3;
+    fieldDay.Location__c = ids.get('Gym');
+    return SetTimeTestData.save(
+      new List<SObject>{ fieldDay },
+      SetTimeTestData.extras(
+        new List<RunsIn.WeekOff>{
+          SetTimeTestData.weekOff(0, null, ids.get('Week 2'))
+        },
+        null,
+        new List<SetTimeWho.Who>{
+          SetTimeTestData.who(0, null, new List<Id>{ ids.get('Group A') })
+        }
+      )
+    )[0];
+  }
+
+  private static String refusalOf(SObject record, ScreenSaves.Extras extras) {
+    try {
+      SetupTablesController.saveRow(record, null, extras);
+    } catch (AuraHandledException e) {
+      return e.getMessage();
+    }
+    Assert.fail('Expected the save to be refused');
+    return null;
+  }
+
   /**
    * CORE-3.9: "Field day, not at Period 2" saves Rest and keeps Field day at Period 1 and at
    * Lunch, the copy with the same days, who it covers and weeks off; without it, the save is
