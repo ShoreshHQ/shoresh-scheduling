@@ -155,7 +155,7 @@ public with sharing class ChoicesImportPlace {
 
   /** Someone else brought choices into this run since the screen checked: refused. */
   public void checkRevision() {
-    Decimal now = run == null ? null : run.Revision__c;
+    Decimal now = run?.Revision__c;
     if (now != request.runRevision) {
       throw new ShoreshException(
         'Someone else imported choices for these seats since you started. Choose the file again to see them.'
@@ -176,7 +176,7 @@ public with sharing class ChoicesImportPlace {
         Revision__c = 1
       );
     } else {
-      run.Revision__c = (run.Revision__c == null ? 0 : run.Revision__c) + 1;
+      run.Revision__c = (run.Revision__c ?? 0) + 1;
     }
     run.SourceFile__c = String.isBlank(request.fileName)
       ? null
