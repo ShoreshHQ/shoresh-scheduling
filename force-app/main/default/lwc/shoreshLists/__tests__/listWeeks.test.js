@@ -291,6 +291,54 @@ describe("INGEST-1.8: a list's changed weeks and early start are exactly what it
     ]);
   });
 
+  it("INGEST-1.8: only the Weeks heading the list writes is its weeks column", () => {
+    const s = fullCamp();
+    ["Runs in", "Open in", "Weeks off", "Which weeks"].forEach((heading) => {
+      const groups = listRows("groups", s, terms);
+      const at = groups[0].indexOf("Weeks");
+      groups[0][at] = heading;
+      groups[1][at] = "Week 1, Week 2";
+      const p = readBack("groups", groups, s);
+      expect([heading, p.mapping.headings[at].how]).toEqual([
+        heading,
+        "unknown"
+      ]);
+      expect(p.rows.filter((r) => r.problems.length)).toEqual([]);
+    });
+  });
+
+  it("INGEST-1.8: a Weeks column that never says which weeks is left unread, said once", () => {
+    const s = fullCamp();
+    const groups = listRows("groups", s, terms);
+    const at = groups[0].indexOf("Weeks");
+    groups.slice(1).forEach((row, i) => {
+      row[at] = i === 1 ? "" : "8";
+    });
+    const p = readBack("groups", groups, s);
+    expect(p.mapping.headings[at]).toEqual(
+      expect.objectContaining({
+        column: null,
+        how: "notRead",
+        note: "Weeks column not read: it doesn't say which weeks"
+      })
+    );
+    expect(p.rows.filter((r) => r.status !== "unchanged")).toEqual([]);
+    expect(waitingFor(p, terms, {})).toEqual(["Nothing to change"]);
+  });
+
+  it("INGEST-1.8: a Weeks column where some cells say weeks reads each row on its own", () => {
+    const s = fullCamp();
+    const groups = listRows("groups", s, terms);
+    const at = groups[0].indexOf("Weeks");
+    groups[1][at] = "8";
+    const p = readBack("groups", groups, s);
+    expect(p.mapping.headings[at].how).toBe("matched");
+    expect(p.rows[0].problems).toEqual([
+      'Weeks: "8" isn\'t like "Every week" or "Off Week 2"'
+    ]);
+    expect(p.rows.slice(1).filter((r) => r.problems.length)).toEqual([]);
+  });
+
   it("INGEST-1.8: weeks are read in other words too: Closed, Not in, the week word on each", () => {
     const s = fullCamp();
     const groups = listRows("groups", s, terms);

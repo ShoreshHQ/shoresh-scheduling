@@ -115,6 +115,34 @@ function usedColumns(screen, mapping) {
     .map((c) => ({ column: c, index: byColumn.get(c.key) }));
 }
 
+/**
+ * A Weeks heading none of whose cells says weeks (an older list's "Weeks" meaning "8") is not
+ * the weeks column: left unread, as before INGEST-1.8, and said once in the list's columns,
+ * never a problem on every row. Some cells reading and some not: each row says its own.
+ */
+function leaveOutUnreadWeeks(mapping, screen, rows, start) {
+  mapping.headings
+    .filter((h) => h.how === "matched")
+    .forEach((h) => {
+      const column = screen.columns.find((c) => c.key === h.column);
+      if (!column || column.type !== "weeks") {
+        return;
+      }
+      const cells = rows
+        .slice(start)
+        .map((row) => (row || [])[h.index])
+        .filter((cell) => tidy(cell));
+      if (
+        cells.length &&
+        cells.every((cell) => readCell(column, cell).problem)
+      ) {
+        h.column = null;
+        h.how = "notRead";
+        h.note = column.notRead;
+      }
+    });
+}
+
 /** Each row with something in it: its cells read, and why it can't be read, if so. */
 function readRows(rows, start, used) {
   const result = [];
@@ -1235,6 +1263,7 @@ export function listProposal(input) {
   if (mapping.missing.length || mapping.doubled.length) {
     return { ...result, blocked: true };
   }
+  leaveOutUnreadWeeks(mapping, screen, rows, at + 1);
   const used = usedColumns(screen, mapping);
   const read = readRows(rows, at + 1, used);
   used

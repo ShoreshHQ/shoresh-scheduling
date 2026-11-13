@@ -146,7 +146,10 @@ Each rule is clue, meaning, example, test.
    numbered season; "Time blocks earlier"). An edited file shows exactly what changed, for Keep or
    Change; a week taken off is saved as a week off, a week put back removes it, and Undo this
    import puts both back. A week the season doesn't have can't be read ("Weeks: there's no Week
-   5"). The camp workbook leaves the weeks to its Which weeks sheet. Special events say the same
+   5"). Only the heading the list writes is read as the weeks (the camp's word: "Weeks"); a
+   "Weeks" column none of whose cells says weeks (an older list's "8") is not read, as before,
+   and the list's columns say so once ("Weeks column not read: it doesn't say which weeks"). The
+   camp workbook leaves the weeks to its Which weeks sheet. Special events say the same
    in SPECIAL-2.3.
    Example: Swim's row says "Every week"; the director writes "Off Week 1" and imports the file:
    one difference, Weeks: Every week → Off Week 1, and saving takes Swim off Week 1.
@@ -155,5 +158,7 @@ Each rule is clue, meaning, example, test.
    "INGEST-1.8: a week taken off, a week put back, and an early start changed";
    "INGEST-1.8: a blank early day clears it; a new row's weeks come with it";
    "INGEST-1.8: a week the season doesn't have, or words that aren't weeks, can't be read";
+   "INGEST-1.8: only the Weeks heading the list writes is its weeks column";
+   "INGEST-1.8: a Weeks column that never says which weeks is left unread, said once";
    Apex ImportWorkbookTest aScreenListSavesWeeksOffAndUndoPutsThemBack; ImportListProgramsTest
    addsAWholeNewProgramFromItsListsAndUndoRemovesIt.

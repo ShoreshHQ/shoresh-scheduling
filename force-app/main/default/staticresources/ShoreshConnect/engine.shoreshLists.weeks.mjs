@@ -27,9 +27,13 @@ export function weeksColumn(t, kind) {
   return {
     key: "weeks",
     heading: t.p("Week"),
-    words: ["weeks", "which weeks", "runs in", "open in", "weeks off"],
+    // Only the heading the download writes: a camp's own "Runs in" or "Weeks off" says its
+    // weeks another way, and is left for the director to point at a column.
+    words: [t.p("Week")],
     type: "weeks",
     kind,
+    // Said once in the list's columns when no cell under the heading says weeks ("8").
+    notRead: `${t.p("Week")} column not read: it doesn't say which ${t.pIn("Week")}`,
     // A place is closed, not off (docs/design/setup/locations.html).
     weekWords: weekWords(t, kind === "Location" ? "Closed" : "Off"),
     fromRecord: (r, setup) => offWeeks(setup, r.Id)

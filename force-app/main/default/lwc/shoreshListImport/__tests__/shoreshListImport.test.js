@@ -356,6 +356,21 @@ describe("c-shoresh-list-import", () => {
     ]);
   });
 
+  it("INGEST-1.8: says once that a Weeks column which never says weeks is not read", async () => {
+    const element = await openWith(
+      ["Activity,Location,Weeks", "Archery,Gym,8"].join("\n")
+    );
+    expect(
+      $(element, 'button[data-id="columns"]').getAttribute("aria-expanded")
+    ).toBe("true");
+    expect($$(element, ".list-heading").map((h) => h.textContent)).toEqual([
+      "“Activity”",
+      "“Location”",
+      "“Weeks”Weeks column not read: it doesn't say which weeks"
+    ]);
+    expect($(element, '[data-row="Archery"]').dataset.kind).not.toBe("problem");
+  });
+
   it("shows the columns, what is new, what differs, and waits for Keep or Change", async () => {
     const element = await openWith(
       [

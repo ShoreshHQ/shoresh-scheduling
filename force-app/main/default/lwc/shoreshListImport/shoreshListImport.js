@@ -647,12 +647,15 @@ export default class ShoreshListImport extends LightningElement {
       let note = "";
       if (h.how === "unknown") {
         note = "Not used";
+      } else if (h.how === "notRead") {
+        note = h.note;
       } else if (h.how === "clash") {
         note = "Not sure";
       } else if (remembered) {
         note = this.rememberedNotes[h.key] || "Answered as before";
       }
-      const attention = h.how === "unknown" || h.how === "clash";
+      const attention =
+        h.how === "unknown" || h.how === "clash" || h.how === "notRead";
       return {
         key: h.key,
         text: h.text,
