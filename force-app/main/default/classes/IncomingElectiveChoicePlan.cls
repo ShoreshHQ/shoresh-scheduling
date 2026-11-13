@@ -85,6 +85,14 @@ public with sharing class IncomingElectiveChoicePlan {
     if (run == null) {
       return runs.noRun(batch, record.elective, record.week);
     }
+    // ELECT-2.5: a saved version is never the week's schedule, as on the screen.
+    if (runs.onVersion(run)) {
+      return 'Restore a saved ' +
+        batch.labels.singularInSentence('Version') +
+        ' or build ' +
+        run.Week__r.Name +
+        ' first.';
+    }
     if (run.Status__c == ChoicesImport.FINAL_STATUS) {
       return batch.labels.plural('Seats') +
         ' for ' +
