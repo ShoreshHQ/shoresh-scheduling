@@ -1240,7 +1240,7 @@ The campers are made up: `docs/samples/electives/chugim-choices.csv` in the proj
    who is in it at each time, by bunk), **Print rosters** (the same, one page per offering, for
    paper), **Camper schedules** (each camper's week: their bunk's schedule with their seat in
    it), **Full report** (schedules, rosters, exceptions and a summary) and **Campers** (to edit
-   and bring back with Bring in choices). File names carry the set and the week, for example
+   and import again with Import choices). File names carry the set and the week, for example
    _Chugim Week 1 rosters.xlsx_, never a child's name, and no file has a parent's comment.
 10. **End of season.** In the **Download** menu, under a line, **Clear at season end…** takes
     over the screen: _Clear Summer 2026_, **Whole season** or the week on screen, _Can't be
