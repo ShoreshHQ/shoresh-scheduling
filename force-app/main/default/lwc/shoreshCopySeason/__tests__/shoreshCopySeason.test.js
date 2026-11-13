@@ -91,8 +91,8 @@ describe("c-shoresh-copy-season", () => {
     const [name, date] = element.shadowRoot.querySelectorAll("lightning-input");
     expect(name.value).toBe("Summer 2027");
     expect(date.value).toBe("2027-06-28");
-    // Marked for the date box style (its calendar button at least 24 by 24).
-    expect(date.classList.contains("shoresh-date")).toBe(true);
+    // Salesforce's own date box, with no style of ours reaching inside it.
+    expect(date.classList.contains("shoresh-date")).toBe(false);
     // Last season's weeks over the new ones, each row named by its season.
     const old = element.shadowRoot.querySelector('[data-id="old-weeks"]');
     const now = element.shadowRoot.querySelector('[data-id="new-weeks"]');

@@ -3133,7 +3133,7 @@ describe("c-shoresh-editable-table", () => {
     });
   });
 
-  it("marks each date box for the date box style (calendar button at least 24 by 24)", async () => {
+  it("marks no date box for a style of its own: the calendar button keeps Salesforce's size", async () => {
     const element = render({
       objectApiName: "Week__c",
       columns: [
@@ -3149,9 +3149,10 @@ describe("c-shoresh-editable-table", () => {
       )
     ];
     expect(dates.length).toBe(2);
-    dates.forEach((input) =>
-      expect(input.classList.contains("shoresh-date")).toBe(true)
-    );
+    dates.forEach((input) => {
+      expect(input.type).toBe("date");
+      expect(input.classList.contains("shoresh-date")).toBe(false);
+    });
   });
 
   // Word walk W6: a row's note as the needs-a-look dot by its name, no column coming and going.

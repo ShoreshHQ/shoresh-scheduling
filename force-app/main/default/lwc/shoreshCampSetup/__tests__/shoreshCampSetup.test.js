@@ -338,8 +338,8 @@ describe("c-shoresh-camp-setup", () => {
     expect(element.shadowRoot.textContent).toContain("Start a new season");
   });
 
-  describe("date boxes' calendar buttons (WCAG 2.5.8, at least 24 by 24)", () => {
-    it("loads the date box style once, and marks every date box for it", async () => {
+  describe("styles the page loads", () => {
+    it("loads the table style and the typefaces once each, and nothing for date boxes", async () => {
       getCamps.mockResolvedValue(nsRecord([CAMP]));
       getSeasons.mockResolvedValue(nsRecord([SEASON]));
       getSeasonSetup.mockResolvedValue(nsRecord(setupWith()));
@@ -347,40 +347,23 @@ describe("c-shoresh-camp-setup", () => {
       // The season's own dates show once its pencil is pressed.
       q(element, '[data-id="edit-season"]').click();
       await flush();
-      // Once each: the date box style and the typefaces (ADR 0015).
       const loaded = loadStyle.mock.calls.map((call) => call[1]);
-      expect(
-        loaded.filter((url) => url.includes("ShoreshDateBox"))
-      ).toHaveLength(1);
       expect(loaded.filter((url) => url.includes("ShoreshFonts"))).toEqual([
         expect.stringMatching(/ShoreshFonts\/fonts\.css$/)
       ]);
-      // And the setup tables' fields at rest (ADR 0015 choice 11).
+      // The setup tables' fields at rest (ADR 0015 choice 11).
       expect(loaded.filter((url) => url.includes("ShoreshTable"))).toHaveLength(
         1
       );
-      expect(loadStyle).toHaveBeenCalledTimes(3);
+      // Date boxes are Salesforce's own: their calendar button keeps Salesforce's size (ADR 0013
+      // choice 24, changed 2026-11-13: only what Salesforce supports).
+      expect(loadStyle).toHaveBeenCalledTimes(2);
       const dates = [
         ...element.shadowRoot.querySelectorAll("lightning-input")
       ].filter((input) => input.type === "date");
       expect(dates.length).toBeGreaterThan(0);
       dates.forEach((input) =>
-        expect(input.classList.contains("shoresh-date")).toBe(true)
-      );
-    });
-
-    it("the new season's date boxes are marked too", async () => {
-      getCamps.mockResolvedValue(nsRecord([CAMP]));
-      getSeasons.mockResolvedValue(nsRecord([]));
-      const element = await render();
-      const dates = [
-        ...element.shadowRoot.querySelectorAll(
-          'lightning-input[data-form="new-season"]'
-        )
-      ].filter((input) => input.type === "date");
-      expect(dates.length).toBe(2);
-      dates.forEach((input) =>
-        expect(input.classList.contains("shoresh-date")).toBe(true)
+        expect(input.classList.contains("shoresh-date")).toBe(false)
       );
     });
 
@@ -392,30 +375,6 @@ describe("c-shoresh-camp-setup", () => {
       const element = await render();
       expect(q(element, '[data-id="error"]')).toBeNull();
       expect(q(element, "c-shoresh-menu")).not.toBeNull();
-    });
-
-    it("the style makes a marked date box's button 24 by 24, and nothing else", () => {
-      const fs = require("fs");
-      const path = require("path");
-      const css = fs
-        .readFileSync(
-          path.join(__dirname, "../../../staticresources/ShoreshDateBox.css"),
-          "utf8"
-        )
-        .replace(/\/\*[\s\S]*?\*\//g, "");
-      const rules = [...css.matchAll(/([^{}]+)\{([^}]*)\}/g)].map((m) => ({
-        selector: m[1].trim(),
-        body: m[2]
-      }));
-      expect(rules.length).toBeGreaterThan(0);
-      rules.forEach((rule) =>
-        expect(rule.selector.startsWith(".shoresh-date ")).toBe(true)
-      );
-      const iconRule = rules.find((r) =>
-        /\.slds-button_icon$/.test(r.selector)
-      );
-      expect(iconRule.body).toMatch(/width:\s*1\.5rem/);
-      expect(iconRule.body).toMatch(/height:\s*1\.5rem/);
     });
   });
 
