@@ -42,6 +42,11 @@ const terms = buildTerms([]);
 function setup() {
   return {
     season: { Id: "s1", Camp__c: "c1" },
+    // INGEST-1.8: a list's Weeks are saved as weeks off.
+    weeks: [
+      { Id: "w1", Name: "Week 1" },
+      { Id: "w2", Name: "Week 2" }
+    ],
     locationTypes: [],
     locations: [{ Id: "l1", Name: "Gym", GroupsThatFit__c: 1 }],
     activities: [],
@@ -93,7 +98,10 @@ function fullList(screen) {
     seats: "12",
     minimum: "2",
     proposed: "No",
-    where: "Lake"
+    where: "Lake",
+    earlyDay: "Wednesday",
+    earlyBlocks: "1",
+    weeks: "Off Week 2"
   };
   // The Special events list's Type: an event, so its place is sent too.
   if (screen.key === "specialEvents") {

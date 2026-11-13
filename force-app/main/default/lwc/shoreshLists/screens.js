@@ -17,6 +17,7 @@ import { buildTerms } from "c/shoreshTerms";
 import { spokenWeekday } from "c/shoreshDayNames";
 import { NONE, listName } from "./cells";
 import { whoNames } from "./who";
+import { weeksColumn, weeksText } from "./weeks";
 import {
   divisionsScreen,
   fixedScreen,
@@ -108,6 +109,7 @@ function locationsScreen(t) {
         fromRecord: (r) => r[LOCATION.GroupsThatFit],
         write: (v) => ({ [LOCATION.GroupsThatFit]: v })
       },
+      weeksColumn(t, "Location"),
       notesColumn(LOCATION)
     ],
     records: (setup) => setup.locations || []
@@ -295,6 +297,7 @@ function activitiesScreen(t) {
             .map((row) => row[WHO.Division] || row[WHO.Group])
             .sort()
       },
+      weeksColumn(t, "Activity"),
       notesColumn(ACTIVITY)
     ],
     records: (setup) => setup.activities || []
@@ -383,6 +386,11 @@ export function cellText(column, value, targets) {
       return `${value.count} by ${spokenWeekday(value.day)}`;
     case "days":
       return value.map(spokenWeekday).join(", ");
+    case "day":
+      return spokenWeekday(value);
+    // As the screen's Weeks column says them (INGEST-1.8).
+    case "weeks":
+      return weeksText(column, value);
     case "time": {
       // 12-hour with AM or PM, so it reads back the same.
       const hours = Math.floor(value / 60);

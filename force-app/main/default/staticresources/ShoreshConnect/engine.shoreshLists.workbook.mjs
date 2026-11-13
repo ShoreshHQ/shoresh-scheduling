@@ -1201,6 +1201,7 @@ export function workbookProposal(input) {
       sheet: sheetsFound.lists[key],
       setup,
       terms: t,
+      withoutWeeks: true,
       answers,
       knownKeys: combineRecords([
         weeks.fillRecords || [],

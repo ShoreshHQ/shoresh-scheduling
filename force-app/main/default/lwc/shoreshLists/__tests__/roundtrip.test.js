@@ -103,7 +103,13 @@ describe("round trip", () => {
 
   it("text a spreadsheet would run is written with an apostrophe, and read back without", () => {
     const rows = listRows("locations", camp(), terms);
-    expect(rows[1]).toEqual(["Pool", "Waterfront", 2, "'=Shallow end"]);
+    expect(rows[1]).toEqual([
+      "Pool",
+      "Waterfront",
+      2,
+      "Every week",
+      "'=Shallow end"
+    ]);
   });
 
   it("the extra sheets carry what has no list: types, words, weeks, and the weeks items run", () => {
@@ -153,7 +159,7 @@ describe("an empty list is the template", () => {
   it("headings only, in the camp's words", () => {
     const empty = { ...camp(), activities: [], locations: [], programs: [] };
     expect(listRows("groups", empty, terms)).toEqual([
-      ["Program", "Unit", "Bunk", "Availability"]
+      ["Program", "Unit", "Bunk", "Availability", "Weeks"]
     ]);
   });
 });
@@ -551,6 +557,8 @@ describe("PR C own review: what the probes found", () => {
   it("two activities of exactly one name are asked which is which: shown, never guessed (a known limit)", () => {
     const s = camp();
     s.activities.push({ ...s.activities[1], Id: "a8" });
+    // Off the same week, so the two rows are alike but for the item.
+    s.weekExceptions.push({ Id: "x8", Week__c: "w2", Activity__c: "a8" });
     expect(back("activities", s).questions).toContain("Which “Board games”?");
   });
 });
@@ -570,11 +578,11 @@ const DOWNLOADS = {
     ["Teens", "Juniors"]
   ],
   groups: [
-    ["Program", "Unit", "Bunk", "Availability"],
-    ["Main", "Juniors", "Bunk 1", "All day"],
-    ["Main", "Juniors", "Bunk 2", "Morning only"],
-    ["Main", "Seniors", "Bunk 3", "All day"],
-    ["Teens", "Juniors", "Bunk 1", "Afternoon only"]
+    ["Program", "Unit", "Bunk", "Availability", "Weeks"],
+    ["Main", "Juniors", "Bunk 1", "All day", "Every week"],
+    ["Main", "Juniors", "Bunk 2", "Morning only", "Off Week 1"],
+    ["Main", "Seniors", "Bunk 3", "All day", "Every week"],
+    ["Teens", "Juniors", "Bunk 1", "Afternoon only", "Every week"]
   ],
   timeBlocks: [
     ["Program", "Time block", "Start", "End", "Part of day"],
@@ -583,9 +591,9 @@ const DOWNLOADS = {
     ["Teens", "Period 1", "10:00 AM", "10:50 AM", "Morning"]
   ],
   locations: [
-    ["Location", "Location type", "Bunks that fit", "Notes"],
-    ["Pool", "Waterfront", 2, "'=Shallow end"],
-    ["Gym", "", 1, ""]
+    ["Location", "Location type", "Bunks that fit", "Weeks", "Notes"],
+    ["Pool", "Waterfront", 2, "Every week", "'=Shallow end"],
+    ["Gym", "", 1, "Closed Week 2", ""]
   ],
   activities: [
     [
@@ -601,6 +609,7 @@ const DOWNLOADS = {
       "Same Unit only",
       "Early in the week",
       "Who can do it",
+      "Weeks",
       "Notes"
     ],
     [
@@ -616,6 +625,7 @@ const DOWNLOADS = {
       "Yes",
       "1 by Wednesday",
       "Bunk 3, Juniors (Main)",
+      "Every week",
       "'+Bring towels"
     ],
     [
@@ -631,13 +641,23 @@ const DOWNLOADS = {
       "No",
       "",
       "Everyone",
+      "Off Week 2",
       ""
     ]
   ],
   fixedActivities: [
-    ["Program", "Fixed activity", "Time block", "Length", "Location"],
-    ["Main", "Lunch", "Lunch", 1, "Gym"],
-    ["Teens", "Lunch", "Period 1", 1, ""]
+    [
+      "Program",
+      "Fixed activity",
+      "Time block",
+      "Length",
+      "Location",
+      "Starts earlier on",
+      "Time blocks earlier",
+      "Weeks"
+    ],
+    ["Main", "Lunch", "Lunch", 1, "Gym", "Wednesday", 1, "Every week"],
+    ["Teens", "Lunch", "Period 1", 1, "", "", "", "Off Week 1"]
   ],
   recurringActivities: [
     [
@@ -647,7 +667,8 @@ const DOWNLOADS = {
       "Length",
       "Location",
       "Runs on",
-      "Who"
+      "Who",
+      "Weeks"
     ],
     [
       "Main",
@@ -656,7 +677,8 @@ const DOWNLOADS = {
       1,
       "",
       "Monday, Wednesday",
-      '"Bunk 1 (Juniors, Main)", Seniors'
+      '"Bunk 1 (Juniors, Main)", Seniors',
+      "Off Week 2"
     ]
   ]
 };

@@ -49,6 +49,7 @@ import {
   resolveSets
 } from "./scope";
 import { resolveColumn } from "./refs";
+import { checkWeeks } from "./weeks";
 import { FIELD } from "c/shoreshSchema";
 
 /** Keep or Change, for one difference. */
@@ -94,6 +95,10 @@ export function changeKey(screenKey, name, columnKey, to) {
 }
 
 function blankValue(column) {
+  if (column.type === "weeks") {
+    // Every week, as an item added by hand starts (INGEST-1.8).
+    return { off: [], of: 0 };
+  }
   if (column.type === "list" || column.type === "days") {
     return [];
   }
@@ -108,6 +113,34 @@ function usedColumns(screen, mapping) {
   return screen.columns
     .filter((c) => byColumn.has(c.key))
     .map((c) => ({ column: c, index: byColumn.get(c.key) }));
+}
+
+/**
+ * A Weeks heading none of whose cells says weeks (an older list's "Weeks" meaning "8") is not
+ * the weeks column: left unread, as before INGEST-1.8, and said once in the list's columns,
+ * never a problem on every row. Some cells reading and some not: each row says its own.
+ */
+function leaveOutUnreadWeeks(mapping, screen, rows, start) {
+  mapping.headings
+    .filter((h) => h.how === "matched")
+    .forEach((h) => {
+      const column = screen.columns.find((c) => c.key === h.column);
+      if (!column || column.type !== "weeks") {
+        return;
+      }
+      const cells = rows
+        .slice(start)
+        .map((row) => (row || [])[h.index])
+        .filter((cell) => tidy(cell));
+      if (
+        cells.length &&
+        cells.every((cell) => readCell(column, cell).problem)
+      ) {
+        h.column = null;
+        h.how = "notRead";
+        h.note = column.notRead;
+      }
+    });
 }
 
 /** Each row with something in it: its cells read, and why it can't be read, if so. */
@@ -1203,6 +1236,10 @@ export function listProposal(input) {
   const answers = input.answers || {};
   const setup = input.setup || {};
   const screen = listScreen(input.screenKey, t);
+  if (input.withoutWeeks) {
+    // A camp workbook's lists: the weeks items are on are its Which weeks sheet (INGEST-1.8).
+    screen.columns = screen.columns.filter((c) => c.type !== "weeks");
+  }
   const sheetName = input.sheet || pickSheet(input.file, screen, t);
   const base = { screen, sheets: sheetChoices(input.file), sheet: sheetName };
   if (!sheetName) {
@@ -1226,8 +1263,12 @@ export function listProposal(input) {
   if (mapping.missing.length || mapping.doubled.length) {
     return { ...result, blocked: true };
   }
+  leaveOutUnreadWeeks(mapping, screen, rows, at + 1);
   const used = usedColumns(screen, mapping);
   const read = readRows(rows, at + 1, used);
+  used
+    .filter(({ column }) => column.type === "weeks")
+    .forEach(({ column }) => checkWeeks(read, column, setup));
   const deletions = {
     gone: deletionsIn(answers),
     back: deletionsIn(answers, BRING_BACK)
@@ -1699,6 +1740,9 @@ function describeRow(r, used, screen, setup, answers, deletions) {
 
 /** Whether a value is "nothing": none, No, no maximum or limit, or everyone (no list). */
 function isEmpty(column, value) {
+  if (column.type === "weeks") {
+    return !value || !(value.off || []).length;
+  }
   if (column.type === "list") {
     return !value || value.length === 0;
   }
@@ -1712,6 +1756,10 @@ function isEmpty(column, value) {
 }
 
 function normal(column, value) {
+  if (column.type === "weeks") {
+    // The weeks off, by place: how many weeks the season has is only for the words.
+    return [...((value && value.off) || [])].sort((a, b) => a - b);
+  }
   if (column.type === "list" || column.type === "days") {
     return [...(value || [])].sort();
   }

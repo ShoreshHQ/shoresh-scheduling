@@ -11,6 +11,7 @@ import {
   realDivisionsOf,
   shownDivisionName
 } from "c/shoreshImportEngine";
+import { weeksColumn } from "./weeks";
 
 const MS_PER_MINUTE = 60000;
 
@@ -208,7 +209,8 @@ export function groupsScreen(t) {
         newValue: "AllDay",
         fromRecord: (r) => r[FIELD.Group.Availability] || "AllDay",
         write: (v) => ({ [FIELD.Group.Availability]: v })
-      }
+      },
+      weeksColumn(t, "Group")
     ],
     records: (setup) =>
       inPrograms(setup, (entry) =>
@@ -282,6 +284,37 @@ export function timeBlocksScreen(t) {
   };
 }
 
+/**
+ * CORE-3.7: the one day a fixed activity starts earlier and by how many time blocks, as its
+ * details on the screen say them (shoreshProgram earlyColumns): "Starts earlier on", "Time
+ * blocks earlier". Blank is no day (and none earlier).
+ */
+function earlyColumns(t) {
+  const FIXED = FIELD.FixedActivity;
+  return [
+    {
+      key: "earlyDay",
+      heading: "Starts earlier on",
+      words: ["starts earlier", "early day", "early dismissal"],
+      type: "day",
+      fromRecord: (r) => r[FIXED.EarlyDay] || null,
+      write: (v) => ({ [FIXED.EarlyDay]: v || null })
+    },
+    {
+      key: "earlyBlocks",
+      heading: `${t.p("TimeBlock")} earlier`,
+      words: ["time blocks earlier", "blocks earlier", "early blocks"],
+      type: "whole",
+      min: 0,
+      fromRecord: (r) => {
+        const blocks = r[FIXED.EarlyBlocks];
+        return blocks === null || blocks === undefined ? null : blocks;
+      },
+      write: (v) => ({ [FIXED.EarlyBlocks]: v ?? null })
+    }
+  ];
+}
+
 export function fixedScreen(t) {
   return {
     key: "fixedActivities",
@@ -293,7 +326,9 @@ export function fixedScreen(t) {
       nameColumn(t.s("FixedActivity"), ["fixed activity", "event"]),
       blockColumn(t, FIELD.FixedActivity),
       lengthColumn(t, FIELD.FixedActivity),
-      locationColumn(t, FIELD.FixedActivity)
+      locationColumn(t, FIELD.FixedActivity),
+      ...earlyColumns(t),
+      weeksColumn(t, "FixedActivity")
     ],
     records: (setup) =>
       inPrograms(setup, (entry) => entry.fixedActivities || [])
@@ -324,7 +359,8 @@ export function recurringScreen(t) {
               (row) => row[FIELD.Coverage.Division] || row[FIELD.Coverage.Group]
             )
             .sort()
-      }
+      },
+      weeksColumn(t, "RecurringActivity")
     ],
     records: (setup) =>
       inPrograms(setup, (entry) => entry.recurringActivities || [])

@@ -11,7 +11,7 @@
 public with sharing class ImportListSaves implements SetupWrite.Steps {
   // Kinds in the order they depend on each other.
   private static final List<String> ORDER = new List<String>{
-    // A camp workbook's weeks first, and the weeks items are off last (part D).
+    // A camp workbook's weeks first, and the weeks items are off last (part D, INGEST-1.8).
     'Week',
     'LocationType',
     'Location',
@@ -96,8 +96,9 @@ public with sharing class ImportListSaves implements SetupWrite.Steps {
     for (String kind : ORDER) {
       saveKind(kind, byKind.get(kind));
     }
+    // Weeks an item is on again: a workbook's Which weeks, or a list's Weeks (INGEST-1.8).
+    extras.weeksBackOn(weeksBackOn);
     if (workbook) {
-      extras.weeksBackOn(weeksBackOn);
       extras.campWords(plan.entries('campWords'));
     }
     ImportAnswers.save(campId, plan);
@@ -111,7 +112,8 @@ public with sharing class ImportListSaves implements SetupWrite.Steps {
       if (!allowed(kind)) {
         throw unreadable();
       }
-      // A week an item is off no longer (a workbook's Runs in): removed after the rest.
+      // A week an item is off no longer (a workbook's Which weeks, a list's Weeks): removed
+      // after the rest.
       if (kind == 'WeekException' && entry.text('remove') == 'true') {
         weeksBackOn.add(entry);
         continue;

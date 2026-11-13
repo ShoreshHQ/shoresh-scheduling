@@ -12,6 +12,7 @@ import { answeredDays } from "./engine.shoreshLists.scope.mjs";
 import { NONE } from "./engine.shoreshLists.cells.mjs";
 import { CHANGE, newValueOf } from "./engine.shoreshLists.proposal.mjs";
 import { cellText, listScreen } from "./engine.shoreshLists.screens.mjs";
+import { weekRecords } from "./engine.shoreshLists.weeks.mjs";
 import { buildTerms, countOf } from "./engine.shoreshTerms.shoreshTerms.mjs";
 
 function quoted(name) {
@@ -453,6 +454,7 @@ export function listPlan(proposal, answers, seasonId, fileName) {
         )
       );
     });
+  const weeksOff = [];
   proposal.rows.forEach((row) => {
     if (row.status === "new") {
       const record = recordFor(
@@ -472,15 +474,24 @@ export function listPlan(proposal, answers, seasonId, fileName) {
         record.refs[FIELD.Group.Division] = holder;
       }
       records.push(record);
+      weeksOff.push(...newWeeksOff(screen, row, record.key, proposal.setup));
     } else if (row.status === "changed") {
       const chosen = row.differences
         .filter((d) => d.answer === CHANGE)
         .map((d) => d.column);
-      if (chosen.length) {
-        records.push(recordFor(screen, row, chosen));
+      // INGEST-1.8: the weeks are its weeks off, saved after the items.
+      const weeks = chosen.includes("weeks");
+      const fields = chosen.filter((key) => key !== "weeks");
+      if (fields.length) {
+        records.push(recordFor(screen, row, fields));
+      }
+      if (weeks) {
+        const to = row.differences.find((d) => d.column === "weeks").to;
+        weeksOff.push(...weekRecords(proposal.setup, screen.kind, row.id, to));
       }
     }
   });
+  records.push(...weeksOff);
   const remember = [];
   const forget = [];
   proposal.mapping.headings
@@ -517,6 +528,12 @@ export function listPlan(proposal, answers, seasonId, fileName) {
     remember,
     forget
   };
+}
+
+/** A new item's weeks off, when its row says some (INGEST-1.8); a new item is on every week else. */
+function newWeeksOff(screen, row, key, setup) {
+  const column = screen.columns.find((c) => c.type === "weeks");
+  return column ? weekRecords(setup, screen.kind, key, row.values.weeks) : [];
 }
 
 const PROGRAM_KIND = { division: "Division", timeBlock: "TimeBlock" };
@@ -624,8 +641,13 @@ function recordFor(screen, row, columnKeys) {
     const value = row.id
       ? row.differences.find((d) => d.column === key).to
       : row.values[key];
-    // A column only one kind has (an event's place): not written for the other.
-    if (column.scope || (column.onlyKind && column.onlyKind !== kind)) {
+    // A column only one kind has (an event's place): not written for the other. The weeks are
+    // the item's weeks off, records of their own (listPlan).
+    if (
+      column.scope ||
+      column.type === "weeks" ||
+      (column.onlyKind && column.onlyKind !== kind)
+    ) {
       return;
     }
     if (column.refField) {

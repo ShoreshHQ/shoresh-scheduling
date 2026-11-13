@@ -132,3 +132,33 @@ Each rule is clue, meaning, example, test.
    ("Something typed is too long"). The rest of the file is read as before.
    Test: "INGEST-1.7: a name longer than Salesforce keeps can't be read, with why; it is never
    Ready to save".
+
+8. **Download this list reads back through its own Import a list with nothing to change.**
+   Clue: "Download this list" on any setup screen (Programs, Units, Bunks, Time blocks,
+   Locations, Activities, Fixed activities, Recurring activities, Electives, Special events), the
+   file then brought back in on the same screen's Import a list, as it is or edited.
+   Meaning: the list has a column for every field its screen shows that a list can read back,
+   headed and written in the screen's own words, and the import reads each one: nothing changes,
+   nothing is asked and nothing is lost ("Nothing to change"). That includes the weeks each row is
+   on, as the screen's Weeks column says them ("Every week", "Off Week 3", "Off Weeks 1, 6–7",
+   "No weeks"; a location "Closed Week 2"), each week by its place in the season, and a fixed
+   activity's early start ("Starts earlier on", a day as the season says its days, "Day 3" in a
+   numbered season; "Time blocks earlier"). An edited file shows exactly what changed, for Keep or
+   Change; a week taken off is saved as a week off, a week put back removes it, and Undo this
+   import puts both back. A week the season doesn't have can't be read ("Weeks: there's no Week
+   5"). Only the heading the list writes is read as the weeks (the camp's word: "Weeks"); a
+   "Weeks" column none of whose cells says weeks (an older list's "8") is not read, as before,
+   and the list's columns say so once ("Weeks column not read: it doesn't say which weeks"). The
+   camp workbook leaves the weeks to its Which weeks sheet. Special events say the same
+   in SPECIAL-2.3.
+   Example: Swim's row says "Every week"; the director writes "Off Week 1" and imports the file:
+   one difference, Weeks: Every week → Off Week 1, and saving takes Swim off Week 1.
+   Test: "INGEST-1.8: activities: every row reads back unchanged, nothing asked or lost" (and
+   each list's own, in shoreshLists `listWeeks.test.js`);
+   "INGEST-1.8: a week taken off, a week put back, and an early start changed";
+   "INGEST-1.8: a blank early day clears it; a new row's weeks come with it";
+   "INGEST-1.8: a week the season doesn't have, or words that aren't weeks, can't be read";
+   "INGEST-1.8: only the Weeks heading the list writes is its weeks column";
+   "INGEST-1.8: a Weeks column that never says which weeks is left unread, said once";
+   Apex ImportWorkbookTest aScreenListSavesWeeksOffAndUndoPutsThemBack; ImportListProgramsTest
+   addsAWholeNewProgramFromItsListsAndUndoRemovesIt.
