@@ -80,7 +80,9 @@ public with sharing class LinkedChoiceSaves {
     ];
     if (found.isEmpty()) {
       throw new ShoreshException(
-        'That offering is no longer there. Reload the page.'
+        'That ' +
+          CampLabels.modelTermsOnly().singularInSentence('Offering') +
+          ' is no longer there. Reload the page.'
       );
     }
     Offering__c offering = found[0];

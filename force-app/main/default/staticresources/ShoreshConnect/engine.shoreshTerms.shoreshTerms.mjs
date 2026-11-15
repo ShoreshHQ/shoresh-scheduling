@@ -46,6 +46,8 @@ export function buildTerms(labels) {
     const row = byTerm.get(term);
     return row && row.isCustom ? row : null;
   };
+  // CORE-1.36: an offering is said in the camp's Elective words ("Added 3 electives").
+  const said = (term) => (term === "Offering" ? "Elective" : term);
   // CORE-1.34: a word the camp left standard follows the camp's word it belongs to.
   const followed = (term) => {
     if (own(term)) {
@@ -61,7 +63,8 @@ export function buildTerms(labels) {
     }
     return null;
   };
-  const word = (term, plural) => {
+  const word = (asked, plural) => {
+    const term = said(asked);
     const follows = followed(term);
     if (follows) {
       return plural ? follows.plural : follows.singular;
@@ -78,7 +81,8 @@ export function buildTerms(labels) {
     }
     return plural ? row.plural : row.singular;
   };
-  const inSentence = (term, plural) => {
+  const inSentence = (asked, plural) => {
+    const term = said(asked);
     const text = word(term, plural);
     return own(term) || followed(term) ? text : text.toLowerCase();
   };

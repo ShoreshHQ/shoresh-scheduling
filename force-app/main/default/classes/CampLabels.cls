@@ -110,11 +110,11 @@ public with sharing class CampLabels {
 
   /** The term at the start of a sentence or as a heading: "Group", or the camp's "Bunk". */
   public String singular(String term) {
-    return words(term)[0];
+    return words(CampWordRules.said(term))[0];
   }
 
   public String plural(String term) {
-    return words(term)[1];
+    return words(CampWordRules.said(term))[1];
   }
 
   /** [singular, plural]: the camp's own, else the ones it follows (CORE-1.34), else standard. */
@@ -158,7 +158,8 @@ public with sharing class CampLabels {
   }
 
   /** The camp typed this word, or it follows one the camp typed. */
-  private Boolean isCampWord(String term) {
+  private Boolean isCampWord(String asked) {
+    String term = CampWordRules.said(asked);
     return custom.containsKey(term) || followed(term) != null;
   }
 
@@ -175,8 +176,9 @@ public with sharing class CampLabels {
       row.term = term;
       row.modelSingular = MODEL_TERMS.get(term)[0];
       row.modelPlural = MODEL_TERMS.get(term)[1];
-      row.singular = singular(term);
-      row.plural = plural(term);
+      // Each term's own words, as stored: the screens say an offering as an elective themselves.
+      row.singular = words(term)[0];
+      row.plural = words(term)[1];
       row.isCustom = custom.containsKey(term);
       row.labelId = row.isCustom ? custom.get(term).Id : null;
       result.add(row);

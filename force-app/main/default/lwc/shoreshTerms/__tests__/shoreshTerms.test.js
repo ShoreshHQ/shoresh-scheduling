@@ -95,6 +95,34 @@ describe("a word the camp left standard follows the camp's word it belongs to", 
   });
 });
 
+// CORE-1.36
+describe("an offering is said in the camp's Elective words", () => {
+  it("never says offering: the standard Elective word, or the camp's own", () => {
+    const standard = buildTerms([
+      {
+        term: "Offering",
+        singular: "Offering",
+        plural: "Offerings",
+        isCustom: false
+      },
+      {
+        term: "Elective",
+        singular: "Elective",
+        plural: "Electives",
+        isCustom: false
+      }
+    ]);
+    expect(standard.p("Offering")).toBe("Electives");
+    expect(standard.pIn("Offering")).toBe("electives");
+    expect(buildTerms(undefined).sIn("Offering")).toBe("elective");
+    const camp = buildTerms([
+      { term: "Elective", singular: "Chug", plural: "Chugim", isCustom: true }
+    ]);
+    expect(camp.sIn("Offering")).toBe("Chug");
+    expect(camp.pIn("Offering")).toBe("Chugim");
+  });
+});
+
 // CORE-1.35
 describe("one plural rule before the camp words load", () => {
   it("adds es after s, x, z, ch and sh, keeps the same-in-plural words, and says Seat / Seats", () => {

@@ -21,6 +21,9 @@ Each term has one meaning. The words in "Avoid" do not appear on screens.
   (Seat / Seats, Station / Stations), and one plural rule MUST guess them everywhere: "ies" after
   a consonant and y, "es" after s, x, z, ch and sh, else "s" (word walk W1). A count MUST use the
   plural ("3 spots").
+- **CORE-1.36** An offering (an elective on its set) MUST be said in the camp's Elective words
+  on every screen and to an AI ("Added 3 electives", "Added 3 chugim"), never "offering" (word
+  walk W2; Hermes test 2026-11-14, where importing an Electives list said "Added 3 offerings").
 
 | ID        | Term                   | Definition                                                                                                                                                                                                      | Avoid                          |
 | --------- | ---------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------ |
