@@ -43,21 +43,26 @@ private class AgentSetupChangeTest {
     };
   }
 
+  /** Main runs on Saturday too, said to change_setup_record as read. */
+  private static List<Object> saturdayOnMain() {
+    return post(
+      'change',
+      new Map<String, Object>{
+        'kind' => 'program',
+        'name' => 'Main',
+        'fields' => new Map<String, Object>{ 'saturday' => 'yes' },
+        'seen' => new Map<String, Object>{ 'saturday' => 'no' }
+      }
+    );
+  }
+
   // WEEK-2.7
   @IsTest
   static void aProgramsNewDayMovesTheWeeksAndTheAnswerSaysSo() {
     System.runAs(ShoreshTestData.scheduler()) {
       GeneratedTestData.camp();
       Test.startTest();
-      List<Object> saturday = post(
-        'change',
-        new Map<String, Object>{
-          'kind' => 'program',
-          'name' => 'Main',
-          'fields' => new Map<String, Object>{ 'saturday' => 'yes' },
-          'seen' => new Map<String, Object>{ 'saturday' => 'no' }
-        }
-      );
+      List<Object> saturday = saturdayOnMain();
       Test.stopTest();
       String said = String.valueOf(saturday[1]);
       Assert.areEqual(200, saturday[0], said);
@@ -406,15 +411,7 @@ private class AgentSetupChangeTest {
         'The weeks are busy.'
       );
       Test.startTest();
-      List<Object> saturday = post(
-        'change',
-        new Map<String, Object>{
-          'kind' => 'program',
-          'name' => 'Main',
-          'fields' => new Map<String, Object>{ 'saturday' => 'yes' },
-          'seen' => new Map<String, Object>{ 'saturday' => 'no' }
-        }
-      );
+      List<Object> saturday = saturdayOnMain();
       Test.stopTest();
       String said = String.valueOf(saturday[1]);
       Assert.areEqual(200, saturday[0], said);

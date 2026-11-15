@@ -21,17 +21,21 @@ global with sharing class AgentChangeSetup implements AgentWeeks.Action, AgentAs
     'seen'
   };
 
-  @HttpPost
-  global static void post() {
-    AgentWeeks.answer(new AgentChangeSetup());
-  }
-
   // The row and what was seen, read once for the question and the save.
   private AgentSetupRecords.Found found;
   private SObject record;
   private SObject seen;
   private AgentSetupFields.Put put;
   private AgentFixedOver.Ask ask;
+
+  // For tests: the weeks' following refused, as trouble there would be (API-1.49).
+  @TestVisible
+  private static Exception weeksRefusedForTest;
+
+  @HttpPost
+  global static void post() {
+    AgentWeeks.answer(new AgentChangeSetup());
+  }
 
   /** CORE-3.9: the table's question when a fixed activity lands on a recurring one; else none. */
   public String preview() {
@@ -93,10 +97,6 @@ global with sharing class AgentChangeSetup implements AgentWeeks.Action, AgentAs
       (ask == null ? '' : ' ' + ask.line) +
       weeksFollow(record, found.labels);
   }
-
-  // For tests: the weeks' following refused, as trouble there would be (API-1.49).
-  @TestVisible
-  private static Exception weeksRefusedForTest;
 
   /**
    * A program's days changed: the weeks follow them, as on the Programs screen, and the answer

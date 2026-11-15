@@ -145,31 +145,17 @@ global with sharing class AgentChangeCampWords implements AgentWeeks.Action {
     String key,
     List<CampLabels.TermLabel> all
   ) {
-    String asked = IncomingBatch.fold(key);
     List<CampLabels.TermLabel> shownRows = new List<CampLabels.TermLabel>();
-    for (CampLabels.TermLabel row : all) {
-      if (!CampLabels.UNSHOWN.contains(row.term)) {
-        shownRows.add(row);
-      }
-    }
-    // Shoresh's own words first: a camp word never hides one of them.
-    for (CampLabels.TermLabel row : shownRows) {
-      if (
-        asked == IncomingBatch.fold(row.term) ||
-        asked == IncomingBatch.fold(row.modelSingular) ||
-        asked == IncomingBatch.fold(row.modelPlural)
-      ) {
-        return row;
-      }
-    }
-    for (CampLabels.TermLabel row : shownRows) {
-      if (asked == IncomingBatch.fold(row.singular)) {
-        return row;
-      }
-    }
     List<String> settable = new List<String>();
-    for (CampLabels.TermLabel row : shownRows) {
-      settable.add(row.modelSingular);
+    for (CampLabels.TermLabel each : all) {
+      if (!CampLabels.UNSHOWN.contains(each.term)) {
+        shownRows.add(each);
+        settable.add(each.modelSingular);
+      }
+    }
+    CampLabels.TermLabel row = matchOf(IncomingBatch.fold(key), shownRows);
+    if (row != null) {
+      return row;
     }
     throw new ShoreshException(
       NOT_SAVED +
@@ -179,6 +165,29 @@ global with sharing class AgentChangeCampWords implements AgentWeeks.Action {
         String.join(settable, ', ') +
         '.'
     );
+  }
+
+  /** The row a folded key names, Shoresh's own words first; null when none does. */
+  private static CampLabels.TermLabel matchOf(
+    String asked,
+    List<CampLabels.TermLabel> rows
+  ) {
+    // Shoresh's own words first: a camp word never hides one of them.
+    for (CampLabels.TermLabel row : rows) {
+      if (
+        asked == IncomingBatch.fold(row.term) ||
+        asked == IncomingBatch.fold(row.modelSingular) ||
+        asked == IncomingBatch.fold(row.modelPlural)
+      ) {
+        return row;
+      }
+    }
+    for (CampLabels.TermLabel row : rows) {
+      if (asked == IncomingBatch.fold(row.singular)) {
+        return row;
+      }
+    }
+    return null;
   }
 
   /** The word asked: "singular / plural", or (blank) for Shoresh's own word. */

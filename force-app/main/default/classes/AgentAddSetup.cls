@@ -27,17 +27,17 @@ global with sharing class AgentAddSetup implements AgentWeeks.Action, AgentAskFi
     'RecurringActivity' => new List<String>{ 'time_block' }
   };
 
-  @HttpPost
-  global static void post() {
-    AgentWeeks.answer(new AgentAddSetup());
-  }
-
   // The new row and its fields, read once for the question and the save.
   private String name;
   private AgentSetupRecords.Found found;
   private SObject record;
   private AgentSetupFields.Put put;
   private AgentFixedOver.Ask ask;
+
+  @HttpPost
+  global static void post() {
+    AgentWeeks.answer(new AgentAddSetup());
+  }
 
   /** CORE-3.9: the table's question when a fixed activity lands on a recurring one; else none. */
   public String preview() {
