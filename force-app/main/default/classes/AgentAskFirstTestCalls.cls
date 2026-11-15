@@ -4,7 +4,8 @@
  * after the person says yes. A refusal is left as it came. A change that asks first, sent as a POST
  * without a confirm, answering done without asking fails the test, so one whose preview stops
  * asking can't pass unseen. A GET, or a POST already carrying its confirm, is answered straight
- * away; so is a special schedule's frame, a call that takes nothing away.
+ * away; so is a special schedule's frame, a call that takes nothing away, and adding or changing a
+ * setup record, which asks only for a fixed activity over a recurring one (API-1.147).
  */
 @IsTest
 public class AgentAskFirstTestCalls {
@@ -33,6 +34,8 @@ public class AgentAskFirstTestCalls {
   private static Boolean mustAsk(AgentWeeks.Action action, Blob sent) {
     return action instanceof AgentAskFirst.Preview &&
       !(action instanceof AgentSpecialFrame) &&
+      !(action instanceof AgentAddSetup) &&
+      !(action instanceof AgentChangeSetup) &&
       RestContext.request.httpMethod == 'POST' &&
       sent != null &&
       sent.size() > 0 &&

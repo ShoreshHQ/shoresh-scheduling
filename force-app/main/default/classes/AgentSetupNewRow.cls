@@ -50,7 +50,14 @@ public with sharing class AgentSetupNewRow {
       row.put(PARENT.get(found.term), parentId);
     }
     if (order != null) {
-      row.put(order, next(siblings, order));
+      // A program starts as Camp Setup starts it: one more than how many there are
+      // (shoreshCampSetup programDefaults); every other table, after its last row.
+      row.put(
+        order,
+        found.term == 'Program'
+          ? (Decimal) (siblings.size() + 1)
+          : next(siblings, order)
+      );
     }
     defaults(found.term, row, siblings);
     return row;
@@ -79,6 +86,12 @@ public with sharing class AgentSetupNewRow {
         );
       }
     }
+    // DIV-1.1: a holding "No division" record is no row of the Divisions table.
+    String holding = term == 'Division'
+      ? ' AND ' +
+        ShoreshSchema.queryName(Division__c.NoDivision__c) +
+        ' = FALSE'
+      : '';
     return Database.queryWithBinds(
       'SELECT ' +
         String.join(columns, ', ') +
@@ -86,7 +99,8 @@ public with sharing class AgentSetupNewRow {
         ShoreshSchema.queryName(type) +
         ' WHERE ' +
         ShoreshSchema.queryName(parent) +
-        ' = :parentId',
+        ' = :parentId' +
+        holding,
       new Map<String, Object>{ 'parentId' => parentId },
       AccessLevel.USER_MODE
     );

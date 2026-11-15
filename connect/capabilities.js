@@ -1414,7 +1414,7 @@ const CAPABILITIES = [
   setup(
     "change_setup_record",
     "change_setup_record",
-    "Change fields of one of a season's setup records other than its name (rename_setup_record renames), as Camp Setup's tables save a row. Read it first with read_setup_record and send what it said as seen. It covers a week's dates, a program's days, a group's division or availability, a time block's times, a location's type or how many groups fit, an activity's location, length, how often, priority, outdoor, rain plan or groups at once, a fixed or recurring activity's time block, length, place or days, the weeks something runs in, who a recurring activity covers, a special day's or event's notes or place. It is done as you, with your own access. If someone else changed those fields since, nothing is saved and Shoresh says so; what Camp Setup refuses is refused in its words.",
+    "Change fields of one of a season's setup records other than its name (rename_setup_record renames), as Camp Setup's tables save a row. Read it first with read_setup_record and send what it said as seen. It covers a week's dates, a program's days, a group's division or availability, a time block's times, a location's type or how many groups fit, an activity's location, length, how often, priority, outdoor, rain plan or groups at once, a fixed or recurring activity's time block, length, place or days, the weeks something runs in, who a recurring activity covers, a special day's or event's notes or place. It is done as you, with your own access. If someone else changed those fields since, nothing is saved and Shoresh says so; what Camp Setup refuses is refused in its words. A fixed activity that would land on a recurring activity is asked about first with Camp Setup's own question (\"What is ... where ... is?\"); on the yes the recurring activity keeps its other time blocks, as on the screen. Anything else is done at once, with no confirm.",
     {
       fields: CHANGED_SETUP_FIELDS,
       seen: {
@@ -1428,7 +1428,7 @@ const CAPABILITIES = [
   addedRecord(
     "add_setup_record",
     "add_setup_record",
-    "Add one setup record to a season, as Camp Setup's tables' Add does: a week, program, division, group, time block, location type, location, activity, fixed activity, recurring activity, special day, special event or elective set. It goes last in its table and starts from what that table's new row starts with (a new activity: once a week, one block long, low priority; a new location: one group fits; a new program: the days the other programs run); fields set more. A new week needs start_date and end_date, a time block start_time and end_time, a fixed or recurring activity its time_block, and a group its division (\"none\" for no division). Records in a program (divisions, groups, time blocks, fixed and recurring activities) go in the program named, or the season's only one. It is done as you, with your own access; what Camp Setup refuses is refused in its words.",
+    "Add one setup record to a season, as Camp Setup's tables' Add does: a week, program, division, group, time block, location type, location, activity, fixed activity, recurring activity, special day, special event or elective set. It goes last in its table and starts from what that table's new row starts with (a new activity: once a week, one block long, low priority; a new location: one group fits; a new program: the days the other programs run); fields set more. A new week needs start_date and end_date, a time block start_time and end_time, a fixed or recurring activity its time_block, and a group its division (\"none\" for no division). Records in a program (divisions, groups, time blocks, fixed and recurring activities) go in the program named, or the season's only one. It is done as you, with your own access; what Camp Setup refuses is refused in its words. A fixed activity that would land on a recurring activity is asked about first with Camp Setup's own question (\"What is ... where ... is?\"); on the yes the recurring activity keeps its other time blocks, as on the screen. Anything else is done at once, with no confirm.",
     { fields: SETUP_FIELDS }
   ),
   {
@@ -2475,7 +2475,10 @@ const ASKS_FIRST = [
   "copy_season",
   "change_special_schedule_frame",
   "assign_elective_seats",
-  "apply_to_other_weeks"
+  "apply_to_other_weeks",
+  // Only for a fixed activity over a recurring one (API-1.147), as Camp Setup asks.
+  "add_setup_record",
+  "change_setup_record"
 ];
 for (const c of CAPABILITIES.filter((each) => ASKS_FIRST.includes(each.name))) {
   c.asksFirst = true;

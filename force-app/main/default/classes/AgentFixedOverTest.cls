@@ -1,0 +1,300 @@
+/**
+ * API-1.147 (CORE-3.9 for an AI): a fixed activity added or changed over a recurring activity asks
+ * the Fixed activities table's own question first, and on the yes leaves what the screen's yes
+ * leaves: the fixed activity saved and the recurring activity kept at its other time blocks. On
+ * SetTimeTestData's camp: Period 1 (9:00), Period 2 (10:00), Lunch (12:00); Main runs Monday to
+ * Thursday. The screen's side of the same case: shoreshProgram.test.js (CORE-3.9) and
+ * SetTimeAroundTest.
+ */
+@IsTest
+private class AgentFixedOverTest {
+  /** POST add or change in the camp's season; answers [status, sentence]. */
+  private static List<Object> post(String action, Map<String, Object> fields) {
+    Map<String, Object> body = new Map<String, Object>{
+      'season' => 'Summer 2026',
+      'program' => 'Main'
+    };
+    body.putAll(fields);
+    RestContext.request = new RestRequest();
+    RestContext.request.httpMethod = 'POST';
+    RestContext.request.requestBody = Blob.valueOf(JSON.serialize(body));
+    RestContext.response = new RestResponse();
+    AgentWeeks.answer(
+      action == 'change'
+        ? (AgentWeeks.Action) new AgentChangeSetup()
+        : new AgentAddSetup()
+    );
+    Map<String, Object> answer = (Map<String, Object>) JSON.deserializeUntyped(
+      RestContext.response.responseBody.toString()
+    );
+    return new List<Object>{
+      RestContext.response.statusCode,
+      answer.get('message')
+    };
+  }
+
+  /** The same request again with the confirm the first answer gave. */
+  private static Map<String, Object> withConfirm(
+    Map<String, Object> fields,
+    String confirm
+  ) {
+    Map<String, Object> result = new Map<String, Object>(fields);
+    result.put(AgentAskFirst.FIELD, confirm);
+    return result;
+  }
+
+  /** Field day: Period 1 for the length given, on Mondays, for Group A, in the Gym, off Week 2. */
+  private static Id fieldDay(Map<String, Id> ids, Integer length) {
+    RecurringActivity__c fieldDay = SetTimeTestData.recurring(
+      ids,
+      'Field day',
+      'Period 1'
+    );
+    fieldDay.Length__c = length;
+    fieldDay.Location__c = ids.get('Gym');
+    return SetTimeTestData.save(
+      new List<SObject>{ fieldDay },
+      SetTimeTestData.extras(
+        new List<RunsIn.WeekOff>{
+          SetTimeTestData.weekOff(0, null, ids.get('Week 2'))
+        },
+        null,
+        new List<SetTimeWho.Who>{
+          SetTimeTestData.who(0, null, new List<Id>{ ids.get('Group A') })
+        }
+      )
+    )[0];
+  }
+
+  private static List<RecurringActivity__c> fieldDays() {
+    return [
+      SELECT Id, TimeBlock__c, Length__c, Monday__c, Tuesday__c, Location__c
+      FROM RecurringActivity__c
+      WHERE Name = 'Field day'
+      WITH SYSTEM_MODE
+      ORDER BY TimeBlock__r.StartTime__c
+    ];
+  }
+
+  // API-1.147: an add asks the screen's question, saves nothing, and the yes splits as the screen's.
+  @IsTest
+  static void aFixedActivityAddedOverARecurringOneAsksTheScreensQuestionAndSplitsItOnTheYes() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      Map<String, Id> ids = SetTimeTestData.camp();
+      Id fieldDayId = fieldDay(ids, 3);
+      Map<String, Object> rest = new Map<String, Object>{
+        'kind' => 'fixed activity',
+        'name' => 'Rest',
+        'fields' => new Map<String, Object>{ 'time_block' => 'Period 2' }
+      };
+      Test.startTest();
+      List<Object> asked = post('add', rest);
+      String confirm = AgentAskFirstTestCalls.confirmIn(RestContext.response);
+      Integer afterAsking = [
+        SELECT COUNT()
+        FROM FixedActivity__c
+        WITH SYSTEM_MODE
+      ];
+      Integer before = Limits.getQueries();
+      List<Object> yes = post('add', withConfirm(rest, confirm));
+      Integer queries = Limits.getQueries() - before;
+      Test.stopTest();
+
+      String question = String.valueOf(asked[1]);
+      Assert.areEqual(200, asked[0], question);
+      Assert.isTrue(question.startsWith(AgentAskFirst.NOT_YET), question);
+      Assert.isTrue(
+        question.contains(
+          'What is “Field day” at Period 2 on Monday, where “Rest” is? ' +
+          '“Field day” keeps its other time blocks every day it runs; “Rest” keeps Period 2.'
+        ),
+        question
+      );
+      Assert.isNotNull(confirm, question);
+      Assert.areEqual(0, afterAsking, 'Asking saves nothing');
+
+      String said = String.valueOf(yes[1]);
+      Assert.areEqual(200, yes[0], said);
+      Assert.isTrue(said.startsWith('Added the fixed activity "Rest"'), said);
+      Assert.isTrue(
+        said.endsWith(
+          '“Field day” keeps its other time blocks every day it runs; “Rest” keeps Period 2.'
+        ),
+        said
+      );
+      Assert.isTrue(queries < 90, 'Queries: ' + queries);
+      Assert.areEqual(
+        ids.get('Period 2'),
+        [
+          SELECT TimeBlock__c
+          FROM FixedActivity__c
+          WHERE Name = 'Rest'
+          WITH SYSTEM_MODE
+        ]
+        .TimeBlock__c
+      );
+      // What the screen's yes leaves (SetTimeAroundTest): Field day at Period 1, its copy at Lunch.
+      List<RecurringActivity__c> pieces = fieldDays();
+      Assert.areEqual(2, pieces.size());
+      Assert.areEqual(fieldDayId, pieces[0].Id);
+      Assert.areEqual(ids.get('Period 1'), pieces[0].TimeBlock__c);
+      Assert.areEqual(1, pieces[0].Length__c);
+      RecurringActivity__c copy = pieces[1];
+      Assert.areEqual(ids.get('Lunch'), copy.TimeBlock__c);
+      Assert.areEqual(1, copy.Length__c);
+      Assert.isTrue(copy.Monday__c);
+      Assert.isFalse(copy.Tuesday__c);
+      Assert.areEqual(ids.get('Gym'), copy.Location__c);
+      Assert.areEqual(
+        ids.get('Group A'),
+        [
+          SELECT Group__c
+          FROM Coverage__c
+          WHERE RecurringActivity__c = :copy.Id
+          WITH SYSTEM_MODE
+        ]
+        .Group__c
+      );
+      Assert.areEqual(
+        ids.get('Week 2'),
+        [
+          SELECT Week__c
+          FROM WeekException__c
+          WHERE RecurringActivity__c = :copy.Id
+          WITH SYSTEM_MODE
+        ]
+        .Week__c
+      );
+    }
+  }
+
+  // API-1.147: a change asks too, and the yes keeps the recurring activity at its other block.
+  @IsTest
+  static void aFixedActivityMovedOverARecurringOneAsksFirstAndSplitsItOnTheYes() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      Map<String, Id> ids = SetTimeTestData.camp();
+      fieldDay(ids, 2);
+      Id restId = SetTimeTestData.save(
+        new List<SObject>{ SetTimeTestData.fixed(ids, 'Rest', 'Lunch') }
+      )[0];
+      Map<String, Object> move = new Map<String, Object>{
+        'kind' => 'fixed activity',
+        'name' => 'Rest',
+        'fields' => new Map<String, Object>{ 'time_block' => 'Period 2' },
+        'seen' => new Map<String, Object>{ 'time_block' => 'Lunch' }
+      };
+      Test.startTest();
+      List<Object> asked = post('change', move);
+      String confirm = AgentAskFirstTestCalls.confirmIn(RestContext.response);
+      List<Object> yes = post('change', withConfirm(move, confirm));
+      Test.stopTest();
+
+      String question = String.valueOf(asked[1]);
+      Assert.areEqual(200, asked[0], question);
+      Assert.isTrue(
+        question.contains(
+          'What is “Field day” at Period 2 on Monday, where “Rest” is?'
+        ),
+        question
+      );
+      String said = String.valueOf(yes[1]);
+      Assert.areEqual(200, yes[0], said);
+      Assert.isTrue(said.startsWith('Changed the fixed activity "Rest"'), said);
+      Assert.areEqual(
+        ids.get('Period 2'),
+        [
+          SELECT TimeBlock__c
+          FROM FixedActivity__c
+          WHERE Id = :restId
+          WITH SYSTEM_MODE
+        ]
+        .TimeBlock__c
+      );
+      List<RecurringActivity__c> pieces = fieldDays();
+      Assert.areEqual(1, pieces.size());
+      Assert.areEqual(ids.get('Period 1'), pieces[0].TimeBlock__c);
+      Assert.areEqual(1, pieces[0].Length__c);
+    }
+  }
+
+  // API-1.147: a confirm given before the recurring activity changed is refused, nothing saved.
+  @IsTest
+  static void aConfirmFromBeforeTheRecurringActivityChangedSavesNothing() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      Map<String, Id> ids = SetTimeTestData.camp();
+      Id fieldDayId = fieldDay(ids, 2);
+      Map<String, Object> rest = new Map<String, Object>{
+        'kind' => 'fixed activity',
+        'name' => 'Rest',
+        'fields' => new Map<String, Object>{ 'time_block' => 'Period 2' }
+      };
+      Test.startTest();
+      post('add', rest);
+      String confirm = AgentAskFirstTestCalls.confirmIn(RestContext.response);
+      // Someone else makes Field day 3 long: the same question, other pieces.
+      update as user new RecurringActivity__c(Id = fieldDayId, Length__c = 3);
+      List<Object> stale = post('add', withConfirm(rest, confirm));
+      Test.stopTest();
+      Assert.areEqual(409, stale[0], String.valueOf(stale[1]));
+      Assert.areEqual(
+        0,
+        [SELECT COUNT() FROM FixedActivity__c WITH SYSTEM_MODE]
+      );
+      Assert.areEqual(1, fieldDays().size());
+      Assert.areEqual(3, fieldDays()[0].Length__c);
+    }
+  }
+
+  // API-1.147 counter-cases: no question when nothing is under it, and the screen's refusal when
+  // the recurring activity sits only where the fixed one goes and can't go around it.
+  @IsTest
+  static void noQuestionWhenNothingIsUnderItAndTheScreensRefusalWhenItCantGoAround() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      Map<String, Id> ids = SetTimeTestData.camp();
+      SetTimeTestData.save(
+        new List<SObject>{ SetTimeTestData.recurring(ids, 'Swim', 'Lunch') }
+      );
+      Test.startTest();
+      List<Object> clear = post(
+        'add',
+        new Map<String, Object>{
+          'kind' => 'fixed activity',
+          'name' => 'Rest',
+          'fields' => new Map<String, Object>{ 'time_block' => 'Period 1' }
+        }
+      );
+      List<Object> onSwim = post(
+        'add',
+        new Map<String, Object>{
+          'kind' => 'fixed activity',
+          'name' => 'Lunch break',
+          'fields' => new Map<String, Object>{ 'time_block' => 'Lunch' }
+        }
+      );
+      Test.stopTest();
+      Assert.areEqual(200, clear[0], String.valueOf(clear[1]));
+      Assert.isTrue(
+        String.valueOf(clear[1]).startsWith('Added the fixed activity "Rest"'),
+        String.valueOf(clear[1])
+      );
+      Assert.areEqual(400, onSwim[0], String.valueOf(onSwim[1]));
+      Assert.isTrue(
+        String.valueOf(onSwim[1]).startsWith('"Lunch break" not added.'),
+        String.valueOf(onSwim[1])
+      );
+      Assert.isTrue(
+        String.valueOf(onSwim[1]).contains('"Swim"'),
+        String.valueOf(onSwim[1])
+      );
+      Assert.areEqual(
+        0,
+        [
+          SELECT COUNT()
+          FROM FixedActivity__c
+          WHERE Name = 'Lunch break'
+          WITH SYSTEM_MODE
+        ]
+      );
+    }
+  }
+}

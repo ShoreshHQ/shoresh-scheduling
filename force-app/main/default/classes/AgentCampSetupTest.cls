@@ -133,6 +133,57 @@ private class AgentCampSetupTest {
     }
   }
 
+  // API-1.56: a word the Camp words screen never shows is refused, naming the words that can be set.
+  @IsTest
+  static void aWordTheScreenNeverShowsIsRefusedNamingTheWordsThatCanBeSet() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      GeneratedTestData.camp();
+      Season__c season = season();
+      Test.startTest();
+      List<Object> offering = ask(
+        new AgentChangeCampWords(),
+        'POST',
+        new Map<String, Object>{
+          'season' => season.Name,
+          'words' => new Map<String, Object>{ 'Offering' => 'Chug / Chugim' },
+          'seen' => new Map<String, Object>{
+            'Offering' => 'Offering / Offerings'
+          }
+        }
+      );
+      List<Object> conflict = ask(
+        new AgentChangeCampWords(),
+        'POST',
+        new Map<String, Object>{
+          'season' => season.Name,
+          'words' => new Map<String, Object>{ 'Conflict' => 'Clash / Clashes' },
+          'seen' => new Map<String, Object>{
+            'Conflict' => 'Conflict / Conflicts'
+          }
+        }
+      );
+      Test.stopTest();
+      for (
+        List<Object> refused : new List<List<Object>>{ offering, conflict }
+      ) {
+        String said = String.valueOf(refused[1]);
+        Assert.areEqual(400, refused[0], said);
+        Assert.isTrue(
+          said.startsWith('Camp words not saved. Shoresh has no word "'),
+          said
+        );
+        Assert.isTrue(said.contains('The words a camp can set: '), said);
+        Set<String> settable = new Set<String>(
+          said.substringAfter('can set: ').removeEnd('.').split(', ')
+        );
+        Assert.isTrue(settable.contains('Group'), said);
+        Assert.isFalse(settable.contains('Offering'), said);
+        Assert.isFalse(settable.contains('Conflict'), said);
+      }
+      Assert.areEqual(0, [SELECT COUNT() FROM CampLabel__c WITH SYSTEM_MODE]);
+    }
+  }
+
   // API-1.57
   @IsTest
   static void seasonIsTheSeasonFormsSaveWithWhatListSeasonsSaid() {

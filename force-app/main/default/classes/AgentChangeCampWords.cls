@@ -136,14 +136,24 @@ global with sharing class AgentChangeCampWords implements AgentWeeks.Action {
     labels.clear();
   }
 
-  /** The term a key names: Shoresh's word for it, its plural, or the camp's own word. */
+  /**
+   * The term a key names: Shoresh's word for it, its plural, or the camp's own word. Only the words
+   * the Camp words screen shows (CampLabels.UNSHOWN left off, word walk W1): a word for any other
+   * is refused naming the words that can be set.
+   */
   private static CampLabels.TermLabel termOf(
     String key,
     List<CampLabels.TermLabel> all
   ) {
     String asked = IncomingBatch.fold(key);
-    // Shoresh's own words first: a camp word never hides one of them.
+    List<CampLabels.TermLabel> shownRows = new List<CampLabels.TermLabel>();
     for (CampLabels.TermLabel row : all) {
+      if (!CampLabels.UNSHOWN.contains(row.term)) {
+        shownRows.add(row);
+      }
+    }
+    // Shoresh's own words first: a camp word never hides one of them.
+    for (CampLabels.TermLabel row : shownRows) {
       if (
         asked == IncomingBatch.fold(row.term) ||
         asked == IncomingBatch.fold(row.modelSingular) ||
@@ -152,16 +162,22 @@ global with sharing class AgentChangeCampWords implements AgentWeeks.Action {
         return row;
       }
     }
-    for (CampLabels.TermLabel row : all) {
+    for (CampLabels.TermLabel row : shownRows) {
       if (asked == IncomingBatch.fold(row.singular)) {
         return row;
       }
+    }
+    List<String> settable = new List<String>();
+    for (CampLabels.TermLabel row : shownRows) {
+      settable.add(row.modelSingular);
     }
     throw new ShoreshException(
       NOT_SAVED +
         'Shoresh has no word "' +
         key.left(40) +
-        '". Read them with read_camp_words.'
+        '" a camp can set. The words a camp can set: ' +
+        String.join(settable, ', ') +
+        '.'
     );
   }
 

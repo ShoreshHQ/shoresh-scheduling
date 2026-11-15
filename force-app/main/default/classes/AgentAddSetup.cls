@@ -5,10 +5,11 @@
  * API-1.50). Web address /v1/add_setup_record, POST {season, kind, name, program, fields}. It is
  * the setup table's own Add (SetupTablesController.saveRow with a new row): last in its table,
  * starting from what that table's new row starts with, and refused when it lacks what the table
- * requires before Add, or in the save's own words.
+ * requires before Add, or in the save's own words. A fixed activity over a recurring one asks
+ * first what the table asks, and on the yes saves with the same pieces (API-1.147).
  */
 @RestResource(urlMapping='/v1/add_setup_record')
-global with sharing class AgentAddSetup implements AgentWeeks.Action {
+global with sharing class AgentAddSetup implements AgentWeeks.Action, AgentAskFirst.Preview {
   private static final Set<String> FIELDS = new Set<String>{
     'season',
     'kind',
@@ -31,27 +32,29 @@ global with sharing class AgentAddSetup implements AgentWeeks.Action {
     AgentWeeks.answer(new AgentAddSetup());
   }
 
+  // The new row and its fields, read once for the question and the save.
+  private String name;
+  private AgentSetupRecords.Found found;
+  private SObject record;
+  private AgentSetupFields.Put put;
+  private AgentFixedOver.Ask ask;
+
+  /** CORE-3.9: the table's question when a fixed activity lands on a recurring one; else none. */
+  public String preview() {
+    ready();
+    // The pieces too, unsaid: a recurring activity changed since makes the confirm stale.
+    AgentAskFirst.stateIs(ask == null ? null : JSON.serialize(ask.around));
+    return ask == null ? null : ask.words();
+  }
+
   public String run() {
-    Map<String, Object> body = AgentFields.body(FIELDS);
-    AgentSetupRecords.Found found = AgentSetupRecords.kindIn(body);
-    String name = AgentFields.text(body, 'name');
-    if (String.isBlank(name)) {
-      throw new ShoreshException(
-        'Say what to call the new ' + found.kind + ' (name).'
-      );
+    if (record == null) {
+      ready();
     }
-    refuseWhatIsMissing(found, AgentSetupFields.given(body.get('fields')));
-    if (AgentSetupFields.inProgram(found.term)) {
-      found.programId = programCalled(AgentFields.text(body, 'program'), found);
+    if (ask != null) {
+      // The yes: the recurring activities keep their other time blocks, as on screen.
+      put.extras.around = ask.around;
     }
-    SObject record = AgentSetupNewRow.of(found);
-    record.put('Name', name);
-    AgentSetupFields.Put put = AgentSetupFields.put(
-      record,
-      body.get('fields'),
-      found
-    );
-    AgentSetupNotes.refuseTooFewGroups(record);
     RowSaves.Result result;
     try {
       // The setup table's own Add: one new row (ADR 0011).
@@ -67,7 +70,29 @@ global with sharing class AgentAddSetup implements AgentWeeks.Action {
       name +
       '"' +
       (put.said.isEmpty() ? '' : ': ' + String.join(put.said, ', ')) +
-      '.';
+      '.' +
+      (ask == null ? '' : ' ' + ask.line);
+  }
+
+  /** The new row as the table starts it, with the fields asked; refused as the table refuses. */
+  private void ready() {
+    Map<String, Object> body = AgentFields.body(FIELDS);
+    found = AgentSetupRecords.kindIn(body);
+    name = AgentFields.text(body, 'name');
+    if (String.isBlank(name)) {
+      throw new ShoreshException(
+        'Say what to call the new ' + found.kind + ' (name).'
+      );
+    }
+    refuseWhatIsMissing(found, AgentSetupFields.given(body.get('fields')));
+    if (AgentSetupFields.inProgram(found.term)) {
+      found.programId = programCalled(AgentFields.text(body, 'program'), found);
+    }
+    record = AgentSetupNewRow.of(found);
+    record.put('Name', name);
+    put = AgentSetupFields.put(record, body.get('fields'), found);
+    AgentSetupNotes.refuseTooFewGroups(record);
+    ask = AgentFixedOver.of(record, put.extras, found);
   }
 
   /** What the table requires before Add, refused naming all of it. */

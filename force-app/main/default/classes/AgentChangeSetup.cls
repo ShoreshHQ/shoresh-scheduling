@@ -6,10 +6,12 @@
  * kind, name, program, fields, seen}. Found as rename_setup_record finds it; it is the setup
  * table's own row save (SetupTablesController.saveRow) with what the agent read
  * (read_setup_record) sent as seen, so someone else's change since it read is refused, never
- * overwritten. Answered and refused in the save's own words.
+ * overwritten. Answered and refused in the save's own words. A fixed activity moved over a
+ * recurring one asks first what the table asks, and on the yes saves with the same pieces
+ * (API-1.147).
  */
 @RestResource(urlMapping='/v1/change_setup_record')
-global with sharing class AgentChangeSetup implements AgentWeeks.Action {
+global with sharing class AgentChangeSetup implements AgentWeeks.Action, AgentAskFirst.Preview {
   private static final Set<String> FIELDS = new Set<String>{
     'season',
     'kind',
@@ -24,19 +26,46 @@ global with sharing class AgentChangeSetup implements AgentWeeks.Action {
     AgentWeeks.answer(new AgentChangeSetup());
   }
 
-  public String run() {
+  // The row and what was seen, read once for the question and the save.
+  private AgentSetupRecords.Found found;
+  private SObject record;
+  private SObject seen;
+  private AgentSetupFields.Put put;
+  private AgentFixedOver.Ask ask;
+
+  /** CORE-3.9: the table's question when a fixed activity lands on a recurring one; else none. */
+  public String preview() {
+    ready();
+    // The pieces too, unsaid: a recurring activity changed since makes the confirm stale.
+    AgentAskFirst.stateIs(ask == null ? null : JSON.serialize(ask.around));
+    return ask == null ? null : ask.words();
+  }
+
+  /** The row with the fields asked and what was seen; refused as the table refuses. */
+  private void ready() {
     Map<String, Object> body = AgentFields.body(FIELDS);
-    AgentSetupRecords.Found found = AgentSetupRecords.find(body);
-    SObject record = found.id.getSObjectType().newSObject(found.id);
+    found = AgentSetupRecords.find(body);
+    record = found.id.getSObjectType().newSObject(found.id);
     Map<String, Object> given = AgentSetupFields.given(body.get('fields'));
     // The weeks it runs in and who it covers go with the row as its ticks (API-1.53, API-1.54).
     Map<String, Object> lists = AgentRunsIn.takeOut(given, found.term);
-    AgentSetupFields.Put put = AgentSetupFields.put(record, given, found);
+    put = AgentSetupFields.put(record, given, found);
     AgentSetupNotes.refuseTooFewGroups(record);
     refuseNothingAsked(put, lists, found);
-    SObject seen = AgentSetupFields.seen(found.id, body.get('seen'), put);
+    seen = AgentSetupFields.seen(found.id, body.get('seen'), put);
     if (!lists.isEmpty()) {
       put.said.addAll(AgentRunsIn.ready(lists, body.get('seen'), put));
+    }
+    ask = AgentFixedOver.of(record, put.extras, found);
+  }
+
+  public String run() {
+    if (record == null) {
+      ready();
+    }
+    if (ask != null) {
+      // The yes: the recurring activities keep their other time blocks, as on screen.
+      put.extras.around = ask.around;
     }
     RowSaves.Result result;
     try {
@@ -61,14 +90,21 @@ global with sharing class AgentChangeSetup implements AgentWeeks.Action {
       '": ' +
       String.join(put.said, ', ') +
       '.' +
-      weeksFollow(record);
+      (ask == null ? '' : ' ' + ask.line) +
+      weeksFollow(record, found.labels);
   }
+
+  // For tests: the weeks' following refused, as trouble there would be (API-1.49).
+  @TestVisible
+  private static Exception weeksRefusedForTest;
 
   /**
    * A program's days changed: the weeks follow them, as on the Programs screen, and the answer
-   * says so (WEEK-2.7, ADR 0028); nothing more when no week moved.
+   * says so (WEEK-2.7, ADR 0028); nothing more when no week moved. As on the screen, a separate
+   * step after the save: if the weeks can't follow, the new days stay saved and the answer says
+   * the weeks didn't follow, with why (API-1.49).
    */
-  private static String weeksFollow(SObject record) {
+  private static String weeksFollow(SObject record, CampLabels labels) {
     if (record.getSObjectType() != Program__c.SObjectType) {
       return '';
     }
@@ -89,9 +125,20 @@ global with sharing class AgentChangeSetup implements AgentWeeks.Action {
       WHERE Id = :record.Id
       WITH USER_MODE
     ];
-    SeasonWeeksFollow.Followed followed = SeasonWeeksFollow.followProgramDays(
-      program.Season__c
-    );
+    Savepoint before = Database.setSavepoint();
+    SeasonWeeksFollow.Followed followed;
+    try {
+      if (weeksRefusedForTest != null) {
+        throw weeksRefusedForTest;
+      }
+      followed = SeasonWeeksFollow.followProgramDays(program.Season__c);
+    } catch (Exception e) {
+      Database.rollback(before);
+      return ' The ' +
+        labels.pluralInSentence('Week') +
+        ' didn\'t follow the new days. ' +
+        ScreenErrors.words(e);
+    }
     return followed.said == null ? '' : ' ' + followed.said;
   }
 
