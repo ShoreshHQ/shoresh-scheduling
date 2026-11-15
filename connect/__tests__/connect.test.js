@@ -2601,6 +2601,33 @@ describe("Shoresh for AI tools and the command line", () => {
   });
 
   // API-1.97 (Greg 2026-11-15, AI = screen)
+  it("theCommandLineOffersNoLearnedUndo: one command per process holds no Undo, and its answer says so instead of offering one", async () => {
+    const { oneCommandAtATime } = require("../learned");
+    oneCommandAtATime();
+    let said;
+    try {
+      said = await call(
+        "forget_learned_answer",
+        { season: "Summer 2031", answer_id: "a0Learned000009", seen: "fixed" },
+        {
+          run: sfAnswering(
+            200,
+            JSON.stringify({
+              message:
+                'Forgot "fixed": the next import asks that question again. To undo it, use undo_learned_answer with undo "forget:a0Learned000009".'
+            })
+          )
+        }
+      );
+    } finally {
+      oneCommandAtATime(false);
+    }
+    expect(said.ok).toBe(true);
+    expect(said.text).toBe(
+      'Forgot "fixed": the next import asks that question again. The command line keeps no Undo between commands, as the screen keeps none once its page is closed.'
+    );
+  });
+
   it("learnedUndoLastsTheConversation: only a change or forget made while this connector runs can be undone, each once; anything else is nothing to undo, with nothing asked", async () => {
     const nothing =
       "There's nothing to undo in this conversation: Undo on What Shoresh has learned is only for a change, forget or forget pattern made in it, as the screen offers Undo only while its page is open. Nothing was changed.";

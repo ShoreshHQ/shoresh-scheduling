@@ -327,8 +327,8 @@ async function callOnce(
       versionWords(namespace)
     );
   }
-  const done = answer(await asked(request));
-  if (capability.givesLearnedUndo) holdUndo(done, org);
+  let done = answer(await asked(request));
+  if (capability.givesLearnedUndo) done = holdUndo(done, org);
   if (!done.ok || !capability.about || input.as_csv) return done;
   done.about = capability.about;
   if (capability.showsWeek) {

@@ -119,9 +119,26 @@ const UNDO_GIVEN = /use undo_learned_answer with undo "([^"]+)"/;
 const NOTHING_TO_UNDO =
   "There's nothing to undo in this conversation: Undo on What Shoresh has learned is only for a change, forget or forget pattern made in it, as the screen offers Undo only while its page is open. Nothing was changed.";
 
+// The command line runs one command per process, so it holds no Undo, as a closed page holds none.
+let oneCommand = false;
+const UNDO_SENTENCE = /To undo it, use undo_learned_answer with undo "[^"]+"\./;
+const NO_UNDO_HERE =
+  "The command line keeps no Undo between commands, as the screen keeps none once its page is closed.";
+
+/** The command line: each command is its own conversation, with no Undo offered after it. */
+function oneCommandAtATime(on = true) {
+  oneCommand = on;
+}
+
 /** Holds the undo a change, forget or forget pattern was given, for this conversation. */
 function holdUndo(done, org) {
   const given = done && done.ok && UNDO_GIVEN.exec(String(done.text));
+  if (given && oneCommand) {
+    return {
+      ...done,
+      text: String(done.text).replace(UNDO_SENTENCE, NO_UNDO_HERE)
+    };
+  }
   if (given) undos.add(`${org ?? ""}|${given[1]}`);
   return done;
 }
@@ -135,4 +152,10 @@ async function undoLearned(input, { ask, answer }, org) {
   return done;
 }
 
-module.exports = { readLearned, forgetPattern, holdUndo, undoLearned };
+module.exports = {
+  readLearned,
+  forgetPattern,
+  holdUndo,
+  undoLearned,
+  oneCommandAtATime
+};
