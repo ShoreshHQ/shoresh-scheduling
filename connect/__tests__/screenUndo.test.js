@@ -126,7 +126,7 @@ describe("an AI's change is the screen's, and so is its Undo", () => {
     ]);
   });
 
-  it("typingWhereItRunsOutOfRoomSaysHowFar, and typing into a longer placement replaces it whole", async () => {
+  it("typingWhereItRunsOutOfRoomSaysHowFar: and typing into a longer placement replaces it whole", async () => {
     const short = sfAnswering([READ, answer({ message: "Done." })]);
     await call(
       "change_schedule_cell",
@@ -316,7 +316,7 @@ describe("an AI's change is the screen's, and so is its Undo", () => {
     );
   });
 
-  it("aRebuildOrStartOverIsUndoneWithTheVersionItsSaveKept; Generate, Try another and Fill the open cells hold no Undo", async () => {
+  it("aRebuildOrStartOverIsUndoneWithTheVersionItsSaveKept: Generate, Try another and Fill the open cells hold no Undo", async () => {
     const checks = async () => ({
       menuForAgent: (read, how) => ({
         ok: true,
@@ -485,7 +485,7 @@ describe("an AI's change is the screen's, and so is its Undo", () => {
     );
   });
 
-  it("aLockWithNothingHeldIsOneRequest, and a Lock after Start over ends its Undo, as the screen's", async () => {
+  it("aLockWithNothingHeldIsOneRequest: and a Lock after Start over ends its Undo, as the screen's", async () => {
     const lock = {
       ...WEEK,
       day: "Monday",
@@ -744,7 +744,7 @@ describe("an AI's change is the screen's, and so is its Undo", () => {
     expect(Object.keys(sf.seen[4].body.held)).toEqual([OTHER]);
   });
 
-  it("aNewConversationHoldsNothing, and the command line says it can't undo", async () => {
+  it("aNewConversationHoldsNothing: and the command line says it can't undo", async () => {
     const sf = sfAnswering([answer({ message: "Nothing to undo." }, 400)]);
     await call("undo_last_agent_change", WEEK, sf);
     expect(sf.seen[0].body).toEqual({ ...WEEK, held: {} });
