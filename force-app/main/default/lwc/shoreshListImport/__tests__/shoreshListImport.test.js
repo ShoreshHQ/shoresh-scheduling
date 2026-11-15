@@ -1448,8 +1448,18 @@ describe("Import worksheet (Roots)", () => {
         ])
       ).toEqual([["Woodworking · activity", true, true]]);
       expect(rowsOf(element, "new")).toEqual(["Woodworking"]);
+      // CORE-1.36: an offering is said in the camp's Elective words, never "offering".
+      expect(textOf(saveOf(element))).not.toMatch(/offering/i);
+      saveList.mockResolvedValue({
+        added: { Activity: 1, Offering: 1 },
+        changed: {},
+        importId: "imp1"
+      });
       saveOf(element).click();
       await flush();
+      expect(
+        $$(element, '[data-id="summary"] li').map((li) => li.textContent)
+      ).toEqual(["Added 1 activity", "Added 1 elective"]);
       const plan = bareRecord(JSON.parse(saveList.mock.calls[0][0].plan));
       expect(plan.screen).toBe("electives");
       expect(plan.records.map((r) => [r.kind, r.key])).toEqual([
