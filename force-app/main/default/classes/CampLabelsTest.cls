@@ -149,6 +149,19 @@ private class CampLabelsTest {
     CampLabels standard = CampLabels.modelTermsOnly();
     Assert.areEqual('elective', standard.singularInSentence('Offering'));
     Assert.areEqual('Electives', standard.plural('Offering'));
+    // The list the screens read keeps the term's own words, so saving it back adds no label.
+    for (CampLabels.TermLabel row : labels.all()) {
+      if (row.term == 'Offering') {
+        Assert.areEqual('Offering', row.singular);
+        Assert.isFalse(row.isCustom);
+      }
+    }
+    CampLabels.save(camp.Id, labels.all());
+    Assert.areEqual(
+      1,
+      [SELECT COUNT() FROM CampLabel__c WHERE Camp__c = :camp.Id],
+      'only the Elective word is saved'
+    );
   }
 
   // CORE-1.35
