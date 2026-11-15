@@ -29,9 +29,19 @@ const call = (name, input, options) =>
     ...options
   });
 const { tools, handle, orgFrom, hostFrom } = require("../mcp");
-const { parse } = require("../cli");
+const { parse, main } = require("../cli");
 
 const CLASSES = path.resolve(__dirname, "../../force-app/main/default/classes");
+// The web addresses other systems send their own batches to (a key, Flow or CSV), which a
+// person's AI is never offered: it brings data in as the screens do (API-1.6).
+const OUTSIDE_SYSTEMS_ONLY = [
+  "activity",
+  "camper",
+  "camper_elective_choice",
+  "camper_group",
+  "division",
+  "group"
+];
 // The Versions panel's own words module, as the connector runs it (shipped by build-connect.js).
 const versionWords = async () =>
   require("../../force-app/main/default/lwc/shoreshVersions/words.js");
@@ -69,11 +79,13 @@ describe("Shoresh for AI tools and the command line", () => {
       .map((m) => m[1])
       // What Shoresh's view of a week draws: part of a schedule read, not an action (API-1.26).
       .filter((a) => a !== "week_view")
+      // Other systems' own doors, never a person's AI's (API-1.6).
+      .filter((a) => !OUTSIDE_SYSTEMS_ONLY.includes(a))
       .sort();
     expect([...new Set(CAPABILITIES.map((c) => c.api))].sort()).toEqual(
       addresses
     );
-    expect(CAPABILITIES).toHaveLength(106);
+    expect(CAPABILITIES).toHaveLength(100);
     for (const c of CAPABILITIES) {
       expect(
         requestFor(c, { season: "S", week: "W", records: [] }).path
@@ -83,6 +95,42 @@ describe("Shoresh for AI tools and the command line", () => {
         /^(read|list|download)_/.test(c.name) ? "GET" : "POST"
       );
     }
+  });
+
+  // API-1.6 (Greg 2026-11-15, AI = screen)
+  it("personsAiBringsDataInAsTheScreens: the outside systems' bring_in_* doors are no tool or command; a person's AI is pointed to import_list and bring_in_choices", () => {
+    const { usage } = require("../cli");
+    const offered = [
+      ...tools().map((t) => t.name),
+      ...CAPABILITIES.map((c) => c.name)
+    ];
+    for (const name of [
+      "bring_in_divisions",
+      "bring_in_groups",
+      "bring_in_activities",
+      "bring_in_campers",
+      "bring_in_camper_groups",
+      "bring_in_camper_elective_choices"
+    ]) {
+      expect(offered).not.toContain(name);
+      expect(byName(name)).toBeUndefined();
+      expect(usage()).not.toContain(name);
+      expect(() => parse([name])).toThrow(/Usage/);
+    }
+    for (const c of CAPABILITIES) {
+      expect([c.name, OUTSIDE_SYSTEMS_ONLY.includes(c.api)]).toEqual([
+        c.name,
+        false
+      ]);
+      // No tool sends the person's AI to an outside system's door.
+      const text = JSON.stringify(c);
+      expect([c.name, /bring_in_(?!choices)/.test(text)]).toEqual([
+        c.name,
+        false
+      ]);
+    }
+    expect(byName("import_list").description).toMatch(/Import a list/);
+    expect(byName("bring_in_choices")).toBeDefined();
   });
 
   it("API-1.125: apply_to_other_weeks names both weeks, either screen, and asks first", async () => {
@@ -105,10 +153,10 @@ describe("Shoresh for AI tools and the command line", () => {
 
   // API-1.6, API-1.5
   // API-1.19
-  it("plainNames: every action is list_seasons, read_<thing>, bring_in_<things>, change_<thing>, build_week, try_another_option, bring_back_option, fill_open_cells, start_over_week, publish_week, unpublish_week, lock_cells, unlock_cells, move_cell, take_out_cell, copy_cells, start_manual_week, finalize_electives, accept_finding, undo_last_agent_change, <verb>_version, rename/delete/add_setup_record, fill_in_weeks, merge_locations, confirm_setup_guess, confirm_proposed_offering, copy_season, update_to_match_setup, switch_to_rain_plans, assign_elective_seats, move_elective_seat, lock_elective_seat, start_new_elective_version, clear_electives, put_special_day_on_day, take_special_day_off_day, place_special_event, set_up_noted_item, import_list, import_worksheet, import_last_year, import_special_schedule, undo_import, apply_to_other_weeks, download_<file>, forget_learned_answer, forget_learned_pattern, undo_learned_answer, make_linked_choice, delete_linked_choice, delete_offering, create_camp, create_season, delete_season, archive_season, bring_back_season, clear_day or clear_week, said without jargon", () => {
+  it("plainNames: every action is list_seasons, read_<thing>, bring_in_choices, change_<thing>, build_week, try_another_option, bring_back_option, fill_open_cells, start_over_week, publish_week, unpublish_week, lock_cells, unlock_cells, move_cell, take_out_cell, copy_cells, start_manual_week, finalize_electives, accept_finding, undo_last_agent_change, <verb>_version, rename/delete/add_setup_record, fill_in_weeks, merge_locations, confirm_setup_guess, confirm_proposed_offering, copy_season, update_to_match_setup, switch_to_rain_plans, assign_elective_seats, move_elective_seat, lock_elective_seat, start_new_elective_version, clear_electives, put_special_day_on_day, take_special_day_off_day, place_special_event, set_up_noted_item, import_list, import_worksheet, import_last_year, import_special_schedule, undo_import, apply_to_other_weeks, download_<file>, forget_learned_answer, forget_learned_pattern, undo_learned_answer, make_linked_choice, delete_linked_choice, delete_offering, create_camp, create_season, delete_season, archive_season, bring_back_season, clear_day or clear_week, said without jargon", () => {
     for (const c of CAPABILITIES) {
       expect(c.name).toMatch(
-        /^((read|bring_in|change)_[a-z]+(_[a-z]+)*|list_seasons|undo_last_agent_change|build_week|try_another_option|bring_back_option|fill_open_cells|start_over_week|(un)?publish_week|(un)?lock_cells|move_cell|take_out_cell|copy_cells|start_manual_week|finalize_electives|accept_finding|(list|save|restore|rename|delete)_versions?|(rename|delete|add)_setup_record|fill_in_weeks|merge_locations|confirm_setup_guess|confirm_proposed_offering|copy_season|update_to_match_setup|switch_to_rain_plans|assign_elective_seats|move_elective_seat|lock_elective_seat|start_new_elective_version|clear_electives|put_special_day_on_day|take_special_day_off_day|place_special_event|set_up_noted_item|import_list|import_worksheet|import_last_year|import_special_schedule|undo_import|apply_to_other_weeks|download_(schedule|special_schedule|elective_files|setup)|forget_learned_(answer|pattern)|undo_learned_answer|make_linked_choice|delete_linked_choice|delete_offering|create_camp|create_season|delete_season|archive_season|bring_back_season|clear_day|clear_week)$/
+        /^((read|change)_[a-z]+(_[a-z]+)*|bring_in_choices|list_seasons|undo_last_agent_change|build_week|try_another_option|bring_back_option|fill_open_cells|start_over_week|(un)?publish_week|(un)?lock_cells|move_cell|take_out_cell|copy_cells|start_manual_week|finalize_electives|accept_finding|(list|save|restore|rename|delete)_versions?|(rename|delete|add)_setup_record|fill_in_weeks|merge_locations|confirm_setup_guess|confirm_proposed_offering|copy_season|update_to_match_setup|switch_to_rain_plans|assign_elective_seats|move_elective_seat|lock_elective_seat|start_new_elective_version|clear_electives|put_special_day_on_day|take_special_day_off_day|place_special_event|set_up_noted_item|import_list|import_worksheet|import_last_year|import_special_schedule|undo_import|apply_to_other_weeks|download_(schedule|special_schedule|elective_files|setup)|forget_learned_(answer|pattern)|undo_learned_answer|make_linked_choice|delete_linked_choice|delete_offering|create_camp|create_season|delete_season|archive_season|bring_back_season|clear_day|clear_week)$/
       );
       expect(JSON.stringify(c)).not.toMatch(
         /resource|payload|entity|idempoten|endpoint|sobject/i
@@ -137,15 +185,15 @@ describe("Shoresh for AI tools and the command line", () => {
     ]);
     const posted = [];
     await call(
-      "bring_in_campers",
-      { records: [{ camper_name: "Pat Example" }] },
+      "unpublish_week",
+      { season: "Summer 2026", week: "Week 2" },
       { run: sfAnswering(200, "{}", posted) }
     );
     expect(posted[0].args).toEqual([
       "api",
       "request",
       "rest",
-      "/services/apexrest/v1/camper",
+      "/services/apexrest/v1/unpublish_week",
       "--method",
       "POST",
       "--include",
@@ -153,7 +201,8 @@ describe("Shoresh for AI tools and the command line", () => {
       "-"
     ]);
     expect(JSON.parse(posted[0].stdin)).toEqual({
-      records: [{ camper_name: "Pat Example" }]
+      season: "Summer 2026",
+      week: "Week 2"
     });
     expect(() => sfArgs({ path: "/x", method: "GET" }, "--json")).toThrow(
       "That isn't a Salesforce sign-in name."
@@ -268,29 +317,6 @@ describe("Shoresh for AI tools and the command line", () => {
     expect(refused.result).toEqual({
       content: [{ type: "text", text: `${sentence} ${PERSON_DECIDES}` }],
       isError: true
-    });
-    // The import's own answer (IncomingDoors): every record, each in one sentence.
-    const conflict = JSON.stringify({
-      saved: 0,
-      unchanged: 0,
-      problems: 1,
-      records: [
-        {
-          row: 0,
-          result: "problem",
-          message:
-            "Kept beside Pat Example's choice a person made: shown as a conflict."
-        }
-      ]
-    });
-    const batch = await callTool(
-      "bring_in_camper_elective_choices",
-      { records: [{}] },
-      sfAnswering(200, conflict)
-    );
-    expect(batch.result).toEqual({
-      content: [{ type: "text", text: conflict }],
-      isError: false
     });
   });
 
@@ -2574,6 +2600,161 @@ describe("Shoresh for AI tools and the command line", () => {
     ]);
   });
 
+  // API-1.97 (Greg 2026-11-15, AI = screen)
+  it("theCommandLineOffersNoLearnedUndo: one command per process holds no Undo, and its answer says so instead of offering one; the MCP server, which loads the command line too, still holds it", async () => {
+    const out = [];
+    const err = [];
+    const code = await main(
+      [
+        "forget_learned_answer",
+        "--season",
+        "Summer 2031",
+        "--answer_id",
+        "a0Learned000009",
+        "--seen",
+        "fixed"
+      ],
+      {},
+      { write: (text) => out.push(text) },
+      { write: (text) => err.push(text) },
+      (name, input, options) =>
+        call(name, input, {
+          ...options,
+          run: sfAnswering(
+            200,
+            JSON.stringify({
+              message:
+                'Forgot "fixed": the next import asks that question again. To undo it, use undo_learned_answer with undo "forget:a0Learned000009".'
+            })
+          )
+        })
+    );
+    expect(code).toBe(0);
+    expect(out.join("")).toContain(
+      'Forgot "fixed": the next import asks that question again. The command line keeps no Undo between commands, as the screen keeps none once its page is closed.'
+    );
+    // Nothing held from the command: an undo of it is nothing to undo.
+    const after = await call(
+      "undo_learned_answer",
+      { season: "Summer 2031", undo: "forget:a0Learned000009" },
+      { run: sfAnswering(200, "{}") }
+    );
+    expect(after.ok).toBe(false);
+    expect(after.text).toMatch(/^There's nothing to undo in this conversation/);
+  });
+
+  it("learnedUndoLastsTheConversation: only a change or forget made while this connector runs can be undone, each once; anything else is nothing to undo, with nothing asked", async () => {
+    const nothing =
+      "There's nothing to undo in this conversation: Undo on What Shoresh has learned is only for a change, forget or forget pattern made in it, as the screen offers Undo only while its page is open. Nothing was changed.";
+    // An undo from another conversation (the connector didn't make it): refused, nothing sent.
+    const before = [];
+    const earlier = await call(
+      "undo_learned_answer",
+      { season: "Summer 2031", undo: "forget:a0Learned000001" },
+      { run: sfAnswering(200, "{}", before) }
+    );
+    expect(earlier).toEqual({ ok: false, status: 400, text: nothing });
+    expect(before).toEqual([]);
+
+    // A forget made now gives its undo, held for this conversation.
+    await call(
+      "forget_learned_answer",
+      { season: "Summer 2031", answer_id: "a0Learned000001", seen: "fixed" },
+      {
+        run: sfAnswering(
+          200,
+          JSON.stringify({
+            message:
+              'Forgot "fixed": the next import asks that question again. To undo it, use undo_learned_answer with undo "forget:a0Learned000001".'
+          })
+        )
+      }
+    );
+    const sent = [];
+    const undone = await call(
+      "undo_learned_answer",
+      { season: "Summer 2031", undo: "forget:a0Learned000001" },
+      {
+        run: sfAnswering(
+          200,
+          JSON.stringify({ message: "Remembered again." }),
+          sent
+        )
+      }
+    );
+    expect(undone).toMatchObject({ ok: true, text: "Remembered again." });
+    // The screen's own Undo, on the server, as before.
+    expect(sent[0].args[3]).toBe("/services/apexrest/v1/undo_learned_answer");
+    expect(JSON.parse(sent[0].stdin)).toEqual({
+      season: "Summer 2031",
+      undo: "forget:a0Learned000001"
+    });
+    // Once: the screen's Undo goes once it is used.
+    const again = await call(
+      "undo_learned_answer",
+      { season: "Summer 2031", undo: "forget:a0Learned000001" },
+      { run: sfAnswering(200, "{}") }
+    );
+    expect(again).toEqual({ ok: false, status: 400, text: nothing });
+
+    // A change's undo is held too; a refused undo (someone changed it since) keeps it held,
+    // as the screen keeps Undo after a failed write.
+    await call(
+      "change_learned_answer",
+      {
+        season: "Summer 2031",
+        answer_id: "a0Learned000002",
+        answer: "recurring",
+        seen: "fixed"
+      },
+      {
+        run: sfAnswering(
+          200,
+          JSON.stringify({
+            message:
+              'Changed "fixed" to "recurring". Shoresh remembers it as changed by you, today. To undo it, use undo_learned_answer with undo "change:a0Learned000003:a0Learned000002".'
+          })
+        )
+      }
+    );
+    const change = {
+      season: "Summer 2031",
+      undo: "change:a0Learned000003:a0Learned000002"
+    };
+    const stale = await call("undo_learned_answer", change, {
+      run: sfAnswering(
+        409,
+        JSON.stringify({ message: "That can't be undone now." })
+      )
+    });
+    expect(stale).toMatchObject({ ok: false, status: 409 });
+    const changedBack = await call("undo_learned_answer", change, {
+      run: sfAnswering(200, JSON.stringify({ message: "Changed back." }))
+    });
+    expect(changedBack).toMatchObject({ ok: true, text: "Changed back." });
+    // Another sign-in's conversation holds its own.
+    await call(
+      "forget_learned_answer",
+      { answer_id: "a0Learned000004", seen: "fixed" },
+      {
+        org: "camp-a",
+        run: sfAnswering(
+          200,
+          JSON.stringify({
+            message:
+              'Forgot "fixed". To undo it, use undo_learned_answer with undo "forget:a0Learned000004".'
+          })
+        )
+      }
+    );
+    const otherOrg = await call(
+      "undo_learned_answer",
+      { undo: "forget:a0Learned000004" },
+      { org: "camp-b", run: sfAnswering(200, "{}") }
+    );
+    expect(otherOrg).toEqual({ ok: false, status: 400, text: nothing });
+  });
+
   // API-1.96, API-1.25
   it("forgetsOnlyAPatternThatIsThere: a pattern the screen doesn't offer Forget pattern on is refused naming the ones there, before anything is asked", async () => {
     const LWC = "../../force-app/main/default/lwc";
@@ -2704,10 +2885,14 @@ describe("Shoresh for AI tools and the command line", () => {
         csv_text:
           "Camper,Bunk,Choice 1,Choice 2\nAvery Madeup,Bunk 1,Drama,Art\nCasey Madeup,Bunk 2,Art,Swim\n"
       },
-      { run: answering([ok(JSON.stringify(read))], []), choices }
+      {
+        run: answering([ok(JSON.stringify(read)), message(check)], []),
+        choices
+      }
     );
-    expect(unknown.text).toContain('"Drama" (the screen starts it at "add")');
-    expect(unknown.text).toContain("at How often 0");
+    expect(unknown.text).toContain(
+      '- "Drama": added as an activity (How often 0) (the screen\'s start)'
+    );
     expect(review.text).toContain('save: true and seen: "none"');
     const asked = JSON.parse(seen[1].stdin);
     expect(asked.save).toBeUndefined();
@@ -2845,6 +3030,151 @@ describe("Shoresh for AI tools and the command line", () => {
       ok: false,
       text: "Say which schedule (schedule). The schedules: Generated Schedule, Generated Schedule · Published."
     });
+  });
+
+  // API-1.117a (Greg 2026-11-15, AI = screen)
+  it("bringInChoicesStartsAsTheScreenStarts: a new name starts at the screen's answer and only an answer that differs is remembered; the file's fingerprint is the screen's", async () => {
+    const LWC = "../../force-app/main/default/lwc";
+    const choices = async () => ({
+      ...require(`${LWC}/shoreshImportEngine/shoreshImportEngine.js`),
+      ...require(`${LWC}/shoreshChoicesReader/shoreshChoicesReader.js`),
+      ...require(`${LWC}/shoreshChoicesImport/review.js`),
+      ...require(`${LWC}/shoreshTerms/shoreshTerms.js`),
+      ...require(`${LWC}/shoreshSchema/shoreshSchema.js`)
+    });
+    const { FIELD } = require(`${LWC}/shoreshSchema/shoreshSchema.js`);
+    const S = FIELD.Schedule;
+    const read = {
+      season: "Summer 2027",
+      setup: {
+        season: { Id: "s1" },
+        labels: [],
+        weeks: [{ Id: "w2", Name: "Week 2" }],
+        programs: [
+          {
+            program: { Id: "p1", Name: "Main" },
+            divisions: [
+              {
+                division: { Id: "d1", Name: "Juniors" },
+                groups: [{ Id: "g1", Name: "Bunk 1" }]
+              }
+            ]
+          }
+        ],
+        schedules: [
+          {
+            Id: "m2",
+            [S.Week]: "w2",
+            [S.Status]: "Draft",
+            [S.Origin]: "Manual",
+            [S.Program]: "p1"
+          }
+        ],
+        activities: [
+          { Id: "a1", Name: "Pottery" },
+          { Id: "a2", Name: "Art" }
+        ],
+        electives: {}
+      },
+      situation: {
+        sets: [{ id: "e1", name: "Chugim", activityIds: ["a1", "a2"] }],
+        runs: [],
+        answers: []
+      }
+    };
+    const check = {
+      runId: null,
+      runName: null,
+      runRevision: null,
+      isFinal: false,
+      known: 0,
+      added: 1,
+      handChanged: [],
+      differs: [],
+      renamed: [],
+      notOnSheet: 0
+    };
+    const csv =
+      "Camper,Bunk,Choice 1,Choice 2,Choice 3\nAvery Madeup,Bunk 1,Pottery Wheel,Drama,Art\n";
+    const input = {
+      season: "Summer 2027",
+      elective_set: "Chugim",
+      week: "Week 2",
+      file_name: "choices.csv",
+      csv_text: csv
+    };
+    const ok = (body) =>
+      `HTTP/1.1 200\ncontent-type: application/json\n\n${body}`;
+    const message = (o) => ok(JSON.stringify({ message: JSON.stringify(o) }));
+    const sentWith = async (extra) => {
+      const seen = [];
+      const answers = [ok(JSON.stringify(read)), message(check)];
+      const said = await call(
+        "bring_in_choices",
+        { ...input, ...extra },
+        {
+          run: async (args, stdin) => {
+            seen.push(stdin);
+            return answers.shift();
+          },
+          choices
+        }
+      );
+      return { said, request: JSON.parse(seen[1]).request };
+    };
+
+    // No answers: nothing is held back; each name is at the screen's start, nothing remembered.
+    const plain = await sentWith({});
+    expect(plain.said.ok).toBe(true);
+    expect(plain.said.text).toContain(
+      '- "Pottery Wheel": same as Pottery (the screen\'s start)'
+    );
+    expect(plain.said.text).toContain(
+      '- "Drama": added as an activity (How often 0) (the screen\'s start)'
+    );
+    expect(plain.request.remember).toEqual({});
+    expect(plain.request.addActivities).toEqual(["Drama"]);
+    expect(
+      plain.request.campers[0].choices.map((c) => c.a || `add ${c.add}`)
+    ).toEqual(["a1", "add Drama", "a2"]);
+    // The screen's fingerprint: the SHA-256 of the file's bytes, here the text sent.
+    expect(plain.request.fingerprint).toBe(
+      require("crypto").createHash("sha256").update(csv, "utf8").digest("hex")
+    );
+
+    // The person says yes to the screen's starts: still nothing remembered, as on the screen.
+    const accepted = await sentWith({
+      answers: { "Pottery Wheel": "same:Pottery", Drama: "add" }
+    });
+    expect(accepted.request.remember).toEqual({});
+
+    // An answer that differs from the start is the person's own and is remembered.
+    const changed = await sentWith({
+      answers: { "Pottery Wheel": "leave", Drama: "same:Art" }
+    });
+    expect(changed.said.text).toContain(
+      '- "Pottery Wheel": left out (as answered)'
+    );
+    expect(changed.request.remember).toEqual({
+      "choiceName|potterywheel": "leave",
+      "choiceName|drama": "same|Art"
+    });
+    expect(changed.request.addActivities).toEqual([]);
+
+    // Rows with no file bytes: no fingerprint, as the screen saves none when it can't hash.
+    const rows = await sentWith({
+      csv_text: undefined,
+      sheets: [
+        {
+          name: "Sheet1",
+          rows: csv
+            .trim()
+            .split("\n")
+            .map((l) => l.split(","))
+        }
+      ]
+    });
+    expect(rows.request.fingerprint).toBeNull();
   });
 
   // API-1.98, API-1.99
@@ -3369,13 +3699,11 @@ describe("Shoresh for AI tools and the command line", () => {
       .filter((n) => n !== "run_shoresh_script");
     expect(names).toEqual(CAPABILITIES.map((c) => c.name));
     for (const name of names) {
-      const words = byName(name).inputSchema.properties.records
-        ? [name, "--file", "x.json"]
-        : [name, "--season", "S", "--week", "W"].slice(
-            0,
-            byName(name).inputSchema.properties.week ? 5 : 1
-          );
-      expect(parse(words, () => '{"records":[]}').name).toBe(name);
+      const words = [name, "--season", "S", "--week", "W"].slice(
+        0,
+        byName(name).inputSchema.properties.week ? 5 : 1
+      );
+      expect(parse(words).name).toBe(name);
     }
     expect(
       parse([
@@ -3394,9 +3722,6 @@ describe("Shoresh for AI tools and the command line", () => {
       org: "my-camp"
     });
     expect(() => parse(["delete_everything"])).toThrow(/Usage/);
-    expect(() =>
-      parse(["bring_in_campers", "--file", "x.json"], () => '{"campers":[]}')
-    ).toThrow('The file needs JSON like {"records": [ { ... }, { ... } ]}.');
     expect(orgFrom(["node", "mcp.js", "--org", "a"], {})).toBe("a");
     expect(orgFrom(["node", "mcp.js"], { SHORESH_ORG: "b" })).toBe("b");
   });
@@ -3491,6 +3816,7 @@ describe("Shoresh for AI tools and the command line", () => {
             "fs",
             "path",
             "child_process",
+            "crypto",
             "url",
             "vm",
             "worker_threads"

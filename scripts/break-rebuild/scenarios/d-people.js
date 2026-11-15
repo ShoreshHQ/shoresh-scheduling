@@ -6,7 +6,16 @@
 const fs = require("fs");
 const os = require("os");
 const path = require("path");
-const { call, makeCamp, soql, apex, sfJson, esc, ORG } = require("../lib");
+const {
+  call,
+  sendAsSystem,
+  makeCamp,
+  soql,
+  apex,
+  sfJson,
+  esc,
+  ORG
+} = require("../lib");
 const {
   importMaple,
   draft,
@@ -170,6 +179,12 @@ module.exports = [
       };
       const inputFor = (action) =>
         records[action] ? { records: records[action] } : week;
+      // A Send key is an outside system's: it sends to its own address, never through a
+      // person's AI, which isn't offered those doors (API-1.6).
+      const reach = (action, as) =>
+        records[action]
+          ? sendAsSystem(action, inputFor(action), as)
+          : call(action, inputFor(action), as);
       try {
         // Nobody: no set at all.
         setAccess(person, [season], [], null);
@@ -293,8 +308,7 @@ module.exports = [
               words: { group: "Bunk / Bunks" },
               seen: { group: "(blank)" }
             }
-          ],
-          ["bring_in_activities", { records: records.bring_in_activities }]
+          ]
         ];
         // Publish would do something now: the admin has changed the week since it was published.
         const adminEdit = await call("change_schedule_cell", {
@@ -559,7 +573,7 @@ module.exports = [
             [set],
             set.startsWith("Send") ? "Edit" : "Read"
           );
-          said = await call(action, inputFor(action), as);
+          said = await reach(action, as);
           rec.check(
             "API-4.8",
             `${set} reaches ${action}`,
@@ -572,7 +586,7 @@ module.exports = [
             `${said.kind} ${said.status}: ${said.text.slice(0, 300)}`
           );
           for (const other of everyAction.filter((a) => a !== action)) {
-            const blocked = await call(other, inputFor(other), as);
+            const blocked = await reach(other, as);
             rec.check(
               "API-4.8",
               `${set} doesn't reach ${other}`,

@@ -4,7 +4,6 @@
  * (API-1.10), signed in as the person through the sf CLI.
  *
  *   node connect/cli.js read_group_schedule --season "Summer 2026" --week "Week 2" [--csv]
- *   node connect/cli.js bring_in_campers --file campers.json
  *   node connect/cli.js change_schedule_cell --season "Summer 2026" --week "Week 2" --group "Bunk 3"
  *     --day Monday --time "Period 2" --was "Gym games" --activity Soccer
  *   node connect/cli.js undo_last_agent_change --season "Summer 2026" --week "Week 2"
@@ -16,14 +15,14 @@
  *   (--org <alias> picks a sf CLI sign-in; otherwise SHORESH_ORG, then the sf CLI's default.)
  * The rules: docs/protocol/api.md, Command line (API-1.109 to API-1.113).
  */
-const fs = require("fs");
 const { CAPABILITIES, byName } = require("./capabilities");
 const { call, withSeasonNamed } = require("./client");
+const { oneCommandAtATime } = require("./learned");
 const { toolResult } = require("./mcp");
 
 function usage() {
   return [
-    "Usage: node connect/cli.js <action> [--<input> <value> ...] [--csv] [--file <records.json>] [--confirm <what Shoresh gave>] [--org <alias>]",
+    "Usage: node connect/cli.js <action> [--<input> <value> ...] [--csv] [--confirm <what Shoresh gave>] [--org <alias>]",
     "",
     ...CAPABILITIES.map(
       (c) =>
@@ -63,7 +62,7 @@ function typed(field, type, value) {
 }
 
 /** The action's name and input from the words typed (API-1.109). */
-function parse(argv, readFile = (f) => fs.readFileSync(f, "utf8")) {
+function parse(argv) {
   const [name, ...rest] = argv;
   const capability = byName(name);
   if (!capability) throw new Error(usage());
@@ -79,22 +78,12 @@ function parse(argv, readFile = (f) => fs.readFileSync(f, "utf8")) {
         `"${word}" isn't an input. Name each one, like --season "Summer 2026".`
       );
   }
-  const { org, file, ...given } = flags;
+  const { org, ...given } = flags;
   const fields = capability.inputSchema.properties;
   const input = {};
-  if (fields.records && !capability.sendsFields) {
-    if (!file) throw new Error(`${name} needs --file <records.json>.`);
-    const parsed = JSON.parse(readFile(file));
-    input.records = Array.isArray(parsed) ? parsed : parsed?.records;
-    if (!Array.isArray(input.records)) {
-      throw new Error(
-        'The file needs JSON like {"records": [ { ... }, { ... } ]}.'
-      );
-    }
-  } else if (file !== undefined) given.file = file;
   for (const [field, value] of Object.entries(given)) {
-    if (!fields[field] || field === "records") {
-      const inputs = Object.keys(fields).filter((f) => f !== "records");
+    if (!fields[field]) {
+      const inputs = Object.keys(fields);
       throw new Error(
         `${name} has no --${field}.${inputs.length ? ` Its inputs: ${inputs.map((f) => `--${f}`).join(", ")}.` : ""}`
       );
@@ -122,6 +111,9 @@ async function main(
   err = process.stderr,
   callFn = call
 ) {
+  // One command, one process: no Undo on What Shoresh has learned is kept for the next
+  // (API-1.97). Only while a command runs: the MCP server loads this file too.
+  oneCommandAtATime(true);
   try {
     const { name, input, org } = parse(argv);
     const said = withSeasonNamed(
@@ -139,6 +131,8 @@ async function main(
   } catch (e) {
     err.write(`${e.message}\n`);
     return EXIT.couldNotAsk;
+  } finally {
+    oneCommandAtATime(false);
   }
 }
 

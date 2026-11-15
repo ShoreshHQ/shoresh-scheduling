@@ -60,28 +60,6 @@ function read(name, api, description, about, more = {}) {
   };
 }
 
-/** Bringing records in (POST /v1/<api> with {"records": [...]}), an import that can be undone. */
-function bringIn(name, api, description, fields) {
-  return {
-    name,
-    api,
-    method: "POST",
-    description: `${description} Shoresh treats it as an import: it never overwrites a change a person made (it shows a conflict instead), and the last batch can be undone. Each record comes back as saved, unchanged or a problem, in one sentence. Fields: ${fields.join(", ")}.`,
-    inputSchema: {
-      type: "object",
-      properties: {
-        records: {
-          type: "array",
-          description: `The records, each with: ${fields.join(", ")}.`,
-          items: { type: "object" }
-        }
-      },
-      required: ["records"],
-      additionalProperties: false
-    }
-  };
-}
-
 const WEEK_FIELDS = {
   season: SEASON,
   week: WEEK,
@@ -269,7 +247,7 @@ function bringInChoicesFile() {
   const c = importFile(
     "bring_in_choices",
     "bring_in_choices",
-    "Import campers' elective choices from a file, as the Elective seats screen's Import choices does: this is how a week's electives start (the first bring-in makes the week's run), and later sheets bring choices in again. The file is read with the screen's own code (each camper, their bunk and their choices in order). Send it first without save: the answer is the review (how many campers, new or already here, choices made by hand that are kept, names Shoresh doesn't have yet) and its seen. Answer any new names (ask the person about anything the file doesn't make plain), then send the same file and answers with save: true and the seen. It is done as you, with your own access, all or none; a camper's choices changed by hand are kept. Then bring_in_camper_elective_choices and bring_in_camper_groups can send more.",
+    "Import campers' elective choices from a file, as the Elective seats screen's Import choices does: this is how a week's electives start (the first bring-in makes the week's run), and later sheets bring choices in again. The file is read with the screen's own code (each camper, their bunk and their choices in order). Send it first without save: the answer is the review (how many campers, new or already here, choices made by hand that are kept, names Shoresh doesn't have yet, each at the answer the screen starts it at) and its seen. Change a new name's answer only when the person wants it otherwise (ask them about anything the file doesn't make plain), then send the same file and answers with save: true and the seen. It is done as you, with your own access, all or none; a camper's choices changed by hand are kept. This is how a person's AI brings in campers, their bunks and their choices.",
     {
       elective_set: {
         type: "string",
@@ -290,7 +268,7 @@ function bringInChoicesFile() {
   c.inputSchema.properties.answers = {
     type: "object",
     description:
-      'For each name on the sheet Shoresh doesn\'t have, by that name: "add" (a new activity), "leave" (leave it out) or "same:<activity>".'
+      'Only to change what a name on the sheet Shoresh doesn\'t have starts at, by that name: "add" (a new activity), "leave" (leave it out) or "same:<activity>".'
   };
   return c;
 }
@@ -581,7 +559,7 @@ const CAPABILITIES = [
     method: "POST",
     sendsFields: true,
     description:
-      "Add a blank season to a camp, as Camp Setup's New season does: nothing is set up in it yet. A name another season already has is refused. Then fill it with import_last_year, import_worksheet or add_setup_record; the bring_in tools need its programs first. It is made as you, with your own access.",
+      "Add a blank season to a camp, as Camp Setup's New season does: nothing is set up in it yet. A name another season already has is refused. Then fill it with import_last_year, import_worksheet, import_list or add_setup_record. It is made as you, with your own access.",
     inputSchema: {
       type: "object",
       properties: {
@@ -692,63 +670,6 @@ const CAPABILITIES = [
     "elective_seats",
     "Read which camper has a seat in which elective, for a week whose seats are finalized.",
     "Each camper's seat, as finalized in Shoresh. It holds no findings or problems."
-  ),
-  bringIn(
-    "bring_in_divisions",
-    "division",
-    "Bring divisions into Shoresh from another system.",
-    ["season", "source_system", "division_name", "program"]
-  ),
-  bringIn(
-    "bring_in_groups",
-    "group",
-    "Bring groups into Shoresh from another system.",
-    ["season", "source_system", "group_name", "division"]
-  ),
-  bringIn(
-    "bring_in_activities",
-    "activity",
-    "Bring activities into Shoresh from another system.",
-    ["season", "source_system", "activity_name"]
-  ),
-  bringIn(
-    "bring_in_campers",
-    "camper",
-    "Bring campers into Shoresh from another system.",
-    [
-      "season",
-      "source_system",
-      "camper_id",
-      "camper_name",
-      "camper_number",
-      "withdrawn",
-      "changed_at"
-    ]
-  ),
-  bringIn(
-    "bring_in_camper_groups",
-    "camper_group",
-    "Import which bunk each camper is in, from another system. Shoresh keeps a bunk with the camper's choices, so their choices come first (bring_in_choices starts a week's electives).",
-    ["season", "source_system", "camper_id", "camper_name", "bunk", "week"]
-  ),
-  bringIn(
-    "bring_in_camper_elective_choices",
-    "camper_elective_choice",
-    "Import each camper's elective choices, from another system. A week's electives start with bring_in_choices (a choices file, as the Elective seats screen's Import choices); before that, these come back as a problem.",
-    [
-      "season",
-      "source_system",
-      "camper_id",
-      "camper_name",
-      "elective",
-      "week",
-      "first_choice",
-      "second_choice",
-      "third_choice",
-      "fourth_choice",
-      "fifth_choice",
-      "changed_at"
-    ]
   ),
   change(
     "change_schedule_cell",
@@ -2088,7 +2009,7 @@ const CAPABILITIES = [
   importFile(
     "import_list",
     "import_list",
-    "Import a list into one setup screen's list, as that screen's Import a list does: the file's rows are read, set against what the season has, and reviewed exactly as the screen reviews them, with the same code (which column is which, questions such as whether two similar names are the same thing, each difference from what is set up to Keep or Change, new rows to add or leave out, what is added with the list because rows name it). Send the file first without save: the answer is the review, its questions and its seen. Answer the questions (ask the person about anything the file doesn't make plain), send again until nothing is waiting, then send the same file and answers with save: true and the seen. It is done as you, with your own access, all or none. If someone changed the setup since the review, nothing is saved. undo_import undoes it.",
+    "Import a list into one setup screen's list, as that screen's Import a list does: the file's rows are read, set against what the season has, and reviewed exactly as the screen reviews them, with the same code (which column is which, questions such as whether two similar names are the same thing, each difference from what is set up to Keep or Change, new rows to add or leave out, what is added with the list because rows name it). Send the file first without save: the answer is the review, its questions and its seen. Answer the questions (ask the person about anything the file doesn't make plain), send again until nothing is waiting, then send the same file and answers with save: true and the seen. It is done as you, with your own access, all or none. If someone changed the setup since the review, nothing is saved. undo_import undoes it. This is how a person's AI brings in divisions, groups, activities or any other setup list; campers' elective choices and bunks come in with bring_in_choices.",
     {
       list: {
         type: "string",
@@ -2229,7 +2150,7 @@ const CAPABILITIES = [
     api: "read_last_imports",
     method: "GET",
     description:
-      "Read the imports that can be undone in a season, as Roots and Settings offer Undo: the person's own last import (a list, a worksheet or Import last year), and each outside system's last batch (bring_in_*), each with when it was made and its seen. Only the last of each can be undone, once.",
+      "Read the imports that can be undone in a season, as Roots and Settings offer Undo: the person's own last import (a list, a worksheet or Import last year), and each outside system's last batch (one it sent itself), each with when it was made and its seen. Only the last of each can be undone, once.",
     about:
       "The imports Undo is offered for, as Roots and Settings show them. It holds nothing else.",
     inputSchema: {
@@ -2431,6 +2352,7 @@ const CAPABILITIES = [
     api: "change_learned_answer",
     method: "POST",
     sendsFields: true,
+    givesLearnedUndo: true,
     description:
       'Change one remembered answer to another of its choices, as Change and Save on "What Shoresh has learned" do: the next import uses the new answer. Only an answer read_learned_answers lists with choices can be changed. Read it first and send its answer_id and seen. It is done as you, with your own access, and the answer gives an undo for undo_learned_answer. If someone changed or forgot it since, nothing is changed and Shoresh says so.',
     inputSchema: {
@@ -2461,6 +2383,7 @@ const CAPABILITIES = [
     api: "forget_learned_answer",
     method: "POST",
     sendsFields: true,
+    givesLearnedUndo: true,
     description:
       'Forget one remembered answer, as Forget on "What Shoresh has learned" does: the next import asks that question again. Ask the person first. Read it first with read_learned_answers and send its answer_id and seen. It is done as you, with your own access, and the answer gives an undo for undo_learned_answer. If someone changed or forgot it since, nothing is changed and Shoresh says so.',
     inputSchema: {
@@ -2511,8 +2434,9 @@ const CAPABILITIES = [
     api: "undo_learned_answer",
     method: "POST",
     sendsFields: true,
+    undoesLearned: true,
     description:
-      'Undo a change, forget or forget pattern you just made on "What Shoresh has learned", as its Undo does: the answer or pattern comes back as it was, with who answered it and when. Send the undo that action\'s answer gave. Only what you did, while nothing has happened to that answer since; never over a newer answer. It is done as you, with your own access.',
+      'Undo a change, forget or forget pattern you made in this conversation on "What Shoresh has learned", as its Undo does: the answer or pattern comes back as it was, with who answered it and when. Send the undo that action\'s answer gave. As the screen offers Undo only while its page is open, only what you did in this conversation can be undone, each once, while nothing has happened to that answer since; never over a newer answer. It is done as you, with your own access.',
     inputSchema: {
       type: "object",
       properties: {

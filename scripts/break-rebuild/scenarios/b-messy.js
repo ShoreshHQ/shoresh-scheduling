@@ -4,7 +4,7 @@
  */
 const fs = require("fs");
 const path = require("path");
-const { call, makeCamp, soql, ROOT } = require("../lib");
+const { call, sendAsSystem, makeCamp, soql, ROOT } = require("../lib");
 const {
   sample,
   importMaple,
@@ -649,7 +649,7 @@ module.exports = [
         ];
         for (const [what, records, skip] of bad) {
           if (skip) continue;
-          const said = await call(door, { records });
+          const said = await sendAsSystem(door, { records });
           rec.check(
             "API-6.3",
             `${door}, ${what}: answered in words, not broken`,
@@ -661,9 +661,11 @@ module.exports = [
             `${said.kind} ${said.status}: ${said.text.slice(0, 300)}`
           );
         }
-        answers[door] = [await call(door, { records: [{ ...src, ...good }] })];
+        answers[door] = [
+          await sendAsSystem(door, { records: [{ ...src, ...good }] })
+        ];
         answers[door].push(
-          await call(door, { records: [{ ...src, ...good }] })
+          await sendAsSystem(door, { records: [{ ...src, ...good }] })
         );
         rec.note(
           `${door} twice`,
@@ -716,7 +718,7 @@ module.exports = [
         renamed.kind === "done",
         renamed.text
       );
-      const resend = await call("bring_in_activities", {
+      const resend = await sendAsSystem("bring_in_activities", {
         records: [{ ...src, activity_name: "Kayak" }]
       });
       rec.note(
@@ -729,7 +731,7 @@ module.exports = [
         count("Activity__c", `${inSeason} AND Name = 'Kayaking'`) === 1,
         names("Activity__c", inSeason).join()
       );
-      const batchGroup = await call("bring_in_groups", {
+      const batchGroup = await sendAsSystem("bring_in_groups", {
         records: [{ ...src, group_name: "Bunk 8", division: "Bunk 1" }]
       });
       rec.check(
@@ -768,7 +770,7 @@ module.exports = [
           !/"saved": [1-9]/.test(resend.text),
         resend.text
       );
-      const big = await call("bring_in_campers", {
+      const big = await sendAsSystem("bring_in_campers", {
         records: Array.from({ length: 3000 }, (_, i) => ({
           ...src,
           camper_id: `BIG-${i}`,

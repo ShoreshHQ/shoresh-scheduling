@@ -108,4 +108,54 @@ async function forgetPattern(capability, input, { read, send, answer, load }) {
   return answer(await send(capability.api, input));
 }
 
-module.exports = { readLearned, forgetPattern };
+/**
+ * Undo on What Shoresh has learned lasts as long as the screen's (API-1.97): the screen holds each
+ * Change, Forget and Forget pattern this visit made and offers Undo on it only while its page is
+ * open (c/shoreshLearned shoreshLearned.js undos). The connector holds each undo its own actions
+ * were given while it runs, one conversation, and only those can be undone, each once.
+ */
+const undos = new Set();
+const UNDO_GIVEN = /use undo_learned_answer with undo "([^"]+)"/;
+const NOTHING_TO_UNDO =
+  "There's nothing to undo in this conversation: Undo on What Shoresh has learned is only for a change, forget or forget pattern made in it, as the screen offers Undo only while its page is open. Nothing was changed.";
+
+// The command line runs one command per process, so it holds no Undo, as a closed page holds none.
+let oneCommand = false;
+const UNDO_SENTENCE = /To undo it, use undo_learned_answer with undo "[^"]+"\./;
+const NO_UNDO_HERE =
+  "The command line keeps no Undo between commands, as the screen keeps none once its page is closed.";
+
+/** The command line: each command is its own conversation, with no Undo offered after it. */
+function oneCommandAtATime(on = true) {
+  oneCommand = on;
+}
+
+/** Holds the undo a change, forget or forget pattern was given, for this conversation. */
+function holdUndo(done, org) {
+  const given = done && done.ok && UNDO_GIVEN.exec(String(done.text));
+  if (given && oneCommand) {
+    return {
+      ...done,
+      text: String(done.text).replace(UNDO_SENTENCE, NO_UNDO_HERE)
+    };
+  }
+  if (given) undos.add(`${org ?? ""}|${given[1]}`);
+  return done;
+}
+
+/** undo_learned_answer: the screen's own Undo (the server's), only for an undo held here. */
+async function undoLearned(input, { ask, answer }, org) {
+  const key = `${org ?? ""}|${String(input.undo ?? "").trim()}`;
+  if (!undos.has(key)) return { ok: false, status: 400, text: NOTHING_TO_UNDO };
+  const done = answer(await ask());
+  if (done.ok) undos.delete(key);
+  return done;
+}
+
+module.exports = {
+  readLearned,
+  forgetPattern,
+  holdUndo,
+  undoLearned,
+  oneCommandAtATime
+};

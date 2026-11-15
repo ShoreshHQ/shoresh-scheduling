@@ -327,6 +327,27 @@ export function rememberedAnswers(newNames, answers, activities) {
 }
 
 /**
+ * The answer every name on the sheet starts at, by folded name, so Next is never held back (the
+ * design guide: every question has a pre-selected answer; UX pass 2026-11-10): one remembered for
+ * this camp, else the near name Shoresh proposes ("Same as Pottery"), else "Add as an activity",
+ * what the sheet asks for. A start is marked started: it is never remembered as the director's.
+ * The screen and an AI start from the same answers (API-1.117).
+ */
+export function startingAnswers(newNames, answers, activities) {
+  const remembered = rememberedAnswers(newNames, answers, activities);
+  return Object.fromEntries(
+    (newNames || []).map((item) => {
+      const key = foldName(item.name);
+      const proposal = proposalFor(item.name, activities);
+      const start = proposal
+        ? { kind: "same", activityId: proposal.id, started: true }
+        : { kind: "add", started: true };
+      return [key, remembered[key] || start];
+    })
+  );
+}
+
+/**
  * The program's groups by folded name, each with its division ({ group, division }), and its
  * divisions by folded name, for the sheet's bunks. A name can be used in more than one division.
  */
