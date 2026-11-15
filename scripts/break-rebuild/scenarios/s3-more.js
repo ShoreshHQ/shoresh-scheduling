@@ -704,9 +704,9 @@ module.exports = [
       const versions = await call("list_versions", week);
       rec.check(
         "API-1.127",
-        "the week as it was is in Versions, both ways",
+        "the week as it was is in Versions as the screen keeps it, and nothing more (API-1.148)",
         /Before Try another/.test(versions.text) &&
-          /Before Option 2 of Week 1/.test(versions.text),
+          !/Before Option 2 of Week 1/.test(versions.text),
         versions.text.slice(0, 800)
       );
 

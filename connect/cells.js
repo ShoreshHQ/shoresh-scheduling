@@ -1,14 +1,17 @@
 /**
- * move_cell, take_out_cell, copy_cells, switch_to_rain_plans and place_special_event (API-1.38 to
- * API-1.40, API-1.45, API-1.65, API-1.75): an edit of several
+ * change_schedule_cell, move_cell, take_out_cell, copy_cells, switch_to_rain_plans and
+ * place_special_event (API-1.11, API-1.38 to API-1.40, API-1.45, API-1.65, API-1.75): an edit of one or several
  * cells of a Generated Schedule or Manual Build week, worked out here exactly as the screen's grid works it out. The week is
  * read as Generated Schedule reads it (GET /v1/week_checks, the counter's own read), opened as the
  * screen opens it (c/shoreshGeneratedSchedule counter.js), and the edit made with the week
  * editor's own module (c/shoreshWeekEditor handEdits.js, shipped beside this file): the same
  * moves, swaps, pastes, refusals and words. Its runs then go to the screen's own save
- * (POST /v1/move_cell, /v1/take_out_cell, /v1/copy_cells or /v1/switch_to_rain_plans), marked Through an agent. Only finding the cells by their names is
+ * (POST /v1/schedule_cell, /v1/move_cell, /v1/take_out_cell, /v1/copy_cells or
+ * /v1/switch_to_rain_plans), and, as the screen's history does, its runs back are held for Undo
+ * for the rest of the conversation (undo.js, API-1.14). Only finding the cells by their names is
  * done here.
  */
+const { locksAfter } = require("./undo");
 
 /** A name as camps type it: case and spaces don't count. */
 function fold(text) {
@@ -151,7 +154,10 @@ function contextOf(m, body) {
   }
   const t = m.buildTerms(body.labels);
   const loaded = m.loadedOf(body.inputs || {});
-  const { draft } = m.counterWeek(loaded, { terms: t, setup: body.setup });
+  const { draft, week: checkedWeek } = m.counterWeek(loaded, {
+    terms: t,
+    setup: body.setup
+  });
   const week = draft.schedule.days;
   const locks = m.lockedKeys(loaded.input.locks);
   const setup = body.setup || {};
@@ -188,7 +194,10 @@ function contextOf(m, body) {
     // As the screen asks it: any block of the placement locked locks the cell (LOCK-4.1).
     isLocked: (slot) => m.isLockedAt(week, locks, slot),
     liveLocks: locks,
+    // The week as its Lock menu weighs it (counter.js checkDays), for the cells a Lock reaches.
+    checkedWeek,
     events,
+    sets,
     replaced: m.replacedDays(draft),
     // Generated Schedule's tools never clear: nothing of setup's to put back.
     setUp: null
@@ -230,6 +239,7 @@ function manualContextOf(m, body) {
     isLocked: () => false,
     liveLocks: null,
     events,
+    sets,
     replaced: m.replacedDays(draft),
     // Where setup puts each fixed and recurring activity, so a clear puts back one typed over
     // (shoreshWeekEditor manualChecks setUpOf; LOCK-4.9).
@@ -427,6 +437,99 @@ function placeEvent(ctx, m, input, weekName) {
 }
 
 /**
+ * What an AI names for a cell, as typing it offers (API-1.124): one of the season's activities
+ * (as the week editor lists them, with their lengths) or elective sets; a name both have, or
+ * neither, is refused, never guessed.
+ */
+function typedOf(ctx, asked) {
+  const activities = (ctx.draft.activities || []).filter(
+    (a) => fold(a.name) === fold(asked)
+  );
+  const sets = ctx.sets.filter((e) => fold(e.Name) === fold(asked));
+  const said = String(asked).slice(0, 80);
+  if (activities.length && sets.length) {
+    throw new Refused(
+      `"${said}" is both an activity and an elective set in this season, so Shoresh can't tell which you mean.`
+    );
+  }
+  if (activities.length) {
+    return { activity: activities[0] };
+  }
+  if (sets.length) {
+    return { set: sets[0] };
+  }
+  const byName = (a, b) => a.localeCompare(b);
+  throw new Refused(
+    `There is no activity or elective set called "${said}" in this season. ${namesSaid(
+      "activities and elective sets",
+      [
+        ...(ctx.draft.activities || []).map((a) => a.name).sort(byName),
+        ...ctx.sets.map((e) => e.Name).sort(byName)
+      ]
+    )}`
+  );
+}
+
+/**
+ * change_schedule_cell (API-1.11, API-1.13) as typing in a cell on the screen does (the week
+ * editor's pick): Open clears the placement there and an activity goes in for its full length,
+ * from the placement's first time block, into Open cells after it (placeStep: "(2 of 3)" when it
+ * runs out of room, "in place of" a fixed or recurring activity it covers); an elective set holds
+ * each time block of the placement on its own (placeElective: rowsCovered, placeOverStep). One
+ * group's cell, as Group View types in it.
+ */
+function typeStep(ctx, m, input, weekName) {
+  return typedIn(ctx, m, input, cellOf(ctx, m, input, weekName));
+}
+
+/** Typing what input names (input.activity) into a cell (slot), as the week editor's pick does. */
+function typedIn(ctx, m, input, slot) {
+  checkWas(ctx, m, slot, input.was);
+  const day = ctx.week[slot.day];
+  const now = ctx.nameOf(m.placement(day, slot.group, slot.block).slot, day);
+  const asked = String(input.activity || "").trim();
+  if (asked && fold(asked) !== "open") {
+    const typed = typedOf(ctx, asked);
+    if (typed.set) {
+      const rows = m.rowsCovered(ctx.week, [{ slot }]);
+      const result = m.placeOverStep(ctx, rows, `E:${typed.set.Id}`, true);
+      if (result.refused) {
+        throw new Refused(result.refused);
+      }
+      const range = m.rangeName(ctx, rows);
+      if (!result.runs.length) {
+        return { nothing: `Nothing to change: ${range} already holds ${now}.` };
+      }
+      return {
+        runs: result.runs,
+        label: `Placed ${typed.set.Name} · ${range}`
+      };
+    }
+    return placed(
+      m.placeStep(ctx, slot, `A:${typed.activity.id}`, typed.activity.length),
+      ctx,
+      m,
+      slot,
+      now
+    );
+  }
+  return placed(m.placeStep(ctx, slot, m.OPEN, 1), ctx, m, slot, now);
+}
+
+/** placeStep's answer as an edit: its runs and words, a refusal, or nothing to change. */
+function placed(step, ctx, m, slot, now) {
+  if (!step) {
+    return {
+      nothing: `Nothing to change: ${m.slotName(ctx, slot)} already holds ${now}.`
+    };
+  }
+  if (step.refused) {
+    throw new Refused(step.refused);
+  }
+  return { runs: step.runs, label: step.label, said: null };
+}
+
+/**
  * change_cell_length (API-1.138): the placement made to end at a time, as its bottom handle does,
  * by the week editor's own step. What has no handle on the screen is said; the same end is nothing.
  */
@@ -463,6 +566,9 @@ function stepOf(capability, ctx, m, input, weekName) {
   if (capability.name === "clear_day" || capability.name === "clear_week") {
     return clearStep(capability, ctx, m, input, weekName);
   }
+  if (capability.name === "change_schedule_cell") {
+    return typeStep(ctx, m, input, weekName);
+  }
   if (capability.name === "copy_cells") {
     const step = m.toolStep(ctx, copyTool(ctx, m, input, weekName));
     if (step.nothing) {
@@ -497,7 +603,11 @@ function stepOf(capability, ctx, m, input, weekName) {
  * The edit, made as the person: read, worked out here, saved through the screen's own save.
  * read(api, fields) and send(api, body) answer Salesforce's { status, body }; load() the screens' modules.
  */
-async function editCells(capability, input, { read, send, answer, load }) {
+async function editCells(
+  capability,
+  input,
+  { read, send, answer, load, hold = () => {} }
+) {
   const fields = {};
   for (const field of ["season", "week", "program", "schedule"]) {
     if (input[field] !== undefined) fields[field] = input[field];
@@ -524,18 +634,124 @@ async function editCells(capability, input, { read, send, answer, load }) {
   const sent = m.serverRunsOf(step.runs, ctx.week);
   // Manual Build has no locks: its runs go as its screen sends them, without any.
   const runs = ctx.liveLocks ? m.stampLocks(sent, ctx.liveLocks) : sent;
-  return answer(
-    await send(capability.api, {
-      ...fields,
-      change: step.label,
-      said: step.said || "",
-      runs,
-      // The week as the agent read it: the save holds the week and refuses it if changed since.
-      ...(input.seen ? { revision: input.seen } : {}),
-      // A rainy day's marks, and the day's marks as read.
-      ...(step.rain ? { rain: step.rain, seen: step.seen } : {})
-    })
-  );
+  const saved = await send(capability.api, {
+    ...fields,
+    change: step.label,
+    said: step.said || "",
+    runs,
+    // The week as the agent read it: the save holds the week and refuses it if changed since.
+    ...(input.seen ? { revision: input.seen } : {}),
+    // A rainy day's marks, and the day's marks as read.
+    ...(step.rain ? { rain: step.rain, seen: step.seen } : {})
+  });
+  if (saved.undo && saved.undo.kind === "edit") {
+    // Its Undo, as the editor's history holds it: the runs back, for this conversation only.
+    hold(saved.undo, {
+      sent,
+      before: ctx.liveLocks,
+      after: locksAfter(m, sent, ctx.liveLocks),
+      rain: step.rain,
+      rainSeen: step.seen
+    });
+  }
+  return answer(saved);
+}
+
+/**
+ * A special day's or event's own schedule as its page hands it to the week editor
+ * (shoreshSpecialSchedule: planName, takesElectives, its activities; no locks, nothing away), from
+ * what the page opens (GET /v1/change_special_schedule_cell). One day; its columns are the day's
+ * groups.
+ */
+function specialContextOf(m, body) {
+  m.nameDaysFor(body.setup);
+  const t = m.buildTerms(body.labels);
+  const plan = body.plan || {};
+  const activities = plan.activities || [];
+  const setup = body.setup || {};
+  const sets = (setup.electives && setup.electives.sets) || [];
+  const find = {
+    activity: (item) => activities.find((a) => `A:${a.id}` === item),
+    event: () => null,
+    elective: (item) =>
+      ((e) => e && { name: e.Name })(sets.find((e) => `E:${e.Id}` === item)),
+    t
+  };
+  return {
+    week: (plan.schedule && plan.schedule.days) || [],
+    t,
+    draft: { activities },
+    nameOf: (slot, day) => m.nameOfSlot(slot, day, find),
+    dayNameOf: (dateValue) => m.dayNameOf(dateValue, plan.name),
+    weekdayOf: (dateValue) => m.weekdayName(dateValue),
+    spokenWeekday: (weekday) => m.spokenWeekday(weekday),
+    isAwayOn: () => false,
+    isLocked: () => false,
+    liveLocks: null,
+    events: [],
+    sets,
+    replaced: new Map(),
+    setUp: null
+  };
+}
+
+/**
+ * change_special_schedule_cell (API-1.77) as typing in a cell on its page does: the page types
+ * through the same week editor as the week screens (typedIn), so the runs are its steps'; they go
+ * to the page's own save (POST /v1/change_special_schedule_cell), and, as the page's history does,
+ * their runs back are held for Undo for the conversation (undo.js, API-1.14).
+ */
+async function specialCell(
+  capability,
+  input,
+  { read, send, answer, load, hold = () => {} }
+) {
+  const fields = {};
+  for (const field of ["season", "special", "kind"]) {
+    if (input[field] !== undefined) fields[field] = input[field];
+  }
+  const got = await read(capability.api, fields);
+  if (got.status !== 200) return answer(got);
+  const m = await load();
+  const ctx = specialContextOf(m, JSON.parse(got.body));
+  let step;
+  try {
+    if (!ctx.week.length || ctx.week[0].problem) {
+      throw new Refused(
+        `This schedule can't be changed: ${(ctx.week[0] && ctx.week[0].problem) || "it has no time blocks or columns yet"}.`
+      );
+    }
+    const slot = {
+      day: 0,
+      group: onlyOne(
+        ctx.week[0].groups,
+        input.column,
+        (g) => [g.name],
+        "column",
+        " in this schedule"
+      ),
+      block: blockIn(ctx, 0, input.time)
+    };
+    step = typedIn(ctx, m, input, slot);
+  } catch (e) {
+    if (e instanceof Refused) {
+      return { ok: false, status: e.status, text: e.message };
+    }
+    throw e;
+  }
+  if (step.nothing) {
+    return { ok: true, status: 200, text: step.nothing };
+  }
+  const sent = m.serverRunsOf(step.runs, ctx.week);
+  const saved = await send(capability.api, {
+    ...fields,
+    change: step.label,
+    runs: sent
+  });
+  if (saved.undo && saved.undo.kind === "edit") {
+    hold(saved.undo, { sent, before: null, after: null });
+  }
+  return answer(saved);
 }
 
 /**
@@ -708,4 +924,52 @@ function draftOf(m, body, input) {
   };
 }
 
-module.exports = { Refused, editCells, lockedCells, draftOf, contextOf };
+/**
+ * The cells a Lock or Unlock reached (change: as setLocks took it), as the screen's Lock menu
+ * works them out for the same choice (shoreshGeneratedSchedule locks.js weekCells and
+ * lockChoices: keys), on the week as read before it: what an Undo of an earlier step leaves as
+ * chosen (shoreshWeekEditor lockChosen). Null when the menu offers no such choice.
+ */
+function lockKeysOf(m, body, change) {
+  const ctx = contextOf(m, body);
+  if (!ctx.checkedWeek) return null;
+  const w = ctx.checkedWeek;
+  const cells = m.weekCells(w.checkedDays, w.locked, w.isAway);
+  const scope = change.blockId
+    ? "cell"
+    : change.dateValue && change.groupId
+      ? "groupDay"
+      : change.dateValue
+        ? "day"
+        : "group";
+  const at = {
+    cell:
+      scope === "cell" || scope === "groupDay"
+        ? {
+            dateValue: change.dateValue,
+            groupId: change.groupId,
+            blockId: change.blockId || null,
+            where: "",
+            groupName: ""
+          }
+        : null,
+    day: scope === "day" ? { dateValue: change.dateValue, name: "" } : null,
+    group: scope === "group" ? { groupId: change.groupId, name: "" } : null
+  };
+  const choice = m
+    .lockChoices(cells, at)
+    .find(
+      (c) => c.value.endsWith(`|${scope}`) && c.change.action === change.action
+    );
+  return choice ? choice.keys : null;
+}
+
+module.exports = {
+  Refused,
+  editCells,
+  lockedCells,
+  draftOf,
+  contextOf,
+  lockKeysOf,
+  specialCell
+};

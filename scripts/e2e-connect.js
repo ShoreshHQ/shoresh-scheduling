@@ -714,8 +714,15 @@ function everyCommand(tmp) {
     "any"
   );
   const holds = rows[rows.length - 1].kind === "done" ? other : cell;
-  const undo = step("undo_last_agent_change", week, "asks first");
-  ctx.undoConfirm = confirmIn(undo);
+  // Undo is held for one conversation, as the screen's for one open page (API-1.14): each command
+  // line command runs on its own, so it has nothing to undo, and says so.
+  step("undo_last_agent_change", week, "refused", [
+    [
+      "API-1.14",
+      (t) => t.includes("The command line can't undo"),
+      "the command line holds no Undo"
+    ]
+  ]);
   // The draft as its screen has it: the cell just changed, which the published week doesn't
   // have, and the seen the edits below take (API-1.123).
   ctx.seen = said(
@@ -1017,7 +1024,7 @@ function everyCommand(tmp) {
   step("forget_learned_pattern", { pattern: "none", seen: "x" }, "any");
   step("undo_learned_answer", { undo: "none" }, "any");
   // The ask-first previews from earlier were never confirmed: nothing was taken away.
-  ctx.unconfirmed = [ctx.deleteConfirm, ctx.undoConfirm].filter(Boolean).length;
+  ctx.unconfirmed = [ctx.deleteConfirm].filter(Boolean).length;
 }
 
 // ---------- code mode: one script, several calls ----------

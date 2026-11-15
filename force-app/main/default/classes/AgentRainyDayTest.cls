@@ -1,14 +1,17 @@
 /**
  * A rainy day through an agent or the command line (docs/protocol/api.md API-1.65):
  * /v1/switch_to_rain_plans takes the runs and marks the week editor's own rainy day works out (the
- * connector runs it) and saves them as the screen's own save, with the week kept first as "Before
- * rainy Monday" marked Through an agent, so undo_last_agent_change switches the day back; refused
+ * connector runs it) and saves them as the screen's own save, with the week kept first as the
+ * screen keeps it ("Before rainy Monday", Auto-saved, API-1.148), and undo_last_agent_change
+ * switches the day back with the runs and marks the connector holds; refused
  * with nothing changed when the day's cells or marks changed since the agent read them. Synthetic
  * camp (SetTimeTestData), Manual Build: Soccer (outdoors, Gym games its rain plan) in Group A's
  * and Group B's Monday Period 2.
  */
 @IsTest
 private class AgentRainyDayTest {
+  // What the last answer left for the connector to hold for Undo.
+  private static Map<String, Object> undo;
   private static final Date MONDAY = Date.newInstance(2026, 6, 29);
   private static final String CHANGE = 'Rainy Monday';
   private static Map<String, Id> ids;
@@ -111,6 +114,7 @@ private class AgentRainyDayTest {
     Map<String, Object> answer = (Map<String, Object>) JSON.deserializeUntyped(
       RestContext.response.responseBody.toString()
     );
+    undo = AgentUndoTestCalls.undoIn(RestContext.response);
     return new List<Object>{
       RestContext.response.statusCode,
       answer.get('message')
@@ -128,13 +132,12 @@ private class AgentRainyDayTest {
     };
   }
 
-  private static List<Schedule__c> agentVersions(Id draftId) {
+  /** Every version kept of the draft. */
+  private static List<Schedule__c> versionsOf(Id draftId) {
     return [
-      SELECT Name
+      SELECT Name, VersionReason__c
       FROM Schedule__c
-      WHERE
-        SourceSchedule__c = :draftId
-        AND VersionReason__c = :AgentWeeks.THROUGH_AGENT
+      WHERE SourceSchedule__c = :draftId
       WITH SYSTEM_MODE
     ];
   }
@@ -152,7 +155,7 @@ private class AgentRainyDayTest {
       Test.stopTest();
       Assert.areEqual(200, done[0], String.valueOf(done[1]));
       Assert.areEqual(
-        'Rainy Monday: 1 switched to rain plans, 1 full. undo_last_agent_change switches it back.',
+        'Rainy Monday: 1 switched to rain plans, 1 full. The week as it was is kept in Versions as "Before rainy Monday".',
         done[1]
       );
       List<Object> now = monday(draftId);
@@ -170,9 +173,12 @@ private class AgentRainyDayTest {
         ),
         now[1]
       );
-      List<Schedule__c> kept = agentVersions(draftId);
-      Assert.areEqual(1, kept.size(), 'one version kept, through an agent');
+      // The one version the screen keeps, as it keeps it.
+      List<Schedule__c> kept = versionsOf(draftId);
+      Assert.areEqual(1, kept.size(), 'one version kept, as on screen');
       Assert.areEqual('Before rainy Monday', kept[0].Name);
+      Assert.areEqual(ManualVersions.AUTO_SAVED, kept[0].VersionReason__c);
+      Assert.areEqual('edit', undo.get('kind'));
     }
   }
 
@@ -201,7 +207,7 @@ private class AgentRainyDayTest {
       List<Object> now = monday(draftId);
       Assert.areEqual(a('Soccer'), now[0], 'nothing changed');
       Assert.isTrue(((Set<String>) now[1]).isEmpty(), 'no marks left');
-      Assert.isTrue(agentVersions(draftId).isEmpty(), 'nothing kept');
+      Assert.isTrue(versionsOf(draftId).isEmpty(), 'nothing kept');
     }
   }
 
@@ -213,13 +219,28 @@ private class AgentRainyDayTest {
       Map<String, Object> asked = rainy(a('Soccer'), new List<Object>());
       Test.startTest();
       List<Object> done = send(new AgentRainyDay(), asked);
+      // What the connector holds: the runs back, and the day's marks as they were.
+      Map<String, Object> held = AgentUndoTestCalls.manualHeld(
+        undo,
+        (List<Object>) asked.get('runs')
+      );
+      held.put(
+        'rain',
+        new List<Object>{
+          new Map<String, Object>{
+            'day' => String.valueOf(MONDAY),
+            'cells' => new List<Object>()
+          }
+        }
+      );
       List<Object> undone = send(
         new AgentUndo(),
         new Map<String, Object>{
           'season' => asked.get('season'),
           'week' => 'Week 1',
           'program' => 'Main',
-          'schedule' => 'Manual Build'
+          'schedule' => 'Manual Build',
+          'held' => AgentUndoTestCalls.held(held)
         }
       );
       Test.stopTest();
@@ -228,6 +249,8 @@ private class AgentRainyDayTest {
       List<Object> now = monday(draftId);
       Assert.areEqual(a('Soccer'), now[0], 'back to the dry day');
       Assert.isTrue(((Set<String>) now[1]).isEmpty(), 'its marks gone too');
+      // Undo keeps nothing more: the screen's "Before rainy Monday" is the only version.
+      Assert.areEqual(1, versionsOf(draftId).size());
     }
   }
 }

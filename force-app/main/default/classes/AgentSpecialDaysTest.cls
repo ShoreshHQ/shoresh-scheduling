@@ -2,7 +2,7 @@
  * Special days and events through an agent or the command line (docs/protocol/api.md API-1.73 to
  * API-1.75): read as the Special events screen lists them, put on and taken off a day by the
  * screen's own actions only while the day has what the AI read, and a special event over cells as
- * the week editor places it, marked Through an agent and undone. On synthetic camps
+ * the week editor places it, keeping no version (API-1.148), and undone. On synthetic camps
  * (SpecialScheduleTestData, GeneratedTestData), records made inside the scheduler's runAs.
  */
 @IsTest
@@ -275,7 +275,7 @@ private class AgentSpecialDaysTest {
 
   // API-1.75
   @IsTest
-  static void anEventOverCellsIsTheScreensHandEditMarkedAndUndone() {
+  static void anEventOverCellsIsTheScreensHandEditKeepsNoVersionAndIsUndone() {
     System.runAs(ShoreshTestData.scheduler()) {
       GeneratedTestData.camp();
       Id draftId = GeneratedTestData.generated();
@@ -317,26 +317,27 @@ private class AgentSpecialDaysTest {
         draftId,
         GeneratedTestData.at(0, 0)
       );
-      Integer marked = [
-        SELECT COUNT()
-        FROM Schedule__c
-        WHERE VersionReason__c = :AgentWeeks.THROUGH_AGENT
-        WITH SYSTEM_MODE
-      ];
+      Integer kept = GeneratedTestData.versions();
+      // What the connector holds for its Undo: the runs back, from what this answer left.
+      Map<String, Object> held = AgentUndoTestCalls.editHeld(
+        AgentUndoTestCalls.undoIn(RestContext.response),
+        (List<Object>) body.get('runs')
+      );
       List<Object> undone = ask(
         new AgentUndo(),
         'POST',
         new Map<String, Object>{
           'season' => body.get('season'),
           'week' => 'Week 1',
-          'program' => 'Main'
+          'program' => 'Main',
+          'held' => AgentUndoTestCalls.held(held)
         }
       );
       Test.stopTest();
       Assert.areEqual(200, status, said);
       Assert.isTrue(said.contains(change + '.'), said);
       Assert.areEqual('S:' + event, placed[GeneratedTestData.LUNCH]);
-      Assert.areEqual(1, marked);
+      Assert.areEqual(0, kept);
       Assert.areEqual(200, undone[0], String.valueOf(undone[1]));
       Assert.areEqual(
         '',

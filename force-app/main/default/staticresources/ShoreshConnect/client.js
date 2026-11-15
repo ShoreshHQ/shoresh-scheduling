@@ -7,7 +7,14 @@
 const { execFile } = require("child_process");
 const path = require("path");
 const { byName } = require("./capabilities");
-const { Refused, editCells, lockedCells, draftOf } = require("./cells");
+const {
+  Refused,
+  editCells,
+  lockedCells,
+  draftOf,
+  lockKeysOf,
+  specialCell
+} = require("./cells");
 const { assignElectiveSeats } = require("./electives");
 const { readLinkedChoices, saveLinkedChoice } = require("./linked");
 const { readOfferings, changeOffering } = require("./offerings");
@@ -22,6 +29,7 @@ const {
   undoLearned
 } = require("./learned");
 const { bringInChoices } = require("./choices");
+const undoHeld = require("./undo");
 const {
   campOf,
   tooOld,
@@ -193,7 +201,15 @@ async function callOnce(
 ) {
   const capability = byName(name);
   if (!capability) throw new Error(`Shoresh has no action called "${name}".`);
-  const asked = (request) => ask(request, org, run);
+  // What a change's answer leaves for its Undo is held here, for this conversation (undo.js);
+  // a hand edit's is held with its runs back by editCells, which knows them.
+  const asked = async (request) => {
+    const { response, undo } = undoHeld.takeUndo(await ask(request, org, run));
+    if (undo && undo.kind !== "edit" && undo.kind !== "lock") {
+      undoHeld.hold(org, undo);
+    }
+    return undo ? { ...response, undo } : response;
+  };
   const said = await camp(org, asked);
   const old = tooOld(said);
   if (old) return { ok: false, status: 400, text: old };
@@ -234,6 +250,33 @@ async function callOnce(
   if (capability.editsWithEngine) {
     return editCells(capability, input, {
       ...at,
+      load: () => edits(namespace),
+      hold: (undo, back) => undoHeld.hold(org, undo, back)
+    });
+  }
+  if (capability.typesSpecialCell) {
+    return specialCell(capability, input, {
+      ...at,
+      load: () => edits(namespace),
+      hold: (undo, back) => undoHeld.hold(org, undo, back)
+    });
+  }
+  if (capability.undoesLast) {
+    // What this conversation holds goes with it: Salesforce keeps nothing for Undo (API-1.14).
+    const body = JSON.parse(request.body);
+    const m = undoHeld.needsEditor(org) ? await edits(namespace) : null;
+    return answer(
+      await asked({
+        ...request,
+        body: JSON.stringify({ ...body, held: undoHeld.heldNow(org, m) })
+      })
+    );
+  }
+  if (capability.locksCells) {
+    return lockCells(request, input, {
+      ...at,
+      asked,
+      org,
       load: () => edits(namespace)
     });
   }
@@ -341,6 +384,48 @@ async function callOnce(
     }
   }
   return done;
+}
+
+/**
+ * lock_cells and unlock_cells (API-1.37), the Lock menu's own save. While this conversation holds
+ * an Undo, the week is read first, as the screen's menu has it, so the cells the choice reaches
+ * are known (lockKeysOf): an Undo of an earlier step leaves them as chosen, and goes on past the
+ * Lock, as the screen's does (API-1.14).
+ */
+async function lockCells(request, input, { read, asked, org, load }) {
+  if (undoHeld.nothingHeld(org)) return answer(await asked(request));
+  const fields = {};
+  for (const field of ["season", "week", "program", "schedule"]) {
+    if (input[field] !== undefined) fields[field] = input[field];
+  }
+  let before = null;
+  try {
+    const got = await read("week_checks", fields);
+    if (got.status === 200) before = JSON.parse(got.body);
+  } catch {
+    // Read below as the answer says; without it no Undo is risked past the Lock.
+  }
+  const done = await asked(request);
+  if (done.undo && done.undo.kind === "lock") {
+    let keys = null;
+    if (
+      before &&
+      before.inputs &&
+      before.inputs.scheduleId === done.undo.schedule
+    ) {
+      try {
+        keys = lockKeysOf(await load(), before, done.undo);
+      } catch {
+        keys = null;
+      }
+    }
+    undoHeld.hold(
+      org,
+      done.undo,
+      keys ? { keys, locks: done.undo.action === "Lock" } : null
+    );
+  }
+  return answer(done);
 }
 
 /** What Shoresh's own view of a week draws: the Schedules screen's published week (API-1.26). */
@@ -773,7 +858,8 @@ async function loadEdits(namespace) {
       "shoreshWeekEditor.slotEdits",
       "shoreshWeekEditor.locks",
       "shoreshWeekEditor.handEdits",
-      "shoreshWeekEditor.rain"
+      "shoreshWeekEditor.rain",
+      "shoreshWeekEditor.moves"
     ],
     "can't change several cells"
   );

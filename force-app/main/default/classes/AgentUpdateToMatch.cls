@@ -4,8 +4,9 @@
  * POST {season, week, program, schedule, changes, seen}. It is the screens' own update
  * (SetupMatchController.updateToMatchSetup) of the changes named by key, done only while the week
  * is still as read_setup_changes read it (seen), with the week locked as its screen's save locks
- * it; otherwise refused (409), nothing changed. A version marked "Through an agent" is kept first,
- * so Undo brings the week back (AgentUndo).
+ * it; otherwise refused (409), nothing changed. As on the screen, the update keeps a version
+ * ("Before Update to match setup", Auto-saved) only when a change replaces a placement made by
+ * hand, and the screen has no Undo for it: that version is the way back (API-1.14).
  */
 @RestResource(urlMapping='/v1/update_to_match_setup')
 global with sharing class AgentUpdateToMatch implements AgentWeeks.Action {
@@ -44,13 +45,15 @@ global with sharing class AgentUpdateToMatch implements AgentWeeks.Action {
     if (!SeenSaves.stamp(seenOf(stamp), seen)) {
       throw conflict(week);
     }
-    Id versionId = AgentWeeks.keepBefore(
-      week.draft,
-      days,
-      'Update to match setup'
+    Boolean kept = makeChanges(week, keys, stamp);
+    String change = 'Update to match setup';
+    Map<String, Object> undo = AgentUndoHeld.entry(
+      week.draft.Id,
+      'none',
+      change
     );
-    makeChanges(week, keys, stamp);
-    AgentWeeks.changed(versionId, week.draft.Id);
+    undo.put('version_name', kept ? SetupMatch.BEFORE_UPDATE : null);
+    AgentUndoHeld.hold(undo);
     return 'Updated ' +
       week.name +
       ' on ' +
@@ -58,11 +61,19 @@ global with sharing class AgentUpdateToMatch implements AgentWeeks.Action {
       ' to match setup (' +
       keys.size() +
       (keys.size() == 1 ? ' change' : ' changes') +
-      '). undo_last_agent_change brings it back.';
+      ').' +
+      (kept
+        ? ' The week as it was is kept in Versions as "' +
+          SetupMatch.BEFORE_UPDATE +
+          '".'
+        : '');
   }
 
-  /** The screens' own update of the changes named, on the week as read (stamp). */
-  private static void makeChanges(
+  /**
+   * The screens' own update of the changes named, on the week as read (stamp): whether it kept
+   * the week first, as it does when a change replaces a placement made by hand.
+   */
+  private static Boolean makeChanges(
     AgentWeeks.Week week,
     List<String> keys,
     String stamp
@@ -70,8 +81,8 @@ global with sharing class AgentUpdateToMatch implements AgentWeeks.Action {
     SetupMatch.Ask ask = new SetupMatch.Ask();
     ask.keys = keys;
     ask.seenRevisions = stamp;
-    // The version just kept is the way back: the update keeps no second one.
-    ask.versionKept = true;
+    // A new opening of the screen's list: it keeps its version when the screen would.
+    ask.versionKept = false;
     SetupMatch.Updated result;
     try {
       result = SetupMatchController.updateToMatchSetup(week.draft.Id, ask);
@@ -83,6 +94,7 @@ global with sharing class AgentUpdateToMatch implements AgentWeeks.Action {
     if (result.refused != null) {
       throw conflict(week);
     }
+    return result.kept;
   }
 
   /** A change as read_setup_changes says it: its key, summary, and each cell before and after. */
@@ -107,7 +119,7 @@ global with sharing class AgentUpdateToMatch implements AgentWeeks.Action {
       '.';
   }
 
-  /** The week as read: its days' revisions, short (AgentWeeks.fingerprint). */
+  /** The week as read: its days' revisions, short. */
   public static String seenOf(String revisions) {
     return EncodingUtil.convertToHex(
         Crypto.generateDigest(

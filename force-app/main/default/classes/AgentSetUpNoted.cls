@@ -3,9 +3,10 @@
  * Schedule or Manual Build, through an agent or the command line (docs/protocol/api.md API-1.79).
  * Web address /v1/set_up_noted_item, POST {season, week, program, schedule, kind, name}. With the
  * week's draft locked, the draft must still have a cell noting that kind and name (what the agent
- * saw), or it is refused (409) with nothing made. The week is kept first as a version marked
- * Through an agent, then the screen's own Set it up runs (SpecialPlacingController.setUpItem):
- * undo_last_agent_change brings the cells back; the record made stays in setup.
+ * saw), or it is refused (409) with nothing made. Then the screen's own Set it up runs
+ * (SpecialPlacingController.setUpItem), and, as on the screen, nothing else: no version is kept,
+ * and the screen has no Undo for it, though its Undo goes on past it to the hand edits before
+ * (the week is read again, its history kept: API-1.14).
  */
 @RestResource(urlMapping='/v1/set_up_noted_item')
 global with sharing class AgentSetUpNoted implements AgentWeeks.Action {
@@ -51,7 +52,6 @@ global with sharing class AgentSetUpNoted implements AgentWeeks.Action {
       );
     }
     String change = 'Set up ' + noted.name;
-    Id versionId = AgentWeeks.keepBefore(week.draft, days, change);
     SpecialSetUp.Done done;
     try {
       done = SpecialPlacingController.setUpItem(
@@ -64,9 +64,19 @@ global with sharing class AgentSetUpNoted implements AgentWeeks.Action {
         'Nothing was changed. ' + ScreenErrors.words(e)
       );
     }
-    AgentWeeks.changed(versionId, week.draft.Id);
-    return done.said +
-      ' undo_last_agent_change brings the week\'s cells back; what was made stays in setup, and a special day put on a day stays there (take_special_day_off_day takes it off).';
+    Map<String, Object> undo = AgentUndoHeld.entry(
+      week.draft.Id,
+      'kept',
+      change
+    );
+    undo.put(
+      'seen',
+      week.manual
+        ? null
+        : GeneratedDrafts.revisionOf(ScheduleDays.read(week.draft.Id))
+    );
+    AgentUndoHeld.hold(undo);
+    return done.said;
   }
 
   /** The noted cell's item; a special day may be a noted trip, set up as one (SPECIAL-1.5). */

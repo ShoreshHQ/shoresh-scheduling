@@ -10,8 +10,10 @@
  *        or the Build menu's action asked for, API-1.127 to API-1.130: TryAnother, FillOpen,
  *        StartOver, on a week already built), so locks, hand edits and "changed by someone else"
  *        behave as on screen
- * A version marked "Through an agent" is kept first (the blank week, for a first build), so the
- * person sees it in Versions and Undo brings the week back (AgentUndo).
+ * As on the screen, only the save's own version is kept (Rebuild, Try another and Start over
+ * keep "Before Rebuild", "Before Try another" or "Before Start over"; Generate and Fill the open
+ * cells keep none), and only Rebuild and Start over have an Undo: the screen's own, with the
+ * version the save kept (AgentUndo, API-1.14).
  */
 @RestResource(urlMapping='/v1/build_week')
 global with sharing class AgentBuild implements AgentWeeks.Action {
@@ -99,29 +101,9 @@ global with sharing class AgentBuild implements AgentWeeks.Action {
     Boolean first = week.draft == null;
     String action = actionOf(body, first, week.name);
     String change = changeOf(action, week.name, optionOf(body));
-    Id versionId;
-    if (!first) {
-      week.draft = GeneratedDrafts.lockedToEdit(week.draft.Id);
-      versionId = AgentWeeks.keepBefore(
-        week.draft,
-        daysToKeep(week, action, optionOf(body)),
-        change
-      );
-    }
     GeneratedWeek.Save request = requestOf(body, week, action);
     GeneratedWeek.Result saved = save(week, request);
-    Id draftId = saved.scheduleId;
-    if (first) {
-      // Before a first build the week was blank, as Generated Schedule showed it: that is kept.
-      versionId = AgentWeeks.keepBefore(
-        GeneratedDrafts.lockedToEdit(draftId),
-        GeneratedInputs.daysOf(
-          new GeneratedSetup(week.program.Id, week.weekId).blankWeek().days
-        ),
-        change
-      );
-    }
-    AgentWeeks.changed(versionId, draftId);
+    holdUndo(action, change, saved);
     // Notes the server couldn't keep are said, never hidden, as on the screen.
     return String.isBlank(request.engineNotes) || saved.engineNotes != null
       ? change + '.'
@@ -131,21 +113,32 @@ global with sharing class AgentBuild implements AgentWeeks.Action {
         ' was saved without the reasons for how it was built.';
   }
 
-  /** The week to keep first; a day that can't be read stops it in the screen's words. */
-  private static List<ScheduleDays.DayGrid> daysToKeep(
-    AgentWeeks.Week week,
+  /**
+   * What the build leaves for its Undo, as the screen offers one: Rebuild and Start over undo
+   * with the version their save kept; Generate, Try another and Fill the open cells have none
+   * (naming the version the save kept, if it kept one).
+   */
+  private static void holdUndo(
     String action,
-    Integer option
+    String change,
+    GeneratedWeek.Result saved
   ) {
-    List<ScheduleDays.DayGrid> days = ScheduleDays.read(week.draft.Id);
-    try {
-      GeneratedFrames.checkReadable(days);
-    } catch (ShoreshException e) {
-      throw new ShoreshException(
-        failedOf(action, option, week.name) + e.getMessage()
-      );
-    }
-    return days;
+    String kept = saved.versionId == null
+      ? null
+      : GeneratedSaves.VERSION_FIRST.get(action);
+    Boolean undoable =
+      saved.versionId != null &&
+      (action == GeneratedSaves.REBUILD ||
+      action == GeneratedSaves.START_OVER);
+    Map<String, Object> undo = AgentUndoHeld.entry(
+      saved.scheduleId,
+      undoable ? 'build' : 'none',
+      change
+    );
+    undo.put('seen', saved.revision);
+    undo.put('version', saved.versionId);
+    undo.put('version_name', kept);
+    AgentUndoHeld.hold(undo);
   }
 
   /** The save's action: the Build menu's, asked for on a week built; else Generate or Rebuild. */

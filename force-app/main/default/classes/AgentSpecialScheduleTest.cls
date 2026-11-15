@@ -2,8 +2,10 @@
  * A special day's or event's own schedule and "Set it up" through an agent or the command line
  * (docs/protocol/api.md API-1.76 to API-1.79), on synthetic camps (SpecialScheduleTestData's
  * Color War, SetTimeTestData): read as its page shows it, a cell and the frame changed by the
- * screen's own saves only while they hold what the AI read, and Set it up kept first as a version
- * so undo brings the week's cells back. Records are made inside the scheduler's runAs.
+ * screen's own saves only while they hold what the AI read (a cell typed in as the page's week
+ * editor types: full length, a longer placement replaced), and Set it up as the screen's, keeping
+ * no version and with no Undo, as on screen (API-1.148). Records are made inside the scheduler's
+ * runAs.
  */
 @IsTest
 private class AgentSpecialScheduleTest {
@@ -52,68 +54,191 @@ private class AgentSpecialScheduleTest {
     .Name;
   }
 
-  // API-1.76, API-1.77
+  /**
+   * Typing in Open cells of the plan as the connector sends it (worked out by the page's own
+   * editor): the run over the column's (g) time blocks from first, from Open to after.
+   */
+  private static Map<String, Object> typed(
+    Map<String, Object> asked,
+    String change,
+    List<Object> after
+  ) {
+    List<Object> before = new List<Object>();
+    for (Object cell : after) {
+      before.add('');
+    }
+    AgentSpecials.Found found = AgentSpecials.find(asked);
+    ScheduleGrid grid = found.grid;
+    Integer g = (Integer) asked.remove('g');
+    Object firstAsked = asked.remove('first');
+    Integer first = firstAsked instanceof Integer
+      ? (Integer) firstAsked
+      : blockAt(grid, (String) firstAsked);
+    List<Object> blockIds = new List<Object>();
+    for (Integer b = first; b < first + after.size(); b++) {
+      blockIds.add(grid.blocks[b].id);
+    }
+    Map<String, Object> body = new Map<String, Object>(asked);
+    body.put('change', change);
+    body.put(
+      'runs',
+      new List<Object>{
+        new Map<String, Object>{
+          'day' => String.valueOf(SpecialSchedule.PLAN_DAY),
+          'groupId' => grid.groups[g].id,
+          'firstBlockId' => grid.blocks[first].id,
+          'blockIds' => blockIds,
+          'before' => before,
+          'after' => after
+        }
+      }
+    );
+    return body;
+  }
+
+  /** The time block of that name. */
+  private static Integer blockAt(ScheduleGrid grid, String name) {
+    for (Integer b = 0; b < grid.blocks.size(); b++) {
+      if (grid.blocks[b].name == name) {
+        return b;
+      }
+    }
+    Assert.fail('No time block called ' + name);
+    return null;
+  }
+
+  /** Color War's cell asked for: its column (g) and first time block, by name. */
+  private static Map<String, Object> at(
+    String season,
+    Integer g,
+    String first
+  ) {
+    return colorWar(
+      season,
+      new Map<String, Object>{ 'g' => g, 'first' => first }
+    );
+  }
+
+  /** GET /v1/change_special_schedule_cell, as the connector reads what the page opens. */
+  private static List<Object> opened(Map<String, Object> asked) {
+    RestContext.request = new RestRequest();
+    RestContext.request.httpMethod = 'GET';
+    for (String key : asked.keySet()) {
+      RestContext.request.addParameter(key, String.valueOf(asked.get(key)));
+    }
+    RestContext.response = new RestResponse();
+    AgentSpecialCell.get();
+    return new List<Object>{
+      RestContext.response.statusCode,
+      JSON.deserializeUntyped(RestContext.response.responseBody.toString())
+    };
+  }
+
+  // API-1.76, API-1.77: the connector reads what the page opens, and the runs it worked out are
+  // the page's own save, only while the cells hold what was read.
   @IsTest
   static void aCellIsTheScreensSaveOnlyWhileItHoldsWhatWasRead() {
     System.runAs(ShoreshTestData.scheduler()) {
       Map<String, Id> ids = SpecialScheduleTestData.campWithFieldDay();
-      SpecialScheduleTestData.colorWar(ids);
+      Id eventId = SpecialScheduleTestData.colorWar(ids);
       String season = seasonName(ids.get('Season'));
-      Map<String, Object> cell = new Map<String, Object>{
-        'column' => 'Blue',
-        'time' => 'Relays',
-        'was' => 'Open',
-        'activity' => 'swim'
-      };
+      String swim = 'A:' + ids.get('Swim');
       Test.startTest();
-      List<Object> read = ask(
-        new AgentReadSpecialSchedule(),
-        'GET',
-        colorWar(season, new Map<String, Object>())
+      List<Object> read = opened(colorWar(season, new Map<String, Object>()));
+      Map<String, Object> placing = typed(
+        at(season, 0, 'Relays'),
+        'Placed Swim · Blue · Color War · Relays',
+        new List<Object>{ swim }
       );
-      List<Object> placed = ask(
-        new AgentSpecialCell(),
-        'POST',
-        colorWar(season, cell)
-      );
-      // The AI still thinks it is Open.
-      List<Object> stale = ask(
-        new AgentSpecialCell(),
-        'POST',
-        colorWar(season, cell)
-      );
-      List<Object> after = ask(
-        new AgentReadSpecialSchedule(),
-        'GET',
-        colorWar(season, new Map<String, Object>())
-      );
+      List<Object> placed = ask(new AgentSpecialCell(), 'POST', placing);
+      // The agent still thinks it is Open.
+      List<Object> stale = ask(new AgentSpecialCell(), 'POST', placing);
       Test.stopTest();
-      String said = String.valueOf(read[1]);
-      Assert.areEqual(200, read[0], said);
-      Assert.isTrue(said.contains('Columns: Blue, Gold.'), said);
-      Assert.isTrue(
-        said.contains('Relays (09:50-11:20): Blue Open; Gold Open'),
-        said
-      );
-      Assert.isTrue(said.contains('seen: 4 '), said);
-      Assert.areEqual(200, placed[0], String.valueOf(placed[1]));
+      Assert.areEqual(200, read[0], String.valueOf(read[1]));
+      Map<String, Object> page = (Map<String, Object>) read[1];
       Assert.areEqual(
-        'Placed swim · Blue · Relays. To undo it, change the cell back (was: Open).',
-        placed[1]
+        new Set<String>{ 'plan', 'setup', 'labels' },
+        page.keySet()
       );
+      Assert.areEqual(
+        String.valueOf(eventId),
+        ((Map<String, Object>) page.get('plan')).get('itemId')
+      );
+      Assert.areEqual(200, placed[0], String.valueOf(placed[1]));
+      Assert.areEqual('Placed Swim · Blue · Color War · Relays.', placed[1]);
       Assert.areEqual(409, stale[0], String.valueOf(stale[1]));
       Assert.areEqual(
-        'Changed by someone else: Blue · Relays holds Swim now. Nothing was changed.',
+        'Changed by someone else since you read it: Placed Swim · Blue · Color War · Relays. Nothing was changed. Read it again with read_special_schedule.',
         stale[1]
       );
-      Assert.isTrue(
-        String.valueOf(after[1]).contains('Blue Swim; Gold Open'),
-        String.valueOf(after[1])
+      Assert.areEqual(
+        swim,
+        SlotIds.ofRow(SpecialPlans.read(eventId).grid, 0)[1]
       );
     }
   }
 
-  // API-1.77, SPECIAL-1.3: an AI puts an elective set in a special day's cell as typing does; an
+  // API-1.14, API-1.77: a cell's Undo is its page's: the runs back the connector holds for the
+  // conversation, made through the page's own save; nothing held is said.
+  @IsTest
+  static void aCellIsUndoneAsItsPageUndoesIt() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      Map<String, Id> ids = SpecialScheduleTestData.campWithFieldDay();
+      Id eventId = SpecialScheduleTestData.colorWar(ids);
+      String season = seasonName(ids.get('Season'));
+      String swim = 'A:' + ids.get('Swim');
+      Test.startTest();
+      Map<String, Object> placing = typed(
+        at(season, 0, 'Relays'),
+        'Placed Swim · Blue · Color War · Relays',
+        new List<Object>{ swim }
+      );
+      List<Object> placed = ask(new AgentSpecialCell(), 'POST', placing);
+      Map<String, Object> held = AgentUndoTestCalls.manualHeld(
+        AgentUndoTestCalls.undoIn(RestContext.response),
+        (List<Object>) placing.get('runs')
+      );
+      List<Object> undone = ask(
+        new AgentUndo(),
+        'POST',
+        colorWar(
+          season,
+          new Map<String, Object>{ 'held' => AgentUndoTestCalls.held(held) }
+        )
+      );
+      List<String> after = SlotIds.ofRow(SpecialPlans.read(eventId).grid, 0);
+      List<Object> nothing = ask(
+        new AgentUndo(),
+        'POST',
+        colorWar(
+          season,
+          new Map<String, Object>{ 'held' => new Map<String, Object>() }
+        )
+      );
+      Test.stopTest();
+      Assert.areEqual(200, placed[0], String.valueOf(placed[1]));
+      Assert.areEqual('edit', held.get('kind'));
+      Assert.areEqual(String.valueOf(eventId), held.get('schedule'));
+      Assert.areEqual(200, undone[0], String.valueOf(undone[1]));
+      Assert.areEqual(
+        'Undone: Placed Swim · Blue · Color War · Relays.',
+        undone[1]
+      );
+      for (String slot : after) {
+        Assert.areEqual('', slot, String.valueOf(after));
+      }
+      Assert.areEqual(400, nothing[0], String.valueOf(nothing[1]));
+      Assert.isTrue(
+        String.valueOf(nothing[1])
+          .startsWith(
+            'Nothing to undo: this conversation hasn\'t changed "Color War".'
+          ),
+        String.valueOf(nothing[1])
+      );
+    }
+  }
+
+  // API-1.77, SPECIAL-1.3: an elective set in a special day's cell is the page's save; an
   // event's refuses it in the screen's words, with nothing changed.
   @IsTest
   static void aCellOfASpecialDayTakesAnElectiveSetAndAnEventsRefusesIt() {
@@ -126,48 +251,29 @@ private class AgentSpecialScheduleTest {
       );
       Database.insert(chugim, AccessLevel.USER_MODE);
       String season = seasonName(ids.get('Season'));
-      ScheduleViews.DayView fieldDay = SpecialScheduleController.openPlan(
-          ids.get('Field Day')
-        )
-        .schedule.days[0];
-      String column = fieldDay.groups[0].name;
-      String blockName = fieldDay.blocks[0].name;
+      Map<String, Object> fieldDay = new Map<String, Object>{
+        'season' => season,
+        'special' => 'field day',
+        'g' => 0,
+        'first' => 0
+      };
       Test.startTest();
       List<Object> placed = ask(
         new AgentSpecialCell(),
         'POST',
-        new Map<String, Object>{
-          'season' => season,
-          'special' => 'field day',
-          'column' => column,
-          'time' => blockName,
-          'was' => 'Open',
-          'activity' => 'chugim'
-        }
+        typed(fieldDay, 'Placed Chugim', new List<Object>{ 'E:' + chugim.Id })
       );
       List<Object> inEvent = ask(
         new AgentSpecialCell(),
         'POST',
-        colorWar(
-          season,
-          new Map<String, Object>{
-            'column' => 'Blue',
-            'time' => 'Relays',
-            'was' => 'Open',
-            'activity' => 'Chugim'
-          }
+        typed(
+          at(season, 0, 'Relays'),
+          'Placed Chugim',
+          new List<Object>{ 'E:' + chugim.Id }
         )
       );
       Test.stopTest();
       Assert.areEqual(200, placed[0], String.valueOf(placed[1]));
-      Assert.areEqual(
-        'Placed chugim · ' +
-          column +
-          ' · ' +
-          blockName +
-          '. To undo it, change the cell back (was: Open).',
-        placed[1]
-      );
       ScheduleViews.DayView after = SpecialScheduleController.openPlan(
           ids.get('Field Day')
         )
@@ -311,9 +417,9 @@ private class AgentSpecialScheduleTest {
     }
   }
 
-  // API-1.79
+  // API-1.79, API-1.148: the screen's Set it up and nothing else: no version, and no Undo.
   @IsTest
-  static void setItUpIsTheScreensKeptFirstAndUndone() {
+  static void setItUpIsTheScreensAndKeepsNoVersion() {
     System.runAs(ShoreshTestData.scheduler()) {
       Map<String, Id> ids = SetTimeTestData.camp();
       Id draftId = ManualBuildController.startBlankWeek(
@@ -342,17 +448,11 @@ private class AgentSpecialScheduleTest {
       };
       Test.startTest();
       List<Object> setUp = ask(new AgentSetUpNoted(), 'POST', body);
+      Map<String, Object> held = AgentUndoTestCalls.undoIn(
+        RestContext.response
+      );
       // Set up already: nothing noted with that name now.
       List<Object> again = ask(new AgentSetUpNoted(), 'POST', body);
-      List<Object> undone = ask(
-        new AgentUndo(),
-        'POST',
-        new Map<String, Object>{
-          'season' => body.get('season'),
-          'week' => 'Week 1',
-          'program' => 'Main'
-        }
-      );
       Test.stopTest();
       Assert.areEqual(200, setUp[0], String.valueOf(setUp[1]));
       Assert.isTrue(
@@ -361,17 +461,18 @@ private class AgentSpecialScheduleTest {
         String.valueOf(setUp[1])
       );
       Assert.areEqual(409, again[0], String.valueOf(again[1]));
-      Assert.areEqual(200, undone[0], String.valueOf(undone[1]));
-      ScheduleGrid mondayGrid;
-      for (ScheduleDays.DayGrid read : ScheduleDays.read(draftId)) {
-        if (read.day == MONDAY) {
-          mondayGrid = read.grid;
-        }
-      }
-      ScheduleGrid.Item item = mondayGrid.items[
-        Integer.valueOf(mondayGrid.rows[0][0]) - 1
-      ];
-      Assert.isTrue(String.isBlank(item.id), 'The cell is noted again');
+      Assert.areEqual(
+        0,
+        [
+          SELECT COUNT()
+          FROM Schedule__c
+          WHERE SourceSchedule__c = :draftId
+          WITH SYSTEM_MODE
+        ],
+        'No version kept, as on the screen'
+      );
+      // The screen reads the week again and keeps its Undo history: so does the connector.
+      Assert.areEqual('kept', held.get('kind'));
     }
   }
 

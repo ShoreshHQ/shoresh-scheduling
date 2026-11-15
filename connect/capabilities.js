@@ -148,7 +148,7 @@ const VERSION_FIELDS = {
 
 /**
  * The person's own change to a Generated Schedule week (POST /v1/<api> with the fields), made by
- * the same save the screen makes, marked as made through an agent, and undoable.
+ * the same save the screen makes, leaving exactly what the screen leaves (API-1.148).
  */
 function change(
   name,
@@ -162,7 +162,7 @@ function change(
   return act(
     name,
     api,
-    `${description} It is made as you, with your own access, exactly as on ${screen}, and is marked "By your AI" in Versions. If someone else changed it, or it is locked, nothing is changed and Shoresh says why in one sentence: pass that on to the person and don't pick a side.`,
+    `${description} It is made as you, with your own access, exactly as on ${screen}: it leaves exactly what the screen leaves, nothing more. If someone else changed it, or it is locked, nothing is changed and Shoresh says why in one sentence: pass that on to the person and don't pick a side.`,
     { ...week, ...more },
     required
   );
@@ -438,7 +438,7 @@ function buildMenuAction(
     ...act(
       name,
       "build_week",
-      `${description} It is made as you, with your own access, exactly as on the Generated Schedule screen, and is marked "By your AI" in Versions. If someone else changed the week since, nothing is changed and Shoresh says why in one sentence: pass that on to the person and don't pick a side.`,
+      `${description} It is made as you, with your own access, exactly as on the Generated Schedule screen: it leaves exactly what the screen leaves, nothing more. If someone else changed the week since, nothing is changed and Shoresh says why in one sentence: pass that on to the person and don't pick a side.`,
       { ...WEEK_FIELDS, ...more },
       required
     ),
@@ -671,43 +671,49 @@ const CAPABILITIES = [
     "Read which camper has a seat in which elective, for a week whose seats are finalized.",
     "Each camper's seat, as finalized in Shoresh. It holds no findings or problems."
   ),
-  change(
-    "change_schedule_cell",
-    "schedule_cell",
-    "Change one cell of a week's Generated Schedule (the draft Shoresh builds, not the published week) or Manual Build: put an activity or an elective set there, or Open to clear it. The draft can differ from the published week that read_group_schedule shows: read it with read_week_draft. If the answer says the cell was changed by someone else (it holds something else now), never send it again over that: tell the person what it holds now and ask what they want.",
-    {
-      group: { type: "string", description: "The group's name, like Bunk 3." },
-      day: {
-        type: "string",
-        description:
-          "The day, like Monday or Day 3, or its date like 2026-06-29."
+  {
+    ...change(
+      "change_schedule_cell",
+      "schedule_cell",
+      'Change one cell of a week\'s Generated Schedule (the draft Shoresh builds, not the published week) or Manual Build, as typing in it on the screen does: put an activity there (it goes in for its full length, from the first time block of what the cell is part of, into Open cells after it; the answer says "(2 of 3)" when it runs out of room), an elective set (it holds each time block of what was there), or Open to clear what the cell is part of. A cell of a longer placement is replaced whole, as on the screen. As on the screen, undo_last_agent_change takes it back while this conversation lasts. The draft can differ from the published week that read_group_schedule shows: read it with read_week_draft. If the answer says the cell was changed by someone else (it holds something else now), never send it again over that: tell the person what it holds now and ask what they want.',
+      {
+        group: {
+          type: "string",
+          description: "The group's name, like Bunk 3."
+        },
+        day: {
+          type: "string",
+          description:
+            "The day, like Monday or Day 3, or its date like 2026-06-29."
+        },
+        time: {
+          type: "string",
+          description:
+            "The time block's name, like Period 2, or its start like 09:00."
+        },
+        was: {
+          type: "string",
+          description:
+            "What the cell holds now as you last saw it: an activity's name, or Open."
+        },
+        activity: {
+          type: "string",
+          description:
+            "What it should hold: an activity's or elective set's name, or Open."
+        },
+        seen: CELL.seen
       },
-      time: {
-        type: "string",
-        description:
-          "The time block's name, like Period 2, or its start like 09:00."
-      },
-      was: {
-        type: "string",
-        description:
-          "What the cell holds now as you last saw it: an activity's name, or Open."
-      },
-      activity: {
-        type: "string",
-        description:
-          "What it should hold: an activity's or elective set's name, or Open."
-      },
-      seen: CELL.seen
-    },
-    ["group", "day", "time", "was", "activity"],
-    ON_EITHER,
-    EITHER_WEEK
-  ),
+      ["group", "day", "time", "was", "activity"],
+      ON_EITHER,
+      EITHER_WEEK
+    ),
+    editsWithEngine: true
+  },
   {
     ...change(
       "move_cell",
       "move_cell",
-      "Move what a cell of a week's Generated Schedule or Manual Build holds to another cell, as dragging it there on the screen does: onto an Open cell it moves (keeping its length; refused where it doesn't fit), onto a filled cell the two swap. Longer activities, electives and events don't swap, and a fixed or recurring activity can be moved by hand. Undo it with undo_last_agent_change, which takes back only your last change.",
+      "Move what a cell of a week's Generated Schedule or Manual Build holds to another cell, as dragging it there on the screen does: onto an Open cell it moves (keeping its length; refused where it doesn't fit), onto a filled cell the two swap. Longer activities, electives and events don't swap, and a fixed or recurring activity can be moved by hand. As on the screen, undo_last_agent_change takes it back while this conversation lasts.",
       {
         day: CELL.day,
         group: CELL.group,
@@ -728,7 +734,7 @@ const CAPABILITIES = [
     ...change(
       "change_cell_length",
       "move_cell",
-      "Make what a cell of a week's Generated Schedule or Manual Build holds longer or shorter, as dragging its bottom handle on the screen does: it stays where it starts and ends at the time you name, from any cell of it. Longer needs Open cells: anything already there refuses it, and nothing is moved aside. A cell you have locked refuses it, on the placement or in the way; a fixed or recurring activity changes as on the screen, though the draft marks it locked. A special event or elective set has no handle. On Generated Schedule, what is left of an activity is then locked, so changing it again takes unlock_cells first, and cells it frees are Open; a fixed or recurring activity isn't locked, and a cell it frees is locked empty. Manual Build has no locks. Undo it with undo_last_agent_change.",
+      "Make what a cell of a week's Generated Schedule or Manual Build holds longer or shorter, as dragging its bottom handle on the screen does: it stays where it starts and ends at the time you name, from any cell of it. Longer needs Open cells: anything already there refuses it, and nothing is moved aside. A cell you have locked refuses it, on the placement or in the way; a fixed or recurring activity changes as on the screen, though the draft marks it locked. A special event or elective set has no handle. On Generated Schedule, what is left of an activity is then locked, so changing it again takes unlock_cells first, and cells it frees are Open; a fixed or recurring activity isn't locked, and a cell it frees is locked empty. Manual Build has no locks. As on the screen, undo_last_agent_change takes it back while this conversation lasts.",
       {
         day: CELL.day,
         group: CELL.group,
@@ -751,7 +757,7 @@ const CAPABILITIES = [
     ...change(
       "take_out_cell",
       "take_out_cell",
-      "Take what a cell of a week's Generated Schedule or Manual Build holds out of the week, as dragging it back to the activity list on the screen does: the whole placement goes, every time block it runs, leaving Open. Undo it with undo_last_agent_change, which takes back only your last change.",
+      "Take what a cell of a week's Generated Schedule or Manual Build holds out of the week, as dragging it back to the activity list on the screen does: the whole placement goes, every time block it runs, leaving Open. As on the screen, undo_last_agent_change takes it back while this conversation lasts.",
       {
         day: CELL.day,
         group: CELL.group,
@@ -769,7 +775,7 @@ const CAPABILITIES = [
     ...change(
       "copy_cells",
       "copy_cells",
-      "Copy cells of a week's Generated Schedule or Manual Build and paste them elsewhere, as Copy and Paste on the screen's Daily View do: the cells are one or more groups side by side (in the order the day shows them) from one time through another on one day, and they are pasted with their top left at another day, group and time. Everything copied goes in whole, an Open cell copied clears what is there, a locked cell is left as it is, and what can't go is left out and said. Undo it with undo_last_agent_change, which takes back only your last change.",
+      "Copy cells of a week's Generated Schedule or Manual Build and paste them elsewhere, as Copy and Paste on the screen's Daily View do: the cells are one or more groups side by side (in the order the day shows them) from one time through another on one day, and they are pasted with their top left at another day, group and time. Everything copied goes in whole, an Open cell copied clears what is there, a locked cell is left as it is, and what can't go is left out and said. As on the screen, undo_last_agent_change takes it back while this conversation lasts.",
       {
         day: CELL.day,
         groups: {
@@ -805,7 +811,7 @@ const CAPABILITIES = [
     ...change(
       "clear_day",
       "copy_cells",
-      "Clear a day of a week's Manual Build, as Clear day in its Edit menu does: every activity that day is taken out, for every group, or for one group; fixed and recurring activities, special events, elective sets and a group's away times stay. Manual Build only. Undo it with undo_last_agent_change.",
+      "Clear a day of a week's Manual Build, as Clear day in its Edit menu does: every activity that day is taken out, for every group, or for one group; fixed and recurring activities, special events, elective sets and a group's away times stay. Manual Build only. As on the screen, undo_last_agent_change takes it back while this conversation lasts.",
       {
         day: CELL.day,
         group: {
@@ -825,7 +831,7 @@ const CAPABILITIES = [
     ...change(
       "clear_week",
       "copy_cells",
-      "Clear a week's Manual Build, as Clear week in its Edit menu does: every activity of the week is taken out, for every group; fixed and recurring activities, special events, elective sets and away times stay. Manual Build only. Undo it with undo_last_agent_change.",
+      "Clear a week's Manual Build, as Clear week in its Edit menu does: every activity of the week is taken out, for every group; fixed and recurring activities, special events, elective sets and away times stay. Manual Build only. As on the screen, undo_last_agent_change takes it back while this conversation lasts.",
       { seen: CELL.seen },
       [],
       ON_EITHER,
@@ -838,7 +844,7 @@ const CAPABILITIES = [
     ...change(
       "switch_to_rain_plans",
       "switch_to_rain_plans",
-      'Switch one day of a week\'s Generated Schedule or Manual Build to its rain plans, as Edit > Rainy day… on the screen does: each outdoor activity on that day that has an indoor rain plan switches to it. One with no rain plan, one longer than one time block, and a locked cell stay as they are; one whose rain plan has no room keeps its activity and is marked "Rain plan full: choose another". The answer says how many of each. To switch the day back, undo it with undo_last_agent_change, which takes back only your last change (the week before is also kept in Versions as "Before rainy <day>").',
+      'Switch one day of a week\'s Generated Schedule or Manual Build to its rain plans, as Edit > Rainy day… on the screen does: each outdoor activity on that day that has an indoor rain plan switches to it. One with no rain plan, one longer than one time block, and a locked cell stay as they are; one whose rain plan has no room keeps its activity and is marked "Rain plan full: choose another". The answer says how many of each. As on the screen, the week as it was is kept first in Versions as "Before rainy <day>", and undo_last_agent_change switches the day back while this conversation lasts.',
       {
         day: {
           ...CELL.day,
@@ -853,32 +859,43 @@ const CAPABILITIES = [
     ),
     editsWithEngine: true
   },
-  change(
-    "undo_last_agent_change",
-    "undo_last_agent_change",
-    "Undo your last change made through an agent in a week's Generated Schedule or Manual Build (a cell change, an edit of several cells or a build). It is refused if anyone saved the week since.",
-    {},
-    [],
-    ON_EITHER,
-    EITHER_WEEK
-  ),
+  {
+    ...change(
+      "undo_last_agent_change",
+      "undo_last_agent_change",
+      "Undo the last change made through this conversation in a week's Generated Schedule or Manual Build, as the screen's Undo does: a cell change, an edit of several cells, a clear, rain plans or a special event put over cells goes back cell by cell (each Undo takes back the one before, as on the screen), and Rebuild or Start over brings back the week it replaced (keeping the week as it is now in Versions as \"Before Undo\"). As on the screen, there is no Undo for Generate, Try another, bringing back an option, Fill the open cells, Set it up or Update to match setup: the answer names the version to restore, if one was kept. Undo lasts only while this conversation does, as the screen's lasts only while its page is open: in a new conversation there is nothing to undo, and restore_version brings back any version, as a person can. On Generated Schedule it is refused if anyone saved the week since; on Manual Build, as its own Undo, only if a cell it would change back was changed since. A Lock, an Unlock or Set it up doesn't end it, as on the screen: Undo goes on past it to the edit before, and a cell you locked or unlocked since keeps that lock. For a special day's or event's own schedule, send special (and kind) instead of the week: its page's Undo, for a cell changed with change_special_schedule_cell (a change to its time blocks or stations, or an import, has none).",
+      {
+        special: {
+          ...SPECIAL_ITEM.special,
+          description:
+            "For a special day's or event's own schedule instead of a week: its name, as read_special_days names it."
+        },
+        kind: SPECIAL_ITEM.kind
+      },
+      [],
+      ON_EITHER,
+      EITHER_WEEK
+    ),
+    // Undo as the screen's, held by the connector for this conversation (connect/undo.js).
+    undoesLast: true
+  },
   {
     ...change(
       "build_week",
       "build_week",
-      "Build a week's Generated Schedule, as its Generate button does (or Rebuild, once the week has been built: the week is built fresh, the same as Generate on the option it was built with). Locked cells and hand edits are kept; nothing else carries over. The week as it was is kept in Versions first. The build runs here, on this computer, with the same engine as the screen, so the same week gives the same schedule."
+      'Build a week\'s Generated Schedule, as its Generate button does (or Rebuild, once the week has been built: the week is built fresh, the same as Generate on the option it was built with). Locked cells and hand edits are kept; nothing else carries over. As on the screen, a Rebuild keeps the week as it was in Versions first ("Before Rebuild") and undo_last_agent_change brings it back while this conversation lasts; a first Generate keeps no version and has no Undo. The build runs here, on this computer, with the same engine as the screen, so the same week gives the same schedule.'
     ),
     buildsWithEngine: true
   },
   buildMenuAction(
     "try_another_option",
     "TryAnother",
-    "Build the next option of a week already built, as Generated Schedule's Try another does: the week is built fresh, so hand edits that aren't locked are replaced; locked cells are kept. The week as it was is kept in Versions first."
+    "Build the next option of a week already built, as Generated Schedule's Try another does: the week is built fresh, so hand edits that aren't locked are replaced; locked cells are kept. As on the screen, the week as it was is kept in Versions first (\"Before Try another\"), and there is no Undo: restore that version to go back."
   ),
   buildMenuAction(
     "bring_back_option",
     "BringBack",
-    "Bring back an earlier option of a week already built, as the Option rows in Generated Schedule's Build menu do: that option is built again on the week as set up now, so hand edits that aren't locked are replaced; locked cells are kept. The week as it was is kept in Versions first. An option above the one the week is on hasn't been tried: try_another_option builds the next one.",
+    "Bring back an earlier option of a week already built, as the Option rows in Generated Schedule's Build menu do: that option is built again on the week as set up now, so hand edits that aren't locked are replaced; locked cells are kept. As on the screen, the week as it was is kept in Versions first (\"Before Try another\"), and there is no Undo: restore that version to go back. An option above the one the week is on hasn't been tried: try_another_option builds the next one.",
     {
       option: {
         type: "number",
@@ -891,12 +908,12 @@ const CAPABILITIES = [
   buildMenuAction(
     "fill_open_cells",
     "FillOpen",
-    "Fill a built week's open cells, as Fill the open cells in Generated Schedule's Build menu does: every filled cell stays as it is, and a cell locked empty stays empty."
+    "Fill a built week's open cells, as Fill the open cells in Generated Schedule's Build menu does: every filled cell stays as it is, and a cell locked empty stays empty. As on the screen, no version is kept and there is no Undo."
   ),
   buildMenuAction(
     "start_over_week",
     "StartOver",
-    "Start a built week over, as Start over in Generated Schedule's Build menu does: every activity is cleared and every lock lifted; everything else in a cell stays (fixed and recurring activities, elective sets, special events, things not set up yet), and a day a special day replaces stays as it is. The week as it was is kept in Versions first, and undo_last_agent_change brings it back."
+    'Start a built week over, as Start over in Generated Schedule\'s Build menu does: every activity is cleared and every lock lifted; everything else in a cell stays (fixed and recurring activities, elective sets, special events, things not set up yet), and a day a special day replaces stays as it is. As on the screen, the week as it was is kept in Versions first ("Before Start over"), and undo_last_agent_change brings it back while this conversation lasts.'
   ),
   {
     name: "read_offerings",
@@ -1134,7 +1151,7 @@ const CAPABILITIES = [
     method: "GET",
     listsVersions: true,
     description:
-      "List a week's versions as the Versions panel on Generated Schedule or Manual Build lists them (one list for the week), newest first, in its words: each version's name, what the panel says of it (like Generated Schedule · By your AI · Oct 31, 3:40 PM), when it was saved, and whether it has a delete. By your AI marks the version kept before a change made through an agent; Auto-saved, one Shoresh kept itself (Before Restore). Use it to find a version's name instead of guessing one.",
+      "List a week's versions as the Versions panel on Generated Schedule or Manual Build lists them (one list for the week), newest first, in its words: each version's name, what the panel says of it (like Generated Schedule · Auto-saved · Oct 31, 3:40 PM), when it was saved, and whether it has a delete. Auto-saved marks one Shoresh kept itself (Before Restore, Before Rebuild); By your AI marks one kept before an AI change by an earlier Shoresh, which no longer keeps them. Use it to find a version's name instead of guessing one.",
     about:
       "The Versions panel's list for this week, exactly as it is now. These are the only versions there are.",
     inputSchema: {
@@ -1160,7 +1177,7 @@ const CAPABILITIES = [
   act(
     "restore_version",
     "restore_version",
-    "Restore one of a week's versions, as the Versions panel's Restore on Generated Schedule or Manual Build does, without asking first: the week as it is now is kept first as a version called Before Restore (restore that to go back), then the version's cells, locks and option become the week's. It is how to take back anything beyond your own last change (undo_last_agent_change). It is done as you, with your own access.",
+    "Restore one of a week's versions, as the Versions panel's Restore on Generated Schedule or Manual Build does, without asking first: the week as it is now is kept first as a version called Before Restore (restore that to go back), then the version's cells, locks and option become the week's. It is how to take back anything undo_last_agent_change can't: a change from an earlier conversation, or one the screen has no Undo for. It is done as you, with your own access.",
     { ...VERSION_FIELDS, schedule: EITHER_WEEK.schedule },
     ["version"]
   ),
@@ -1206,20 +1223,27 @@ const CAPABILITIES = [
     "Unpublish a week's Generated Schedule or Manual Build, as that screen's Unpublish does, without asking first: nothing is published for the week then, and the schedule it had is kept as a version marked Published (republish with publish_week). It is done as you, with your own access. If someone else published or unpublished the week since, nothing is changed and Shoresh says why in one sentence: pass that on to the person.",
     EITHER_WEEK
   ),
-  act(
-    "lock_cells",
-    "lock_cells",
-    'Lock cells of a week\'s Generated Schedule, as its Lock menu does, without asking first, so they stay as they are when the week is built again: one cell (day, group and time; an Open cell is kept empty), or the shortcuts a group\'s day (group and day), a whole day (day, with group "all") or a whole group (group, with day "all"), which lock only cells that hold an activity. Fixed and recurring activities are never locked, and Manual Build has no locks. Read the week first with read_week_checks and send its seen. It is done as you, with your own access. If someone changed the week since, nothing is changed and Shoresh says so.',
-    LOCK_FIELDS,
-    ["day", "group", "seen"]
-  ),
-  act(
-    "unlock_cells",
-    "unlock_cells",
-    'Unlock cells of a week\'s Generated Schedule, as its Lock menu\'s Unlock does, without asking first: one cell (day, group and time), a group\'s day (group and day), a whole day (day, with group "all") or a whole group (group, with day "all"). Nothing a lock kept changes until the week is built again. Read the week first with read_week_checks and send its seen. It is done as you, with your own access. If someone changed the week since, nothing is changed and Shoresh says so.',
-    LOCK_FIELDS,
-    ["day", "group", "seen"]
-  ),
+  {
+    ...act(
+      "lock_cells",
+      "lock_cells",
+      'Lock cells of a week\'s Generated Schedule, as its Lock menu does, without asking first, so they stay as they are when the week is built again: one cell (day, group and time; an Open cell is kept empty), or the shortcuts a group\'s day (group and day), a whole day (day, with group "all") or a whole group (group, with day "all"), which lock only cells that hold an activity. Fixed and recurring activities are never locked, and Manual Build has no locks. Read the week first with read_week_checks and send its seen. It is done as you, with your own access. If someone changed the week since, nothing is changed and Shoresh says so.',
+      LOCK_FIELDS,
+      ["day", "group", "seen"]
+    ),
+    // The cells it reaches are held for Undo, as the screen's lockChosen (connect/undo.js).
+    locksCells: true
+  },
+  {
+    ...act(
+      "unlock_cells",
+      "unlock_cells",
+      'Unlock cells of a week\'s Generated Schedule, as its Lock menu\'s Unlock does, without asking first: one cell (day, group and time), a group\'s day (group and day), a whole day (day, with group "all") or a whole group (group, with day "all"). Nothing a lock kept changes until the week is built again. Read the week first with read_week_checks and send its seen. It is done as you, with your own access. If someone changed the week since, nothing is changed and Shoresh says so.',
+      LOCK_FIELDS,
+      ["day", "group", "seen"]
+    ),
+    locksCells: true
+  },
   act(
     "finalize_electives",
     "finalize_electives",
@@ -1793,7 +1817,7 @@ const CAPABILITIES = [
     method: "POST",
     sendsFields: true,
     description:
-      "Update a week to match setup, as Generated Schedule's or Manual Build's \"Update to match setup\" does, for the changes named by key. Read them first with read_setup_changes and send its seen. A change marked as replacing a placement made by hand takes away someone's choice: ask the person first. It is done as you, with your own access, and undo_last_agent_change brings the week back, if it is still your last change. If someone changed the week or setup since, nothing is updated and Shoresh says so.",
+      'Update a week to match setup, as Generated Schedule\'s or Manual Build\'s "Update to match setup" does, for the changes named by key. Read them first with read_setup_changes and send its seen. A change marked as replacing a placement made by hand takes away someone\'s choice: ask the person first. It is done as you, with your own access. As on the screen, it keeps the week as it was in Versions ("Before Update to match setup") only when a change replaces a placement made by hand, and there is no Undo: restore that version to go back. If someone changed the week or setup since, nothing is updated and Shoresh says so.',
     inputSchema: {
       type: "object",
       properties: {
@@ -1849,7 +1873,7 @@ const CAPABILITIES = [
     ...change(
       "place_special_event",
       "place_special_event",
-      "Put a special event over cells of a week's Generated Schedule or Manual Build, as choosing it from the screen's Special events list does: one or more groups side by side (in the order the day shows them) from one time through another on one day, each group's cells holding the event. Whatever was there goes, whole (a fixed or recurring activity too, as a hand edit may); a locked cell refuses it. Read the week first so you know what will be replaced, and say it to the person. Undo it with undo_last_agent_change, which takes back only your last change.",
+      "Put a special event over cells of a week's Generated Schedule or Manual Build, as choosing it from the screen's Special events list does: one or more groups side by side (in the order the day shows them) from one time through another on one day, each group's cells holding the event. Whatever was there goes, whole (a fixed or recurring activity too, as a hand edit may); a locked cell refuses it. Read the week first so you know what will be replaced, and say it to the person. As on the screen, undo_last_agent_change takes it back while this conversation lasts.",
       {
         event: {
           type: "string",
@@ -1899,8 +1923,10 @@ const CAPABILITIES = [
     api: "change_special_schedule_cell",
     method: "POST",
     sendsFields: true,
+    // Worked out here with the week editor the page types through (connect/cells.js specialCell).
+    typesSpecialCell: true,
     description:
-      "Change one cell of a special day's or special event's own schedule, as typing in it on its page does: put one of the season's activities there, in a special day also one of its elective sets (its seats are then assigned on Elective seats for that week, like any other elective time), or Open to clear it. An event's columns are stations, so it takes no elective set. Read it first with read_special_schedule and send what the cell holds as was. It is done as you, with your own access. If someone else changed that cell since, nothing is changed and Shoresh says so. There is no undo here: to undo it, change the cell back to what it was.",
+      "Change one cell of a special day's or special event's own schedule, as typing in it on its page does: put one of the season's activities there, in a special day also one of its elective sets (its seats are then assigned on Elective seats for that week, like any other elective time), or Open to clear it. An event's columns are stations, so it takes no elective set. Read it first with read_special_schedule and send what the cell holds as was. It is done as you, with your own access. If someone else changed that cell since, nothing is changed and Shoresh says so. As typing does, an activity goes in for its full length and a cell of a longer placement is replaced whole. As on its page, undo_last_agent_change (with special) takes it back while this conversation lasts.",
     inputSchema: {
       type: "object",
       properties: {
@@ -1990,7 +2016,7 @@ const CAPABILITIES = [
   change(
     "set_up_noted_item",
     "set_up_noted_item",
-    "Set up what a cell notes as \"not set up yet\" after an import, as Set it up on Generated Schedule or Manual Build does: a special event (the season's of that name, made if there is none, and the week's cells naming it hold it), a special day (made if there is none, and put on each weekday the cells had it, unless another special day is there; a trip is set up as a special day), or an elective set (as a special event). The week is kept first, so undo_last_agent_change brings its cells back while it is your last change; a record it made stays in setup, and a special day it put on a day stays there (take_special_day_off_day takes it off).",
+    "Set up what a cell notes as \"not set up yet\" after an import, as Set it up on Generated Schedule or Manual Build does: a special event (the season's of that name, made if there is none, and the week's cells naming it hold it), a special day (made if there is none, and put on each weekday the cells had it, unless another special day is there; a trip is set up as a special day), or an elective set (as a special event). As on the screen, no version is kept and it has no Undo of its own (undo_last_agent_change goes on past it to your edits before); a record it made stays in setup, and a special day it put on a day stays there (take_special_day_off_day takes it off).",
     {
       kind: {
         type: "string",
@@ -2459,6 +2485,11 @@ const CAPABILITIES = [
  * the confirm their own first answer gives. connect/__tests__/undo.test.js ties this list to the
  * Apex classes that ask first, both ways.
  */
+// undo_last_agent_change names a week, or a special day's or event's own schedule (special).
+CAPABILITIES.find(
+  (each) => each.name === "undo_last_agent_change"
+).inputSchema.required = [];
+
 const ASKS_FIRST = [
   "delete_setup_record",
   "delete_linked_choice",
