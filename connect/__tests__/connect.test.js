@@ -29,7 +29,7 @@ const call = (name, input, options) =>
     ...options
   });
 const { tools, handle, orgFrom, hostFrom } = require("../mcp");
-const { parse } = require("../cli");
+const { parse, main } = require("../cli");
 
 const CLASSES = path.resolve(__dirname, "../../force-app/main/default/classes");
 // The web addresses other systems send their own batches to (a key, Flow or CSV), which a
@@ -2601,15 +2601,25 @@ describe("Shoresh for AI tools and the command line", () => {
   });
 
   // API-1.97 (Greg 2026-11-15, AI = screen)
-  it("theCommandLineOffersNoLearnedUndo: one command per process holds no Undo, and its answer says so instead of offering one", async () => {
-    const { oneCommandAtATime } = require("../learned");
-    oneCommandAtATime();
-    let said;
-    try {
-      said = await call(
+  it("theCommandLineOffersNoLearnedUndo: one command per process holds no Undo, and its answer says so instead of offering one; the MCP server, which loads the command line too, still holds it", async () => {
+    const out = [];
+    const err = [];
+    const code = await main(
+      [
         "forget_learned_answer",
-        { season: "Summer 2031", answer_id: "a0Learned000009", seen: "fixed" },
-        {
+        "--season",
+        "Summer 2031",
+        "--answer_id",
+        "a0Learned000009",
+        "--seen",
+        "fixed"
+      ],
+      {},
+      { write: (text) => out.push(text) },
+      { write: (text) => err.push(text) },
+      (name, input, options) =>
+        call(name, input, {
+          ...options,
           run: sfAnswering(
             200,
             JSON.stringify({
@@ -2617,15 +2627,20 @@ describe("Shoresh for AI tools and the command line", () => {
                 'Forgot "fixed": the next import asks that question again. To undo it, use undo_learned_answer with undo "forget:a0Learned000009".'
             })
           )
-        }
-      );
-    } finally {
-      oneCommandAtATime(false);
-    }
-    expect(said.ok).toBe(true);
-    expect(said.text).toBe(
+        })
+    );
+    expect(code).toBe(0);
+    expect(out.join("")).toContain(
       'Forgot "fixed": the next import asks that question again. The command line keeps no Undo between commands, as the screen keeps none once its page is closed.'
     );
+    // Nothing held from the command: an undo of it is nothing to undo.
+    const after = await call(
+      "undo_learned_answer",
+      { season: "Summer 2031", undo: "forget:a0Learned000009" },
+      { run: sfAnswering(200, "{}") }
+    );
+    expect(after.ok).toBe(false);
+    expect(after.text).toMatch(/^There's nothing to undo in this conversation/);
   });
 
   it("learnedUndoLastsTheConversation: only a change or forget made while this connector runs can be undone, each once; anything else is nothing to undo, with nothing asked", async () => {

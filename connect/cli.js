@@ -18,9 +18,6 @@
 const { CAPABILITIES, byName } = require("./capabilities");
 const { call, withSeasonNamed } = require("./client");
 const { oneCommandAtATime } = require("./learned");
-
-// One command, one process: no Undo on What Shoresh has learned is kept for the next (API-1.97).
-oneCommandAtATime();
 const { toolResult } = require("./mcp");
 
 function usage() {
@@ -114,6 +111,9 @@ async function main(
   err = process.stderr,
   callFn = call
 ) {
+  // One command, one process: no Undo on What Shoresh has learned is kept for the next
+  // (API-1.97). Only while a command runs: the MCP server loads this file too.
+  oneCommandAtATime(true);
   try {
     const { name, input, org } = parse(argv);
     const said = withSeasonNamed(
@@ -131,6 +131,8 @@ async function main(
   } catch (e) {
     err.write(`${e.message}\n`);
     return EXIT.couldNotAsk;
+  } finally {
+    oneCommandAtATime(false);
   }
 }
 
