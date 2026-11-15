@@ -200,6 +200,46 @@ async function call(action, input = {}, as = ORG) {
   return { ...said, kind, text: String(said.text ?? "") };
 }
 
+// The web addresses other systems send their own batches to (a key, Flow or CSV; ADR 0024). A
+// person's AI isn't offered them (API-1.6), so a scenario sends to them as such a system does:
+// straight to the address, signed in as `as`.
+const OUTSIDE_DOORS = {
+  bring_in_divisions: "division",
+  bring_in_groups: "group",
+  bring_in_activities: "activity",
+  bring_in_campers: "camper",
+  bring_in_camper_groups: "camper_group",
+  bring_in_camper_elective_choices: "camper_elective_choice"
+};
+
+/** One outside system's batch, {records}, to its own web address, as the person signed in as `as`. */
+async function sendAsSystem(door, input = {}, as = ORG) {
+  const api = OUTSIDE_DOORS[door];
+  if (!api) throw new Error(`No outside system's door ${door}`);
+  const { sfArgs, readResponse } = require(path.join(SHIPPED, "client.js"));
+  const request = {
+    path: `/services/apexrest/v1/${api}`,
+    method: "POST",
+    body: JSON.stringify({ records: input.records ?? [] })
+  };
+  const out = spawnSync("sf", sfArgs(request, as), {
+    input: request.body,
+    encoding: "utf8",
+    maxBuffer: 64 * 1024 * 1024
+  });
+  const response = readResponse(out.stdout ?? "");
+  if (!response) throw new Error(`No answer from ${api}: ${out.stderr}`);
+  let text = response.body.trim();
+  try {
+    const parsed = JSON.parse(text);
+    if (parsed && typeof parsed.message === "string") text = parsed.message;
+  } catch {
+    // as it came
+  }
+  const ok = response.status >= 200 && response.status < 300;
+  return { ok, status: response.status, kind: ok ? "done" : "refused", text };
+}
+
 const seenIn = (text) => /seen: "?([^"\s]+?)"?(?:[\s.,;]|$)/.exec(text)?.[1];
 
 // ---------- made-up camps ----------
@@ -336,6 +376,7 @@ module.exports = {
   classesOffBranch,
   deployBranch,
   call,
+  sendAsSystem,
   seenIn,
   makeCamp,
   cleanup,

@@ -32,6 +32,16 @@ const { tools, handle, orgFrom, hostFrom } = require("../mcp");
 const { parse } = require("../cli");
 
 const CLASSES = path.resolve(__dirname, "../../force-app/main/default/classes");
+// The web addresses other systems send their own batches to (a key, Flow or CSV), which a
+// person's AI is never offered: it brings data in as the screens do (API-1.6).
+const OUTSIDE_SYSTEMS_ONLY = [
+  "activity",
+  "camper",
+  "camper_elective_choice",
+  "camper_group",
+  "division",
+  "group"
+];
 // The Versions panel's own words module, as the connector runs it (shipped by build-connect.js).
 const versionWords = async () =>
   require("../../force-app/main/default/lwc/shoreshVersions/words.js");
@@ -69,11 +79,13 @@ describe("Shoresh for AI tools and the command line", () => {
       .map((m) => m[1])
       // What Shoresh's view of a week draws: part of a schedule read, not an action (API-1.26).
       .filter((a) => a !== "week_view")
+      // Other systems' own doors, never a person's AI's (API-1.6).
+      .filter((a) => !OUTSIDE_SYSTEMS_ONLY.includes(a))
       .sort();
     expect([...new Set(CAPABILITIES.map((c) => c.api))].sort()).toEqual(
       addresses
     );
-    expect(CAPABILITIES).toHaveLength(106);
+    expect(CAPABILITIES).toHaveLength(100);
     for (const c of CAPABILITIES) {
       expect(
         requestFor(c, { season: "S", week: "W", records: [] }).path
@@ -83,6 +95,42 @@ describe("Shoresh for AI tools and the command line", () => {
         /^(read|list|download)_/.test(c.name) ? "GET" : "POST"
       );
     }
+  });
+
+  // API-1.6 (Greg 2026-11-15, AI = screen)
+  it("personsAiBringsDataInAsTheScreens: the outside systems' bring_in_* doors are no tool or command; a person's AI is pointed to import_list and bring_in_choices", () => {
+    const { usage } = require("../cli");
+    const offered = [
+      ...tools().map((t) => t.name),
+      ...CAPABILITIES.map((c) => c.name)
+    ];
+    for (const name of [
+      "bring_in_divisions",
+      "bring_in_groups",
+      "bring_in_activities",
+      "bring_in_campers",
+      "bring_in_camper_groups",
+      "bring_in_camper_elective_choices"
+    ]) {
+      expect(offered).not.toContain(name);
+      expect(byName(name)).toBeUndefined();
+      expect(usage()).not.toContain(name);
+      expect(() => parse([name])).toThrow(/Usage/);
+    }
+    for (const c of CAPABILITIES) {
+      expect([c.name, OUTSIDE_SYSTEMS_ONLY.includes(c.api)]).toEqual([
+        c.name,
+        false
+      ]);
+      // No tool sends the person's AI to an outside system's door.
+      const text = JSON.stringify(c);
+      expect([c.name, /bring_in_(?!choices)/.test(text)]).toEqual([
+        c.name,
+        false
+      ]);
+    }
+    expect(byName("import_list").description).toMatch(/Import a list/);
+    expect(byName("bring_in_choices")).toBeDefined();
   });
 
   it("API-1.125: apply_to_other_weeks names both weeks, either screen, and asks first", async () => {
@@ -105,10 +153,10 @@ describe("Shoresh for AI tools and the command line", () => {
 
   // API-1.6, API-1.5
   // API-1.19
-  it("plainNames: every action is list_seasons, read_<thing>, bring_in_<things>, change_<thing>, build_week, try_another_option, bring_back_option, fill_open_cells, start_over_week, publish_week, unpublish_week, lock_cells, unlock_cells, move_cell, take_out_cell, copy_cells, start_manual_week, finalize_electives, accept_finding, undo_last_agent_change, <verb>_version, rename/delete/add_setup_record, fill_in_weeks, merge_locations, confirm_setup_guess, confirm_proposed_offering, copy_season, update_to_match_setup, switch_to_rain_plans, assign_elective_seats, move_elective_seat, lock_elective_seat, start_new_elective_version, clear_electives, put_special_day_on_day, take_special_day_off_day, place_special_event, set_up_noted_item, import_list, import_worksheet, import_last_year, import_special_schedule, undo_import, apply_to_other_weeks, download_<file>, forget_learned_answer, forget_learned_pattern, undo_learned_answer, make_linked_choice, delete_linked_choice, delete_offering, create_camp, create_season, delete_season, archive_season, bring_back_season, clear_day or clear_week, said without jargon", () => {
+  it("plainNames: every action is list_seasons, read_<thing>, bring_in_choices, change_<thing>, build_week, try_another_option, bring_back_option, fill_open_cells, start_over_week, publish_week, unpublish_week, lock_cells, unlock_cells, move_cell, take_out_cell, copy_cells, start_manual_week, finalize_electives, accept_finding, undo_last_agent_change, <verb>_version, rename/delete/add_setup_record, fill_in_weeks, merge_locations, confirm_setup_guess, confirm_proposed_offering, copy_season, update_to_match_setup, switch_to_rain_plans, assign_elective_seats, move_elective_seat, lock_elective_seat, start_new_elective_version, clear_electives, put_special_day_on_day, take_special_day_off_day, place_special_event, set_up_noted_item, import_list, import_worksheet, import_last_year, import_special_schedule, undo_import, apply_to_other_weeks, download_<file>, forget_learned_answer, forget_learned_pattern, undo_learned_answer, make_linked_choice, delete_linked_choice, delete_offering, create_camp, create_season, delete_season, archive_season, bring_back_season, clear_day or clear_week, said without jargon", () => {
     for (const c of CAPABILITIES) {
       expect(c.name).toMatch(
-        /^((read|bring_in|change)_[a-z]+(_[a-z]+)*|list_seasons|undo_last_agent_change|build_week|try_another_option|bring_back_option|fill_open_cells|start_over_week|(un)?publish_week|(un)?lock_cells|move_cell|take_out_cell|copy_cells|start_manual_week|finalize_electives|accept_finding|(list|save|restore|rename|delete)_versions?|(rename|delete|add)_setup_record|fill_in_weeks|merge_locations|confirm_setup_guess|confirm_proposed_offering|copy_season|update_to_match_setup|switch_to_rain_plans|assign_elective_seats|move_elective_seat|lock_elective_seat|start_new_elective_version|clear_electives|put_special_day_on_day|take_special_day_off_day|place_special_event|set_up_noted_item|import_list|import_worksheet|import_last_year|import_special_schedule|undo_import|apply_to_other_weeks|download_(schedule|special_schedule|elective_files|setup)|forget_learned_(answer|pattern)|undo_learned_answer|make_linked_choice|delete_linked_choice|delete_offering|create_camp|create_season|delete_season|archive_season|bring_back_season|clear_day|clear_week)$/
+        /^((read|change)_[a-z]+(_[a-z]+)*|bring_in_choices|list_seasons|undo_last_agent_change|build_week|try_another_option|bring_back_option|fill_open_cells|start_over_week|(un)?publish_week|(un)?lock_cells|move_cell|take_out_cell|copy_cells|start_manual_week|finalize_electives|accept_finding|(list|save|restore|rename|delete)_versions?|(rename|delete|add)_setup_record|fill_in_weeks|merge_locations|confirm_setup_guess|confirm_proposed_offering|copy_season|update_to_match_setup|switch_to_rain_plans|assign_elective_seats|move_elective_seat|lock_elective_seat|start_new_elective_version|clear_electives|put_special_day_on_day|take_special_day_off_day|place_special_event|set_up_noted_item|import_list|import_worksheet|import_last_year|import_special_schedule|undo_import|apply_to_other_weeks|download_(schedule|special_schedule|elective_files|setup)|forget_learned_(answer|pattern)|undo_learned_answer|make_linked_choice|delete_linked_choice|delete_offering|create_camp|create_season|delete_season|archive_season|bring_back_season|clear_day|clear_week)$/
       );
       expect(JSON.stringify(c)).not.toMatch(
         /resource|payload|entity|idempoten|endpoint|sobject/i
@@ -137,15 +185,15 @@ describe("Shoresh for AI tools and the command line", () => {
     ]);
     const posted = [];
     await call(
-      "bring_in_campers",
-      { records: [{ camper_name: "Pat Example" }] },
+      "unpublish_week",
+      { season: "Summer 2026", week: "Week 2" },
       { run: sfAnswering(200, "{}", posted) }
     );
     expect(posted[0].args).toEqual([
       "api",
       "request",
       "rest",
-      "/services/apexrest/v1/camper",
+      "/services/apexrest/v1/unpublish_week",
       "--method",
       "POST",
       "--include",
@@ -153,7 +201,8 @@ describe("Shoresh for AI tools and the command line", () => {
       "-"
     ]);
     expect(JSON.parse(posted[0].stdin)).toEqual({
-      records: [{ camper_name: "Pat Example" }]
+      season: "Summer 2026",
+      week: "Week 2"
     });
     expect(() => sfArgs({ path: "/x", method: "GET" }, "--json")).toThrow(
       "That isn't a Salesforce sign-in name."
@@ -268,29 +317,6 @@ describe("Shoresh for AI tools and the command line", () => {
     expect(refused.result).toEqual({
       content: [{ type: "text", text: `${sentence} ${PERSON_DECIDES}` }],
       isError: true
-    });
-    // The import's own answer (IncomingDoors): every record, each in one sentence.
-    const conflict = JSON.stringify({
-      saved: 0,
-      unchanged: 0,
-      problems: 1,
-      records: [
-        {
-          row: 0,
-          result: "problem",
-          message:
-            "Kept beside Pat Example's choice a person made: shown as a conflict."
-        }
-      ]
-    });
-    const batch = await callTool(
-      "bring_in_camper_elective_choices",
-      { records: [{}] },
-      sfAnswering(200, conflict)
-    );
-    expect(batch.result).toEqual({
-      content: [{ type: "text", text: conflict }],
-      isError: false
     });
   });
 
@@ -3518,13 +3544,11 @@ describe("Shoresh for AI tools and the command line", () => {
       .filter((n) => n !== "run_shoresh_script");
     expect(names).toEqual(CAPABILITIES.map((c) => c.name));
     for (const name of names) {
-      const words = byName(name).inputSchema.properties.records
-        ? [name, "--file", "x.json"]
-        : [name, "--season", "S", "--week", "W"].slice(
-            0,
-            byName(name).inputSchema.properties.week ? 5 : 1
-          );
-      expect(parse(words, () => '{"records":[]}').name).toBe(name);
+      const words = [name, "--season", "S", "--week", "W"].slice(
+        0,
+        byName(name).inputSchema.properties.week ? 5 : 1
+      );
+      expect(parse(words).name).toBe(name);
     }
     expect(
       parse([
@@ -3543,9 +3567,6 @@ describe("Shoresh for AI tools and the command line", () => {
       org: "my-camp"
     });
     expect(() => parse(["delete_everything"])).toThrow(/Usage/);
-    expect(() =>
-      parse(["bring_in_campers", "--file", "x.json"], () => '{"campers":[]}')
-    ).toThrow('The file needs JSON like {"records": [ { ... }, { ... } ]}.');
     expect(orgFrom(["node", "mcp.js", "--org", "a"], {})).toBe("a");
     expect(orgFrom(["node", "mcp.js"], { SHORESH_ORG: "b" })).toBe("b");
   });

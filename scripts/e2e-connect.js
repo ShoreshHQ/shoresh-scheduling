@@ -307,6 +307,13 @@ function electives(tmp) {
     `SELECT Id FROM ElectiveRun__c WHERE ${IN_SEASON}`,
     1
   );
+  // The run says which file it came from, as the screen's does (the CSV's SHA-256).
+  landed(
+    "file fingerprint",
+    "API-1.117",
+    `SELECT Id FROM ElectiveRun__c WHERE ${IN_SEASON} AND SourceFingerprint__c != null`,
+    1
+  );
   // The campers came in with the sheet, in its bunks (the screen's own Bring in).
   landed(
     "choices in",
@@ -581,52 +588,6 @@ function importsSave(tmp) {
   step("read_special_schedule", { special: "Lake day" }, "done", [
     ["API-1.85", (t) => /Bunk 1 Swim/.test(t), "the file's cells are there"]
   ]);
-
-  // An outside system's batches: each saved, read back; its last one undone.
-  const src = { season: SEASON, source_system: "E2E made-up system" };
-  const file = (name, records) => {
-    const f = path.join(tmp, `${name}.json`);
-    fs.writeFileSync(f, JSON.stringify({ records }));
-    return f;
-  };
-  const saved = [["API-6.3", has('"saved": 1'), "1 saved"]];
-  step(
-    "bring_in_divisions",
-    {
-      file: file("i-div", [{ ...src, division_name: "Teens", program: "Main" }])
-    },
-    "done",
-    saved
-  );
-  landed(
-    "division Teens",
-    "API-2.3",
-    `SELECT Id FROM Division__c WHERE Program__r.${IN_SEASON} AND Name = 'Teens'`,
-    1
-  );
-  step(
-    "bring_in_groups",
-    {
-      file: file("i-grp", [{ ...src, group_name: "Bunk 5", division: "Teens" }])
-    },
-    "done",
-    saved
-  );
-  landed(
-    "group Bunk 5",
-    "API-2.3",
-    `SELECT Id FROM Group__c WHERE Division__r.Program__r.${IN_SEASON} AND Name = 'Bunk 5'`,
-    1
-  );
-  step(
-    "bring_in_activities",
-    { file: file("i-act", [{ ...src, activity_name: "Kayak" }]) },
-    "done",
-    saved
-  );
-  activity("Kayak", 1, "API-2.3");
-  undo("E2E made-up system", "Import undone");
-  activity("Kayak", 0, "API-2.6");
 }
 
 // ---------- every command, once ----------
@@ -724,82 +685,8 @@ function everyCommand(tmp) {
     },
     "any"
   );
-  // Bring in from another system.
-  const file = (name, records) => {
-    const f = path.join(tmp, `${name}.json`);
-    fs.writeFileSync(f, JSON.stringify({ records }));
-    return f;
-  };
-  const src = { season: SEASON, source_system: "E2E made-up system" };
-  step(
-    "bring_in_divisions",
-    {
-      file: file("divisions", [
-        { ...src, division_name: "Juniors", program: "Main" }
-      ])
-    },
-    "any"
-  );
-  step(
-    "bring_in_groups",
-    {
-      file: file("groups", [
-        { ...src, group_name: "Bunk 1", division: "Juniors" }
-      ])
-    },
-    "any"
-  );
-  step(
-    "bring_in_activities",
-    { file: file("activities", [{ ...src, activity_name: "Swim" }]) },
-    "any"
-  );
-  step(
-    "bring_in_campers",
-    {
-      file: file("campers", [
-        {
-          ...src,
-          camper_id: "E2E-1",
-          camper_name: "Avery Madeup",
-          camper_number: "1"
-        }
-      ])
-    },
-    "any"
-  );
-  step(
-    "bring_in_camper_groups",
-    {
-      file: file("camper_groups", [
-        {
-          ...src,
-          camper_id: "E2E-1",
-          camper_name: "Avery Madeup",
-          bunk: "Bunk 1",
-          week: "Week 1"
-        }
-      ])
-    },
-    "any"
-  );
-  step(
-    "bring_in_camper_elective_choices",
-    {
-      file: file("choices", [
-        {
-          ...src,
-          camper_id: "E2E-1",
-          camper_name: "Avery Madeup",
-          elective: "Chugim",
-          week: "Week 1",
-          first_choice: "Swim",
-          second_choice: "Art"
-        }
-      ])
-    },
-    "any"
-  );
+  // A person's AI brings data in only as the screens do (import_list, bring_in_choices); the
+  // bring_in_* doors are for other systems sending it themselves, not offered to it (API-1.6).
   // The week: build, check, publish, read.
   step("build_week", week);
   const checks = step("read_week_checks", week);
