@@ -145,10 +145,11 @@ public with sharing class AgentSetupRecords {
         ];
       }
       when 'Division' {
+        // DIV-1.1: a holding "No division" record is never a division on any screen.
         return [
           SELECT Id, Name, Program__c, Program__r.Name
           FROM Division__c
-          WHERE Program__r.Season__c = :seasonId
+          WHERE Program__r.Season__c = :seasonId AND NoDivision__c = FALSE
           WITH USER_MODE
           ORDER BY SortOrder__c, Name
         ];

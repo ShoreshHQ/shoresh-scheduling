@@ -105,7 +105,10 @@ describe("actions and their Apex", () => {
       "clear_electives",
       "copy_season",
       "change_special_schedule_frame",
-      "assign_elective_seats"
+      "assign_elective_seats",
+      // API-1.147: only a fixed activity over a recurring one asks.
+      "add_setup_record",
+      "change_setup_record"
     ].map((name) => [name])
   )("API-1.106: %s asks first, enforced by its Apex", (name) => {
     const capability = CAPABILITIES.find((each) => each.name === name);

@@ -43,21 +43,26 @@ private class AgentSetupChangeTest {
     };
   }
 
+  /** Main runs on Saturday too, said to change_setup_record as read. */
+  private static List<Object> saturdayOnMain() {
+    return post(
+      'change',
+      new Map<String, Object>{
+        'kind' => 'program',
+        'name' => 'Main',
+        'fields' => new Map<String, Object>{ 'saturday' => 'yes' },
+        'seen' => new Map<String, Object>{ 'saturday' => 'no' }
+      }
+    );
+  }
+
   // WEEK-2.7
   @IsTest
   static void aProgramsNewDayMovesTheWeeksAndTheAnswerSaysSo() {
     System.runAs(ShoreshTestData.scheduler()) {
       GeneratedTestData.camp();
       Test.startTest();
-      List<Object> saturday = post(
-        'change',
-        new Map<String, Object>{
-          'kind' => 'program',
-          'name' => 'Main',
-          'fields' => new Map<String, Object>{ 'saturday' => 'yes' },
-          'seen' => new Map<String, Object>{ 'saturday' => 'no' }
-        }
-      );
+      List<Object> saturday = saturdayOnMain();
       Test.stopTest();
       String said = String.valueOf(saturday[1]);
       Assert.areEqual(200, saturday[0], said);
@@ -386,6 +391,172 @@ private class AgentSetupChangeTest {
       Assert.areEqual(
         'Give the length as a whole number, like 2.',
         fraction[1]
+      );
+    }
+  }
+
+  // API-1.49: the weeks not following a program's new days leaves the days saved, said apart.
+  @IsTest
+  static void theWeeksNotFollowingLeaveTheNewDaysSavedAndSaySo() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      GeneratedTestData.camp();
+      Date weekOneEnd = [
+        SELECT EndDate__c
+        FROM Week__c
+        WHERE Id = :GeneratedTestData.ids.get('Week 1')
+        WITH SYSTEM_MODE
+      ]
+      .EndDate__c;
+      AgentChangeSetup.weeksRefusedForTest = new ShoreshException(
+        'The weeks are busy.'
+      );
+      Test.startTest();
+      List<Object> saturday = saturdayOnMain();
+      Test.stopTest();
+      String said = String.valueOf(saturday[1]);
+      Assert.areEqual(200, saturday[0], said);
+      Assert.isTrue(
+        said.contains(' The weeks didn\'t follow the new days. '),
+        said
+      );
+      Assert.isTrue(
+        [
+          SELECT Saturday__c
+          FROM Program__c
+          WHERE Id = :GeneratedTestData.ids.get('Main')
+          WITH SYSTEM_MODE
+        ]
+        .Saturday__c,
+        'The new day stays saved, as on the screen'
+      );
+      Assert.areEqual(
+        weekOneEnd,
+        [
+          SELECT EndDate__c
+          FROM Week__c
+          WHERE Id = :GeneratedTestData.ids.get('Week 1')
+          WITH SYSTEM_MODE
+        ]
+        .EndDate__c
+      );
+    }
+  }
+
+  // API-1.50: a new program is numbered as Camp Setup numbers it (how many there are, plus one),
+  // and a new division counts no holding "No division" record (DIV-1.1).
+  @IsTest
+  static void aNewProgramAndDivisionAreNumberedAsTheTablesNumberThem() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      GeneratedTestData.camp();
+      Database.update(
+        new Program__c(
+          Id = GeneratedTestData.ids.get('Main'),
+          SortOrder__c = 5
+        ),
+        AccessLevel.SYSTEM_MODE
+      );
+      Assert.areEqual(
+        200,
+        post(
+          'add',
+          new Map<String, Object>{
+            'kind' => 'group',
+            'name' => 'CIT',
+            'fields' => new Map<String, Object>{ 'division' => 'none' }
+          }
+        )[0]
+      );
+      Id holdingId = [
+        SELECT Division__c
+        FROM Group__c
+        WHERE Name = 'CIT'
+        WITH SYSTEM_MODE
+      ]
+      .Division__c;
+      Database.update(
+        new Division__c(Id = holdingId, SortOrder__c = 50),
+        AccessLevel.SYSTEM_MODE
+      );
+      Decimal lastDivision = [
+        SELECT SortOrder__c
+        FROM Division__c
+        WHERE
+          Program__c = :GeneratedTestData.ids.get('Main')
+          AND NoDivision__c = FALSE
+        WITH SYSTEM_MODE
+        ORDER BY SortOrder__c DESC NULLS LAST
+        LIMIT 1
+      ]
+      .SortOrder__c;
+      Test.startTest();
+      List<Object> evening = post(
+        'add',
+        new Map<String, Object>{ 'kind' => 'program', 'name' => 'Evening' }
+      );
+      List<Object> teens = post(
+        'add',
+        new Map<String, Object>{
+          'kind' => 'division',
+          'name' => 'Teens',
+          'program' => 'Main'
+        }
+      );
+      Test.stopTest();
+      Assert.areEqual(200, evening[0], String.valueOf(evening[1]));
+      Assert.areEqual(
+        2,
+        [
+          SELECT SortOrder__c
+          FROM Program__c
+          WHERE Name = 'Evening'
+          WITH SYSTEM_MODE
+        ]
+        .SortOrder__c
+      );
+      Assert.areEqual(200, teens[0], String.valueOf(teens[1]));
+      Assert.areEqual(
+        lastDivision + 1,
+        [
+          SELECT SortOrder__c
+          FROM Division__c
+          WHERE Name = 'Teens'
+          WITH SYSTEM_MODE
+        ]
+        .SortOrder__c
+      );
+    }
+  }
+
+  // API-1.47: a holding "No division" record is no division an AI can find (DIV-1.1).
+  @IsTest
+  static void aHoldingNoDivisionRecordIsNoDivisionAnAiCanFind() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      GeneratedTestData.camp();
+      post(
+        'add',
+        new Map<String, Object>{
+          'kind' => 'group',
+          'name' => 'CIT',
+          'fields' => new Map<String, Object>{ 'division' => 'none' }
+        }
+      );
+      Test.startTest();
+      List<Object> asHolding = post(
+        'read',
+        new Map<String, Object>{ 'kind' => 'division', 'name' => 'CIT' }
+      );
+      Test.stopTest();
+      String said = String.valueOf(asHolding[1]);
+      Assert.areEqual(400, asHolding[0], said);
+      Assert.isTrue(said.contains('"CIT"'), said);
+      Assert.isTrue(
+        [
+          SELECT Division__r.NoDivision__c
+          FROM Group__c
+          WHERE Name = 'CIT'
+          WITH SYSTEM_MODE
+        ]
+        .Division__r.NoDivision__c
       );
     }
   }

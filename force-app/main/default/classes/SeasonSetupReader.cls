@@ -142,7 +142,8 @@ public with sharing class SeasonSetupReader {
       : imports[0];
   }
 
-  private static List<ProgramSetup> readPrograms(Id seasonId) {
+  /** Each program with its time blocks, divisions, groups, fixed and recurring activities. */
+  public static List<ProgramSetup> readPrograms(Id seasonId) {
     Map<Id, ProgramSetup> programs = new Map<Id, ProgramSetup>();
     for (Program__c program : [
       SELECT
