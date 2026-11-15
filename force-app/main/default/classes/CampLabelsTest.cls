@@ -130,6 +130,27 @@ private class CampLabelsTest {
     );
   }
 
+  // CORE-1.36
+  @IsTest
+  static void anOfferingIsSaidInTheCampsElectiveWords() {
+    Camp__c camp = ShoreshTestData.camp('Camp Willow');
+    Database.insert(
+      new CampLabel__c(
+        Camp__c = camp.Id,
+        ModelTerm__c = 'Elective',
+        Singular__c = 'Chug',
+        Plural__c = 'Chugim'
+      ),
+      AccessLevel.SYSTEM_MODE
+    );
+    CampLabels labels = CampLabels.forCamp(camp.Id);
+    Assert.areEqual('Chug', labels.singularInSentence('Offering'));
+    Assert.areEqual('Chugim', labels.plural('Offering'));
+    CampLabels standard = CampLabels.modelTermsOnly();
+    Assert.areEqual('elective', standard.singularInSentence('Offering'));
+    Assert.areEqual('Electives', standard.plural('Offering'));
+  }
+
   // CORE-1.35
   @IsTest
   static void oneEnglishPluralRuleForTheStandardWords() {

@@ -244,7 +244,7 @@ private class ElectivesDataTest {
       );
       Database.insert(other, AccessLevel.USER_MODE);
       Assert.areEqual(
-        'This offering is in a different elective set than the linked choice.',
+        'This elective is in a different elective set than the linked choice.',
         refusal(
           new LinkedChoice__c(
             ElectiveSet__c = other.Id,
