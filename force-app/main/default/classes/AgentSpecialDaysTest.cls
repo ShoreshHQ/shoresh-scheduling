@@ -102,7 +102,7 @@ private class AgentSpecialDaysTest {
         said
       );
       Assert.isTrue(
-        said.contains('with place_special_event): "Color War".'),
+        said.contains('with place_special_event): "Color War": not placed.'),
         said
       );
       Assert.isTrue(said.endsWith('its seen is "none".'), said);

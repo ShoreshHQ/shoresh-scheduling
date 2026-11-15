@@ -51,7 +51,7 @@ global with sharing class AgentReadSpecialDays implements AgentWeeks.Action {
           '"' +
           (placedAt.containsKey(event.Id)
             ? ': on ' + String.join(placedAt.get(event.Id), ', ')
-            : '')
+            : ': not placed')
       );
     }
     return 'The ' +
@@ -62,7 +62,7 @@ global with sharing class AgentReadSpecialDays implements AgentWeeks.Action {
       listed(days) +
       '. The ' +
       labels.pluralInSentence('SpecialEvent') +
-      ' (placed on a week\'s cells with place_special_event): ' +
+      ' (each goes on a week\'s cells with place_special_event): ' +
       listed(events) +
       '. A week day not named here has no ' +
       labels.singularInSentence('SpecialDay') +
