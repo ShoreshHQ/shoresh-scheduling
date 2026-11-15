@@ -669,7 +669,12 @@ function specialContextOf(m, body) {
   const plan = body.plan || {};
   const activities = plan.activities || [];
   const setup = body.setup || {};
-  const sets = (setup.electives && setup.electives.sets) || [];
+  // A special day's cells take the season's elective sets; an event's don't (the page's
+  // takesElectives, SPECIAL-1.3).
+  const sets =
+    plan.kind === "SpecialEvent"
+      ? []
+      : (setup.electives && setup.electives.sets) || [];
   const find = {
     activity: (item) => activities.find((a) => `A:${a.id}` === item),
     event: () => null,

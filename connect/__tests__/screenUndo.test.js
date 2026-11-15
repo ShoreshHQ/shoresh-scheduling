@@ -542,6 +542,52 @@ describe("an AI's change is the screen's, and so is its Undo", () => {
     );
   });
 
+  // API-1.77, SPECIAL-1.3: an event's cells don't take elective sets, as its page offers none.
+  it("anEventsCellIsNotOfferedTheElectiveSets: a set's name typed into an event is refused as a name it doesn't have, with nothing sent", async () => {
+    const plan = {
+      itemId: "a0X000000000002AAA",
+      kind: "SpecialEvent",
+      name: "Color War",
+      schedule: {
+        days: [
+          {
+            dateValue: "2000-01-01",
+            problem: null,
+            blocks: [
+              {
+                id: "b1",
+                name: "Opening",
+                startTime: "09:00",
+                endTime: "09:45"
+              }
+            ],
+            groups: [{ id: "g1", name: "Blue" }],
+            items: [],
+            rows: [","]
+          }
+        ]
+      },
+      activities: [{ id: "a1", name: "Swim", length: 1, notFor: [] }]
+    };
+    const setup = { electives: { sets: [{ Id: "e1", Name: "Chugim" }] } };
+    const sf = sfAnswering([answer({ plan, setup, labels: [] })]);
+    const done = await call(
+      "change_special_schedule_cell",
+      {
+        season: "Summer 2026",
+        special: "Color War",
+        column: "Blue",
+        time: "Opening",
+        was: "Open",
+        activity: "Chugim"
+      },
+      sf
+    );
+    expect(done.ok).toBe(false);
+    expect(done.text).not.toMatch(/Chugim[^"]*,|, Chugim/);
+    expect(sf.seen).toHaveLength(1);
+  });
+
   // API-1.14, API-1.77: a special day's or event's own schedule, typed as its page types and
   // undone as its page's Undo.
   it("aSpecialCellIsTypedAndUndoneAsItsPage: full length through the page's own editor, its runs back held for that plan; a frame change ends it", async () => {

@@ -60,7 +60,7 @@ activities, so "Chugim" there was an activity of that name.
    (SPECIAL-4.1).
 
 7. **An AI does it as the screen does** (API-1.77): `change_special_schedule_cell` takes an
-   elective set's name, read as `change_schedule_cell` reads one (`AgentCellSlot`, API-1.124: a
+   elective set's name, read as `change_schedule_cell` reads one (the page's own week editor in the connector since #414; API-1.124: a
    name that is both an activity and a set is refused); an event refuses it in the screen's words.
    Every seats tool works on the special-day time with no change of its own. Connector 1.0.141.
 
