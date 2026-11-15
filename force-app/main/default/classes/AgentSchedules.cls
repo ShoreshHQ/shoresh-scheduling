@@ -120,32 +120,6 @@ public with sharing class AgentSchedules {
   }
 
   /**
-   * One cell's edit (one run of one block), by the screen's own save: Manual Build's saveSlots,
-   * or Generated Schedule's hand edit (the cell's Open reason dropped, as the screen drops it),
-   * compared with the week as the AI read it (seen, its ticket).
-   */
-  public static SlotEdits.Result saveCell(
-    AgentWeeks.Week week,
-    SlotEdits.Edit edit,
-    String seen
-  ) {
-    List<SlotEdits.Edit> edits = new List<SlotEdits.Edit>{ edit };
-    if (week.manual) {
-      return ManualBuildController.saveSlots(week.draft.Id, edits);
-    }
-    SlotEdits.Run run = edit.runs[0];
-    GeneratedWeek.HandEdits request = new GeneratedWeek.HandEdits();
-    request.scheduleId = week.draft.Id;
-    request.revision = seen;
-    request.edits = edits;
-    request.engineNotes = GeneratedEngineNotes.withoutCell(
-      week.draft.EngineNotes__c,
-      new List<String>{ String.valueOf(run.day), run.groupId, run.firstBlockId }
-    );
-    return GeneratedEngineNotes.saveHandEdits(request);
-  }
-
-  /**
    * Holds a Generated Schedule week until the request ends and refuses an edit (409, nothing
    * changed) unless the week is still as it was read: its ticket (seen, in field), never the week
    * read here in its place (SeenSaves.week). Manual Build's save has no ticket: each of its runs

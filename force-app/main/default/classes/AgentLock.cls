@@ -66,14 +66,43 @@ global with sharing class AgentLock implements AgentWeeks.Action {
       throw new AgentWeeks.ConflictException(result.message);
     }
     if (seen.equals(result.revision)) {
-      // The screen's menu never offers a change that would do nothing (locks.js lockChoices).
-      return locks
-        ? 'Nothing in ' +
-          place +
-          ' to lock: it is locked already, or holds only Open cells or fixed or recurring activities (lock an Open cell on its own).'
-        : 'Nothing in ' + place + ' is locked.';
+      return nothingSaid(locks, place);
     }
-    return (locks ? 'Locked ' : 'Unlocked ') + place + '.';
+    String said = (locks ? 'Locked ' : 'Unlocked ') + place;
+    Map<String, Object> undo = undoOf(week.draft.Id, change, said);
+    undo.put('seen', result.revision);
+    AgentUndoHeld.hold(undo);
+    return said + '.';
+  }
+
+  /** The screen's menu never offers a change that would do nothing (locks.js lockChoices). */
+  private static String nothingSaid(Boolean locks, String place) {
+    return locks
+      ? 'Nothing in ' +
+        place +
+        ' to lock: it is locked already, or holds only Open cells or fixed or recurring activities (lock an Open cell on its own).'
+      : 'Nothing in ' + place + ' is locked.';
+  }
+
+  /**
+   * The screen's Undo goes on past a Lock (its history is kept), leaving each cell the choice
+   * reached as chosen (shoreshWeekEditor lockChosen): the connector holds which (API-1.14), from
+   * the choice (and the week as the Lock left it, seen, which the caller adds).
+   */
+  private static Map<String, Object> undoOf(
+    Id draftId,
+    GeneratedWeek.LockChange change,
+    String said
+  ) {
+    Map<String, Object> undo = AgentUndoHeld.entry(draftId, 'lock', said);
+    undo.put('action', change.action);
+    undo.put(
+      'dateValue',
+      change.dateValue == null ? null : String.valueOf(change.dateValue)
+    );
+    undo.put('groupId', change.groupId);
+    undo.put('blockId', change.blockId);
+    return undo;
   }
 
   /** The week as the AI read it (its ticket): never the week read here in its place. */

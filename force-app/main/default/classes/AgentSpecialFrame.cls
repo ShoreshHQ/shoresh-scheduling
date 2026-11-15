@@ -100,6 +100,8 @@ global with sharing class AgentSpecialFrame implements AgentWeeks.Action, AgentA
       change,
       AgentSpecials.seenOf(body, 'changed')
     );
+    // The page reads the plan again and its Undo starts over; it has no Undo for this (API-1.14).
+    AgentSpecials.undoNone(found, asked.replace('_', ' '));
     return 'Done: ' +
       asked.replace('_', ' ') +
       (String.isBlank(target) ? '' : ' "' + target + '"') +

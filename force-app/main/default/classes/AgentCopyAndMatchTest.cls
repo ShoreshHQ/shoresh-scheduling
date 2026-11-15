@@ -262,12 +262,16 @@ private class AgentCopyAndMatchTest {
     return body;
   }
 
-  /** The one change the week shows, and the week as read: [key, seen]. */
+  /**
+   * The one change the week shows, and the week as read: [key, seen, whether it replaces a
+   * placement made by hand]. One read: a test camp's setup and week fill most of a test's queries.
+   */
   private static List<String> shown(Id draftId) {
     SetupMatch.Preview preview = SetupMatchController.getSetupChanges(draftId);
     return new List<String>{
       preview.changes[0].key,
-      AgentUpdateToMatch.seenOf(preview.revisions)
+      AgentUpdateToMatch.seenOf(preview.revisions),
+      String.valueOf(preview.changes[0].takesChoices)
     };
   }
 
@@ -297,9 +301,7 @@ private class AgentCopyAndMatchTest {
         [
           SELECT COUNT()
           FROM Schedule__c
-          WHERE
-            SourceSchedule__c = :draftId
-            AND VersionReason__c = :AgentWeeks.THROUGH_AGENT
+          WHERE SourceSchedule__c = :draftId
           WITH SYSTEM_MODE
         ],
         'nothing kept or changed when refused'
@@ -314,6 +316,7 @@ private class AgentCopyAndMatchTest {
       Id draftId = weekWithSwimGone(GeneratedTestData.camp());
       Map<String, Object> weekAsked = weekAsk(draftId);
       List<String> read = shown(draftId);
+      Boolean replacesHand = Boolean.valueOf(read.remove(2));
       Test.startTest();
       Integer before = Limits.getQueries();
       List<Object> done = ask(
@@ -327,39 +330,59 @@ private class AgentCopyAndMatchTest {
       Test.stopTest();
       Assert.areEqual(200, done[0], String.valueOf(done[1]));
       Assert.isTrue(matched, 'the week matches setup after the update');
-      Assert.areEqual(
-        1,
-        [
-          SELECT COUNT()
-          FROM Schedule__c
-          WHERE
-            SourceSchedule__c = :draftId
-            AND VersionReason__c = :AgentWeeks.THROUGH_AGENT
-          WITH SYSTEM_MODE
-        ],
-        'one version kept, marked through an agent'
-      );
+      // API-1.148: only the version the screen's update keeps, when it keeps one (a placement
+      // made by hand replaced), as the screen keeps it.
+      List<Schedule__c> kept = [
+        SELECT Name, VersionReason__c
+        FROM Schedule__c
+        WHERE SourceSchedule__c = :draftId
+        WITH SYSTEM_MODE
+      ];
+      Assert.areEqual(replacesHand ? 1 : 0, kept.size(), String.valueOf(kept));
+      for (Schedule__c version : kept) {
+        Assert.areEqual(SetupMatch.BEFORE_UPDATE, version.Name);
+        Assert.areEqual(ManualVersions.AUTO_SAVED, version.VersionReason__c);
+      }
       Assert.isTrue(queries < 100, 'Update used ' + queries + ' queries');
     }
   }
 
-  // API-1.64
+  // API-1.64, API-1.14: the screen has no Undo for an update; Undo says so, changing nothing.
   @IsTest
-  static void anUpdateIsUndoneByUndo() {
+  static void anUpdateHasNoUndoAsOnTheScreen() {
     System.runAs(ShoreshTestData.scheduler()) {
       Id draftId = weekWithSwimGone(GeneratedTestData.camp());
       Map<String, Object> weekAsked = weekAsk(draftId);
       List<String> read = shown(draftId);
+      read.remove(2);
       Test.startTest();
       List<Object> done = ask(
         new AgentUpdateToMatch(),
         'POST',
         updateAsk(weekAsked, read)
       );
-      List<Object> undone = ask(new AgentUndo(), 'POST', weekAsked);
+      String updated = ScheduleDays.stamp(ScheduleDays.read(draftId));
+      Map<String, Object> undoAsked = new Map<String, Object>(weekAsked);
+      undoAsked.put(
+        'held',
+        AgentUndoTestCalls.held(AgentUndoTestCalls.undoIn(RestContext.response))
+      );
+      Integer before = Limits.getQueries();
+      List<Object> undone = ask(new AgentUndo(), 'POST', undoAsked);
+      Integer queries = Limits.getQueries() - before;
+      String after = ScheduleDays.stamp(ScheduleDays.read(draftId));
       Test.stopTest();
+      Assert.isTrue(queries < 40, 'Undo used ' + queries + ' queries');
       Assert.areEqual(200, done[0], String.valueOf(done[1]));
-      Assert.areEqual(200, undone[0], String.valueOf(undone[1]));
+      Assert.areEqual(400, undone[0], String.valueOf(undone[1]));
+      Assert.isTrue(
+        String.valueOf(undone[1])
+          .startsWith(
+            'The screen has no Undo for "Update to match setup", so nothing was undone.'
+          ),
+        String.valueOf(undone[1])
+      );
+      Assert.areEqual(updated, after, 'the update stays, nothing changed');
     }
   }
 

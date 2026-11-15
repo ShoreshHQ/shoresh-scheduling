@@ -1,12 +1,15 @@
 /**
  * Edits of several cells through an agent or the command line (docs/protocol/api.md API-1.38 to
- * API-1.40): /v1/move_cell, /v1/take_out_cell and /v1/copy_cells take the runs the week editor's own module works out (the
- * connector runs it) and makes them the screen's hand edit, marked Through an agent so
- * undo_last_agent_change takes it back, on GeneratedTestData's camp (Gym games in every Period
- * 2; Group A's Monday Lunch Open).
+ * API-1.40, API-1.148): /v1/move_cell, /v1/take_out_cell and /v1/copy_cells take the runs the
+ * week editor's own module works out (the connector runs it) and makes them the screen's hand
+ * edit, keeping no version, as the screen keeps none; undo_last_agent_change takes it back with
+ * the runs back the connector holds, on GeneratedTestData's camp (Gym games in every Period 2;
+ * Group A's Monday Lunch Open).
  */
 @IsTest
 private class AgentCellsTest {
+  // What the last answer left for the connector to hold for Undo.
+  private static Map<String, Object> undo;
   private static final String MOVED = 'Moved Gym games to Group A · Monday · Lunch';
 
   private static Map<String, Object> week(Map<String, Object> more) {
@@ -73,6 +76,7 @@ private class AgentCellsTest {
     Map<String, Object> answer = (Map<String, Object>) JSON.deserializeUntyped(
       RestContext.response.responseBody.toString()
     );
+    undo = AgentUndoTestCalls.undoIn(RestContext.response);
     return new List<Object>{
       RestContext.response.statusCode,
       answer.get('message')
@@ -83,25 +87,17 @@ private class AgentCellsTest {
     return GeneratedTestData.slots(draftId, GeneratedTestData.at(0, 0));
   }
 
-  private static Integer agentVersions() {
-    return [
-      SELECT COUNT()
-      FROM Schedule__c
-      WHERE VersionReason__c = :AgentWeeks.THROUGH_AGENT
-      WITH SYSTEM_MODE
-    ];
-  }
-
-  // API-1.38, API-1.40
+  // API-1.38, API-1.40, API-1.148
   @IsTest
-  static void severalCellsAreTheScreensHandEditMarkedAndUndone() {
+  static void severalCellsAreTheScreensHandEditKeepNoVersionAndAreUndone() {
     System.runAs(ShoreshTestData.scheduler()) {
       GeneratedTestData.camp();
       Id draftId = GeneratedTestData.generated();
       Test.startTest();
       String gym = GeneratedTestData.a('Gym games');
+      Map<String, Object> sent = move(gym);
       Integer before = Limits.getQueries();
-      List<Object> answer = send('move_cell', move(gym));
+      List<Object> answer = send('move_cell', sent);
       Integer used = Limits.getQueries() - before;
       List<String> afterMove = mondayA(draftId);
       // The screen's hand edit locks what it fills (LOCK-1.1): so does this.
@@ -110,10 +106,16 @@ private class AgentCellsTest {
         GeneratedTestData.GROUP_A,
         GeneratedTestData.LUNCH
       );
-      Integer marked = agentVersions();
+      Integer kept = GeneratedTestData.versions();
       List<Object> undone = send(
         'undo_last_agent_change',
-        week(new Map<String, Object>())
+        week(
+          new Map<String, Object>{
+            'held' => AgentUndoTestCalls.held(
+              AgentUndoTestCalls.editHeld(undo, (List<Object>) sent.get('runs'))
+            )
+          }
+        )
       );
       Test.stopTest();
       Assert.areEqual(200, answer[0], String.valueOf(answer[1]));
@@ -121,11 +123,13 @@ private class AgentCellsTest {
       Assert.areEqual('', afterMove[GeneratedTestData.PERIOD_2]);
       Assert.areEqual(gym, afterMove[GeneratedTestData.LUNCH]);
       Assert.isTrue(lockedLunch, 'The moved cell is locked');
-      Assert.areEqual(1, marked);
+      Assert.areEqual(0, kept);
       Assert.isTrue(used < 60, 'A move used ' + used + ' queries');
       Assert.areEqual(200, undone[0], String.valueOf(undone[1]));
-      Assert.areEqual('Undid "' + MOVED + '".', undone[1]);
+      Assert.areEqual('Undone: ' + MOVED + '.', undone[1]);
       Assert.areEqual(gym, mondayA(draftId)[GeneratedTestData.PERIOD_2]);
+      Assert.areEqual('', mondayA(draftId)[GeneratedTestData.LUNCH]);
+      Assert.areEqual(0, GeneratedTestData.versions());
     }
   }
 
@@ -152,7 +156,7 @@ private class AgentCellsTest {
         GeneratedTestData.a('Gym games'),
         mondayA(draftId)[GeneratedTestData.PERIOD_2]
       );
-      Assert.areEqual(0, agentVersions());
+      Assert.areEqual(0, GeneratedTestData.versions());
     }
   }
 
@@ -173,7 +177,7 @@ private class AgentCellsTest {
         'That change could not be read. Download Shoresh\'s connector again from Settings in Shoresh.',
         answer[1]
       );
-      Assert.areEqual(0, agentVersions());
+      Assert.areEqual(0, GeneratedTestData.versions());
     }
   }
 }

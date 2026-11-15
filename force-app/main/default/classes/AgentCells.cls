@@ -1,17 +1,20 @@
 /**
- * cells: an edit of several cells of a program's Generated Schedule or Manual Build week (a placement moved,
- * swapped, taken out whole, or cells copied and pasted), as the person, through an agent or the
- * command line (docs/protocol/api.md API-1.38 to API-1.40; on Manual Build, Manual Build's own
- * save, ManualBuildController.saveSlots, API-1.45). Web addresses /v1/move_cell,
- * /v1/take_out_cell and /v1/copy_cells (AgentMoveCell, AgentTakeOutCell, AgentCopyCells), each
- * POST {season, week, program, change, said, runs, revision}. The edit is worked out where the screen works it
+ * cells: a hand edit of a program's Generated Schedule or Manual Build week (a cell typed in, a
+ * placement moved, swapped, made longer or shorter, taken out whole, cells copied and pasted, a
+ * day or week cleared), as the person, through an agent or the command line (docs/protocol/api.md
+ * API-1.11, API-1.13, API-1.38 to API-1.40; on Manual Build, Manual Build's own save,
+ * ManualBuildController.saveSlots, API-1.42, API-1.45). Web addresses /v1/schedule_cell,
+ * /v1/move_cell, /v1/take_out_cell and /v1/copy_cells (AgentCell, AgentMoveCell,
+ * AgentTakeOutCell, AgentCopyCells), each POST {season, week, program, change, said, runs,
+ * revision}. The edit is worked out where the screen works it
  * out, outside Salesforce: the connector runs the week editor's own module (c/shoreshWeekEditor
  * handEdits.js) on the week as it read it, and sends the runs the screen would send, with the
  * screen's words for them (change, and said: what stayed or was left out). This makes them the
  * screen's own hand edit (GeneratedEngineNotes.saveHandEdits: the same save, conflicts and
  * locking), each run made only when its cells still hold what the agent saw, so someone else's
- * change is never replaced unseen. A version marked "Through an agent" is kept first, so the
- * person sees it and Undo brings the week back (AgentUndo).
+ * change is never replaced unseen. As on the screen, no version is kept: the answer gives the
+ * week's revision after the edit, so the connector can hold its Undo (the runs back, as the
+ * editor's history holds them) for the rest of the conversation (AgentUndo, API-1.14).
  */
 public with sharing class AgentCells implements AgentWeeks.Action {
   private static final Set<String> FIELDS = new Set<String>{
@@ -36,9 +39,6 @@ public with sharing class AgentCells implements AgentWeeks.Action {
       );
     }
     String seen = AgentSchedules.holdAsSeen(week, body, 'revision');
-    List<ScheduleDays.DayGrid> days = ScheduleDays.read(week.draft.Id);
-    Id versionId = AgentWeeks.keepBefore(week.draft, days, change);
-
     SlotEdits.Edit edit = new SlotEdits.Edit();
     edit.runs = runs;
     // One edit, as the screen sends one step: made whole or not at all.
@@ -51,7 +51,13 @@ public with sharing class AgentCells implements AgentWeeks.Action {
     if (!result.conflicts.isEmpty()) {
       throw AgentWeeks.changedSince(change);
     }
-    AgentWeeks.changed(versionId, week.draft.Id);
+    Map<String, Object> undo = AgentUndoHeld.entry(
+      week.draft.Id,
+      'edit',
+      change
+    );
+    undo.put('seen', result.revision);
+    AgentUndoHeld.hold(undo);
     String said = AgentFields.text(body, 'said');
     return change + '.' + (String.isBlank(said) ? '' : ' ' + said);
   }

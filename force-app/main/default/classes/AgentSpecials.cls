@@ -75,6 +75,14 @@ public with sharing class AgentSpecials {
     return found;
   }
 
+  /**
+   * A change to the plan its page has no Undo for (a frame change, an import): the page's Undo
+   * starts over, as the connector's does (API-1.14).
+   */
+  public static void undoNone(Found found, String change) {
+    AgentUndoHeld.hold(AgentUndoHeld.entry(found.owner.itemId, 'none', change));
+  }
+
   /** The plan's revision as the agent reads it and sends it back as seen. */
   public static String revisionOf(SpecialPlans.Plan plan) {
     return plan.revision == null ? NEVER_SAVED : String.valueOf(plan.revision);

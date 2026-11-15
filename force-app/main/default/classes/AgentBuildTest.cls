@@ -1,11 +1,13 @@
 /**
  * Building, publishing and finalizing through an agent or the command line (docs/protocol/api.md
- * API-1.21 to API-1.23): /v1/build_week, /v1/publish_week and /v1/finalize_electives on
+ * API-1.21 to API-1.23, API-1.148): /v1/build_week, /v1/publish_week and /v1/finalize_electives on
  * GeneratedTestData's camp. The week "the engine built" is the test camp's Gym games week (the
  * engine itself runs outside Salesforce, API-1.19, and has its own tests).
  */
 @IsTest
 private class AgentBuildTest {
+  // What the last answer left for the connector to hold for Undo.
+  private static Map<String, Object> undo;
   private static Map<String, Object> week(Map<String, Object> more) {
     Map<String, Object> body = new Map<String, Object>{
       'season' => [
@@ -61,10 +63,21 @@ private class AgentBuildTest {
     Map<String, Object> answer = (Map<String, Object>) JSON.deserializeUntyped(
       RestContext.response.responseBody.toString()
     );
+    undo = AgentUndoTestCalls.undoIn(RestContext.response);
     return new List<Object>{
       RestContext.response.statusCode,
       answer.get('message')
     };
+  }
+
+  /** Undo, as the connector sends it with what the last change's answer left. */
+  private static Map<String, Object> undoAsked() {
+    return week(
+      new Map<String, Object>{
+        'program' => 'Main',
+        'held' => AgentUndoTestCalls.held(undo)
+      }
+    );
   }
 
   private static String periodTwo(Id draftId) {
@@ -153,22 +166,28 @@ private class AgentBuildTest {
       .intValue();
   }
 
+  /** Every version kept, by name; each one Auto-saved, as the screen keeps it. */
   private static Set<String> versionsMade() {
     Set<String> names = new Set<String>();
     for (Schedule__c version : [
-      SELECT Name
+      SELECT Name, VersionReason__c
       FROM Schedule__c
       WHERE Status__c = :ManualVersions.VERSION
       WITH SYSTEM_MODE
     ]) {
+      Assert.areEqual(
+        ManualVersions.AUTO_SAVED,
+        version.VersionReason__c,
+        version.Name
+      );
       names.add(version.Name);
     }
     return names;
   }
 
-  // API-1.127, API-1.128
+  // API-1.127, API-1.128, API-1.148: only the screen's own version, and no Undo, as on screen.
   @IsTest
-  static void tryAnotherSavesThroughTheScreensSaveOnTheOptionAskedAndKeepsAVersion() {
+  static void tryAnotherSavesThroughTheScreensSaveOnTheOptionAskedAndKeepsOnlyItsVersion() {
     System.runAs(ShoreshTestData.scheduler()) {
       GeneratedTestData.camp();
       Map<String, Object> body = menu(GeneratedSaves.TRY_ANOTHER, 2);
@@ -178,18 +197,15 @@ private class AgentBuildTest {
       Assert.areEqual(200, answer[0], String.valueOf(answer[1]));
       Assert.areEqual('Option 2 of Week 1.', answer[1]);
       Assert.areEqual(2, optionNow());
-      Set<String> names = versionsMade();
-      Assert.isTrue(names.contains('Before Try another'), names.toString());
-      Assert.isTrue(
-        names.contains('Before Option 2 of Week 1'),
-        names.toString()
-      );
+      Assert.areEqual(new Set<String>{ 'Before Try another' }, versionsMade());
+      Assert.areEqual('none', undo.get('kind'));
+      Assert.areEqual('Before Try another', undo.get('version_name'));
     }
   }
 
-  // API-1.129
+  // API-1.129, API-1.148: as on the screen, no version and no Undo.
   @IsTest
-  static void fillOpenSavesThroughTheScreensSaveAndKeepsOnlyItsUndosVersion() {
+  static void fillOpenSavesThroughTheScreensSaveAndKeepsNoVersion() {
     System.runAs(ShoreshTestData.scheduler()) {
       GeneratedTestData.camp();
       Map<String, Object> body = menu(GeneratedSaves.FILL_OPEN, 1);
@@ -201,12 +217,9 @@ private class AgentBuildTest {
         'Placed what fits in the open cells of Week 1.',
         answer[1]
       );
-      Set<String> names = versionsMade();
-      Assert.isTrue(
-        names.contains('Before Placed what fits in the open cells of Week 1'),
-        names.toString()
-      );
-      Assert.isFalse(names.contains('Before Fill the open cells'));
+      Assert.isTrue(versionsMade().isEmpty(), versionsMade().toString());
+      Assert.areEqual('none', undo.get('kind'));
+      Assert.isNull(undo.get('version_name'));
     }
   }
 
@@ -252,12 +265,13 @@ private class AgentBuildTest {
       Assert.areEqual('Started Week 1 over.', answer[1]);
       Assert.areEqual(SlotIds.OPEN, periodTwo(draftId));
       Assert.isFalse(locksOf(draftId).contains('1'));
-      Assert.isTrue(versionsMade().contains('Before Start over'));
+      Assert.areEqual(new Set<String>{ 'Before Start over' }, versionsMade());
+      Assert.areEqual('build', undo.get('kind'));
       Test.stopTest();
     }
   }
 
-  // API-1.130
+  // API-1.130, API-1.14: the screen's own Undo, keeping "Before Undo".
   @IsTest
   static void undoBringsBackAWeekStartedOver() {
     System.runAs(ShoreshTestData.scheduler()) {
@@ -269,13 +283,14 @@ private class AgentBuildTest {
         200,
         send('build_week', menuAgain(GeneratedSaves.START_OVER, 1))[0]
       );
-      List<Object> undone = send(
-        'undo_last_agent_change',
-        week(new Map<String, Object>{ 'program' => 'Main' })
-      );
+      List<Object> undone = send('undo_last_agent_change', undoAsked());
       Assert.areEqual(200, undone[0], String.valueOf(undone[1]));
-      Assert.areEqual('Undid "Started Week 1 over".', undone[1]);
+      Assert.areEqual('Undone: Started Week 1 over.', undone[1]);
       Assert.areEqual(before, periodTwo(draftId));
+      Assert.areEqual(
+        new Set<String>{ 'Before Start over', ManualVersions.BEFORE_UNDO },
+        versionsMade()
+      );
       Test.stopTest();
     }
   }
@@ -340,9 +355,9 @@ private class AgentBuildTest {
     }
   }
 
-  // API-1.21
+  // API-1.21, API-1.148: as on the screen, a first Generate keeps no version and has no Undo.
   @IsTest
-  static void aBuildSavesThroughGeneratesSaveAndUndoLeavesItBlank() {
+  static void aBuildSavesThroughGeneratesSaveAndKeepsNoVersion() {
     System.runAs(ShoreshTestData.scheduler()) {
       GeneratedTestData.camp();
       Map<String, Object> body = built();
@@ -352,25 +367,18 @@ private class AgentBuildTest {
       Assert.areEqual('Built Week 1.', answer[1]);
       Id draftId = draft();
       Assert.areEqual(GeneratedTestData.a('Gym games'), periodTwo(draftId));
-      List<Schedule__c> marked = [
-        SELECT Name, RevisionsAfter__c
-        FROM Schedule__c
-        WHERE VersionReason__c = :AgentWeeks.THROUGH_AGENT
-        WITH SYSTEM_MODE
-      ];
-      Assert.areEqual(1, marked.size());
-      Assert.areEqual('Before Built Week 1', marked[0].Name);
-      Assert.isNotNull(marked[0].RevisionsAfter__c);
+      Assert.isTrue(versionsMade().isEmpty(), versionsMade().toString());
+      Assert.areEqual('none', undo.get('kind'));
 
       Test.stopTest();
-      // Undo puts back the week as it was before the build: blank.
-      List<Object> undone = send(
-        'undo_last_agent_change',
-        week(new Map<String, Object>{ 'program' => 'Main' })
+      // The screen has no Undo for Generate: said, and nothing changed.
+      List<Object> undone = send('undo_last_agent_change', undoAsked());
+      Assert.areEqual(400, undone[0], String.valueOf(undone[1]));
+      Assert.areEqual(
+        'The screen has no Undo for "Built Week 1", so nothing was undone. It kept no version of Week 1 before it; Versions has the versions there are, and restore_version brings one back.',
+        undone[1]
       );
-      Assert.areEqual(200, undone[0], String.valueOf(undone[1]));
-      Assert.areEqual('Undid "Built Week 1".', undone[1]);
-      Assert.areNotEqual(GeneratedTestData.a('Gym games'), periodTwo(draftId));
+      Assert.areEqual(GeneratedTestData.a('Gym games'), periodTwo(draftId));
     }
   }
 
@@ -388,15 +396,7 @@ private class AgentBuildTest {
       Assert.areEqual(409, answer[0], String.valueOf(answer[1]));
       Assert.areEqual(ScheduleDaySaves.CHANGED_SINCE, answer[1]);
       Assert.areEqual(GeneratedTestData.a('Gym games'), periodTwo(draftId));
-      Assert.areEqual(
-        0,
-        [
-          SELECT COUNT()
-          FROM Schedule__c
-          WHERE VersionReason__c = :AgentWeeks.THROUGH_AGENT
-          WITH SYSTEM_MODE
-        ]
-      );
+      Assert.areEqual(0, GeneratedTestData.versions());
     }
   }
 

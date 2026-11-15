@@ -19,7 +19,7 @@ public with sharing class GeneratedSaves {
   public static final String FILL_OPEN = 'FillOpen';
   public static final String START_OVER = 'StartOver';
   // What replaces the whole week keeps it first, as a version with this name.
-  private static final Map<String, String> VERSION_FIRST = new Map<String, String>{
+  public static final Map<String, String> VERSION_FIRST = new Map<String, String>{
     REBUILD => 'Before Rebuild',
     TRY_ANOTHER => 'Before Try another',
     START_OVER => 'Before Start over'

@@ -45,6 +45,16 @@ global with sharing class AgentRestoreVersion implements AgentWeeks.Action {
           ' since you opened it, so nothing was restored.'
       );
     }
+    if (week.draft != null) {
+      // As on the screen, Undo starts over after a Restore; "Before Restore" is the way back.
+      Map<String, Object> undo = AgentUndoHeld.entry(
+        week.draft.Id,
+        'none',
+        'Restored ' + version.name
+      );
+      undo.put('version_name', ManualVersions.BEFORE_RESTORE);
+      AgentUndoHeld.hold(undo);
+    }
     return 'Restored ' + version.name + '.';
   }
 

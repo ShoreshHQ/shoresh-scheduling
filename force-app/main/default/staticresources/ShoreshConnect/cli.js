@@ -6,7 +6,6 @@
  *   node connect/cli.js read_group_schedule --season "Summer 2026" --week "Week 2" [--csv]
  *   node connect/cli.js change_schedule_cell --season "Summer 2026" --week "Week 2" --group "Bunk 3"
  *     --day Monday --time "Period 2" --was "Gym games" --activity Soccer
- *   node connect/cli.js undo_last_agent_change --season "Summer 2026" --week "Week 2"
  *   node connect/cli.js build_week --season "Summer 2026" --week "Week 2"   (then publish_week)
  *   node connect/cli.js finalize_electives --season "Summer 2026" --week "Week 2" --elective_set Chugim
  *   node connect/cli.js delete_version --season "Summer 2026" --week "Week 2" --name "Try 2"
@@ -103,6 +102,13 @@ function parse(argv) {
  */
 const EXIT = { done: 0, couldNotAsk: 1, refused: 2, asksFirst: 3 };
 
+/**
+ * undo_last_agent_change (API-1.14) holds Undo for one conversation, as the screen holds it only
+ * while its page is open; each command is its own run, so there is never anything to undo.
+ */
+const NO_UNDO_HERE =
+  "The command line can't undo: each command runs on its own, so nothing an earlier command did is held for Undo, as the screen's Undo lasts only while its page is open. Nothing was changed. To take a change back, restore a version (list_versions, then restore_version), as a person can.";
+
 /** One command: prints exactly what the MCP tool answers, a part a line (API-1.110). */
 async function main(
   argv,
@@ -116,10 +122,18 @@ async function main(
   oneCommandAtATime(true);
   try {
     const { name, input, org } = parse(argv);
-    const said = withSeasonNamed(
+    let said = withSeasonNamed(
       await callFn(name, input, { org: org ?? env.SHORESH_ORG }),
       input
     );
+    if (
+      byName(name).undoesLast &&
+      !said.ok &&
+      /^Nothing to undo/.test(said.text)
+    ) {
+      // Nothing is ever held here: said for the command line (a week Shoresh refused stays said).
+      said = { ...said, text: NO_UNDO_HERE };
+    }
     const lines = toolResult(said).content.map((part) => part.text);
     if (said.ok && input.as_csv) {
       // The file stays a file: only the CSV on standard output, the rest beside it.
@@ -142,4 +156,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { parse, main, usage, EXIT };
+module.exports = { parse, main, usage, EXIT, NO_UNDO_HERE };

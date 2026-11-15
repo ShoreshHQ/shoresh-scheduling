@@ -322,7 +322,7 @@ describe("Shoresh for AI tools and the command line", () => {
 
   // API-1.10
   // API-1.11
-  it("personsOwnChanges: change_schedule_cell and undo_last_agent_change send the person's fields to /v1/schedule_cell and /v1/undo_last_agent_change", async () => {
+  it("personsOwnChanges: change_schedule_cell reads the week as the screen opens it and sends its edit to /v1/schedule_cell; undo_last_agent_change sends what this conversation holds to /v1/undo_last_agent_change", async () => {
     const seen = [];
     const fields = {
       season: "Summer 2026",
@@ -333,17 +333,13 @@ describe("Shoresh for AI tools and the command line", () => {
       was: "Gym games",
       activity: "Soccer"
     };
-    await call(
-      "change_schedule_cell",
-      { ...fields, records: [] },
-      { run: sfAnswering(200, "{}", seen) }
+    // The edit is worked out here from the week as read (screenUndo.test.js has the runs).
+    await call("change_schedule_cell", fields, {
+      run: sfAnswering(400, JSON.stringify({ message: "No such week." }), seen)
+    });
+    expect(seen[0].args[3]).toBe(
+      "/services/apexrest/v1/week_checks?season=Summer+2026&week=Week+1"
     );
-    expect(seen[0].args.slice(3, 6)).toEqual([
-      "/services/apexrest/v1/schedule_cell",
-      "--method",
-      "POST"
-    ]);
-    expect(JSON.parse(seen[0].stdin)).toEqual(fields);
     const undone = await call(
       "undo_last_agent_change",
       { season: "Summer 2026", week: "Week 1" },
@@ -351,19 +347,27 @@ describe("Shoresh for AI tools and the command line", () => {
         run: sfAnswering(
           200,
           JSON.stringify({
-            message: 'Undid "Placed Soccer · Group A · Monday · Period 2".'
+            message: "Undone: Placed Soccer · Group A · Monday · Period 2."
           }),
           seen
         )
       }
     );
-    expect(seen[1].args[3]).toBe(
-      "/services/apexrest/v1/undo_last_agent_change"
-    );
+    expect(seen[1].args.slice(3, 6)).toEqual([
+      "/services/apexrest/v1/undo_last_agent_change",
+      "--method",
+      "POST"
+    ]);
+    // Nothing held in this conversation: Salesforce keeps nothing for Undo (API-1.14).
+    expect(JSON.parse(seen[1].stdin)).toEqual({
+      season: "Summer 2026",
+      week: "Week 1",
+      held: {}
+    });
     expect(undone).toEqual({
       ok: true,
       status: 200,
-      text: 'Undid "Placed Soccer · Group A · Monday · Period 2".'
+      text: "Undone: Placed Soccer · Group A · Monday · Period 2."
     });
     expect(
       parse([
@@ -375,7 +379,6 @@ describe("Shoresh for AI tools and the command line", () => {
     ).toEqual({ name: "change_schedule_cell", input: fields, org: "my-camp" });
   });
 
-  // API-1.133: a strict AI app can refuse every tool over one list that doesn't say what it holds.
   it("everyListSaysWhatItHolds", () => {
     const lists = (schema) =>
       Object.values(schema.properties || {}).flatMap((field) => [
@@ -1893,7 +1896,7 @@ describe("Shoresh for AI tools and the command line", () => {
   });
 
   // API-1.76, API-1.77, API-1.78, API-1.79
-  it("specialSchedulesWithWhatWasSeen: a special schedule is read by name in the web address, a cell sends what it held, a frame change sends the seen and says ask first before taking cells away, and Set it up sends the noted name", async () => {
+  it("specialSchedulesWithWhatWasSeen: a special schedule is read by name in the web address, a cell needs what it held, a frame change sends the seen and says ask first before taking cells away, and Set it up sends the noted name", async () => {
     expect(
       byName("change_special_schedule_frame").inputSchema.required
     ).toEqual(["special", "action", "seen"]);
@@ -1912,14 +1915,8 @@ describe("Shoresh for AI tools and the command line", () => {
     expect(read[0].args[3]).toBe(
       "/services/apexrest/v1/read_special_schedule?season=Summer+2026&special=Color+War"
     );
+    // A cell is worked out with the page's own editor first (screenUndo.test.js).
     const asked = {
-      change_special_schedule_cell: {
-        special: "Color War",
-        column: "Blue",
-        time: "Relays",
-        was: "Open",
-        activity: "Swim"
-      },
       change_special_schedule_frame: {
         special: "Color War",
         action: "add_time_block",

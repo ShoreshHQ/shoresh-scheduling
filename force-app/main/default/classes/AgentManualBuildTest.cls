@@ -6,6 +6,8 @@
  */
 @IsTest
 private class AgentManualBuildTest {
+  // What the last answer left for the connector to hold for Undo.
+  private static Map<String, Object> undo;
   private static final String WHERE_A = 'Group A · Monday · Period 2';
 
   /** POST to an action on Week 1 of Main; answers [status, sentence]. */
@@ -28,7 +30,7 @@ private class AgentManualBuildTest {
     RestContext.response = new RestResponse();
     AgentAskFirstTestCalls.answer(
       new Map<String, AgentWeeks.Action>{
-          'cell' => new AgentCell(),
+          'cell' => new AgentCells(),
           'undo' => new AgentUndo(),
           'publish' => new AgentPublish(),
           'unpublish' => new AgentUnpublish(),
@@ -45,19 +47,48 @@ private class AgentManualBuildTest {
     Map<String, Object> answer = (Map<String, Object>) JSON.deserializeUntyped(
       RestContext.response.responseBody.toString()
     );
+    undo = AgentUndoTestCalls.undoIn(RestContext.response);
     return new List<Object>{
       RestContext.response.statusCode,
       answer.get('message')
     };
   }
 
-  private static Map<String, Object> cell(String was, String activity) {
+  /**
+   * Group A's Monday Period 2 typed in, as the connector sends it: the run from the slot the
+   * agent saw there (was) to the slot typed (one block), with no locks, as Manual Build sends it.
+   */
+  private static Map<String, Object> cell(
+    String was,
+    String slot,
+    String name
+  ) {
+    Map<String, Id> ids = GeneratedTestData.ids;
     return new Map<String, Object>{
-      'group' => 'Group A',
-      'day' => 'Monday',
-      'time' => 'Period 2',
-      'was' => was,
-      'activity' => activity
+      'change' => 'Placed ' +
+      name +
+      ' · ' +
+      WHERE_A,
+      'said' => '',
+      'runs' => new List<Object>{
+        new Map<String, Object>{
+          'day' => '2026-06-29',
+          'groupId' => ids.get('Group A'),
+          'firstBlockId' => ids.get('Period 2'),
+          'blockIds' => new List<Object>{ ids.get('Period 2') },
+          'before' => new List<Object>{ was },
+          'after' => new List<Object>{ slot }
+        }
+      }
+    };
+  }
+
+  /** Undo of the edit sent, as the connector sends it after that edit's answer. */
+  private static Map<String, Object> undoOf(Map<String, Object> sent) {
+    return new Map<String, Object>{
+      'held' => AgentUndoTestCalls.held(
+        AgentUndoTestCalls.manualHeld(undo, (List<Object>) sent.get('runs'))
+      )
     };
   }
 
@@ -123,8 +154,9 @@ private class AgentManualBuildTest {
   }
 
   // API-1.42
-  // API-1.124: an AI puts an elective set on a cell by name, as the drawer does: the screen's own
-  // save, read back as that set; a name an activity also has is refused, never guessed.
+  // API-1.124: an AI puts an elective set on a cell, as the drawer does: the screen's own save,
+  // read back as that set (the connector finds it by name, refusing a name an activity also has:
+  // screenUndo.test.js and connect.test.js).
   @IsTest
   static void anElectiveSetGoesOnACellAsTheDrawerPutsIt() {
     System.runAs(ShoreshTestData.scheduler()) {
@@ -134,23 +166,11 @@ private class AgentManualBuildTest {
         Season__c = seasonId,
         Name = 'Chugim'
       );
-      ElectiveSet__c sameName = new ElectiveSet__c(
-        Season__c = seasonId,
-        Name = 'Soccer'
-      );
-      Database.insert(
-        new List<ElectiveSet__c>{ chugim, sameName },
-        AccessLevel.USER_MODE
-      );
+      Database.insert(chugim, AccessLevel.USER_MODE);
       Id draftId = manualDraft();
       Test.startTest();
-      List<Object> both = post('cell', cell('Open', 'Soccer'));
-      List<Object> done = post('cell', cell('Open', 'Chugim'));
+      List<Object> done = post('cell', cell('', 'E:' + chugim.Id, 'Chugim'));
       Test.stopTest();
-      Assert.areEqual(400, both[0], String.valueOf(both[1]));
-      Assert.isTrue(
-        String.valueOf(both[1]).contains('both an activity and an elective set')
-      );
       Assert.areEqual(200, done[0], String.valueOf(done[1]));
       Assert.areEqual('Placed Chugim · ' + WHERE_A + '.', done[1]);
       ScheduleGrid grid = ScheduleDays.read(draftId)[0].grid;
@@ -166,21 +186,27 @@ private class AgentManualBuildTest {
       GeneratedTestData.camp();
       Id draftId = manualDraft();
       Test.startTest();
-      List<Object> stale = post('cell', cell('Gym games', 'Soccer'));
-      List<Object> done = post('cell', cell('Open', 'Soccer'));
+      String soccer = GeneratedTestData.a('Soccer');
+      List<Object> stale = post(
+        'cell',
+        cell(GeneratedTestData.a('Gym games'), soccer, 'Soccer')
+      );
+      Map<String, Object> sent = cell('', soccer, 'Soccer');
+      List<Object> done = post('cell', sent);
       String placed = periodTwo(draftId);
       Boolean locked = ScheduleGridLocks.isLocked(
         ScheduleDays.read(draftId)[0].grid,
         GeneratedTestData.GROUP_A,
         GeneratedTestData.PERIOD_2
       );
-      List<Object> undone = post('undo', new Map<String, Object>());
+      Integer versions = GeneratedTestData.versions();
+      List<Object> undone = post('undo', undoOf(sent));
       Test.stopTest();
       Assert.areEqual(409, stale[0]);
       Assert.areEqual(
-        'Changed by someone else: ' +
+        'Changed by someone else since you read the week: Placed Soccer · ' +
           WHERE_A +
-          ' holds Open now. Nothing was changed.',
+          '. Nothing was changed.',
         stale[1]
       );
       Assert.areEqual(200, done[0], String.valueOf(done[1]));
@@ -188,19 +214,12 @@ private class AgentManualBuildTest {
       Assert.areEqual(GeneratedTestData.a('Soccer'), placed);
       // Manual Build's own save: it has no locks, so nothing is locked.
       Assert.isFalse(locked);
-      Assert.areEqual(
-        1,
-        [
-          SELECT COUNT()
-          FROM Schedule__c
-          WHERE
-            VersionReason__c = :AgentWeeks.THROUGH_AGENT
-            AND Origin__c = 'Manual'
-          WITH SYSTEM_MODE
-        ]
-      );
+      // As on the screen, no version is kept, and Undo keeps none either (API-1.148).
+      Assert.areEqual(0, versions);
       Assert.areEqual(200, undone[0], String.valueOf(undone[1]));
+      Assert.areEqual('Undone: Placed Soccer · ' + WHERE_A + '.', undone[1]);
       Assert.areEqual(SlotIds.OPEN, periodTwo(draftId));
+      Assert.areEqual(0, GeneratedTestData.versions());
     }
   }
 
@@ -367,9 +386,10 @@ private class AgentManualBuildTest {
       };
       Test.startTest();
       List<Object> done = post('move', edit);
+      Map<String, Object> asked = undoOf(edit);
       String placed = periodTwo(draftId);
       List<Object> stale = post('move', edit);
-      List<Object> undone = post('undo', new Map<String, Object>());
+      List<Object> undone = post('undo', asked);
       Test.stopTest();
       Assert.areEqual(200, done[0], String.valueOf(done[1]));
       Assert.areEqual('Pasted 1 activity · ' + WHERE_A + '.', done[1]);

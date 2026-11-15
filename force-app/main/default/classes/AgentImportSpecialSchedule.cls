@@ -51,7 +51,12 @@ global with sharing class AgentImportSpecialSchedule implements AgentWeeks.Actio
       }
       throw new ShoreshException('Nothing was imported. ' + words);
     }
-    return new Words(found, body).of(outcome);
+    String said = new Words(found, body).of(outcome);
+    if (!said.startsWith('Nothing was imported')) {
+      // The page reads the plan again and its Undo starts over; it has no Undo for this.
+      AgentSpecials.undoNone(found, 'Imported a file');
+    }
+    return said;
   }
 
   /** The blocks and columns the page's module read from the file. */
