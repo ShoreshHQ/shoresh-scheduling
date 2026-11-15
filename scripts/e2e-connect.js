@@ -171,9 +171,7 @@ function step(action, input = {}, expect = "done", more = []) {
     .inputSchema.properties;
   const withSeason = schema.season ? { season: SEASON, ...input } : input;
   for (const [field, value] of Object.entries(withSeason)) {
-    if (field === "file" && action.startsWith("bring_in_")) {
-      args.push("--file", value);
-    } else if (value === true && field === "as_csv") {
+    if (value === true && field === "as_csv") {
       args.push("--csv");
     } else {
       args.push(
