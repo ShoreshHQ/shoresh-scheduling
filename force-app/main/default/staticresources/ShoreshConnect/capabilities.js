@@ -269,7 +269,7 @@ function bringInChoicesFile() {
   const c = importFile(
     "bring_in_choices",
     "bring_in_choices",
-    "Import campers' elective choices from a file, as the Elective seats screen's Import choices does: this is how a week's electives start (the first bring-in makes the week's run), and later sheets bring choices in again. The file is read with the screen's own code (each camper, their bunk and their choices in order). Send it first without save: the answer is the review (how many campers, new or already here, choices made by hand that are kept, names Shoresh doesn't have yet) and its seen. Answer any new names (ask the person about anything the file doesn't make plain), then send the same file and answers with save: true and the seen. It is done as you, with your own access, all or none; a camper's choices changed by hand are kept. Then bring_in_camper_elective_choices and bring_in_camper_groups can send more.",
+    "Import campers' elective choices from a file, as the Elective seats screen's Import choices does: this is how a week's electives start (the first bring-in makes the week's run), and later sheets bring choices in again. The file is read with the screen's own code (each camper, their bunk and their choices in order). Send it first without save: the answer is the review (how many campers, new or already here, choices made by hand that are kept, names Shoresh doesn't have yet, each at the answer the screen starts it at) and its seen. Change a new name's answer only when the person wants it otherwise (ask them about anything the file doesn't make plain), then send the same file and answers with save: true and the seen. It is done as you, with your own access, all or none; a camper's choices changed by hand are kept. Then bring_in_camper_elective_choices and bring_in_camper_groups can send more.",
     {
       elective_set: {
         type: "string",
@@ -290,7 +290,7 @@ function bringInChoicesFile() {
   c.inputSchema.properties.answers = {
     type: "object",
     description:
-      'For each name on the sheet Shoresh doesn\'t have, by that name: "add" (a new activity), "leave" (leave it out) or "same:<activity>".'
+      'Only to change what a name on the sheet Shoresh doesn\'t have starts at, by that name: "add" (a new activity), "leave" (leave it out) or "same:<activity>".'
   };
   return c;
 }

@@ -2704,10 +2704,14 @@ describe("Shoresh for AI tools and the command line", () => {
         csv_text:
           "Camper,Bunk,Choice 1,Choice 2\nAvery Madeup,Bunk 1,Drama,Art\nCasey Madeup,Bunk 2,Art,Swim\n"
       },
-      { run: answering([ok(JSON.stringify(read))], []), choices }
+      {
+        run: answering([ok(JSON.stringify(read)), message(check)], []),
+        choices
+      }
     );
-    expect(unknown.text).toContain('"Drama" (the screen starts it at "add")');
-    expect(unknown.text).toContain("at How often 0");
+    expect(unknown.text).toContain(
+      '- "Drama": added as an activity (How often 0) (the screen\'s start)'
+    );
     expect(review.text).toContain('save: true and seen: "none"');
     const asked = JSON.parse(seen[1].stdin);
     expect(asked.save).toBeUndefined();
@@ -2845,6 +2849,151 @@ describe("Shoresh for AI tools and the command line", () => {
       ok: false,
       text: "Say which schedule (schedule). The schedules: Generated Schedule, Generated Schedule · Published."
     });
+  });
+
+  // API-1.117a (Greg 2026-11-15, AI = screen)
+  it("bringInChoicesStartsAsTheScreenStarts: a new name starts at the screen's answer and only an answer that differs is remembered; the file's fingerprint is the screen's", async () => {
+    const LWC = "../../force-app/main/default/lwc";
+    const choices = async () => ({
+      ...require(`${LWC}/shoreshImportEngine/shoreshImportEngine.js`),
+      ...require(`${LWC}/shoreshChoicesReader/shoreshChoicesReader.js`),
+      ...require(`${LWC}/shoreshChoicesImport/review.js`),
+      ...require(`${LWC}/shoreshTerms/shoreshTerms.js`),
+      ...require(`${LWC}/shoreshSchema/shoreshSchema.js`)
+    });
+    const { FIELD } = require(`${LWC}/shoreshSchema/shoreshSchema.js`);
+    const S = FIELD.Schedule;
+    const read = {
+      season: "Summer 2027",
+      setup: {
+        season: { Id: "s1" },
+        labels: [],
+        weeks: [{ Id: "w2", Name: "Week 2" }],
+        programs: [
+          {
+            program: { Id: "p1", Name: "Main" },
+            divisions: [
+              {
+                division: { Id: "d1", Name: "Juniors" },
+                groups: [{ Id: "g1", Name: "Bunk 1" }]
+              }
+            ]
+          }
+        ],
+        schedules: [
+          {
+            Id: "m2",
+            [S.Week]: "w2",
+            [S.Status]: "Draft",
+            [S.Origin]: "Manual",
+            [S.Program]: "p1"
+          }
+        ],
+        activities: [
+          { Id: "a1", Name: "Pottery" },
+          { Id: "a2", Name: "Art" }
+        ],
+        electives: {}
+      },
+      situation: {
+        sets: [{ id: "e1", name: "Chugim", activityIds: ["a1", "a2"] }],
+        runs: [],
+        answers: []
+      }
+    };
+    const check = {
+      runId: null,
+      runName: null,
+      runRevision: null,
+      isFinal: false,
+      known: 0,
+      added: 1,
+      handChanged: [],
+      differs: [],
+      renamed: [],
+      notOnSheet: 0
+    };
+    const csv =
+      "Camper,Bunk,Choice 1,Choice 2,Choice 3\nAvery Madeup,Bunk 1,Pottery Wheel,Drama,Art\n";
+    const input = {
+      season: "Summer 2027",
+      elective_set: "Chugim",
+      week: "Week 2",
+      file_name: "choices.csv",
+      csv_text: csv
+    };
+    const ok = (body) =>
+      `HTTP/1.1 200\ncontent-type: application/json\n\n${body}`;
+    const message = (o) => ok(JSON.stringify({ message: JSON.stringify(o) }));
+    const sentWith = async (extra) => {
+      const seen = [];
+      const answers = [ok(JSON.stringify(read)), message(check)];
+      const said = await call(
+        "bring_in_choices",
+        { ...input, ...extra },
+        {
+          run: async (args, stdin) => {
+            seen.push(stdin);
+            return answers.shift();
+          },
+          choices
+        }
+      );
+      return { said, request: JSON.parse(seen[1]).request };
+    };
+
+    // No answers: nothing is held back; each name is at the screen's start, nothing remembered.
+    const plain = await sentWith({});
+    expect(plain.said.ok).toBe(true);
+    expect(plain.said.text).toContain(
+      '- "Pottery Wheel": same as Pottery (the screen\'s start)'
+    );
+    expect(plain.said.text).toContain(
+      '- "Drama": added as an activity (How often 0) (the screen\'s start)'
+    );
+    expect(plain.request.remember).toEqual({});
+    expect(plain.request.addActivities).toEqual(["Drama"]);
+    expect(
+      plain.request.campers[0].choices.map((c) => c.a || `add ${c.add}`)
+    ).toEqual(["a1", "add Drama", "a2"]);
+    // The screen's fingerprint: the SHA-256 of the file's bytes, here the text sent.
+    expect(plain.request.fingerprint).toBe(
+      require("crypto").createHash("sha256").update(csv, "utf8").digest("hex")
+    );
+
+    // The person says yes to the screen's starts: still nothing remembered, as on the screen.
+    const accepted = await sentWith({
+      answers: { "Pottery Wheel": "same:Pottery", Drama: "add" }
+    });
+    expect(accepted.request.remember).toEqual({});
+
+    // An answer that differs from the start is the person's own and is remembered.
+    const changed = await sentWith({
+      answers: { "Pottery Wheel": "leave", Drama: "same:Art" }
+    });
+    expect(changed.said.text).toContain(
+      '- "Pottery Wheel": left out (as answered)'
+    );
+    expect(changed.request.remember).toEqual({
+      "choiceName|potterywheel": "leave",
+      "choiceName|drama": "same|Art"
+    });
+    expect(changed.request.addActivities).toEqual([]);
+
+    // Rows with no file bytes: no fingerprint, as the screen saves none when it can't hash.
+    const rows = await sentWith({
+      csv_text: undefined,
+      sheets: [
+        {
+          name: "Sheet1",
+          rows: csv
+            .trim()
+            .split("\n")
+            .map((l) => l.split(","))
+        }
+      ]
+    });
+    expect(rows.request.fingerprint).toBeNull();
   });
 
   // API-1.98, API-1.99
@@ -3491,6 +3640,7 @@ describe("Shoresh for AI tools and the command line", () => {
             "fs",
             "path",
             "child_process",
+            "crypto",
             "url",
             "vm",
             "worker_threads"

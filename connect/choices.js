@@ -7,6 +7,7 @@
  * file; the count is the server's own check, said in the screen's own lines (countLines). With
  * save: true it is the screen's own Bring in, while the run is as the review saw it (seen).
  */
+const crypto = require("crypto");
 const { fileOf } = require("./imports");
 
 const refused = (text) => ({ ok: false, status: 400, text });
@@ -56,6 +57,49 @@ function answerOf(said, activities, m) {
     if (activity) return { kind: "same", activityId: activity.Id };
   }
   return null;
+}
+
+/** Whether an answer the AI gave is the one a name already has (its start, or remembered). */
+function sameAnswer(a, b) {
+  return (
+    !!b &&
+    a.kind === b.kind &&
+    (a.activityId || null) === (b.activityId || null)
+  );
+}
+
+/**
+ * The file's fingerprint, as the screen saves it (shoreshChoicesImport.js fingerprintOf: the
+ * SHA-256 of the file's bytes). Text sent as csv_text is the file, so it is its UTF-8 bytes;
+ * sheets sent as rows have no bytes to hash, so none, as the screen saves none when it can't
+ * hash the file.
+ */
+function fingerprintOf(input) {
+  if (typeof input.csv_text !== "string" || !input.csv_text.trim()) return null;
+  return crypto
+    .createHash("sha256")
+    .update(input.csv_text, "utf8")
+    .digest("hex");
+}
+
+/** What each name on the sheet Shoresh doesn't have will be, said for the review. */
+function newNameLines(reading, answers, activities, m) {
+  const byId = new Map(activities.map((a) => [a.Id, a.Name]));
+  return (reading.newNames || []).map((n) => {
+    const a = answers[m.foldName(n.name)] || {};
+    const what =
+      a.kind === "leave"
+        ? "left out"
+        : a.kind === "same"
+          ? `same as ${byId.get(a.activityId)}`
+          : "added as an activity (How often 0)";
+    const why = a.started
+      ? "the screen's start"
+      : a.remembered
+        ? "answered as before"
+        : "as answered";
+    return `- ${JSON.stringify(n.name)}: ${what} (${why})`;
+  });
 }
 
 async function bringInChoices(capability, input, { read, send, answer, load }) {
@@ -122,7 +166,11 @@ async function bringInChoices(capability, input, { read, send, answer, load }) {
     );
   }
 
-  const answers = m.rememberedAnswers(
+  // Every name starts where the screen starts it (review.js startingAnswers): remembered, else
+  // the near name, else add, marked started so it is never remembered. An answer the AI gives
+  // is the person's click, so only one that differs from the start replaces it, and only that is
+  // remembered, as on the screen (review.js buildRequest).
+  const answers = m.startingAnswers(
     reading.newNames,
     situation.answers,
     activities
@@ -130,28 +178,9 @@ async function bringInChoices(capability, input, { read, send, answer, load }) {
   const given =
     input.answers && typeof input.answers === "object" ? input.answers : {};
   for (const [name, said] of Object.entries(given)) {
+    const key = m.foldName(name);
     const a = answerOf(said, activities, m);
-    if (a) answers[m.foldName(name)] = a;
-  }
-  const open = (reading.newNames || []).filter(
-    (n) => !answers[m.foldName(n.name)]
-  );
-  if (open.length) {
-    return {
-      ok: true,
-      status: 200,
-      text: [
-        `Review of ${file.name} for ${set.item.name} in ${week.item.Name}, as the Elective seats screen's Import choices shows it. Nothing is imported yet.`,
-        `Names on the sheet Shoresh doesn't have yet: ${open
-          .map((n) => {
-            const proposal = m.proposalFor(n.name, activities);
-            // What the screen starts it at (UX pass 2026-11-10), for the AI to put to the person.
-            return `${JSON.stringify(n.name)} (the screen starts it at ${proposal ? `"same as ${proposal.Name || proposal.name}"` : '"add"'})`;
-          })
-          .join(", ")}.`,
-        'Answer each in answers, by its name: "add" (a new activity, at How often 0), "leave" (leave it out) or "same:<activity>". Ask the person, offering the screen\'s start, about any that the sheet doesn\'t make plain.'
-      ].join("\n")
-    };
+    if (a && !sameAnswer(a, answers[key])) answers[key] = a;
   }
 
   const place = {
@@ -169,7 +198,7 @@ async function bringInChoices(capability, input, { read, send, answer, load }) {
       groups: m.groupsOfProgram(setup, schedule.item.programId),
       place,
       fileName: file.name,
-      fingerprint: null,
+      fingerprint: fingerprintOf(input),
       runRevision
     });
   const checked = await send(capability.api, {
@@ -200,6 +229,13 @@ async function bringInChoices(capability, input, { read, send, answer, load }) {
       text: [
         `Review of ${file.name} for ${set.item.name} in ${week.item.Name} (${schedule.item.name}), as the Elective seats screen's Import choices shows it. Nothing is imported yet.`,
         ...lines,
+        ...(reading.newNames && reading.newNames.length
+          ? [
+              "Names on the sheet Shoresh doesn't have yet, each as it will be brought in:",
+              ...newNameLines(reading, answers, activities, m),
+              'To change one, send answers by its name: "add" (a new activity, at How often 0), "leave" (leave it out) or "same:<activity>". Ask the person about any the sheet doesn\'t make plain.'
+            ]
+          : []),
         `Ready to import. To import it, send the same file and answers with save: true and seen: ${JSON.stringify(seen)}.`
       ].join("\n")
     };
