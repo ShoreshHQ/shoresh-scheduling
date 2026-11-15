@@ -2600,6 +2600,119 @@ describe("Shoresh for AI tools and the command line", () => {
     ]);
   });
 
+  // API-1.97 (Greg 2026-11-15, AI = screen)
+  it("learnedUndoLastsTheConversation: only a change or forget made while this connector runs can be undone, each once; anything else is nothing to undo, with nothing asked", async () => {
+    const nothing =
+      "There's nothing to undo in this conversation: Undo on What Shoresh has learned is only for a change, forget or forget pattern made in it, as the screen offers Undo only while its page is open. Nothing was changed.";
+    // An undo from another conversation (the connector didn't make it): refused, nothing sent.
+    const before = [];
+    const earlier = await call(
+      "undo_learned_answer",
+      { season: "Summer 2031", undo: "forget:a0Learned000001" },
+      { run: sfAnswering(200, "{}", before) }
+    );
+    expect(earlier).toEqual({ ok: false, status: 400, text: nothing });
+    expect(before).toEqual([]);
+
+    // A forget made now gives its undo, held for this conversation.
+    await call(
+      "forget_learned_answer",
+      { season: "Summer 2031", answer_id: "a0Learned000001", seen: "fixed" },
+      {
+        run: sfAnswering(
+          200,
+          JSON.stringify({
+            message:
+              'Forgot "fixed": the next import asks that question again. To undo it, use undo_learned_answer with undo "forget:a0Learned000001".'
+          })
+        )
+      }
+    );
+    const sent = [];
+    const undone = await call(
+      "undo_learned_answer",
+      { season: "Summer 2031", undo: "forget:a0Learned000001" },
+      {
+        run: sfAnswering(
+          200,
+          JSON.stringify({ message: "Remembered again." }),
+          sent
+        )
+      }
+    );
+    expect(undone).toMatchObject({ ok: true, text: "Remembered again." });
+    // The screen's own Undo, on the server, as before.
+    expect(sent[0].args[3]).toBe("/services/apexrest/v1/undo_learned_answer");
+    expect(JSON.parse(sent[0].stdin)).toEqual({
+      season: "Summer 2031",
+      undo: "forget:a0Learned000001"
+    });
+    // Once: the screen's Undo goes once it is used.
+    const again = await call(
+      "undo_learned_answer",
+      { season: "Summer 2031", undo: "forget:a0Learned000001" },
+      { run: sfAnswering(200, "{}") }
+    );
+    expect(again).toEqual({ ok: false, status: 400, text: nothing });
+
+    // A change's undo is held too; a refused undo (someone changed it since) keeps it held,
+    // as the screen keeps Undo after a failed write.
+    await call(
+      "change_learned_answer",
+      {
+        season: "Summer 2031",
+        answer_id: "a0Learned000002",
+        answer: "recurring",
+        seen: "fixed"
+      },
+      {
+        run: sfAnswering(
+          200,
+          JSON.stringify({
+            message:
+              'Changed "fixed" to "recurring". Shoresh remembers it as changed by you, today. To undo it, use undo_learned_answer with undo "change:a0Learned000003:a0Learned000002".'
+          })
+        )
+      }
+    );
+    const change = {
+      season: "Summer 2031",
+      undo: "change:a0Learned000003:a0Learned000002"
+    };
+    const stale = await call("undo_learned_answer", change, {
+      run: sfAnswering(
+        409,
+        JSON.stringify({ message: "That can't be undone now." })
+      )
+    });
+    expect(stale).toMatchObject({ ok: false, status: 409 });
+    const changedBack = await call("undo_learned_answer", change, {
+      run: sfAnswering(200, JSON.stringify({ message: "Changed back." }))
+    });
+    expect(changedBack).toMatchObject({ ok: true, text: "Changed back." });
+    // Another sign-in's conversation holds its own.
+    await call(
+      "forget_learned_answer",
+      { answer_id: "a0Learned000004", seen: "fixed" },
+      {
+        org: "camp-a",
+        run: sfAnswering(
+          200,
+          JSON.stringify({
+            message:
+              'Forgot "fixed". To undo it, use undo_learned_answer with undo "forget:a0Learned000004".'
+          })
+        )
+      }
+    );
+    const otherOrg = await call(
+      "undo_learned_answer",
+      { undo: "forget:a0Learned000004" },
+      { org: "camp-b", run: sfAnswering(200, "{}") }
+    );
+    expect(otherOrg).toEqual({ ok: false, status: 400, text: nothing });
+  });
+
   // API-1.96, API-1.25
   it("forgetsOnlyAPatternThatIsThere: a pattern the screen doesn't offer Forget pattern on is refused naming the ones there, before anything is asked", async () => {
     const LWC = "../../force-app/main/default/lwc";

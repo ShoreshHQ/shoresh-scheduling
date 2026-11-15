@@ -15,7 +15,12 @@ const { importFile, undoImport } = require("./imports");
 const { importLastYear } = require("./lastYear");
 const { importSpecialSchedule } = require("./specialFile");
 const { makeFile } = require("./exports");
-const { readLearned, forgetPattern } = require("./learned");
+const {
+  readLearned,
+  forgetPattern,
+  holdUndo,
+  undoLearned
+} = require("./learned");
 const { bringInChoices } = require("./choices");
 const {
   campOf,
@@ -300,10 +305,16 @@ async function callOnce(
     });
   }
   if (capability.forgetsPattern) {
-    return forgetPattern(capability, input, {
-      ...at,
-      load: () => learned(namespace)
-    });
+    return holdUndo(
+      await forgetPattern(capability, input, {
+        ...at,
+        load: () => learned(namespace)
+      }),
+      org
+    );
+  }
+  if (capability.undoesLearned) {
+    return undoLearned(input, { ask: () => asked(request), answer }, org);
   }
   if (capability.undoesImport) {
     return undoImport(capability, input, {
@@ -317,6 +328,7 @@ async function callOnce(
     );
   }
   const done = answer(await asked(request));
+  if (capability.givesLearnedUndo) holdUndo(done, org);
   if (!done.ok || !capability.about || input.as_csv) return done;
   done.about = capability.about;
   if (capability.showsWeek) {

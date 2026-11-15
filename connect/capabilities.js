@@ -2352,6 +2352,7 @@ const CAPABILITIES = [
     api: "change_learned_answer",
     method: "POST",
     sendsFields: true,
+    givesLearnedUndo: true,
     description:
       'Change one remembered answer to another of its choices, as Change and Save on "What Shoresh has learned" do: the next import uses the new answer. Only an answer read_learned_answers lists with choices can be changed. Read it first and send its answer_id and seen. It is done as you, with your own access, and the answer gives an undo for undo_learned_answer. If someone changed or forgot it since, nothing is changed and Shoresh says so.',
     inputSchema: {
@@ -2382,6 +2383,7 @@ const CAPABILITIES = [
     api: "forget_learned_answer",
     method: "POST",
     sendsFields: true,
+    givesLearnedUndo: true,
     description:
       'Forget one remembered answer, as Forget on "What Shoresh has learned" does: the next import asks that question again. Ask the person first. Read it first with read_learned_answers and send its answer_id and seen. It is done as you, with your own access, and the answer gives an undo for undo_learned_answer. If someone changed or forgot it since, nothing is changed and Shoresh says so.',
     inputSchema: {
@@ -2432,8 +2434,9 @@ const CAPABILITIES = [
     api: "undo_learned_answer",
     method: "POST",
     sendsFields: true,
+    undoesLearned: true,
     description:
-      'Undo a change, forget or forget pattern you just made on "What Shoresh has learned", as its Undo does: the answer or pattern comes back as it was, with who answered it and when. Send the undo that action\'s answer gave. Only what you did, while nothing has happened to that answer since; never over a newer answer. It is done as you, with your own access.',
+      'Undo a change, forget or forget pattern you made in this conversation on "What Shoresh has learned", as its Undo does: the answer or pattern comes back as it was, with who answered it and when. Send the undo that action\'s answer gave. As the screen offers Undo only while its page is open, only what you did in this conversation can be undone, each once, while nothing has happened to that answer since; never over a newer answer. It is done as you, with your own access.',
     inputSchema: {
       type: "object",
       properties: {
