@@ -45,6 +45,11 @@ public with sharing class CampWordRules {
     return null;
   }
 
+  /** CORE-1.36: an offering is said in the camp's Elective words, as the screens' buildTerms. */
+  public static String said(String term) {
+    return term == 'Offering' ? 'Elective' : term;
+  }
+
   /**
    * "a time block", "an Edah", "an hour", "a Unit": the article a word takes by its sound, as the
    * screens' article() (shoreshTerms).
