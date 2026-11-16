@@ -170,4 +170,25 @@ describe("the API's access pieces", () => {
     }
     expect(checked).toBeGreaterThan(0);
   });
+
+  // API-4.10
+  it("schedulerSeesEverySeason: Shoresh Scheduler sees and changes every season, and no piece does", () => {
+    const all = (name) =>
+      read(name)
+        .objects.filter((o) => o.all)
+        .map((o) => o.object);
+    expect(all("Shoresh_Scheduler")).toEqual(["Season__c"]);
+    const season = fs
+      .readFileSync(
+        path.join(DIR, "Shoresh_Scheduler.permissionset-meta.xml"),
+        "utf8"
+      )
+      .match(
+        /<objectPermissions>((?:(?!<\/objectPermissions>)[\s\S])*<object>Season__c<\/object>[\s\S]*?)<\/objectPermissions>/
+      )[1];
+    expect([
+      tag(season, "viewAllRecords"),
+      tag(season, "modifyAllRecords")
+    ]).toEqual(["true", "true"]);
+  });
 });

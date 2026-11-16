@@ -58,22 +58,17 @@ private class SeasonSetupControllerTest {
     }
   }
 
+  // API-4.10: a season shared with no one is every scheduler's, as the camp is one organization.
   @IsTest
-  static void aSeasonNotSharedWithTheSchedulerIsNotShown() {
+  static void aSeasonSharedWithNoOneIsShownToEveryScheduler() {
     Camp__c camp = ShoreshTestData.camp('Camp Willow');
     Season__c season = ShoreshTestData.season(camp.Id, 'Summer 2026');
-    User scheduler = ShoreshTestData.scheduler();
-    System.runAs(scheduler) {
-      Assert.areEqual(0, SeasonSetupController.getSeasons(camp.Id).size());
-      try {
-        SeasonSetupController.getSeasonSetup(season.Id);
-        Assert.fail('Not shared, not shown');
-      } catch (AuraHandledException e) {
-        Assert.areEqual(
-          'That season wasn\'t found. Reload the page.',
-          errorOf(e)
-        );
-      }
+    System.runAs(ShoreshTestData.scheduler()) {
+      Assert.areEqual(1, SeasonSetupController.getSeasons(camp.Id).size());
+      Assert.areEqual(
+        'Summer 2026',
+        SeasonSetupController.getSeasonSetup(season.Id).season.Name
+      );
     }
   }
 
@@ -637,31 +632,15 @@ private class SeasonSetupControllerTest {
     Assert.areEqual(0, [SELECT COUNT() FROM CampLabel__c WITH SYSTEM_MODE]);
   }
 
+  // API-4.10: every scheduler can do to a season what the one who made it can, deleting included.
   @IsTest
-  static void editAccessToASeasonDoesNotAllowDeletingIt() {
+  static void aSchedulerCanDeleteASeasonSomeoneElseMade() {
     Camp__c camp = ShoreshTestData.camp('Camp Willow');
     Season__c season = ShoreshTestData.season(camp.Id, 'Summer 2026');
-    User scheduler = ShoreshTestData.scheduler();
-    Database.insert(
-      new Season__Share(
-        ParentId = season.Id,
-        UserOrGroupId = scheduler.Id,
-        AccessLevel = 'Edit'
-      ),
-      AccessLevel.SYSTEM_MODE
-    );
-    System.runAs(scheduler) {
-      try {
-        SeasonSetupController.deleteRecord(season.Id);
-        Assert.fail('Edit access is not delete access');
-      } catch (AuraHandledException e) {
-        Assert.areEqual(
-          'You don\'t have access to change this. Ask the person who set it up, or a Salesforce admin.',
-          errorOf(e)
-        );
-      }
+    System.runAs(ShoreshTestData.scheduler()) {
+      SeasonSetupController.deleteRecord(season.Id);
     }
-    Assert.areEqual(1, [SELECT COUNT() FROM Season__c WITH SYSTEM_MODE]);
+    Assert.areEqual(0, [SELECT COUNT() FROM Season__c WITH SYSTEM_MODE]);
   }
 
   @IsTest
