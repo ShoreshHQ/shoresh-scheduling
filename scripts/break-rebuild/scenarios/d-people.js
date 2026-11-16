@@ -20,7 +20,6 @@ const {
   importMaple,
   draft,
   checksOf,
-  names,
   count,
   seenOf,
   confirmed
@@ -128,8 +127,7 @@ const CAPS = {
 module.exports = [
   {
     id: "D1",
-    title:
-      "people: Scheduler only, Read Only and Read/Write sharing, each Send and Read set",
+    title: "people: Scheduler only with nothing shared, each Send and Read set",
     async run(rec) {
       const { season } = makeCamp("D1 People");
       const inSeason = `Season__r.Name = '${season}'`;
@@ -202,34 +200,16 @@ module.exports = [
           said.text
         );
 
-        // Scheduler, season not shared.
+        // Scheduler, nothing shared: every season of the organization is theirs (API-4.10).
         setAccess(person, [season], ["Shoresh_Scheduler"], null);
         said = await call("list_seasons", {}, as);
         rec.check(
-          "API-1.7",
-          "Scheduler, nothing shared: no season seen",
-          said.kind === "done"
-            ? !said.text.includes(season) && !said.text.includes("Cedar Ridge")
-            : true,
+          "API-4.10",
+          "Scheduler, nothing shared: the season is seen",
+          said.kind === "done" && said.text.includes(season),
           said.text
         );
-        said = await call("read_week_checks", week, as);
-        rec.check(
-          "API-1.7",
-          "Scheduler, nothing shared: this season refused",
-          said.kind === "refused",
-          said.text
-        );
-        said = await call("read_group_schedule", week, as);
-        rec.check(
-          "API-1.7",
-          "Scheduler, nothing shared: its schedule refused",
-          said.kind === "refused",
-          said.text
-        );
-
-        // Read Only: reads work, every change refused, nothing changed.
-        setAccess(person, [season], ["Shoresh_Scheduler"], "Read");
+        // Scheduler, nothing shared: reads work.
         const adminDraft = await draft(season);
         for (const [action, input] of [
           ["list_seasons", {}],
@@ -247,8 +227,8 @@ module.exports = [
         ]) {
           said = await call(action, input, as);
           rec.check(
-            "API-4.7",
-            `Read Only: ${action} reads`,
+            "API-4.10",
+            `Scheduler, nothing shared: ${action} reads`,
             said.kind === "done",
             said.text
           );
@@ -256,7 +236,7 @@ module.exports = [
         const personDraft = await draft(season, "Week 1", {}, as);
         rec.check(
           "API-1.123",
-          "Read Only: read_week_draft as a non-admin says the same week as the admin's",
+          "read_week_draft as a non-admin says the same week as the admin's",
           personDraft.words === adminDraft.words,
           personDraft.words.slice(0, 300)
         );
@@ -272,128 +252,14 @@ module.exports = [
           activity: cell.activity === "Art" ? "Soccer" : "Art",
           seen: adminDraft.seen
         };
+
         const inputList = {
           season,
           list: "activities",
           file_name: "x.csv",
           csv_text: "Activity,Location\nKayak,Dock\n"
         };
-        const writes = [
-          ["change_schedule_cell", change],
-          [
-            "lock_cells",
-            {
-              ...week,
-              day: cell.day,
-              group: "Bunk 1",
-              time: cell.time_block,
-              seen: adminDraft.seen
-            }
-          ],
-          ["build_week", week],
-          ["unpublish_week", week],
-          ["save_version", { ...week, name: "Read only try" }],
-          [
-            "add_setup_record",
-            { season, kind: "location", name: "Read only place" }
-          ],
-          [
-            "rename_setup_record",
-            { season, kind: "activity", name: "Swim", new_name: "Swimming" }
-          ],
-          [
-            "change_camp_words",
-            {
-              season,
-              words: { group: "Bunk / Bunks" },
-              seen: { group: "(blank)" }
-            }
-          ]
-        ];
-        // Publish would do something now: the admin has changed the week since it was published.
-        const adminEdit = await call("change_schedule_cell", {
-          ...change,
-          seen: adminDraft.seen
-        });
-        rec.check(
-          "API-1.11",
-          "the admin changes a cell",
-          adminEdit.kind === "done",
-          adminEdit.text
-        );
-        const undoAdmin = await confirmed("undo_last_agent_change", week);
-        rec.check(
-          "API-1.14",
-          "the admin's change undone again",
-          undoAdmin.done.kind === "done",
-          undoAdmin.done.text
-        );
-        await call("build_week", week);
-        const stateBefore =
-          names("Activity__c", inSeason).join() +
-          names("Location__c", inSeason).join() +
-          count("Schedule__c", `Program__r.${inSeason}`) +
-          count(
-            "Schedule__c",
-            `Program__r.${inSeason} AND Status__c = 'Published'`
-          ) +
-          (await draft(season)).words;
-        for (const [action, input] of writes) {
-          said = await call(action, input, as);
-          const asked = said.kind === "done" && /"saved": 0/.test(said.text);
-          rec.check(
-            "API-1.7",
-            `Read Only: ${action} refused`,
-            said.kind === "refused" || asked,
-            `${said.kind}: ${said.text.slice(0, 500)}`
-          );
-          rec.check(
-            "API-1.105",
-            `Read Only: ${action} refused in plain words`,
-            !/INSUFFICIENT|FIELD_CUSTOM|Exception|\bSObject\b|__c/.test(
-              said.text
-            ),
-            said.text.slice(0, 500)
-          );
-        }
-        const listReview = await call("import_list", inputList, as);
-        if (seenOf(listReview.text)) {
-          const listSave = await call(
-            "import_list",
-            { ...inputList, save: true, seen: seenOf(listReview.text) },
-            as
-          );
-          rec.check(
-            "API-1.7",
-            "Read Only: import_list's save refused",
-            listSave.kind === "refused",
-            listSave.text
-          );
-        } else {
-          rec.check(
-            "API-1.7",
-            "Read Only: import_list's review gives a seen to try the save with",
-            false,
-            listReview.text.slice(0, 500)
-          );
-        }
-        const stateAfter =
-          names("Activity__c", inSeason).join() +
-          names("Location__c", inSeason).join() +
-          count("Schedule__c", `Program__r.${inSeason}`) +
-          count(
-            "Schedule__c",
-            `Program__r.${inSeason} AND Status__c = 'Published'`
-          ) +
-          (await draft(season)).words;
-        rec.check(
-          "API-1.7",
-          "Read Only: read back, nothing changed",
-          stateBefore === stateAfter
-        );
-
-        // Read/Write: the untried part. A non-admin changes the schedule through an AI.
-        setAccess(person, [season], ["Shoresh_Scheduler"], "Edit");
+        // A non-admin changes the schedule through an AI, with nothing shared (API-4.10).
         said = await call(
           "change_schedule_cell",
           { ...change, seen: (await checksOf(season, "Week 1", as)).seen },
@@ -401,7 +267,7 @@ module.exports = [
         );
         rec.check(
           "API-1.11",
-          "Read/Write: a non-admin's AI changes a cell",
+          "a non-admin's AI changes a cell",
           said.kind === "done",
           said.text
         );
@@ -424,7 +290,7 @@ module.exports = [
         const undo = await confirmed("undo_last_agent_change", week, as);
         rec.check(
           "API-1.14",
-          "Read/Write: the AI's undo",
+          "the AI's undo",
           undo.done.kind === "done",
           undo.done.text
         );
@@ -474,7 +340,7 @@ module.exports = [
           said = await call(action, input, as);
           rec.check(
             "API-4.7",
-            `Read/Write: ${action} works`,
+            `${action} works`,
             said.kind === "done",
             `${said.kind}: ${said.text.slice(0, 500)}`
           );
@@ -487,7 +353,7 @@ module.exports = [
         );
         rec.check(
           "API-1.80",
-          "Read/Write: import_list saves",
+          "import_list saves",
           save.kind === "done" &&
             count("Activity__c", `${inSeason} AND Name = 'Kayak'`) === 1,
           save.text
@@ -495,7 +361,7 @@ module.exports = [
         const lastImports = await call("read_last_imports", { season }, as);
         rec.check(
           "API-1.82",
-          "Read/Write: the person sees their own last import",
+          "the person sees their own last import",
           /Last import:/.test(lastImports.text),
           lastImports.text
         );
@@ -511,7 +377,7 @@ module.exports = [
         );
         rec.check(
           "API-1.83",
-          "Read/Write: the person undoes it",
+          "the person undoes it",
           undoImport.done.kind === "done" &&
             count("Activity__c", `${inSeason} AND Name = 'Kayak'`) === 0,
           undoImport.done.text
@@ -536,7 +402,7 @@ module.exports = [
         );
         rec.check(
           "API-1.62",
-          "Read/Write: the person copies the season",
+          "the person copies the season",
           copy.done.kind === "done",
           copy.done.text
         );
@@ -551,16 +417,16 @@ module.exports = [
           said.kind === "done",
           said.text
         );
-        // Someone else's camp stays out of sight even with a share of this one.
+        // One Salesforce org is one organization: its other camp's seasons are seen too (API-4.10).
         said = await call(
           "read_camp_words",
           { season: "Cedar Ridge Summer 2027" },
           as
         );
         rec.check(
-          "API-1.7",
-          "Read/Write: another camp's season is refused",
-          said.kind === "refused",
+          "API-4.10",
+          "another camp in the same organization is seen",
+          said.kind === "done",
           said.text
         );
 

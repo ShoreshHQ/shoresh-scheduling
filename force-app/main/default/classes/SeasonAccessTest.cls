@@ -53,6 +53,15 @@ private class SeasonAccessTest {
         AccessLevel.USER_MODE
       );
       Assert.isTrue(saved.isSuccess(), 'The season can be changed');
+      Week__c week = [
+        SELECT Id, Name
+        FROM Week__c
+        WHERE Season__c = :season.Id
+        WITH USER_MODE
+      ];
+      week.Name = 'First week';
+      saved = Database.update(week, false, AccessLevel.USER_MODE);
+      Assert.isTrue(saved.isSuccess(), 'What is in it can be changed');
     }
   }
 
