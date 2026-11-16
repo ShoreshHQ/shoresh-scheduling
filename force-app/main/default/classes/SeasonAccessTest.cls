@@ -18,6 +18,10 @@ private class SeasonAccessTest {
   @IsTest
   static void aSchedulerSeesAndChangesEverySeasonWithoutSharing() {
     Season__c season = unshared();
+    Season__c otherCamp = ShoreshTestData.season(
+      ShoreshTestData.camp('Camp Birch').Id,
+      'Birch Summer 2026'
+    );
     System.runAs(ShoreshTestData.scheduler()) {
       List<Season__c> seen = [
         SELECT Id, Name
@@ -26,6 +30,11 @@ private class SeasonAccessTest {
         WITH USER_MODE
       ];
       Assert.areEqual(1, seen.size(), 'The season is seen');
+      Assert.areEqual(
+        1,
+        [SELECT COUNT() FROM Season__c WHERE Id = :otherCamp.Id WITH USER_MODE],
+        'A season of the organization\'s other camp is seen'
+      );
       Assert.areEqual(
         1,
         [

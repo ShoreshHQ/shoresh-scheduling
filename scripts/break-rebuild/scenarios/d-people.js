@@ -304,7 +304,7 @@ module.exports = [
         );
         const words = await call("read_camp_words", { season }, as);
         rec.note(
-          "the camp's words, as a Read/Write person reads them",
+          "the camp's words, as a non-admin reads them",
           words.text.slice(0, 400)
         );
         const wordNow =
@@ -417,18 +417,6 @@ module.exports = [
           said.kind === "done",
           said.text
         );
-        // One Salesforce org is one organization: its other camp's seasons are seen too (API-4.10).
-        said = await call(
-          "read_camp_words",
-          { season: "Cedar Ridge Summer 2027" },
-          as
-        );
-        rec.check(
-          "API-4.10",
-          "another camp in the same organization is seen",
-          said.kind === "done",
-          said.text
-        );
 
         // Each key opens its one address and no other (API-4.8).
         const everyAction = Object.values(CAPS);
@@ -516,11 +504,11 @@ module.exports = [
         return { out, missing };
       };
       try {
-        setAccess(person, [season], ["Shoresh_Scheduler"], "Edit");
+        setAccess(person, [season], ["Shoresh_Scheduler"], null);
         let said = await call("list_seasons", {}, as);
         rec.check(
-          "API-1.7",
-          "the person's AI finds the season shared with them",
+          "API-4.10",
+          "the person's AI finds the season, nothing shared",
           said.kind === "done" && said.text.includes(season),
           said.text.slice(0, 400)
         );
