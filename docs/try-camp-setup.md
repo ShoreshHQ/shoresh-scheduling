@@ -1430,15 +1430,9 @@ adds them (**Users**, then **New User**).
    alphabetical order), click it, then click the arrow under **Add**. It moves to the right.
 5. Click **Save**. You're back on their page, and **Shoresh Scheduler** is in the list
    **Permission Set Assignments** with today's date.
-6. **Share your seasons with them.** Seasons are private, so they see your camp but none of its
-   seasons until you share one. Open the season's Salesforce record (App Launcher, the nine dots
-   at top left, search _Seasons_, click the season's name). At the top right, click the small
-   **▾** (**Show more actions**), then **Sharing**. In **Search**, find the person, set
-   **Season Access Level** to **Read/Write**, and click **Save**. Do this for each season they
-   work on.
 
 Next time they sign in, **Shoresh** is in their App Launcher (the nine dots, top left), and in
-the seasons you shared they can do everything you can in Shoresh.
+every season of your camp they can do everything you can in Shoresh.
 
 ### Take Shoresh away from someone who stays
 
@@ -1463,9 +1457,9 @@ summer, tick **Active** again.
 ### A connected system
 
 A connection user (section 33) can be given **Shoresh Scheduler** the same way. It can then use
-every **Send …** and **Read …** in the tables in section 33, but only in the seasons you shared
-with it (section 33, step 4). To allow less, give it only the **Send …** and **Read …**
-permission sets it needs instead.
+every **Send …** and **Read …** in the tables in section 33, in every season of your camp. To
+allow less, give it only the **Send …** and **Read …** permission sets it needs instead, and
+share only the seasons it needs (section 33, step 4).
 
 ## What is not here yet
 
