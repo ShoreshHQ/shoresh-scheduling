@@ -59,6 +59,22 @@ function toolResult(said) {
   if (answer.season) {
     content.push({ type: "text", text: `Season used: ${answer.season}.` });
   }
+  // The special days the published week has, named, so a day isn't read as its few rows (API-1.149).
+  if (answer.specialDays === null) {
+    content.push({
+      type: "text",
+      text: "Which days of this week a special day replaced couldn't be read this time: read_special_days says which days have one."
+    });
+  } else if (answer.specialDays?.length) {
+    content.push({
+      type: "text",
+      text: `Special days this week, each replacing its day for the whole camp: ${answer.specialDays
+        .map((d) => `${d.day} ${d.date}, ${d.special_day}`)
+        .join(
+          "; "
+        )}. On those days the rows are only what the special day's own schedule has: say the day is that special day.`
+    });
+  }
   const opens = answer.weekView?.opens;
   if (typeof opens === "string" && /^https:\/\//.test(opens)) {
     content.push({

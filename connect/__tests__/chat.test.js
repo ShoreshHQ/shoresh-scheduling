@@ -93,6 +93,80 @@ describe("Shoresh in an AI chat", () => {
   });
 
   // API-1.26
+  it("aSpecialDayIsNamedWithTheWeeksRows: the published week's special days are named, as the screen names them over the day (API-1.149)", async () => {
+    const zooTrip = {
+      specialDayId: "s1",
+      name: "Zoo trip",
+      day: "Thursday",
+      dateValue: "2027-07-01",
+      plan: { rows: [] }
+    };
+    const view = {
+      season: "Summer 2027",
+      week: "Week 1",
+      labels: [],
+      programs: [
+        {
+          program: "Main",
+          view: { specials: { days: [zooTrip], events: [] } }
+        },
+        {
+          program: "Teens",
+          view: { specials: { days: [zooTrip], events: [] } }
+        }
+      ]
+    };
+    const rows =
+      '{"records":[{"group":"Bunk 4","date":"2027-07-01","activity":"Lunch"}]}';
+    for (const name of ["read_group_schedule", "read_activity_schedule"]) {
+      const api = name.replace("read_", "");
+      const answer = await callTool(
+        name,
+        { week: "Week 1" },
+        sfAnswering({
+          [`${V1}${api}`]: [200, rows],
+          [`${V1}week_view`]: [200, JSON.stringify(view)]
+        })
+      );
+      const said = answer.result.content.map((c) => c.text);
+      expect(said).toContain(
+        "Special days this week, each replacing its day for the whole camp: Thursday 2027-07-01, Zoo trip. On those days the rows are only what the special day's own schedule has: say the day is that special day."
+      );
+    }
+
+    // A week with none says nothing of them.
+    const none = await callTool(
+      "read_group_schedule",
+      { week: "Week 1" },
+      sfAnswering({
+        [`${V1}group_schedule`]: [200, rows],
+        [`${V1}week_view`]: [
+          200,
+          JSON.stringify({
+            ...view,
+            programs: [{ program: "Main", view: { specials: { days: [] } } }]
+          })
+        ]
+      })
+    );
+    expect(none.result.content.map((c) => c.text).join(" ")).not.toMatch(
+      /special day/i
+    );
+
+    // Unread, it says so rather than leave the day looking like its rows.
+    const unread = await callTool(
+      "read_group_schedule",
+      { week: "Week 1" },
+      sfAnswering({
+        [`${V1}group_schedule`]: [200, rows],
+        [`${V1}week_view`]: [200, "not JSON"]
+      })
+    );
+    expect(unread.result.content.map((c) => c.text)).toContain(
+      "Which days of this week a special day replaced couldn't be read this time: read_special_days says which days have one."
+    );
+  });
+
   it("theWeekIsShownInShoreshsOwnView: a schedule read carries the Schedules screen's view, in Shoresh's own page", async () => {
     const shown = tools().filter((t) => t._meta);
     expect(shown.map((t) => t.name)).toEqual([
@@ -238,7 +312,9 @@ describe("Shoresh in an AI chat", () => {
     );
     expect(answer.result.content.map((c) => c.text)).toEqual([
       byName("read_activity_schedule").about,
-      '{"records":[]}'
+      '{"records":[]}',
+      // No view here, so its special days are said to be unread (API-1.149).
+      "Which days of this week a special day replaced couldn't be read this time: read_special_days says which days have one."
     ]);
   });
 

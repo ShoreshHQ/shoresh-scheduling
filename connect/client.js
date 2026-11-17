@@ -132,7 +132,8 @@ function readResponse(stdout) {
  * Do one action as the person. Answers { ok, status, text }: text is Shoresh's own answer, so a
  * conflict or a refusal reaches the agent as the same plain sentence a person sees (API-1.9).
  * A read's answer also has about (what the answer is and is not, API-1.27), and a schedule
- * read's has weekView: what Shoresh's own view of the week draws (API-1.26), when it could be read.
+ * read's has weekView: what Shoresh's own view of the week draws (API-1.26), when it could be read,
+ * and specialDays: the special days it names over a day (API-1.149), null when it couldn't be read.
  */
 async function call(name, input, options = {}) {
   // Which season Shoresh used (API-1.108): the last one any of the call's requests said.
@@ -382,8 +383,30 @@ async function callOnce(
     } catch {
       // no view this time
     }
+    done.specialDays = specialDaysOf(done.weekView);
   }
   return done;
+}
+
+/**
+ * The days a special day replaced in the published week, as the Schedules screen names them over
+ * the day (API-1.149): {date, day, special_day} by date, or null when the view couldn't be read.
+ */
+function specialDaysOf(view) {
+  if (!view || !Array.isArray(view.programs)) return null;
+  const days = new Map();
+  for (const program of view.programs) {
+    const replaced = program?.view?.specials?.days;
+    for (const d of Array.isArray(replaced) ? replaced : []) {
+      const key = `${d.dateValue}|${d.name}`;
+      if (!days.has(key)) {
+        days.set(key, { date: d.dateValue, day: d.day, special_day: d.name });
+      }
+    }
+  }
+  return [...days.values()].sort((a, b) =>
+    String(a.date).localeCompare(String(b.date))
+  );
 }
 
 /**
