@@ -1,5 +1,6 @@
 // Per-screen list imports (slice 4c): Locations and Activities, on made-up camps only.
 import { buildTerms } from "c/shoreshTerms";
+import { FIELD } from "c/shoreshSchema";
 import { csvFile, LEAVE_OUT } from "c/shoreshImportEngine";
 import {
   CHANGE,
@@ -508,6 +509,30 @@ describe("matching what is set up", () => {
 });
 
 describe("similar names and what will also be added", () => {
+  // INGEST-2.22
+  it("asks about a name the camp has renamed since, as its new name", () => {
+    const rows = [
+      ["Activity", "Times a week: at least"],
+      ["Band", "2"]
+    ];
+    const s = setup();
+    s.activities.find((a) => a.Name === "Music")[FIELD.Activity.FormerNames] =
+      "Band";
+    const p = read("activities", rows, {}, terms, s);
+    expect(rowNamed(p, "Band").status).toBe("asked");
+    const [card] = similarCards(p, terms, {});
+    expect(card.title).toBe("Are “Band” and “Music” the same activity?");
+    expect(card.detail).toBe(
+      "“Music” was called “Band” before it was renamed."
+    );
+    const same = read("activities", rows, { [card.id]: "b" }, terms, s);
+    expect(rowNamed(same, "Band")).toMatchObject({
+      status: "changed",
+      id: "a2"
+    });
+    expect(rowNamed(read("activities", rows), "Band").status).toBe("new");
+  });
+
   it("asks about a name like one set up, and uses the answer", () => {
     const rows = [
       ["Activity", "Times a week: at least"],

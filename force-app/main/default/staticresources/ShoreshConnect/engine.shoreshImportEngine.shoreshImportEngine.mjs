@@ -226,7 +226,13 @@ export {
 } from "./engine.shoreshImportEngine.deleted.mjs";
 
 // Shared with the per-screen list imports (c/shoreshLists, slice 4c).
-export { similarity, foldName, similarPairs, mergesFrom } from "./engine.shoreshImportEngine.names.mjs";
+export {
+  similarity,
+  foldName,
+  formerNamesOf,
+  similarPairs,
+  mergesFrom
+} from "./engine.shoreshImportEngine.names.mjs";
 export {
   WEEKDAYS,
   MONDAY_TO_FRIDAY,

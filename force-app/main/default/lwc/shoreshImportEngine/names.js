@@ -10,8 +10,10 @@
  *
  * The endings rule is adapted from Shoresh desktop src/ingest/nearDuplicateNames.js (Apache-2.0,
  * see NOTICE). Numbers keep names apart: "Lunch 1" and "Lunch 2", or "Bunk 3A" and "Bunk 3B",
- * are never raised.
+ * are never raised. A fourth (INGEST-2.22): a name the camp had before a person renamed it
+ * ("Gym games", now "Gaga") is asked about as the camp's name now, never added again unasked.
  */
+import { FIELD } from "c/shoreshSchema";
 
 /** Letters and digits only, lower case, with "&" and "+" read as "and". */
 export function foldName(name) {
@@ -152,12 +154,33 @@ function pairId(kind, a, b) {
 }
 
 /**
- * Every similar pair: among the file's names, and between a file name and a name the camp
- * already has. fileNames: [{ name, count }]; campNames: [name]. Returns
- * [{ id, kind, a, b, aCount, bCount, existing (the camp's name, or null), reason }], in a fixed
- * order so the same files always ask the same questions.
+ * INGEST-2.22: the names a kind's records (activity, division or group) had before a person
+ * renamed them, from their FormerNames field (newest first, one a line): [{ former, name }], name
+ * the record's name now. Other kinds keep none.
  */
-export function similarPairs(kind, fileNames, campNames) {
+export function formerNamesOf(kind, records) {
+  const field = {
+    activity: FIELD.Activity.FormerNames,
+    division: FIELD.Division.FormerNames,
+    group: FIELD.Group.FormerNames
+  }[kind];
+  return (field ? records || [] : []).flatMap((r) =>
+    String((r && r[field]) || "")
+      .split("\n")
+      .map((former) => former.trim())
+      .filter(Boolean)
+      .map((former) => ({ former, name: r.Name }))
+  );
+}
+
+/**
+ * Every similar pair: among the file's names, and between a file name and a name the camp
+ * already has. fileNames: [{ name, count }]; campNames: [name]; formerNames: [{ former, name }]
+ * (formerNamesOf). Returns [{ id, kind, a, b, aCount, bCount, existing (the camp's name, or
+ * null), reason }], in a fixed order so the same files always ask the same questions.
+ * INGEST-2.22: a file name the camp has renamed since is asked about as its new name ("renamed").
+ */
+export function similarPairs(kind, fileNames, campNames, formerNames) {
   const files = [...(fileNames || [])].sort((x, y) =>
     x.name.localeCompare(y.name)
   );
@@ -185,10 +208,12 @@ export function similarPairs(kind, fileNames, campNames) {
         });
       }
     }
+    const renamed = renamedTo(formerNames, files[i].name);
     for (const existing of [...camp].sort()) {
       const reason = camp.has(files[i].name)
         ? null
-        : similarity(files[i].name, existing);
+        : similarity(files[i].name, existing) ||
+          (renamed.has(existing) ? "renamed" : null);
       if (reason) {
         pairs.push({
           id: pairId(kind, files[i].name, existing),
@@ -204,6 +229,16 @@ export function similarPairs(kind, fileNames, campNames) {
     }
   }
   return pairs.sort((x, y) => x.id.localeCompare(y.id));
+}
+
+/** The names the camp has now for records once called this name (capitals and spacing aside). */
+function renamedTo(formerNames, name) {
+  const key = foldName(name);
+  return new Set(
+    (formerNames || [])
+      .filter((f) => key && foldName(f.former) === key)
+      .map((f) => f.name)
+  );
 }
 
 function rootOf(parent, name) {

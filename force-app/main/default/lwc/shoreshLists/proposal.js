@@ -13,6 +13,7 @@ import {
   BRING_BACK,
   LEAVE_OUT,
   deletedAs,
+  formerNamesOf,
   deletionsIn,
   programGroupKeys,
   looseKey,
@@ -351,7 +352,8 @@ function matchScope(leads, records, kind, answers) {
       : similarPairs(
           PAIR_KIND[kind],
           readable.map((r) => ({ name: r.name, count: 1 })),
-          campNames
+          campNames,
+          formerNamesOf(PAIR_KIND[kind], records)
         );
   const byName = new Map();
   // Spaces aside, as the file's names are read ("Board  games" is "Board games").

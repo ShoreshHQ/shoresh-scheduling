@@ -20,6 +20,7 @@ const activityObject = schemaName("Activity__c");
 const activityCopiedFrom = schemaName("Activity__c.CopiedFrom__c");
 const activityEarlyWeekByDay = schemaName("Activity__c.EarlyWeekByDay__c");
 const activityEarlyWeekCount = schemaName("Activity__c.EarlyWeekCount__c");
+const activityFormerNames = schemaName("Activity__c.FormerNames__c");
 const activityGroupsAtOnce = schemaName("Activity__c.GroupsAtOnce__c");
 const activityLength = schemaName("Activity__c.Length__c");
 const activityLocation = schemaName("Activity__c.Location__c");
@@ -76,6 +77,7 @@ const coverageRecurringActivity = schemaName("Coverage__c.RecurringActivity__c")
 const coverageSeason = schemaName("Coverage__c.Season__c");
 const divisionObject = schemaName("Division__c");
 const divisionCopiedFrom = schemaName("Division__c.CopiedFrom__c");
+const divisionFormerNames = schemaName("Division__c.FormerNames__c");
 const divisionNoDivision = schemaName("Division__c.NoDivision__c");
 const divisionProgram = schemaName("Division__c.Program__c");
 const divisionSortOrder = schemaName("Division__c.SortOrder__c");
@@ -121,6 +123,7 @@ const groupObject = schemaName("Group__c");
 const groupAvailability = schemaName("Group__c.Availability__c");
 const groupCopiedFrom = schemaName("Group__c.CopiedFrom__c");
 const groupDivision = schemaName("Group__c.Division__c");
+const groupFormerNames = schemaName("Group__c.FormerNames__c");
 const groupSortOrder = schemaName("Group__c.SortOrder__c");
 const importAnswerObject = schemaName("ImportAnswer__c");
 const importAnswerAnswer = schemaName("ImportAnswer__c.Answer__c");
@@ -382,6 +385,7 @@ export const FIELD = Object.freeze({
     CopiedFrom: activityCopiedFrom.fieldApiName,
     EarlyWeekByDay: activityEarlyWeekByDay.fieldApiName,
     EarlyWeekCount: activityEarlyWeekCount.fieldApiName,
+    FormerNames: activityFormerNames.fieldApiName,
     GroupsAtOnce: activityGroupsAtOnce.fieldApiName,
     Length: activityLength.fieldApiName,
     Location: activityLocation.fieldApiName,
@@ -444,6 +448,7 @@ export const FIELD = Object.freeze({
   }),
   Division: Object.freeze({
     CopiedFrom: divisionCopiedFrom.fieldApiName,
+    FormerNames: divisionFormerNames.fieldApiName,
     NoDivision: divisionNoDivision.fieldApiName,
     Program: divisionProgram.fieldApiName,
     SortOrder: divisionSortOrder.fieldApiName
@@ -493,6 +498,7 @@ export const FIELD = Object.freeze({
     Availability: groupAvailability.fieldApiName,
     CopiedFrom: groupCopiedFrom.fieldApiName,
     Division: groupDivision.fieldApiName,
+    FormerNames: groupFormerNames.fieldApiName,
     SortOrder: groupSortOrder.fieldApiName
   }),
   ImportAnswer: Object.freeze({

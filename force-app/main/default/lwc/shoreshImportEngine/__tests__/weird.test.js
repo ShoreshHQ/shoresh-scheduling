@@ -1,12 +1,13 @@
 // Really weird files (level-5 corpus, docs/import/names-and-divisions.md rules 11 to 21): a grid on
 // its side, times in cells, letter codes, Hebrew names, one group, a colour key, two activities in
-// a cell, emoji, a place in brackets.
+// a cell, emoji, a place in brackets. Rule 22: a name the camp has renamed since.
 import { buildProposal, planFor, questionCards } from "./data/engine";
 import { importNotes } from "../plan";
 import { similarity, similarPairs } from "../names";
 import { cellName, divisionInTitle, timeRange } from "../text";
 import { readColourKey, readKey } from "../sheets";
 import { csv, terms } from "./data/samples";
+import { FIELD } from "c/shoreshSchema";
 
 const at = (h, m = 0) => h * 60 + m;
 const read = (files, answers = {}, existing = null) =>
@@ -482,5 +483,81 @@ describe("INGEST-2.20 and 2.21: emoji and a place in brackets", () => {
       { locations: [{ Id: "a0L000000000001AAA", Name: "Barn" }] }
     );
     expect(p.activities.map((a) => a.name).sort()).toEqual(["Art", "Swim"]);
+  });
+});
+
+describe("INGEST-2.22: a name the camp has renamed since", () => {
+  const day = (name, a, b) =>
+    csv(`Camp - ${name}.csv`, [
+      [`Camp - ${name}`],
+      ["Time", "Bunk 1", "Bunk 2"],
+      ["9:00-9:45", a, b],
+      ["9:45-10:30", b, a]
+    ]);
+  const files = [
+    day("Monday", "Gym games", "Art"),
+    day("Tuesday", "Art", "Gym games")
+  ];
+  const id = "similar|activity|gaga|gymgames|Gaga|Gym games";
+  const camp = (...activities) => ({
+    activities: activities.map(([Name, former], i) => ({
+      Id: `a01000000000000${i}AAA`,
+      Name,
+      Length__c: 1,
+      [FIELD.Activity.FormerNames]: former
+    }))
+  });
+
+  it("INGEST-2.22: the old name is asked about as the new one, never added unasked", () => {
+    const renamed = camp(["Gaga", "Old gym\nGym Games"], ["Art", null]);
+    const card = questionCards(read(files, {}, renamed), terms, {}).find(
+      (c) => c.id === id
+    );
+    expect(card).toMatchObject({
+      title: "Are “Gym games” and “Gaga” the same activity?",
+      detail: "“Gaga” was called “Gym games” before it was renamed."
+    });
+    expect(card.options.map((o) => o.label)).toEqual([
+      "Same: use “Gaga”",
+      "Different: add “Gym games”",
+      "Leave it out for now"
+    ]);
+    // The activities the import adds: none when it is Gaga, Gym games when it is not.
+    expect(read(files, {}, renamed).activities.map((a) => a.name)).toEqual([
+      "Gym games"
+    ]);
+    expect(
+      read(files, { [id]: "b" }, renamed).activities.map((a) => a.name)
+    ).toEqual([]);
+    expect(
+      read(files, { [id]: "different" }, renamed).activities.map((a) => a.name)
+    ).toEqual(["Gym games"]);
+  });
+
+  it("INGEST-2.22 counter-case: a name no one renamed, or one the camp still has, is not asked", () => {
+    const never = read(files, {}, camp(["Gaga", null], ["Art", null]));
+    expect(questionCards(never, terms, {}).map((c) => c.id)).not.toContain(id);
+    const both = read(
+      files,
+      {},
+      camp(["Gaga", "Gym games"], ["Gym games", null], ["Art", null])
+    );
+    expect(questionCards(both, terms, {}).map((c) => c.id)).not.toContain(id);
+    expect(both.activities).toEqual([]);
+  });
+
+  it("INGEST-2.22: a renamed group is asked about too; a kind with no former names never is", () => {
+    const pairs = similarPairs(
+      "group",
+      [{ name: "Bunk 1", count: 4 }],
+      ["Otters"],
+      [{ former: "Bunk 1", name: "Otters" }]
+    );
+    expect(pairs).toEqual([
+      expect.objectContaining({ a: "Bunk 1", b: "Otters", reason: "renamed" })
+    ]);
+    expect(
+      similarPairs("location", [{ name: "Gym", count: 1 }], ["Barn"], [])
+    ).toEqual([]);
   });
 });
