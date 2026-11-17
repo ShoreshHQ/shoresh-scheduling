@@ -74,35 +74,40 @@ function campNames(existing) {
         "activity",
         (existing && existing.activities) || []
       ),
-      group: oneGroupEach(
+      group: oneEach(
         formerNamesOf(
           "group",
           divisions.flatMap((d) => d.groups || [])
         ),
-        placed
+        placed.map((g) => g.name)
       ),
-      division: formerNamesOf(
-        "division",
-        divisions.map((d) => d.division)
+      division: oneEach(
+        formerNamesOf(
+          "division",
+          divisions.map((d) => d.division)
+        ),
+        divisions.map((d) => d.division.Name)
       )
     }
   };
 }
 
 /**
- * INGEST-2.22: a group is its division and its name, but the import pairs bare names, so an old
- * group name is asked about only when it can mean one group: one group had it, and no group has
- * it now (Bunk 1 renamed in Boys and in Girls, or kept in Girls, is read as before).
+ * INGEST-2.22: a group or division is asked about by its bare name, so an old one is asked about
+ * only when it can mean one: one name now had it, and nothing has it now (Bunk 1 renamed in Boys
+ * and in Girls, or kept in Girls, is read as before). now: the names the kind has now.
  */
-function oneGroupEach(former, placed) {
-  const now = new Set(placed.map((g) => foldName(g.name)));
-  const count = new Map();
+function oneEach(former, now) {
+  const current = new Set(now.map(foldName));
+  const namesOf = new Map();
   former.forEach((f) => {
     const key = foldName(f.former);
-    count.set(key, (count.get(key) || 0) + 1);
+    namesOf.set(key, new Set([...(namesOf.get(key) || []), f.name]));
   });
   return former.filter(
-    (f) => count.get(foldName(f.former)) === 1 && !now.has(foldName(f.former))
+    (f) =>
+      namesOf.get(foldName(f.former)).size === 1 &&
+      !current.has(foldName(f.former))
   );
 }
 

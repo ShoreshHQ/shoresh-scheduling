@@ -296,9 +296,9 @@ Each rule is clue, meaning, example, test.
     renamed." "Same" reads it as Gaga; "Different" adds Gym games; or leave it out. Never added
     again unasked. A rename keeps the old name (the record's Former Names, newest first, ten at
     most); capitals or spacing alone are no new name, a name given back is no longer a former
-    one, and a copied season keeps them. A group's old name is asked about in Import last year
-    only when it can mean one group (one group had it, and none has it now), since that import
-    pairs names without their division. Outside systems have their own rule (API-4.9).
+    one, and a copied season keeps them. A group's or division's old name is asked about in
+    Import last year only when it can mean one (one name now had it, and none has it now), since
+    that import pairs bare names. Outside systems have their own rule (API-4.9).
     Test: `weird.test.js` "INGEST-2.22: …"; `lists.test.js` "asks about a name the camp has
     renamed since"; `FormerNamesTest`. Counter-cases: a name no one renamed is added as before;
     a name the camp still has (a second "Gym games" set up) is that one, not asked; "Bunk 1"
