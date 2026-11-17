@@ -68,8 +68,11 @@ function toolResult(said) {
   } else if (answer.specialDays?.length) {
     content.push({
       type: "text",
-      text: `Special days this week, each replacing its day for the whole camp: ${answer.specialDays
-        .map((d) => `${d.day} ${d.date}, ${d.special_day}`)
+      text: `Special days this week, each replacing its whole day: ${answer.specialDays
+        .map(
+          (d) =>
+            `${d.day} ${d.date}, ${d.special_day}${d.program ? ` (${d.program} only)` : ""}`
+        )
         .join(
           "; "
         )}. On those days the rows are only what the special day's own schedule has: say the day is that special day.`

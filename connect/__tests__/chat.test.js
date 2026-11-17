@@ -130,9 +130,46 @@ describe("Shoresh in an AI chat", () => {
       );
       const said = answer.result.content.map((c) => c.text);
       expect(said).toContain(
-        "Special days this week, each replacing its day for the whole camp: Thursday 2027-07-01, Zoo trip. On those days the rows are only what the special day's own schedule has: say the day is that special day."
+        "Special days this week, each replacing its whole day: Thursday 2027-07-01, Zoo trip (Main only); Thursday 2027-07-01, Zoo trip (Teens only). On those days the rows are only what the special day's own schedule has: say the day is that special day."
       );
     }
+
+    // One program's special day is never said for another program, published before it (review of #416).
+    const oneProgram = await callTool(
+      "read_group_schedule",
+      { week: "Week 1" },
+      sfAnswering({
+        [`${V1}group_schedule`]: [200, rows],
+        [`${V1}week_view`]: [
+          200,
+          JSON.stringify({
+            ...view,
+            programs: [
+              view.programs[0],
+              { program: "Teens", view: { specials: { days: [], events: [] } } }
+            ]
+          })
+        ]
+      })
+    );
+    expect(oneProgram.result.content.map((c) => c.text)).toContain(
+      "Special days this week, each replacing its whole day: Thursday 2027-07-01, Zoo trip (Main only). On those days the rows are only what the special day's own schedule has: say the day is that special day."
+    );
+    // A camp of one program names no program.
+    const single = await callTool(
+      "read_group_schedule",
+      { week: "Week 1" },
+      sfAnswering({
+        [`${V1}group_schedule`]: [200, rows],
+        [`${V1}week_view`]: [
+          200,
+          JSON.stringify({ ...view, programs: [view.programs[0]] })
+        ]
+      })
+    );
+    expect(single.result.content.map((c) => c.text)).toContain(
+      "Special days this week, each replacing its whole day: Thursday 2027-07-01, Zoo trip. On those days the rows are only what the special day's own schedule has: say the day is that special day."
+    );
 
     // A week with none says nothing of them.
     const none = await callTool(

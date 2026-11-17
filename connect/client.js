@@ -391,16 +391,24 @@ async function callOnce(
 /**
  * The days a special day replaced in the published week, as the Schedules screen names them over
  * the day (API-1.149): {date, day, special_day} by date, or null when the view couldn't be read.
+ * Each program publishes on its own and carries the special days it had then, so with several
+ * programs each day also names its program.
  */
 function specialDaysOf(view) {
   if (!view || !Array.isArray(view.programs)) return null;
+  const several = view.programs.length > 1;
   const days = new Map();
   for (const program of view.programs) {
     const replaced = program?.view?.specials?.days;
     for (const d of Array.isArray(replaced) ? replaced : []) {
-      const key = `${d.dateValue}|${d.name}`;
+      const key = `${d.dateValue}|${d.name}|${several ? program.program : ""}`;
       if (!days.has(key)) {
-        days.set(key, { date: d.dateValue, day: d.day, special_day: d.name });
+        days.set(key, {
+          date: d.dateValue,
+          day: d.day,
+          special_day: d.name,
+          ...(several ? { program: program.program } : {})
+        });
       }
     }
   }
