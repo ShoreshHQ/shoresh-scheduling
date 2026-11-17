@@ -353,7 +353,10 @@ function matchScope(leads, records, kind, answers) {
           PAIR_KIND[kind],
           readable.map((r) => ({ name: r.name, count: 1 })),
           campNames,
-          formerNamesOf(PAIR_KIND[kind], records)
+          formerNamesOf(PAIR_KIND[kind], records).map((f) => ({
+            ...f,
+            name: tidy(f.name)
+          }))
         );
   const byName = new Map();
   // Spaces aside, as the file's names are read ("Board  games" is "Board games").

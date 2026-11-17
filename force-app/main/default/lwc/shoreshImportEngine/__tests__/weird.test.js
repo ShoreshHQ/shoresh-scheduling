@@ -546,6 +546,41 @@ describe("INGEST-2.22: a name the camp has renamed since", () => {
     expect(both.activities).toEqual([]);
   });
 
+  it("INGEST-2.22: an old group name is asked about only when it means one group", () => {
+    const groups = (...list) => ({
+      programs: [
+        {
+          program: { Id: "p1", Name: "Main" },
+          timeBlocks: [],
+          divisions: list.map(([division, name, former], i) => ({
+            division: { Id: `d${i}`, Name: division },
+            groups: [
+              { Id: `g${i}`, Name: name, [FIELD.Group.FormerNames]: former }
+            ]
+          }))
+        }
+      ]
+    });
+    const groupQuestions = (existing) =>
+      questionCards(read(files, {}, existing), terms, {})
+        .map((c) => c.id)
+        .filter((key) => key.startsWith("similar|group|"));
+    expect(groupQuestions(groups(["Boys", "Otters", "Bunk 1"]))).toEqual([
+      "similar|group|bunk1|otters|Bunk 1|Otters"
+    ]);
+    // Renamed in two divisions, or kept in another: read as before, never one division's for both.
+    expect(
+      groupQuestions(
+        groups(["Boys", "Boys 1", "Bunk 1"], ["Girls", "Girls 1", "Bunk 1"])
+      )
+    ).toEqual([]);
+    expect(
+      groupQuestions(
+        groups(["Boys", "Aleph", "Bunk 1"], ["Girls", "Bunk 1", null])
+      )
+    ).toEqual([]);
+  });
+
   it("INGEST-2.22: a renamed group is asked about too; a kind with no former names never is", () => {
     const pairs = similarPairs(
       "group",

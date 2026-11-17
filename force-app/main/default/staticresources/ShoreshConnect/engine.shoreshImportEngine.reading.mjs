@@ -13,6 +13,7 @@ import {
   readPage
 } from "./engine.shoreshImportEngine.layouts.mjs";
 import {
+  foldName,
   formerNamesOf,
   mergesFrom,
   readWithoutAsking,
@@ -73,9 +74,12 @@ function campNames(existing) {
         "activity",
         (existing && existing.activities) || []
       ),
-      group: formerNamesOf(
-        "group",
-        divisions.flatMap((d) => d.groups || [])
+      group: oneGroupEach(
+        formerNamesOf(
+          "group",
+          divisions.flatMap((d) => d.groups || [])
+        ),
+        placed
       ),
       division: formerNamesOf(
         "division",
@@ -83,6 +87,23 @@ function campNames(existing) {
       )
     }
   };
+}
+
+/**
+ * INGEST-2.22: a group is its division and its name, but the import pairs bare names, so an old
+ * group name is asked about only when it can mean one group: one group had it, and no group has
+ * it now (Bunk 1 renamed in Boys and in Girls, or kept in Girls, is read as before).
+ */
+function oneGroupEach(former, placed) {
+  const now = new Set(placed.map((g) => foldName(g.name)));
+  const count = new Map();
+  former.forEach((f) => {
+    const key = foldName(f.former);
+    count.set(key, (count.get(key) || 0) + 1);
+  });
+  return former.filter(
+    (f) => count.get(foldName(f.former)) === 1 && !now.has(foldName(f.former))
+  );
 }
 
 /** Each name once: how often it is used, and in which files (INGEST-2.15). */
