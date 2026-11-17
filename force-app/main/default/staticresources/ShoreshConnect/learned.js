@@ -142,8 +142,8 @@ async function forgetAnswer(capability, input, { read, send, answer, load }) {
   return {
     ...done,
     text: done.text
-      .replace(/the remembered answer "[^"]*"/, `"${title}"`)
-      .replace(/^Forgot "[^"]*"/, `Forgot "${title}"`)
+      .replace(/the remembered answer "[^"]*"/, () => `"${title}"`)
+      .replace(/^Forgot "[^"]*"/, () => `Forgot "${title}"`)
   };
 }
 

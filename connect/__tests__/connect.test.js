@@ -2539,6 +2539,10 @@ describe("Shoresh for AI tools and the command line", () => {
     expect(byName("bring_in_choices").description).toContain(
       "from a file or from the person's own words: one camper's new or changed choices go as a sheet of that one camper"
     );
+    // Matched by number, or by name: a camper the review counts as new would be a second one.
+    expect(byName("bring_in_choices").description).toContain(
+      "if the review counts that camper as new, stop and ask the person: saving would add a second camper."
+    );
   });
 
   // API-1.150 (AI test 2026-11-17 items 73 and 84)

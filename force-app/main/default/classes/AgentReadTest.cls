@@ -290,6 +290,7 @@ private class AgentReadTest {
       ),
       AccessLevel.SYSTEM_MODE
     );
+    PublishedGuard.done();
   }
 
   // API-1.24: the seasons the person can see, each with its weeks and programs.
