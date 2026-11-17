@@ -106,18 +106,37 @@ public with sharing class OutgoingPublished {
   }
 
   /**
-   * "Nothing in Week 1 of Summer 2026 is published yet." naming the season used, and the other
-   * seasons the user can see where a week of that name is published, so no one has to guess
-   * (API-1.25).
+   * "Nothing in Week 1 of Summer 2026 is published yet." naming the season used, and the camp's
+   * other seasons in the season picker (not archived) where a week of that name is published, so
+   * no one has to guess (API-1.25). Another camp's season is never named: each camp is its own.
    */
   public static String notPublished(Season__c season, String week) {
+    // Which seasons are the camp's own and in the season picker, read in system mode on purpose:
+    // a connection is given no access to a season's camp or Archived, and only narrows which of
+    // the seasons it can see (the user-mode query below) are named; nothing more is shown.
+    Id campId = [
+      SELECT Camp__c
+      FROM Season__c
+      WHERE Id = :season.Id
+      WITH SYSTEM_MODE
+    ]
+    .Camp__c;
+    Set<Id> live = new Map<Id, Season__c>(
+        [
+          SELECT Id
+          FROM Season__c
+          WHERE Camp__c = :campId AND Archived__c = FALSE AND Id != :season.Id
+          WITH SYSTEM_MODE
+        ]
+      )
+      .keySet();
     Set<String> elsewhere = new Set<String>();
     for (Schedule__c schedule : [
       SELECT Week__r.Name, Program__r.Season__r.Name
       FROM Schedule__c
       WHERE
         Status__c = :SchedulePublish.PUBLISHED
-        AND Program__r.Season__c != :season.Id
+        AND Program__r.Season__c IN :live
       WITH USER_MODE
       ORDER BY Program__r.Season__r.Name
       LIMIT 1000

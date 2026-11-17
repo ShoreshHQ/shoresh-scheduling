@@ -250,6 +250,47 @@ private class AgentReadTest {
       'Nothing in Week 1 of Summer 2025 is published yet. Week 1 is published in: Summer 2026. Schedules go out once a week is published.',
       notThere.get('message')
     );
+    // Never another camp's season, nor an archived one of this camp (AI test 2026-11-17 item 37).
+    publishedWeekOne(
+      ShoreshTestData.season(
+          ShoreshTestData.camp('Camp Birch').Id,
+          'Birch Summer 2026'
+        )
+        .Id
+    );
+    Season__c archived = ShoreshTestData.season(
+      camp.season.Camp__c,
+      'Summer 2024'
+    );
+    publishedWeekOne(archived.Id);
+    archived.Archived__c = true;
+    Database.update(archived, AccessLevel.SYSTEM_MODE);
+    notThere = get(
+      new OutgoingGroupSchedule(),
+      new Map<String, String>{ 'season' => 'Summer 2025', 'week' => 'Week 1' }
+    );
+    Assert.areEqual(
+      'Nothing in Week 1 of Summer 2025 is published yet. Week 1 is published in: Summer 2026. Schedules go out once a week is published.',
+      notThere.get('message')
+    );
+  }
+
+  /** A season's Week 1, published in a program of its own. */
+  private static void publishedWeekOne(Id seasonId) {
+    Program__c program = ShoreshTestData.program(seasonId, 'Main');
+    Week__c week = ShoreshTestData.weeks(seasonId, 1)[0];
+    PublishedGuard.allow();
+    Database.insert(
+      new Schedule__c(
+        Program__c = program.Id,
+        Week__c = week.Id,
+        Name = 'Published',
+        Status__c = 'Published',
+        Origin__c = 'Manual'
+      ),
+      AccessLevel.SYSTEM_MODE
+    );
+    PublishedGuard.done();
   }
 
   // API-1.24: the seasons the person can see, each with its weeks and programs.
