@@ -109,6 +109,45 @@ async function forgetPattern(capability, input, { read, send, answer, load }) {
 }
 
 /**
+ * forget_learned_answer: Shoresh's question and answer name the answer by its line, as the
+ * screen's Forget names it ("Forget Archery: 2–4 a week"), never by what is stored ("2-4") that a
+ * person can't read (API-1.150). The line is the screen's own, worked out as read_learned_answers
+ * works it out; when it can't be found, Shoresh's words go as they are.
+ */
+async function forgetAnswer(capability, input, { read, send, answer, load }) {
+  // Read first: once forgotten, the answer's line is no longer there.
+  let title = null;
+  try {
+    const fields = input.season !== undefined ? { season: input.season } : {};
+    const got = await read("read_learned_answers", fields);
+    if (got.status === 200) {
+      const body = JSON.parse(got.body);
+      const m = await load();
+      const setup = body.setup || {};
+      const line = m
+        .historyLines(
+          body.events || [],
+          body.answers || [],
+          m.buildTerms(setup.labels || []),
+          m.speller(setup)
+        )
+        .find((l) => l.current && l.answer && l.answer.id === input.answer_id);
+      if (line) title = line.title;
+    }
+  } catch {
+    title = null;
+  }
+  const done = answer(await send(capability.api, input));
+  if (!done.ok || !title) return done;
+  return {
+    ...done,
+    text: done.text
+      .replace(/the remembered answer "[^"]*"/, `"${title}"`)
+      .replace(/^Forgot "[^"]*"/, `Forgot "${title}"`)
+  };
+}
+
+/**
  * Undo on What Shoresh has learned lasts as long as the screen's (API-1.97): the screen holds each
  * Change, Forget and Forget pattern this visit made and offers Undo on it only while its page is
  * open (c/shoreshLearned shoreshLearned.js undos). The connector holds each undo its own actions
@@ -155,6 +194,7 @@ async function undoLearned(input, { ask, answer }, org) {
 module.exports = {
   readLearned,
   forgetPattern,
+  forgetAnswer,
   holdUndo,
   undoLearned,
   oneCommandAtATime

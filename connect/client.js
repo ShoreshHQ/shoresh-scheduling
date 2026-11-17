@@ -25,6 +25,7 @@ const { makeFile } = require("./exports");
 const {
   readLearned,
   forgetPattern,
+  forgetAnswer,
   holdUndo,
   undoLearned
 } = require("./learned");
@@ -350,6 +351,15 @@ async function callOnce(
   if (capability.forgetsPattern) {
     return holdUndo(
       await forgetPattern(capability, input, {
+        ...at,
+        load: () => learned(namespace)
+      }),
+      org
+    );
+  }
+  if (capability.forgetsAnswer) {
+    return holdUndo(
+      await forgetAnswer(capability, input, {
         ...at,
         load: () => learned(namespace)
       }),

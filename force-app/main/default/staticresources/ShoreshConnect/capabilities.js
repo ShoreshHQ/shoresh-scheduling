@@ -247,7 +247,7 @@ function bringInChoicesFile() {
   const c = importFile(
     "bring_in_choices",
     "bring_in_choices",
-    "Import campers' elective choices from a file, as the Elective seats screen's Import choices does: this is how a week's electives start (the first bring-in makes the week's run), and later sheets bring choices in again. The file is read with the screen's own code (each camper, their bunk and their choices in order). Send it first without save: the answer is the review (how many campers, new or already here, choices made by hand that are kept, names Shoresh doesn't have yet, each at the answer the screen starts it at) and its seen. Change a new name's answer only when the person wants it otherwise (ask them about anything the file doesn't make plain), then send the same file and answers with save: true and the seen. It is done as you, with your own access, all or none; a camper's choices changed by hand are kept. This is how a person's AI brings in campers, their bunks and their choices.",
+    "Import campers' elective choices from a file, as the Elective seats screen's Import choices does: this is how a week's electives start (the first bring-in makes the week's run), and later sheets bring choices in again. The file is read with the screen's own code (each camper, their bunk and their choices in order). Send it first without save: the answer is the review (how many campers, new or already here, choices made by hand that are kept, names Shoresh doesn't have yet, each at the answer the screen starts it at) and its seen. Change a new name's answer only when the person wants it otherwise (ask them about anything the file doesn't make plain), then send the same file and answers with save: true and the seen. It is done as you, with your own access, all or none; a camper's choices changed by hand are kept. This is how a person's AI brings in campers, their bunks and their choices, from a file or from the person's own words: one camper's new or changed choices go as a sheet of that one camper (csv_text with their name, bunk and choices in order); it updates that camper, never adds a second, and campers not on the sheet keep their choices.",
     {
       elective_set: {
         type: "string",
@@ -1504,7 +1504,7 @@ const CAPABILITIES = [
     method: "POST",
     sendsFields: true,
     description:
-      "Fill an empty season with weeks covering its dates, on the days its programs run, as Camp Setup's Fill in weeks does. Send the season's start_date and end_date as list_seasons gave them as seen: if someone changed them since, nothing is added and Shoresh says so. A season that already has weeks is refused (add more with add_setup_record). It is done as you, with your own access.",
+      "Fill an empty season with weeks covering its dates, on the days its programs run, as Camp Setup's Fill in weeks does. Send the season's start_date and end_date as list_seasons gave them as seen: if someone changed them since, nothing is added and Shoresh says so. A season that already has weeks is refused, as on the screen: tell the person so, and add no week unasked (add_setup_record adds one only when they ask for it by its dates). It is done as you, with your own access.",
     inputSchema: {
       type: "object",
       properties: {
@@ -2410,6 +2410,7 @@ const CAPABILITIES = [
     method: "POST",
     sendsFields: true,
     givesLearnedUndo: true,
+    forgetsAnswer: true,
     description:
       'Forget one remembered answer, as Forget on "What Shoresh has learned" does: the next import asks that question again. Ask the person first. Read it first with read_learned_answers and send its answer_id and seen. It is done as you, with your own access, and the answer gives an undo for undo_learned_answer. If someone changed or forgot it since, nothing is changed and Shoresh says so.',
     inputSchema: {

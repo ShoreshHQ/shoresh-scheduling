@@ -2529,6 +2529,87 @@ describe("Shoresh for AI tools and the command line", () => {
     expect(Object.keys(capability.inputSchema.properties)).toEqual(["season"]);
   });
 
+  // API-1.151 (AI test 2026-11-17 items 51, 68 and 68a)
+  it("toolsPointToTheScreensWayNotAround: Fill in weeks' refusal is passed on with no week added unasked, and one camper's picks said in words go through bring_in_choices", () => {
+    const fill = byName("fill_in_weeks").description;
+    expect(fill).toContain(
+      "A season that already has weeks is refused, as on the screen: tell the person so, and add no week unasked"
+    );
+    expect(fill).not.toContain("add more with add_setup_record");
+    expect(byName("bring_in_choices").description).toContain(
+      "from a file or from the person's own words: one camper's new or changed choices go as a sheet of that one camper"
+    );
+  });
+
+  // API-1.150 (AI test 2026-11-17 items 73 and 84)
+  it("forgettingNamesTheLineAsTheScreenDoes: forget_learned_answer's question and answer name the answer by its line on What Shoresh has learned, never by what is stored", async () => {
+    const LWC = "../../force-app/main/default/lwc";
+    const learnedNow = JSON.stringify({
+      camp: "Pine Hollow (made up)",
+      setup: { labels: [] },
+      answers: [
+        {
+          id: "a01",
+          question: "kind|lunch",
+          answer: "fixed",
+          byYou: true,
+          byName: "Pat",
+          answeredOn: "2031-07-01",
+          savedAt: "2031-07-01T10:00:00Z"
+        }
+      ],
+      events: []
+    });
+    const modules = async () => ({
+      ...require(`${LWC}/shoreshLearned/history.js`),
+      ...require(`${LWC}/shoreshLearned/builtIn.js`),
+      ...require(`${LWC}/shoreshLearned/view.js`),
+      ...require(`${LWC}/shoreshPatterns/shoreshPatterns.js`),
+      ...require(`${LWC}/shoreshTerms/shoreshTerms.js`)
+    });
+    const answering = (message, sent) => async (args, stdin) => {
+      sent.push({ args, stdin });
+      const body = /read_learned_answers/.test(args[3])
+        ? learnedNow
+        : JSON.stringify({ message });
+      return `HTTP/1.1 200\ncontent-type: application/json\n\n${body}`;
+    };
+    const input = { season: "Summer 2031", answer_id: "a01", seen: "fixed" };
+    const sent = [];
+    const asked = await call("forget_learned_answer", input, {
+      run: answering(
+        'Nothing has been done yet. This forgets the remembered answer "fixed": the next import asks that question again. Show the person exactly this and ask. Only if they say yes, send the same request again with confirm: "abc".',
+        sent
+      ),
+      learned: modules
+    });
+    expect(asked.text).toBe(
+      'Nothing has been done yet. This forgets "lunch is a fixed activity": the next import asks that question again. Show the person exactly this and ask. Only if they say yes, send the same request again with confirm: "abc".'
+    );
+    expect(asked.asksFirst).toBe(true);
+    // Read first (once forgotten, its line is gone), then the forget as asked.
+    expect(sent.map((s) => s.args[3])).toEqual([
+      "/services/apexrest/v1/read_learned_answers?season=Summer+2031",
+      "/services/apexrest/v1/forget_learned_answer"
+    ]);
+    expect(JSON.parse(sent[1].stdin)).toEqual(input);
+
+    const done = await call(
+      "forget_learned_answer",
+      { ...input, confirm: "abc" },
+      {
+        run: answering(
+          'Forgot "fixed": the next import asks that question again. To undo it, use undo_learned_answer with undo "forget:a01".',
+          []
+        ),
+        learned: modules
+      }
+    );
+    expect(done.text).toMatch(
+      /^Forgot "lunch is a fixed activity": the next import asks that question again\./
+    );
+  });
+
   // API-1.93, API-1.94, API-1.95, API-1.96, API-1.97
   it("learnedAsTheScreen: What Shoresh has learned is read with one GET and listed with the screen's own modules; each change is sent with what was read as seen, and forgetting tells the AI to ask first", async () => {
     const LWC = "../../force-app/main/default/lwc";

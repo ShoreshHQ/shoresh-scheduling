@@ -106,11 +106,18 @@ public with sharing class OutgoingPublished {
   }
 
   /**
-   * "Nothing in Week 1 of Summer 2026 is published yet." naming the season used, and the other
-   * seasons the user can see where a week of that name is published, so no one has to guess
-   * (API-1.25).
+   * "Nothing in Week 1 of Summer 2026 is published yet." naming the season used, and the camp's
+   * other seasons in the season picker (not archived) where a week of that name is published, so
+   * no one has to guess (API-1.25). Another camp's season is never named: each camp is its own.
    */
   public static String notPublished(Season__c season, String week) {
+    Id campId = [
+      SELECT Camp__c
+      FROM Season__c
+      WHERE Id = :season.Id
+      WITH USER_MODE
+    ]
+    .Camp__c;
     Set<String> elsewhere = new Set<String>();
     for (Schedule__c schedule : [
       SELECT Week__r.Name, Program__r.Season__r.Name
@@ -118,6 +125,8 @@ public with sharing class OutgoingPublished {
       WHERE
         Status__c = :SchedulePublish.PUBLISHED
         AND Program__r.Season__c != :season.Id
+        AND Program__r.Season__r.Camp__c = :campId
+        AND Program__r.Season__r.Archived__c = FALSE
       WITH USER_MODE
       ORDER BY Program__r.Season__r.Name
       LIMIT 1000
