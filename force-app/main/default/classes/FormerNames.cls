@@ -7,6 +7,13 @@
 public with sharing class FormerNames {
   public static final Integer MOST = 10;
 
+  /** From a record's trigger: on before update, each renamed record keeps its old name in field. */
+  public static void noteRenames(Schema.SObjectField field) {
+    if (Trigger.isBefore && Trigger.isUpdate) {
+      note(Trigger.new, Trigger.oldMap, field);
+    }
+  }
+
   /** Before update: each renamed record keeps the name it had, in field (its FormerNames__c). */
   public static void note(
     List<SObject> records,
