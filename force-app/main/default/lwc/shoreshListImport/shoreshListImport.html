@@ -182,6 +182,9 @@
                       aria-hidden="true"
                     ></span>
                     <div class="card-title">{card.title}</div>
+                    <template lwc:if={card.detail}>
+                      <div class="import-quiet">{card.detail}</div>
+                    </template>
                     <div class="card-options">
                       <template lwc:if={card.daysQuestion}>
                         <lightning-checkbox-group

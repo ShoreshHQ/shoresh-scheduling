@@ -122,7 +122,10 @@ export function similarCard(pair, t, answer) {
     lane: "standard",
     title: `Are ${quoted(pair.a)} and ${quoted(pair.b)} the same ${term}?`,
     subject: pair.existing ? pair.a : `${pair.a} and ${pair.b}`,
-    detail: SIMILAR_WHY[pair.reason],
+    detail:
+      pair.reason === "renamed"
+        ? `${quoted(pair.b)} was called ${quoted(pair.a)} before it was renamed.`
+        : SIMILAR_WHY[pair.reason],
     learn: similarLearn(pair)
   };
   if (pair.existing) {

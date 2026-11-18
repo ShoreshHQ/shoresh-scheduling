@@ -96,7 +96,8 @@ public with sharing class SetupCopier {
         EarlyWeekCount__c,
         EarlyWeekByDay__c,
         Notes__c,
-        SortOrder__c
+        SortOrder__c,
+        FormerNames__c
       FROM Activity__c
       WHERE Season__c = :sourceSeasonId
       WITH USER_MODE

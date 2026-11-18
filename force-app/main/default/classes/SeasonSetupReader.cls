@@ -182,7 +182,7 @@ public with sharing class SeasonSetupReader {
     }
     Map<Id, DivisionSetup> divisions = new Map<Id, DivisionSetup>();
     for (Division__c division : [
-      SELECT Id, Name, Program__c, SortOrder__c, NoDivision__c
+      SELECT Id, Name, Program__c, SortOrder__c, NoDivision__c, FormerNames__c
       FROM Division__c
       WHERE Program__c IN :programs.keySet()
       WITH USER_MODE
@@ -193,7 +193,14 @@ public with sharing class SeasonSetupReader {
       programs.get(division.Program__c).divisions.add(setup);
     }
     for (Group__c grp : [
-      SELECT Id, Name, Division__c, Availability__c, SortOrder__c, CreatedDate
+      SELECT
+        Id,
+        Name,
+        Division__c,
+        Availability__c,
+        SortOrder__c,
+        FormerNames__c,
+        CreatedDate
       FROM Group__c
       WHERE Division__c IN :divisions.keySet()
       WITH USER_MODE
@@ -300,6 +307,7 @@ public with sharing class SeasonSetupReader {
         EarlyWeekByDay__c,
         Notes__c,
         SortOrder__c,
+        FormerNames__c,
         CreatedDate,
         (SELECT Id, Division__c, Group__c FROM Eligibilities__r)
       FROM Activity__c

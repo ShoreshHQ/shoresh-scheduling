@@ -12,7 +12,13 @@ import {
   pageWeek,
   readPage
 } from "./layouts";
-import { mergesFrom, readWithoutAsking, similarPairs } from "./names";
+import {
+  foldName,
+  formerNamesOf,
+  mergesFrom,
+  readWithoutAsking,
+  similarPairs
+} from "./names";
 import { baseName, distinctName, filesToPages, sharedPrefix } from "./sheets";
 import {
   buildTimetables,
@@ -43,6 +49,7 @@ function pageKeys(pages) {
 
 function campNames(existing) {
   const programs = (existing && existing.programs) || [];
+  const divisions = programs.flatMap((p) => p.divisions || []);
   const activityLike = [
     ...((existing && existing.activities) || []),
     ...programs.flatMap((p) => p.fixedActivities || []),
@@ -60,8 +67,48 @@ function campNames(existing) {
   return {
     activityLike: [...new Set(activityLike)],
     groups: [...new Set(placed.map((g) => g.name))],
-    placed
+    placed,
+    // INGEST-2.22: what a person has renamed, asked about when a file still uses the old name.
+    former: {
+      activity: formerNamesOf(
+        "activity",
+        (existing && existing.activities) || []
+      ),
+      group: oneEach(
+        formerNamesOf(
+          "group",
+          divisions.flatMap((d) => d.groups || [])
+        ),
+        placed.map((g) => g.name)
+      ),
+      division: oneEach(
+        formerNamesOf(
+          "division",
+          divisions.map((d) => d.division)
+        ),
+        divisions.map((d) => d.division.Name)
+      )
+    }
   };
+}
+
+/**
+ * INGEST-2.22: a group or division is asked about by its bare name, so an old one is asked about
+ * only when it can mean one: one name now had it, and nothing has it now (Bunk 1 renamed in Boys
+ * and in Girls, or kept in Girls, is read as before). now: the names the kind has now.
+ */
+function oneEach(former, now) {
+  const current = new Set(now.map(foldName));
+  const namesOf = new Map();
+  former.forEach((f) => {
+    const key = foldName(f.former);
+    namesOf.set(key, new Set([...(namesOf.get(key) || []), f.name]));
+  });
+  return former.filter(
+    (f) =>
+      namesOf.get(foldName(f.former)).size === 1 &&
+      !current.has(foldName(f.former))
+  );
 }
 
 /** Each name once: how often it is used, and in which files (INGEST-2.15). */
@@ -278,7 +325,7 @@ function emojiNotes(placements) {
  * asked as a similar name (names-and-divisions.md, rule 4), never a silent division of one.
  * Counts are groups, not cells.
  */
-function divisionPairs(noted, campPlaced) {
+function divisionPairs(noted, campPlaced, former) {
   const groupsOf = new Map();
   noted
     .filter((g) => g.division && !g.weakDivision)
@@ -295,8 +342,10 @@ function divisionPairs(noted, campPlaced) {
   const campDivisions = [
     ...new Set(campPlaced.map((g) => g.division).filter(Boolean))
   ];
-  return similarPairs("division", counts, campDivisions).filter(
-    (p) => Math.min(p.aCount, p.existing ? p.aCount : p.bCount) === 1
+  return similarPairs("division", counts, campDivisions, former).filter(
+    (p) =>
+      p.reason === "renamed" ||
+      Math.min(p.aCount, p.existing ? p.aCount : p.bCount) === 1
   );
 }
 
@@ -444,14 +493,16 @@ export function readImport(input) {
     ...similarPairs(
       "activity",
       counted(read.placements.map((p) => ({ name: p.text, file: p.file }))),
-      camp.activityLike
+      camp.activityLike,
+      camp.former.activity
     ),
     ...similarPairs(
       "group",
       counted(read.noted.map((g) => ({ name: g.name, file: g.file }))),
-      camp.groups
+      camp.groups,
+      camp.former.group
     ),
-    ...divisionPairs(read.noted, camp.placed)
+    ...divisionPairs(read.noted, camp.placed, camp.former.division)
   ];
   // Rules 2 and 3 (names-and-divisions.md): a spelling or ending slip is read as the common
   // name and said in the notes; a remembered answer about the pair still wins.

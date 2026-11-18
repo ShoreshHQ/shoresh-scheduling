@@ -43,6 +43,12 @@ export function similarCards(proposal, t, answers) {
     const card = {
       id: pair.id,
       title: `Are ${quoted(pair.a)} and ${quoted(pair.b)} the same ${word}?`,
+      // INGEST-2.22: why two names that look nothing alike are asked about.
+      ...(pair.reason === "renamed"
+        ? {
+            detail: `${quoted(pair.b)} was called ${quoted(pair.a)} before it was renamed.`
+          }
+        : {}),
       // Import last year asks this with both spellings; either "same" answer means the camp's.
       answer:
         pair.existing && answers[pair.id] === "a"

@@ -19,6 +19,7 @@ public with sharing class GroupTriggerHandler {
     }
     if (operation == System.TriggerOperation.BEFORE_UPDATE) {
       GroupMoves.refuseOtherPrograms(groups, before);
+      FormerNames.note(groups, before, Group__c.FormerNames__c);
     } else if (operation == System.TriggerOperation.AFTER_DELETE) {
       // DIV-1.1: a holding record whose group is gone goes too.
       NoDivisions.removeEmpty(NoDivisions.left(null, before));

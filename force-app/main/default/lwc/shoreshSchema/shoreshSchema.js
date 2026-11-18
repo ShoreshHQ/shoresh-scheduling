@@ -19,6 +19,7 @@ import activityObject from "@salesforce/schema/Activity__c";
 import activityCopiedFrom from "@salesforce/schema/Activity__c.CopiedFrom__c";
 import activityEarlyWeekByDay from "@salesforce/schema/Activity__c.EarlyWeekByDay__c";
 import activityEarlyWeekCount from "@salesforce/schema/Activity__c.EarlyWeekCount__c";
+import activityFormerNames from "@salesforce/schema/Activity__c.FormerNames__c";
 import activityGroupsAtOnce from "@salesforce/schema/Activity__c.GroupsAtOnce__c";
 import activityLength from "@salesforce/schema/Activity__c.Length__c";
 import activityLocation from "@salesforce/schema/Activity__c.Location__c";
@@ -75,6 +76,7 @@ import coverageRecurringActivity from "@salesforce/schema/Coverage__c.RecurringA
 import coverageSeason from "@salesforce/schema/Coverage__c.Season__c";
 import divisionObject from "@salesforce/schema/Division__c";
 import divisionCopiedFrom from "@salesforce/schema/Division__c.CopiedFrom__c";
+import divisionFormerNames from "@salesforce/schema/Division__c.FormerNames__c";
 import divisionNoDivision from "@salesforce/schema/Division__c.NoDivision__c";
 import divisionProgram from "@salesforce/schema/Division__c.Program__c";
 import divisionSortOrder from "@salesforce/schema/Division__c.SortOrder__c";
@@ -120,6 +122,7 @@ import groupObject from "@salesforce/schema/Group__c";
 import groupAvailability from "@salesforce/schema/Group__c.Availability__c";
 import groupCopiedFrom from "@salesforce/schema/Group__c.CopiedFrom__c";
 import groupDivision from "@salesforce/schema/Group__c.Division__c";
+import groupFormerNames from "@salesforce/schema/Group__c.FormerNames__c";
 import groupSortOrder from "@salesforce/schema/Group__c.SortOrder__c";
 import importAnswerObject from "@salesforce/schema/ImportAnswer__c";
 import importAnswerAnswer from "@salesforce/schema/ImportAnswer__c.Answer__c";
@@ -381,6 +384,7 @@ export const FIELD = Object.freeze({
     CopiedFrom: activityCopiedFrom.fieldApiName,
     EarlyWeekByDay: activityEarlyWeekByDay.fieldApiName,
     EarlyWeekCount: activityEarlyWeekCount.fieldApiName,
+    FormerNames: activityFormerNames.fieldApiName,
     GroupsAtOnce: activityGroupsAtOnce.fieldApiName,
     Length: activityLength.fieldApiName,
     Location: activityLocation.fieldApiName,
@@ -443,6 +447,7 @@ export const FIELD = Object.freeze({
   }),
   Division: Object.freeze({
     CopiedFrom: divisionCopiedFrom.fieldApiName,
+    FormerNames: divisionFormerNames.fieldApiName,
     NoDivision: divisionNoDivision.fieldApiName,
     Program: divisionProgram.fieldApiName,
     SortOrder: divisionSortOrder.fieldApiName
@@ -492,6 +497,7 @@ export const FIELD = Object.freeze({
     Availability: groupAvailability.fieldApiName,
     CopiedFrom: groupCopiedFrom.fieldApiName,
     Division: groupDivision.fieldApiName,
+    FormerNames: groupFormerNames.fieldApiName,
     SortOrder: groupSortOrder.fieldApiName
   }),
   ImportAnswer: Object.freeze({

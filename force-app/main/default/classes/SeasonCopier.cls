@@ -215,7 +215,7 @@ public with sharing class SeasonCopier implements SetupWrite.Steps {
   ) {
     Map<Id, Division__c> copies = new Map<Id, Division__c>();
     for (Division__c division : [
-      SELECT Id, Name, Program__c, SortOrder__c, NoDivision__c
+      SELECT Id, Name, Program__c, SortOrder__c, NoDivision__c, FormerNames__c
       FROM Division__c
       WHERE Program__c IN :programCopies.keySet()
       WITH USER_MODE
@@ -232,7 +232,13 @@ public with sharing class SeasonCopier implements SetupWrite.Steps {
   private Map<Id, Group__c> copyGroups(Map<Id, Division__c> divisionCopies) {
     Map<Id, Group__c> copies = new Map<Id, Group__c>();
     for (Group__c grp : [
-      SELECT Id, Name, Division__c, Availability__c, SortOrder__c
+      SELECT
+        Id,
+        Name,
+        Division__c,
+        Availability__c,
+        SortOrder__c,
+        FormerNames__c
       FROM Group__c
       WHERE Division__c IN :divisionCopies.keySet()
       WITH USER_MODE

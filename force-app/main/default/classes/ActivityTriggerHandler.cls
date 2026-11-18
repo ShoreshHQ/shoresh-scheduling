@@ -16,7 +16,10 @@ public with sharing class ActivityTriggerHandler {
     Activity__c.RainPlan__c => 'RainPlan'
   };
 
-  /** Before delete: its own week-off marks go with it. Before save: the checks above. */
+  /**
+   * Before delete: its own week-off marks go with it. Before update: a rename keeps the old name
+   * (FormerNames). Before save: the checks above.
+   */
   public static void handle(
     System.TriggerOperation operation,
     List<Activity__c> activities,
@@ -26,6 +29,9 @@ public with sharing class ActivityTriggerHandler {
       // Its own week-off marks go with it, however it is deleted (WeekExceptions.goWith).
       WeekExceptions.goWith(before.keySet());
       return;
+    }
+    if (operation == System.TriggerOperation.BEFORE_UPDATE) {
+      FormerNames.note(activities, before, Activity__c.FormerNames__c);
     }
     beforeSave(activities, before);
   }

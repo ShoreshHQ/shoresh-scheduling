@@ -4,4 +4,5 @@ trigger DivisionTrigger on Division__c(
   before delete
 ) {
   ArchivedSeasons.refuseChanges();
+  FormerNames.noteRenames(Division__c.FormerNames__c);
 }

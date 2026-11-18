@@ -226,7 +226,13 @@ export {
 } from "./deleted";
 
 // Shared with the per-screen list imports (c/shoreshLists, slice 4c).
-export { similarity, foldName, similarPairs, mergesFrom } from "./names";
+export {
+  similarity,
+  foldName,
+  formerNamesOf,
+  similarPairs,
+  mergesFrom
+} from "./names";
 export {
   WEEKDAYS,
   MONDAY_TO_FRIDAY,

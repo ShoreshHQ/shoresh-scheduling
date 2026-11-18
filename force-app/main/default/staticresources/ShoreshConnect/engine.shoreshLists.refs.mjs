@@ -12,6 +12,7 @@
  */
 import {
   LEAVE_OUT,
+  formerNamesOf,
   looseKey,
   mergesFrom,
   similarPairs,
@@ -136,7 +137,8 @@ export function resolveColumn(rows, column, records, leads, answers, pairKind) {
   const pairs = similarPairs(
     pairKind,
     [...counts.entries()].map(([name, count]) => ({ name, count })),
-    known
+    known,
+    formerNamesOf(pairKind, records)
   );
   const merged = mergesFrom(pairs, answers);
   const leftOut = new Set();
