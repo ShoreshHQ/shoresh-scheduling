@@ -140,16 +140,13 @@ private class ImportLogEntriesTest {
           new Activity__c(Id = c.archery.Id, Notes__c = 'Bring a hat')
         }
       );
-      ImportWriter.WhoChange change = new ImportWriter.WhoChange();
-      change.owner = [
-        SELECT Id, Name
-        FROM Activity__c
-        WHERE Id = :c.archery.Id
-      ];
-      change.type = 'ActivityEligibility__c';
-      change.before = new List<String>{ c.juniors };
-      change.after = new List<String>{ c.seniors };
-      writer.logWho(change);
+      writer.logWho(
+        new ImportLogEntries.Who(
+            [SELECT Id, Name FROM Activity__c WHERE Id = :c.archery.Id],
+            'ActivityEligibility__c'
+          )
+          .lists(new List<String>{ c.juniors }, new List<String>{ c.seniors })
+      );
       new ImportWorkbookExtras(writer, c.seasonId, c.campId)
         .weeksBackOn(
           new List<ImportPlan.Entry>{
@@ -269,5 +266,89 @@ private class ImportLogEntriesTest {
       Test.stopTest();
       Assert.areEqual(new Set<Id>{ swim.Id }, untouched);
     }
+  }
+
+  /** Each kind of entry reads back what an import wrote, with no records needed. */
+  @IsTest
+  static void eachKindReadsBackWhatWasWritten() {
+    Id archery = fakeId(Activity__c.SObjectType, 1);
+    Id juniors = fakeId(Division__c.SObjectType, 2);
+    Id seniors = fakeId(Division__c.SObjectType, 3);
+    Id week = fakeId(Week__c.SObjectType, 4);
+    Id campId = fakeId(Camp__c.SObjectType, 5);
+    WeekException__c off = new WeekException__c(
+      Id = fakeId(WeekException__c.SObjectType, 6),
+      Week__c = week,
+      Activity__c = archery
+    );
+    off.Week__r = new Week__c(Id = week, Name = 'Week 1');
+    off.Activity__r = new Activity__c(Id = archery, Name = 'Archery');
+    ScheduleDay__c day = new ScheduleDay__c(
+      Id = fakeId(ScheduleDay__c.SObjectType, 7),
+      Grid__c = GRID_BEFORE,
+      Schedule__r = new Schedule__c(Name = 'Week 1 saved')
+    );
+    List<Object> log = new List<Object>{
+      new ImportLogEntries.Who(
+          new Activity__c(Id = archery, Name = 'Archery'),
+          'ActivityEligibility__c'
+        )
+        .lists(new List<String>{ juniors }, new List<String>{ seniors })
+        .toLog(),
+      new ImportLogEntries.WeekOn(off, WeekException__c.Activity__c).toLog(),
+      new ImportLogEntries.WordOff(
+          new CampLabel__c(
+            Id = fakeId(CampLabel__c.SObjectType, 8),
+            ModelTerm__c = 'Group',
+            Singular__c = 'Bunk',
+            Plural__c = 'Bunks'
+          )
+        )
+        .toLog(),
+      new ImportLogEntries.Removed(
+          new Activity__c(Id = archery, Name = 'Canoe')
+        )
+        .toLog(),
+      new ImportLogEntries.CellsOut(day, GRID_AFTER).toLog()
+    };
+
+    ImportLogEntries.Changes back = ImportLogEntries.read(JSON.serialize(log));
+
+    Assert.isFalse(back.unreadable);
+    Assert.isTrue(back.recordValues.isEmpty());
+    ImportLogEntries.Who listed = back.whoLists[0];
+    Assert.areEqual(archery, listed.ownerId());
+    Assert.areEqual(Activity__c.SObjectType, listed.kind().ownerObject);
+    Assert.areEqual('Archery', listed.name());
+    Assert.areEqual(new List<Id>{ juniors }, listed.before());
+    Assert.areEqual(new List<String>{ seniors }, listed.after());
+    WeekException__c weekOff = back.weeksOn[0].weekOff();
+    Assert.areEqual(week, weekOff.Week__c);
+    Assert.areEqual(archery, weekOff.Activity__c);
+    Assert.areEqual('Archery (Week 1)', back.weeksOn[0].label());
+    CampLabel__c word = back.wordsOff[0]
+      .label(campId, new Set<String>{ 'Group' });
+    Assert.areEqual(campId, word.Camp__c);
+    Assert.areEqual('Group', word.ModelTerm__c);
+    Assert.areEqual('Bunk', word.Singular__c);
+    Assert.areEqual('Bunks', word.Plural__c);
+    Assert.areEqual(archery, back.removals[0].row().Id);
+    Assert.areEqual('Canoe', back.removals[0].name());
+    Assert.areEqual(day.Id, back.cellsTakenOut[0].dayId());
+    Assert.areEqual('Week 1 saved', back.cellsTakenOut[0].name());
+    Assert.areEqual(GRID_BEFORE, back.cellsTakenOut[0].before());
+    Assert.areEqual(GRID_AFTER, back.cellsTakenOut[0].after());
+  }
+
+  /** Anything in the log that isn't an entry: Undo refuses the log. */
+  @IsTest
+  static void somethingThatIsNotAnEntryMakesTheLogUnreadable() {
+    Assert.isTrue(ImportLogEntries.read('[5]').unreadable);
+    Assert.isFalse(ImportLogEntries.read('[]').unreadable);
+  }
+
+  private static Id fakeId(Schema.SObjectType type, Integer n) {
+    return (Id) (type.getDescribe().getKeyPrefix() +
+    String.valueOf(n).leftPad(12, '0'));
   }
 }
