@@ -36,7 +36,9 @@ public with sharing class CamperChoices {
         stored,
         List<ChoicesImport.SheetChoice>.class
       );
-    } catch (JSONException e) {
+    } catch (Exception e) {
+      // Not JSON, or a value that isn't one (an "a" that isn't an Id, after an edit outside
+      // Shoresh): stored some other way.
       return null;
     }
   }

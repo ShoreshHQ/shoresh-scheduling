@@ -88,6 +88,24 @@ private class CamperChoicesTest {
     Assert.areEqual(0, CamperChoices.count('not json'));
   }
 
+  // An "a" that isn't an Id (an edit outside Shoresh) is stored some other way, never a failure.
+  @IsTest
+  static void choicesWithAnActivityThatIsNotAnIdAreStoredSomeOtherWay() {
+    String edited = '[{"n":"Archery","a":"archery","r":1,"k":"ranked"}]';
+    Assert.isNull(CamperChoices.read(edited));
+    Assert.areEqual(0, CamperChoices.count(edited));
+    Assert.isTrue(CamperChoices.same(edited, edited));
+    Assert.isFalse(CamperChoices.same(edited, archeryThenDrama()));
+    Assert.isTrue(
+      CamperChoices.handChanged(
+        new Preference__c(
+          Choices__c = edited,
+          ImportedChoices__c = CamperChoices.write(archeryThenDrama())
+        )
+      )
+    );
+  }
+
   // ELECT-2.6: changed by a person when marked so, or no longer what was last brought in.
   @IsTest
   static void choicesAreHandChangedWhenMarkedOrNoLongerWhatCameIn() {
