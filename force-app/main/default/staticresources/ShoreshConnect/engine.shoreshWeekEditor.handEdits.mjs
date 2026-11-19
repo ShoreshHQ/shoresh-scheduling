@@ -27,6 +27,7 @@ import { LEFT_OUT, replan, toolRuns } from "./engine.shoreshWeekEditor.tools.mjs
 import { rainCounts } from "./engine.shoreshWeekEditor.rain.mjs";
 import { isLockedAt, lockKey, noteRows } from "./engine.shoreshWeekEditor.locks.mjs";
 import { dayNameOf } from "./engine.shoreshWeekEditor.measure.mjs";
+import { setUpOf } from "./engine.shoreshWeekEditor.manualChecks.mjs";
 
 /**
  * A hand edit is always made (Greg, 2026-10-26, engine care Q4): the director knows what can
@@ -61,18 +62,6 @@ export function nameOfSlot(slot, day, find) {
   return item.startsWith("S:")
     ? `${find.t.s("SpecialEvent")} (removed)`
     : `${find.t.s("Activity")} (removed)`;
-}
-
-/**
- * Where setup puts each fixed and recurring activity this week (the draft's setUpCells, Apex
- * ManualSetUpCells): { "date|groupId|blockId": "F:<Id>" | "^F:<Id>" }, or null when the draft
- * has none (setup places none, or a draft read without them).
- */
-export function setUpOf(draft) {
-  const cells = (draft && draft.setUpCells) || [];
-  return cells.length
-    ? Object.fromEntries(cells.map((cell) => [cell.key, cell.slot]))
-    : null;
 }
 
 /** Whether a group isn't at camp in a block of a day (indexes) of some week: the draft's away blocks. */

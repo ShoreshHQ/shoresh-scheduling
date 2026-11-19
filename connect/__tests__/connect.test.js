@@ -871,7 +871,7 @@ describe("Shoresh for AI tools and the command line", () => {
       loadedOf: (inputs) => ({ input: inputs }),
       counterWeek: () => ({ draft: { schedule: { days: [] } } }),
       lockedKeys: () => new Set(),
-      replacedDays: () => [],
+      editContextOf: ({ draft }) => ({ week: draft.schedule.days }),
       nameDaysFor: () => {}
     });
     const withSeen = await call("read_week_checks", asked, {
