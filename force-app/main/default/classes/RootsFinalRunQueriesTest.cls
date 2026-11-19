@@ -1,9 +1,9 @@
 /**
  * Roots' query bound at its worst for the seats card (repo ADR 0020 choice 3; ELECT-4.11): the
  * run it counts is final, so it is read from the version kept at Finalize (FinalSchedule__c), on
- * a week with a special day holding an elective time. The camp is made in @TestSetup (KeptCamp),
- * so the request is measured with nothing read before it in the same transaction, as a real
- * request starts. As a scheduler with the Shoresh Scheduler permission set; made-up names.
+ * a week with a special day holding an elective time. The camp and its seats are made in
+ * @TestSetup (KeptCamp); Finalize runs in the test, in its own limits, before the request is
+ * measured. As a scheduler with the Shoresh Scheduler permission set; made-up names.
  */
 @IsTest
 private class RootsFinalRunQueriesTest {
@@ -13,7 +13,7 @@ private class RootsFinalRunQueriesTest {
     Map<String, Id> ids;
     System.runAs(scheduler) {
       // Chugim on Monday and Tuesday's Period 1 for Group A and B; Color War put on Tuesday,
-      // Chugim typed into its first block for both; every camper in Drama; then Finalize.
+      // Chugim typed into its first block for both; every camper in Drama.
       ElectiveSeatsCamp camp = new ElectiveSeatsCamp(6);
       ids = camp.ids;
       Id dayId = SpecialScheduleTestData.addDay(ids.get('Season'), 'Color War');
@@ -52,8 +52,7 @@ private class RootsFinalRunQueriesTest {
           assign.seats.add(seat);
         }
       }
-      view = ElectiveSeatsController.assignSeats(JSON.serialize(assign));
-      ElectiveSeatsController.finalizeRun(camp.runId, view.revision);
+      ElectiveSeatsController.assignSeats(JSON.serialize(assign));
       ids.put('Run', camp.runId);
     }
     ids.put('Scheduler', scheduler.Id);
@@ -65,21 +64,20 @@ private class RootsFinalRunQueriesTest {
   static void aFinalRunOnAWeekWithASpecialDayStaysWithinTheBound() {
     Map<String, Id> ids = KeptCamp.keptIds();
     System.runAs(KeptCamp.scheduler(ids)) {
-      Assert.isNotNull(
-        [
-          SELECT FinalSchedule__c
-          FROM ElectiveRun__c
-          WHERE Id = :ids.get('Run')
-          WITH USER_MODE
-        ]
-        .FinalSchedule__c,
-        'The run is final'
-      );
       Test.startTest();
+      ElectiveSeats.RunView view = ElectiveSeatsController.finalizeRun(
+        ids.get('Run'),
+        ElectiveSeatsController.openRun(ids.get('Run')).revision
+      );
+      Test.stopTest();
+      Assert.areEqual('Final', view.run.status);
+      // What Finalize read stays read in this transaction: the week's special days are read
+      // again (forget), but the special days the kept version carries are not (SpecialsCarried
+      // reads each schedule's once per request), so a request of its own reads one more.
+      ElectiveDays.forget();
       Integer before = Limits.getQueries();
       RootsTable.Table table = RootsController.getTable(ids.get('Season'));
-      Integer queries = Limits.getQueries() - before;
-      Test.stopTest();
+      Integer queries = Limits.getQueries() - before + 1;
 
       Assert.isTrue(queries <= 20, 'Roots read with ' + queries + ' queries');
       Assert.areEqual(ids.get('Run'), table.seatsRunId);
