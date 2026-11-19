@@ -222,4 +222,28 @@ private class ImportLogEntriesTest {
       );
     }
   }
+
+  /**
+   * INGEST-5.7: what earlier imports brought in is read from their logs whatever else they
+   * logged: a who list one replaced, or cells one took out, never stops a second import.
+   */
+  @IsTest
+  static void ingest57EveryKindOfEntryLeavesWhatImportsBroughtInReadable() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      Camp c = camp();
+      Database.insert(
+        new Import__c(
+          Season__c = c.seasonId,
+          Files__c = 'maple-grove.xlsx',
+          Created__c = '{}',
+          Changed__c = logFor(c)
+        ),
+        AccessLevel.SYSTEM_MODE
+      );
+      Test.startTest();
+      Set<Id> untouched = ImportProvenance.untouched(c.seasonId);
+      Test.stopTest();
+      Assert.isTrue(untouched.isEmpty(), String.valueOf(untouched));
+    }
+  }
 }
