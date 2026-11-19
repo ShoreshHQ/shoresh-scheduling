@@ -531,6 +531,77 @@ private class RootsTableTest {
     }
   }
 
+  // ELECT-4.11
+  @IsTest
+  static void twoDivisionsInOneBlockAreCountedAsElectiveSeatsCountsThem() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      // Chugim on Monday's Period 1 for Group A (Juniors) and Group B, moved to a division of
+      // its own: two elective times then, one a division. Campers 0, 2, 4, 6 are in Group A;
+      // 1, 3, 5, 7 in Group B.
+      ElectiveSeatsCamp camp = new ElectiveSeatsCamp(8);
+      Division__c seniors = new Division__c(
+        Program__c = camp.ids.get('Main'),
+        Name = 'Seniors'
+      );
+      insert as user seniors;
+      update as user new Group__c(
+        Id = camp.ids.get('Group B'),
+        Division__c = seniors.Id
+      );
+      // Archery (2 seats): 2 of Group A, 1 of Group B. Pottery (at least 3): 2 of each.
+      Map<Integer, String> seated = new Map<Integer, String>{
+        0 => 'Archery',
+        2 => 'Archery',
+        1 => 'Archery',
+        4 => 'Pottery',
+        6 => 'Pottery',
+        3 => 'Pottery',
+        5 => 'Pottery',
+        7 => 'Drama'
+      };
+      List<Assignment__c> seats = new List<Assignment__c>();
+      for (Integer camper : seated.keySet()) {
+        ElectiveSeatSaves.SeatIn at = camp.seat(
+          camper,
+          Date.newInstance(2026, 6, 29),
+          seated.get(camper)
+        );
+        seats.add(
+          new Assignment__c(
+            ElectiveRun__c = camp.runId,
+            Camper__c = at.camperId,
+            Group__c = Math.mod(camper, 2) == 0
+              ? camp.ids.get('Group A')
+              : camp.ids.get('Group B'),
+            Date__c = at.day,
+            TimeBlock__c = at.blockId,
+            Offering__c = at.offeringId
+          )
+        );
+      }
+      insert as user seats;
+
+      Test.startTest();
+      Integer before = Limits.getQueries();
+      RootsTable.Table table = RootsController.getTable(camp.ids.get('Season'));
+      Integer queries = Limits.getQueries() - before;
+      Test.stopTest();
+
+      Assert.isTrue(queries <= 20, 'Roots read with ' + queries + ' queries');
+      Map<String, RootsTable.Seat> byName = new Map<String, RootsTable.Seat>();
+      for (RootsTable.Seat seat : table.seats) {
+        byName.put(seat.name, seat);
+      }
+      // Each division's time on its own, as Elective seats shows them: Archery holds 2 of 2 at
+      // most (not 3, over), and Pottery 2 at each time, kept below its minimum (not 4).
+      Assert.areEqual(2, byName.get('Archery').taken, JSON.serialize(table));
+      Assert.areEqual(2, byName.get('Pottery').taken);
+      Assert.areEqual(1, table.shortSeats.size(), JSON.serialize(table));
+      Assert.areEqual('Pottery', table.shortSeats[0].name);
+      Assert.areEqual(2, table.shortSeats[0].fewest);
+    }
+  }
+
   @IsTest
   static void someoneWithoutShoreshAccessIsRefusedInPlainWords() {
     Camp__c camp = ShoreshTestData.camp('Camp Synthetic Ridge');
