@@ -46,7 +46,7 @@ global with sharing class AgentConfirmGuess implements AgentWeeks.Action {
     String field = fieldOf(AgentFields.text(body, 'field'));
     if (!body.containsKey('seen') || body.get('seen') == null) {
       throw new ShoreshException(
-        'Say its value as read_setup_guesses gave it (seen), so a change someone made since isn\'t marked as looked at.'
+        'Say its value as read_setup_guesses gave it (seen), so a change someone made since isn\'t marked Looks right.'
       );
     }
     String seen = String.valueOf(body.get('seen'));
@@ -80,15 +80,15 @@ global with sharing class AgentConfirmGuess implements AgentWeeks.Action {
     } catch (Exception e) {
       throw new ShoreshException(ScreenErrors.words(e) + NOTHING);
     }
-    return 'Marked the ' +
+    return 'Marked Looks right: the ' +
       now.kind +
       ' "' +
       now.name +
-      '": ' +
+      '", ' +
       now.field +
       ' ' +
       now.value +
-      ' as looked at. Camp Setup no longer marks it as guessed.';
+      '. Camp Setup no longer marks it as guessed.';
   }
 
   /**
