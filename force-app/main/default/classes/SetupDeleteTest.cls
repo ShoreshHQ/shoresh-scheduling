@@ -309,12 +309,6 @@ private class SetupDeleteTest {
     }
   }
 
-  private class EverythingPublished implements PublishedHistory.Finder {
-    public Set<Id> withPublishedHistory(Set<Id> recordIds) {
-      return recordIds;
-    }
-  }
-
   // API-1.141: a season with published history is refused before its question (the screen's
   // preview), in the camp's words, with what to do instead; nothing is asked about or deleted.
   @IsTest
@@ -328,7 +322,7 @@ private class SetupDeleteTest {
         WITH USER_MODE
       ]
       .Name;
-      PublishedHistory.finder = new EverythingPublished();
+      ShoreshTestData.publishedSchedule(ids.get('Main'), ids.get('Week 1'));
       Test.startTest();
       SetupDelete.Preview preview = SetupDelete.preview(ids.get('Season'));
       Test.stopTest();

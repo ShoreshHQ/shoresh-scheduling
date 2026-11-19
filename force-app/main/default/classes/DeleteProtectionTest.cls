@@ -5,12 +5,6 @@
  */
 @IsTest
 private class DeleteProtectionTest {
-  private class EverythingPublished implements PublishedHistory.Finder {
-    public Set<Id> withPublishedHistory(Set<Id> recordIds) {
-      return recordIds;
-    }
-  }
-
   @IsTest
   static void aSeasonWithWeekExceptionsCanBeDeleted() {
     Camp__c camp = ShoreshTestData.camp('Camp Willow');
@@ -132,7 +126,10 @@ private class DeleteProtectionTest {
       AccessLevel.SYSTEM_MODE
     );
     Season__c season = ShoreshTestData.fullSeason(camp.Id);
-    PublishedHistory.finder = new EverythingPublished();
+    ShoreshTestData.publishedSchedule(
+      ShoreshTestData.lastSeasonIds.get('Main'),
+      ShoreshTestData.lastSeasonIds.get('Week 1')
+    );
 
     Database.DeleteResult result = Database.delete(
       season.Id,
@@ -157,7 +154,10 @@ private class DeleteProtectionTest {
     Camp__c camp = ShoreshTestData.camp('Camp Willow');
     Season__c season = ShoreshTestData.season(camp.Id, 'Summer 2026');
     Program__c program = ShoreshTestData.program(season.Id, 'Main');
-    PublishedHistory.finder = new EverythingPublished();
+    ShoreshTestData.publishedSchedule(
+      program.Id,
+      ShoreshTestData.weeks(season.Id, 1)[0].Id
+    );
 
     Database.DeleteResult result = Database.delete(
       program.Id,
@@ -183,7 +183,10 @@ private class DeleteProtectionTest {
         WHERE Season__c = :season.Id
         WITH SYSTEM_MODE
       ];
-      PublishedHistory.finder = new EverythingPublished();
+      ShoreshTestData.publishedSchedule(
+        program.Id,
+        ShoreshTestData.lastSeasonIds.get('Week 1')
+      );
       try {
         SeasonSetupController.deleteRecord(program.Id);
         Assert.fail('A program with published history is kept');
@@ -204,7 +207,10 @@ private class DeleteProtectionTest {
     Camp__c camp = ShoreshTestData.camp('Camp Willow');
     Season__c season = ShoreshTestData.season(camp.Id, 'Summer 2026');
     Week__c week = ShoreshTestData.weeks(season.Id, 1)[0];
-    PublishedHistory.finder = new EverythingPublished();
+    ShoreshTestData.publishedSchedule(
+      ShoreshTestData.program(season.Id, 'Main').Id,
+      week.Id
+    );
 
     Database.DeleteResult result = Database.delete(
       week.Id,
@@ -230,6 +236,25 @@ private class DeleteProtectionTest {
     Database.delete(week, AccessLevel.SYSTEM_MODE);
     Assert.areEqual(0, [SELECT COUNT() FROM Program__c WITH SYSTEM_MODE]);
     Assert.areEqual(0, [SELECT COUNT() FROM Week__c WITH SYSTEM_MODE]);
+  }
+
+  // With nothing published, the check is one query: the camp is looked up only for a refusal.
+  @IsTest
+  static void withoutPublishedHistoryTheCheckIsOneQuery() {
+    Camp__c camp = ShoreshTestData.camp('Camp Willow');
+    Season__c season = ShoreshTestData.season(camp.Id, 'Summer 2026');
+    Program__c program = ShoreshTestData.program(season.Id, 'Main');
+    Week__c week = ShoreshTestData.weeks(season.Id, 1)[0];
+    List<SObject> records = new List<SObject>{ season, program, week };
+    Test.startTest();
+    Integer before = Limits.getQueries();
+    PublishedHistory.refuseDeletes(records);
+    Integer used = Limits.getQueries() - before;
+    Test.stopTest();
+    Assert.areEqual(1, used);
+    for (SObject record : records) {
+      Assert.isFalse(record.hasErrors());
+    }
   }
 
   @IsTest

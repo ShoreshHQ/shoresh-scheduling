@@ -6,12 +6,6 @@
  */
 @IsTest
 private class AgentArchiveSeasonTest {
-  private class AlwaysPublished implements PublishedHistory.Finder {
-    public Set<Id> withPublishedHistory(Set<Id> recordIds) {
-      return recordIds;
-    }
-  }
-
   private static List<Object> sent(
     AgentWeeks.Action action,
     Map<String, Object> body
@@ -51,7 +45,10 @@ private class AgentArchiveSeasonTest {
     System.runAs(ShoreshTestData.scheduler()) {
       Camp__c camp = ShoreshTestData.camp('Camp Willow');
       Season__c summer = ShoreshTestData.season(camp.Id, 'Summer');
-      PublishedHistory.finder = new AlwaysPublished();
+      ShoreshTestData.publishedSchedule(
+        ShoreshTestData.program(summer.Id, 'Main').Id,
+        ShoreshTestData.weeks(summer.Id, 1)[0].Id
+      );
       Test.startTest();
       List<Object> refused = sent(new AgentDeleteSeason(), season('Summer'));
       List<Object> unnamed = sent(

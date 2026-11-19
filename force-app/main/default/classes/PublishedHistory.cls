@@ -6,43 +6,33 @@
  * published once and replaced since (a version that keeps its PublishedAt__c; SchedulePublish).
  */
 public with sharing class PublishedHistory {
-  public interface Finder {
-    /** The subset of recordIds (seasons, programs, or weeks) that have published history. */
-    Set<Id> withPublishedHistory(Set<Id> recordIds);
-  }
-
-  @TestVisible
-  private static Finder finder = new PublishedSchedules();
-
   /**
-   * Adds an error to every record in oldRecords that has published history, so the delete is
-   * refused with a message in the camp's own words. Call from a before-delete trigger.
+   * Adds an error to every season, program or week in oldRecords that has published history, so
+   * the delete is refused with a message in the camp's own words. Call from a before-delete trigger.
    */
-  public static void refuseDeletes(
-    List<SObject> oldRecords,
-    String term,
-    Map<Id, Id> campIdByRecordId
-  ) {
-    Set<Id> protectedIds = finder.withPublishedHistory(
+  public static void refuseDeletes(List<SObject> oldRecords) {
+    Map<Id, Id> campIdByRecordId = withPublishedHistory(
       new Map<Id, SObject>(oldRecords).keySet()
     );
-    if (protectedIds.isEmpty()) {
+    if (campIdByRecordId.isEmpty()) {
       return;
     }
     Map<Id, CampLabels> labelsByCamp = CampLabels.forCamps(
       new Set<Id>(campIdByRecordId.values())
     );
     for (SObject record : oldRecords) {
-      if (protectedIds.contains(record.Id)) {
+      if (campIdByRecordId.containsKey(record.Id)) {
         CampLabels labels = labelsByCamp.get(campIdByRecordId.get(record.Id));
-        record.addError(message(labels, term, (String) record.get('Name')));
+        record.addError(
+          message(labels, termOf(record), (String) record.get('Name'))
+        );
       }
     }
   }
 
   /** Whether this season, program or week ever had a published schedule (kept as history). */
   public static Boolean wasPublished(Id recordId) {
-    return !finder.withPublishedHistory(new Set<Id>{ recordId }).isEmpty();
+    return !withPublishedHistory(new Set<Id>{ recordId }).isEmpty();
   }
 
   /** Why this season can't be deleted, in the camp's words, or null: its Delete asks with this. */
@@ -75,34 +65,47 @@ public with sharing class PublishedHistory {
       : text;
   }
 
-  private with sharing class PublishedSchedules implements Finder {
-    // System mode on purpose: history protects every published schedule the person can reach.
-    public Set<Id> withPublishedHistory(Set<Id> recordIds) {
-      Set<Id> result = new Set<Id>();
-      for (Schedule__c schedule : [
-        SELECT Program__c, Week__c, Program__r.Season__c
-        FROM Schedule__c
-        WHERE
-          (Status__c = 'Published'
-          OR PublishedAt__c != NULL)
-          AND (Program__c IN :recordIds
-          OR Week__c IN :recordIds
-          OR Program__r.Season__c IN :recordIds)
-        WITH SYSTEM_MODE
-      ]) {
-        for (
-          Id owner : new List<Id>{
-            schedule.Program__c,
-            schedule.Week__c,
-            schedule.Program__r.Season__c
-          }
-        ) {
-          if (recordIds.contains(owner)) {
-            result.add(owner);
-          }
+  private static String termOf(SObject record) {
+    Schema.SObjectType type = record.getSObjectType();
+    if (type == Season__c.SObjectType) {
+      return 'Season';
+    }
+    return type == Program__c.SObjectType ? 'Program' : 'Week';
+  }
+
+  /**
+   * The recordIds (seasons, programs, or weeks) that have published history, each with its camp.
+   * System mode on purpose: history protects every published schedule the person can reach.
+   */
+  private static Map<Id, Id> withPublishedHistory(Set<Id> recordIds) {
+    Map<Id, Id> result = new Map<Id, Id>();
+    for (Schedule__c schedule : [
+      SELECT
+        Program__c,
+        Week__c,
+        Program__r.Season__c,
+        Program__r.Season__r.Camp__c
+      FROM Schedule__c
+      WHERE
+        (Status__c = 'Published'
+        OR PublishedAt__c != NULL)
+        AND (Program__c IN :recordIds
+        OR Week__c IN :recordIds
+        OR Program__r.Season__c IN :recordIds)
+      WITH SYSTEM_MODE
+    ]) {
+      for (
+        Id owner : new List<Id>{
+          schedule.Program__c,
+          schedule.Week__c,
+          schedule.Program__r.Season__c
+        }
+      ) {
+        if (recordIds.contains(owner)) {
+          result.put(owner, schedule.Program__r.Season__r.Camp__c);
         }
       }
-      return result;
     }
+    return result;
   }
 }
