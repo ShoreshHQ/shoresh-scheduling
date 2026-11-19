@@ -3,8 +3,8 @@
  * version kept first ("Before rainy Monday", Auto-saved), the switch saved as one edit with its
  * marks ("Rain plan full", and the switched cells the Schedules page draws a raindrop on), a mark
  * going when its cell changes, Undo taking the marks away, Restore of the version bringing the
- * day back without them, the marks carried by Publish, Save version and Restore, and a week started
- * from another starting dry (issue #129). Synthetic camp (SetTimeTestData):
+ * day back without them, the marks carried by Publish, Save version, Before Rebuild and Restore, and
+ * a week started from another starting dry (issue #129). Synthetic camp (SetTimeTestData):
  * Group A and Group B (Juniors), Group C (Seniors); Period 1, Period 2, Lunch; Soccer is outdoors
  * with Gym games as its rain plan.
  */
@@ -382,6 +382,50 @@ private class RainyDayTest {
       Assert.areEqual(
         new List<String>{ mark('Group A', 'Gym games') },
         locked.schedule.days[0].rain
+      );
+    }
+  }
+
+  // CLOSE-6.4
+  @IsTest
+  static void aRebuildKeepsTheMarksInItsVersionAndUndoBringsThemBack() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      ids = GeneratedTestData.camp();
+      Id draftId = GeneratedTestData.generated();
+      SlotEdits.Edit marksOnly = new SlotEdits.Edit();
+      marksOnly.runs = new List<SlotEdits.Run>();
+      withRain(marksOnly, new List<String>{ mark('Group A', 'Gym games') });
+      GeneratedTestData.handEdits(
+        draftId,
+        new List<SlotEdits.Edit>{ marksOnly },
+        GeneratedDrafts.revisionOf(ScheduleDays.read(draftId))
+      );
+      Test.startTest();
+      GeneratedWeek.Result rebuilt = GeneratedTestData.save(
+        GeneratedTestData.filled(
+          GeneratedTestData.request(
+            GeneratedTestData.inputs(),
+            GeneratedSaves.REBUILD,
+            2
+          ),
+          'Soccer'
+        )
+      );
+      // "Before Rebuild" keeps the week as it was, its marks too.
+      Assert.areEqual(
+        new List<String>{ mark('Group A', 'Gym games') },
+        ScheduleViews.open(rebuilt.versionId).days[0].rain
+      );
+      Boolean undone = GeneratedUndoController.undoBuild(
+        draftId,
+        rebuilt.versionId,
+        GeneratedDrafts.revisionOf(ScheduleDays.read(draftId))
+      );
+      Test.stopTest();
+      Assert.isTrue(undone);
+      Assert.areEqual(
+        new List<String>{ mark('Group A', 'Gym games') },
+        ScheduleDays.read(draftId)[0].rain
       );
     }
   }
