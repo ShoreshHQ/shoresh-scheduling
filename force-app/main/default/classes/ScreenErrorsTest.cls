@@ -117,8 +117,22 @@ private class ScreenErrorsTest {
     // A screen's read an AI goes through (read_elective_seats_now's openRun, and the rest).
     AgentRefusal.forAgent = true;
     String loading = ScreenErrors.ofLoading(unexpected).getMessage();
+    String goneRun;
+    try {
+      ElectiveSeatsController.openRun(
+        Id.valueOf(
+          ElectiveRun__c.SObjectType.getDescribe(
+              SObjectDescribeOptions.DEFERRED
+            )
+            .getKeyPrefix() + '000000000000'
+        )
+      );
+    } catch (AuraHandledException e) {
+      goneRun = e.getMessage();
+    }
     AgentRefusal.forAgent = false;
     Assert.areEqual('Shoresh couldn\'t tell why. Try again.', loading);
+    Assert.areEqual('These seats are no longer there.', goneRun);
   }
 
   @IsTest
