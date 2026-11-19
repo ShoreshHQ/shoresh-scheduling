@@ -220,7 +220,7 @@ private class AgentSetupChangeTest {
       Assert.isTrue(
         String.valueOf(noPlace[1])
           .startsWith(
-            'There is no location called "Lake" that this user can see. The locations: '
+            'There is no location called "Lake" that you can see. The locations: '
           ),
         String.valueOf(noPlace[1])
       );
@@ -327,7 +327,7 @@ private class AgentSetupChangeTest {
       );
       Assert.areEqual(400, noProgram[0]);
       Assert.areEqual(
-        'There is no program called "Day camp" that this user can see. The programs: Main.',
+        'There is no program called "Day camp" that you can see. The programs: Main.',
         noProgram[1]
       );
     }

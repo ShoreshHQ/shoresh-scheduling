@@ -51,7 +51,7 @@ public with sharing class OutgoingDoors {
         refuse(
           response,
           403,
-          'This user can\'t read ' +
+          'This connection can\'t read ' +
             capability.what() +
             '. A Salesforce admin can give it the "' +
             capability.permissionLabel() +
@@ -261,7 +261,7 @@ public with sharing class OutgoingDoors {
     private List<Map<String, Object>> records(Season__c season, String week) {
       if (!allowed) {
         throw new ShoreshException(
-          'This user can\'t send ' +
+          'This connection can\'t send ' +
             capability.what() +
             '. A Salesforce admin can give it the "' +
             capability.permissionLabel() +

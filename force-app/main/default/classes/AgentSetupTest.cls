@@ -125,7 +125,7 @@ private class AgentSetupTest {
       Assert.areEqual(200, timeBlock[0], String.valueOf(timeBlock[1]));
       Assert.areEqual(400, unknown[0]);
       Assert.areEqual(
-        'There is no group called "Group Z" that this user can see. The groups: Group A, Group B, Group C.',
+        'There is no group called "Group Z" that you can see. The groups: Group A, Group B, Group C.',
         String.valueOf(unknown[1]).replace('Cabin A', 'Group A')
       );
       Assert.areEqual(400, noKind[0]);

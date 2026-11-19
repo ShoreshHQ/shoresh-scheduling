@@ -444,7 +444,7 @@ private class AgentBuildTest {
       Assert.areEqual(400, noSeats[0]);
       Assert.areEqual('Not finalized. No seats are assigned yet.', noSeats[1]);
       Assert.areEqual(
-        'There is no elective set called "Sports" that this user can see. The elective sets: Chugim.',
+        'There is no elective set called "Sports" that you can see. The elective sets: Chugim.',
         noSuchSet[1]
       );
     }
@@ -502,7 +502,7 @@ private class AgentBuildTest {
       Test.stopTest();
       Assert.areEqual('Not finalized. No Spots are assigned yet.', noSeats[1]);
       Assert.areEqual(
-        'There is no Chug called "Sports" that this user can see. The Chugim: Morning.',
+        'There is no Chug called "Sports" that you can see. The Chugim: Morning.',
         noSuchSet[1]
       );
       Assert.areEqual(1, cold - warm, 'camp words: one query, read once');

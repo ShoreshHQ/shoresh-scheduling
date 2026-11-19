@@ -123,7 +123,7 @@ private class AgentReadTest {
     );
     Assert.areEqual(400, answer.get('status'));
     Assert.areEqual(
-      'Say which season (season). Seasons this user can see: Aspen 2026 (Camp Aspen), Aspen day camp 2026 (Camp Aspen), Summer 2026 (Camp Willow), Summer 2025 (Camp Willow).',
+      'Say which season (season). Seasons you can see: Aspen 2026 (Camp Aspen), Aspen day camp 2026 (Camp Aspen), Summer 2026 (Camp Willow), Summer 2025 (Camp Willow).',
       answer.get('message')
     );
     Assert.isNull(AgentSeasons.answer().get('opens_on'));
@@ -155,7 +155,7 @@ private class AgentReadTest {
     Assert.areEqual('Summer 2026', named.get('season'));
     Assert.areEqual(400, unnamed.get('status'), String.valueOf(unnamed));
     Assert.areEqual(
-      'Say which season (season): more than one hasn\'t ended yet, so Shoresh doesn\'t pick one. Seasons this user can see: Summer 2027, Summer 2026.',
+      'Say which season (season): more than one hasn\'t ended yet, so Shoresh doesn\'t pick one. Seasons you can see: Summer 2027, Summer 2026.',
       unnamed.get('message')
     );
     Assert.isNull(AgentSeasons.answer().get('opens_on'));
@@ -233,7 +233,7 @@ private class AgentReadTest {
       new Map<String, String>{ 'season' => 'Summer 2027', 'week' => 'Week 1' }
     );
     Assert.areEqual(
-      'There is no season called "Summer 2027" that this user can see. Seasons this user can see: Summer 2026.',
+      'There is no season called "Summer 2027" that you can see. Seasons you can see: Summer 2026.',
       noSeason.get('message')
     );
     // A week not published in the season asked for names the seasons where it is.

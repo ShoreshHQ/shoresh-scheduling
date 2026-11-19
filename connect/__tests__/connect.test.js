@@ -326,7 +326,7 @@ describe("Shoresh for AI tools and the command line", () => {
   // API-1.105
   it("passesOnThePlainSentence: a refusal or a conflict comes through as Shoresh's own sentence", async () => {
     const sentence =
-      'This user can\'t read the group schedule. A Salesforce admin can give it the "Read group schedules" permission set.';
+      'This connection can\'t read the group schedule. A Salesforce admin can give it the "Read group schedules" permission set.';
     const refused = await callTool(
       "read_group_schedule",
       { season: "Summer 2026", week: "Week 2" },
@@ -762,13 +762,13 @@ describe("Shoresh for AI tools and the command line", () => {
       {
         run: sfAnswering(
           400,
-          '{"message":"There is no week called \\"Week 9\\" that this user can see."}'
+          '{"message":"There is no week called \\"Week 9\\" that you can see."}'
         ),
         engine
       }
     );
     expect(refused.text).toBe(
-      'There is no week called "Week 9" that this user can see.'
+      'There is no week called "Week 9" that you can see.'
     );
     const cannot = [];
     expect(
@@ -2032,7 +2032,7 @@ describe("Shoresh for AI tools and the command line", () => {
     };
     const view = runView();
     const PREVIEW =
-      'Nothing has been done yet. This assigns seats in Chugim in Week 1, in the version being worked on: 20 seats placed from the campers\' choices. There is no undo. Show the person exactly this and ask. Only if they say yes, send the same request again with confirm: "t1".';
+      'Nothing has been done yet. This assigns seats in Chugim in Week 1, in the Draft: 20 seats placed from the campers\' choices. There is no undo. Show the person exactly this and ask. Only if they say yes, send the same request again with confirm: "t1".';
     const assign = async (seen, more = {}) => {
       const seen_ = [];
       const queue = [
@@ -4031,7 +4031,7 @@ describe("Shoresh for AI tools and the command line", () => {
       "shoresh"
     ]);
     const refused =
-      'This user can\'t read the group schedule. A Salesforce admin can give it the "Read group schedules" permission set.';
+      'This connection can\'t read the group schedule. A Salesforce admin can give it the "Read group schedules" permission set.';
     expect(await said(403, JSON.stringify({ message: refused }))).toEqual({
       ok: false,
       text: `Not ready yet: ${refused}`

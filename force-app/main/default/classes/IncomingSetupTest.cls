@@ -347,7 +347,7 @@ private class IncomingSetupTest {
       );
       Assert.areEqual(403, answer.get('status'));
       Assert.areEqual(
-        'This user can\'t send divisions. A Salesforce admin can give it the "Send divisions" permission set.',
+        'This connection can\'t send divisions. A Salesforce admin can give it the "Send divisions" permission set.',
         answer.get('message')
       );
       Assert.areEqual(

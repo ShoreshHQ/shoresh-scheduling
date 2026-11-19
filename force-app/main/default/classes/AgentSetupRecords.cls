@@ -71,7 +71,8 @@ public with sharing class AgentSetupRecords {
       body,
       new List<String>{
         labels.singularInSentence(term),
-        labels.pluralInSentence(term)
+        labels.pluralInSentence(term),
+        labels.singularInSentence('Program')
       }
     );
     result.id = row.Id;
@@ -271,7 +272,7 @@ public with sharing class AgentSetupRecords {
   /**
    * The one row of that name (in that program, when one is named). Two programs' rows of the same
    * name are asked about, naming the programs; none is refused naming the ones there are.
-   * words: the kind in the camp's words, singular then plural.
+   * words: the kind in the camp's words, singular then plural, then the camp's Program word.
    */
   private static SObject onlyOne(
     List<SObject> rows,
@@ -309,7 +310,9 @@ public with sharing class AgentSetupRecords {
           kind +
           ' is called "' +
           name.left(80) +
-          '". Say which program (program): ' +
+          '". Say which ' +
+          words[2] +
+          ' (program): ' +
           String.join(programs, ', ') +
           '.'
       );
@@ -319,7 +322,7 @@ public with sharing class AgentSetupRecords {
         kind +
         ' called "' +
         name.left(80) +
-        '" that this user can see. ' +
+        '" that you can see. ' +
         AgentWeeks.namesSaid(words[1], names)
     );
   }

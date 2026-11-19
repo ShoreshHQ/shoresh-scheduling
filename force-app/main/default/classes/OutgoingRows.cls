@@ -61,7 +61,7 @@ public with sharing class OutgoingRows {
       found.isEmpty()
         ? 'There is no season called "' +
           given.left(80) +
-          '" that this user can see. ' +
+          '" that you can see. ' +
           seasonsSaid()
         : 'More than one season is called "' +
           given.left(80) +
@@ -101,7 +101,7 @@ public with sharing class OutgoingRows {
     return SeasonToOpen.find();
   }
 
-  /** "Seasons this user can see: Summer 2026, Summer 2025." */
+  /** "Seasons you can see: Summer 2026, Summer 2025." */
   public static String seasonsSaid() {
     List<Season__c> seen = seasonsSeen();
     Set<Id> camps = new Set<Id>();
@@ -118,11 +118,14 @@ public with sharing class OutgoingRows {
       );
     }
     return names.isEmpty()
-      ? 'Shoresh has no season this user can see yet.'
-      : 'Seasons this user can see: ' + String.join(names, ', ') + '.';
+      ? 'Shoresh has no season you can see yet.'
+      : 'Seasons you can see: ' + String.join(names, ', ') + '.';
   }
 
-  /** The season's week of that name, or refused with the season's weeks (API-1.25). */
+  /**
+   * The season's week of that name, or refused with the season's weeks (API-1.25) in the camp's
+   * Week words (CORE-1.0), read only when refusing.
+   */
   public static Week__c weekIn(Season__c season, String week) {
     requireWeek(week);
     List<Week__c> weeks = [
@@ -139,15 +142,19 @@ public with sharing class OutgoingRows {
       }
       names.add(each.Name);
     }
+    CampLabels words = IncomingSeason.labelsOf(season.Id);
+    String weeks = words.pluralInSentence('Week');
     throw new ShoreshException(
-      'There is no week called "' +
+      'There is no ' +
+        words.singularInSentence('Week') +
+        ' called "' +
         week.normalizeSpace().left(80) +
         '" in ' +
         season.Name +
         '. ' +
         (names.isEmpty()
-          ? 'It has no weeks yet.'
-          : 'Its weeks: ' + String.join(names, ', ') + '.')
+          ? 'It has no ' + weeks + ' yet.'
+          : 'Its ' + weeks + ': ' + String.join(names, ', ') + '.')
     );
   }
 

@@ -40,7 +40,8 @@ global with sharing class AgentMoveElectiveSeat implements AgentWeeks.Action {
     ElectivePeriod period = timeOf(
       view,
       AgentFields.text(body, 'day'),
-      AgentFields.text(body, 'time')
+      AgentFields.text(body, 'time'),
+      campWords
     );
     ElectiveSeats.OfferingInfo offering = offeringOf(
       view,
@@ -127,11 +128,15 @@ global with sharing class AgentMoveElectiveSeat implements AgentWeeks.Action {
     );
   }
 
-  /** The time by its day (Monday, or 2026-06-29) and time block's name. */
+  /**
+   * The time by its day (Monday, or 2026-06-29) and time block's name; refused in the camp's
+   * Elective word (words, CORE-1.0).
+   */
   public static ElectivePeriod timeOf(
     ElectiveSeats.RunView view,
     String day,
-    String block
+    String block,
+    CampLabels words
   ) {
     List<String> said = new List<String>();
     for (ElectivePeriod each : view.times) {
@@ -147,7 +152,9 @@ global with sharing class AgentMoveElectiveSeat implements AgentWeeks.Action {
       said.add(each.words());
     }
     throw new ShoreshException(
-      'There is no elective time on ' +
+      'There is no ' +
+        words.singularInSentence('Elective') +
+        ' time on ' +
         day.left(40) +
         ' at ' +
         block.left(40) +

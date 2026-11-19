@@ -1073,7 +1073,7 @@ const CAPABILITIES = [
     method: "GET",
     readsDraft: true,
     description:
-      "Read a week's Generated Schedule or Manual Build as that screen shows it now: its draft, which can differ from the published week read_group_schedule reads. checks comes first: the screen's counter in its words for the whole week, as read_week_checks gives it. On Generated Schedule, seen is the week as you read it: hand it back to change cells, lock or unlock. \"records\" has what each group does, day by day and time by time (Open where nothing is placed), each row with the values columns names; its notes, when it has any, say locked where the screen shows a padlock (a fixed or recurring activity always has one, and unlock_cells doesn't lift it), away when the group is away, and special event, elective set, fixed activity or recurring activity, each in the camp's own word for it. special_days lists the days a special day takes over (read their cells with read_special_schedule); days_not_read lists days that couldn't be read. groups_with_the_same_name lists names two groups share: their rows' notes say which of them each row is, and that needs fixing by the camp, so say so. A big camp's whole week is long: ask for one day or one group, and ask for the rest the same way. Report what it says; never add a problem Shoresh didn't list.",
+      "Read a week's Generated Schedule or Manual Build as that screen shows it now: its draft, which can differ from the published week read_group_schedule reads. checks comes first: the screen's counter in its words for the whole week, as read_week_checks gives it. On Generated Schedule, seen is the week as you read it: hand it back to change cells, lock or unlock. \"records\" has what each group does, day by day and time by time (Open where nothing is placed), each row in the order \"columns\" names; its notes, when it has any, say locked where the screen shows a padlock (a fixed or recurring activity always has one, and unlock_cells doesn't lift it), away when the group is away, and special event, elective set, fixed activity or recurring activity, each in the camp's own word for it. special_days lists the days a special day takes over (read their cells with read_special_schedule); days_not_read lists days that couldn't be read. groups_with_the_same_name lists names two groups share: their rows' notes say which of them each row is, and that needs fixing by the camp, so say so. A big camp's whole week is long: ask for one day or one group, and ask for the rest the same way. Report what it says; never add a problem Shoresh didn't list.",
     about:
       "This week's draft on its screen (Generated Schedule or Manual Build), exactly as the screen shows it now, which can differ from the published week. Its checks are the screen's counter: anything not listed, Shoresh didn't find.",
     inputSchema: {
@@ -2216,7 +2216,7 @@ const CAPABILITIES = [
     api: "read_failed_sends",
     method: "GET",
     description:
-      "Read the sends to a saved destination that failed, as Settings shows them: for each thing sent (like the group schedule for Week 2) to each destination, its last send if that one failed, in Settings' own sentence. A failure stays until a later send of the same thing to the same destination goes through; the camp's own Flow sends, so Settings has no retry or dismiss, and neither does this. Destinations are kept by the camp's Salesforce admin, not on a Shoresh screen.",
+      "Read the sends to a saved destination that failed, as Settings shows them: for each thing sent (like the group schedule for Week 2) to each destination, its last send if that one failed, in Settings' own sentence. A failure stays until a later send of the same thing to the same destination goes through; the camp's own Salesforce automation sends, so Settings has no retry or dismiss, and neither does this. Destinations are kept by the camp's Salesforce admin, not on a Shoresh screen.",
     about:
       "The failed sends Settings shows, in its sentences. It holds no destination's address, key or password.",
     inputSchema: {
@@ -2444,8 +2444,7 @@ const CAPABILITIES = [
         season: SEASON,
         pattern: {
           type: "string",
-          description:
-            'The pattern exactly as read_learned_answers gave it, like "pattern:numbered:Lunch".'
+          description: "The pattern exactly as read_learned_answers gave it."
         },
         seen: {
           type: "string",

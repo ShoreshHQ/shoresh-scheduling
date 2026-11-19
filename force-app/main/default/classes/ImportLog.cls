@@ -94,7 +94,7 @@ public with sharing class ImportLog {
     ];
     if (access.isEmpty() || !access[0].HasReadAccess) {
       throw new ShoreshException(
-        'This user can\'t see that season. Ask a Salesforce admin to share it.'
+        'You can\'t see that season. Ask a Salesforce admin to share it.'
       );
     }
   }

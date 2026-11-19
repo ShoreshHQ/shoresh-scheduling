@@ -62,9 +62,7 @@ global with sharing class AgentAssignElectiveSeats implements AgentWeeks.Action,
       response.statusCode = ours ? 400 : 500;
       response.responseBody = Blob.valueOf(
         JSON.serialize(
-          OutgoingRows.answered(
-            ours ? e.getMessage() : ScreenErrors.loadingWords(e)
-          )
+          OutgoingRows.answered(ours ? e.getMessage() : ScreenErrors.words(e))
         )
       );
     }
@@ -122,7 +120,7 @@ global with sharing class AgentAssignElectiveSeats implements AgentWeeks.Action,
       held.setName +
       ' in ' +
       held.weekName +
-      ', in the version being worked on: ' +
+      ', in the Draft: ' +
       change.said() +
       ' There is no undo.';
   }

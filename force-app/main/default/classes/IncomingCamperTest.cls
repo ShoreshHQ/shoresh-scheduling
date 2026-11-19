@@ -469,7 +469,7 @@ private class IncomingCamperTest {
       );
       Assert.areEqual(403, answer.get('status'));
       Assert.areEqual(
-        'This user can\'t send campers. A Salesforce admin can give it the "Send campers" permission set.',
+        'This connection can\'t send campers. A Salesforce admin can give it the "Send campers" permission set.',
         answer.get('message')
       );
     }
@@ -527,7 +527,7 @@ private class IncomingCamperTest {
         }
       );
       Assert.areEqual(
-        'problem: There is no season called "Summer 2031" that this user can see.',
+        'problem: There is no season called "Summer 2031" that you can see.',
         IncomingTestData.said(noSeason, 1)
       );
       Map<String, Object> notJson = IncomingTestData.post('camper', 'campers');

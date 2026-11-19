@@ -277,7 +277,7 @@ private class AgentSetupRestTest {
       Assert.isTrue(
         String.valueOf(nobody[1])
           .startsWith(
-            'There is no division or group called "Lake" that this user can see.'
+            'There is no division or group called "Lake" that you can see.'
           ),
         String.valueOf(nobody[1])
       );

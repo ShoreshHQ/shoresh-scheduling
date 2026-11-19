@@ -32,9 +32,7 @@ public with sharing class IncomingSeason {
       return found[0];
     }
     String why = found.isEmpty()
-      ? 'There is no season called "' +
-        name.left(80) +
-        '" that this user can see.'
+      ? 'There is no season called "' + name.left(80) + '" that you can see.'
       : AgentRefusal.withFix(
           'More than one season is called "' + name.left(80) + '".',
           'Rename one in Shoresh, then send this again.'
