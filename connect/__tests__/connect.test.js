@@ -151,6 +151,24 @@ describe("Shoresh for AI tools and the command line", () => {
     expect(JSON.parse(seen[0].stdin)).toEqual(asked);
   });
 
+  // Design guide §2, word picks (Greg, 2026-11-12): the AI connector uses the same words as the screens.
+  it("gregsWordPicks: no tool's description, about or input says Bring in, null, a setup record, a seat run or a place", () => {
+    const said = JSON.stringify(
+      CAPABILITIES.map((c) => [c.description, c.about, c.inputSchema])
+    );
+    for (const banned of [
+      /\bbr(ing|ings|ought)[ -]in\b/i,
+      /\(null\b/i,
+      /setup records?\b/i,
+      /seat run/i,
+      /\bplaces?\b(?! it)/i,
+      /through an agent/i,
+      /remembered from before/i
+    ]) {
+      expect([banned, said.match(banned)]).toEqual([banned, null]);
+    }
+  });
+
   // API-1.6, API-1.5
   // API-1.19
   it("plainNames: every action is list_seasons, read_<thing>, bring_in_choices, change_<thing>, build_week, try_another_option, bring_back_option, fill_open_cells, start_over_week, publish_week, unpublish_week, lock_cells, unlock_cells, move_cell, take_out_cell, copy_cells, start_manual_week, finalize_electives, accept_finding, undo_last_agent_change, <verb>_version, rename/delete/add_setup_record, fill_in_weeks, merge_locations, confirm_setup_guess, confirm_proposed_offering, copy_season, update_to_match_setup, switch_to_rain_plans, assign_elective_seats, move_elective_seat, lock_elective_seat, start_new_elective_version, clear_electives, put_special_day_on_day, take_special_day_off_day, place_special_event, set_up_noted_item, import_list, import_worksheet, import_last_year, import_special_schedule, undo_import, apply_to_other_weeks, download_<file>, forget_learned_answer, forget_learned_pattern, undo_learned_answer, make_linked_choice, delete_linked_choice, delete_offering, create_camp, create_season, delete_season, archive_season, bring_back_season, clear_day or clear_week, said without jargon", () => {

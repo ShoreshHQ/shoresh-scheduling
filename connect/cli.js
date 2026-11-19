@@ -8,7 +8,7 @@
  *     --day Monday --time "Period 2" --was "Gym games" --activity Soccer
  *   node connect/cli.js build_week --season "Summer 2026" --week "Week 2"   (then publish_week)
  *   node connect/cli.js finalize_electives --season "Summer 2026" --week "Week 2" --elective_set Chugim
- *   node connect/cli.js delete_version --season "Summer 2026" --week "Week 2" --name "Try 2"
+ *   node connect/cli.js delete_version --season "Summer 2026" --week "Week 2" --version "Option 2"
  *     (Shoresh asks first: exit 3, nothing done; only after the person says yes, the same
  *     command again with --confirm "<what Shoresh gave>")
  *   (--org <alias> picks a sf CLI sign-in; otherwise SHORESH_ORG, then the sf CLI's default.)

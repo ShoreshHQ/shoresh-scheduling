@@ -221,7 +221,7 @@ function importFile(name, api, description, more = {}, required = []) {
         answers: {
           type: "object",
           description:
-            "Your answers, by the id the review gives each: a question's choice, a column's choice, keep or change for a difference, leaveOut for a new row, back for something deleted before."
+            "Your answers, by the id the review gives each: a question's choice, a column's choice, keep or change for a difference, \"leaveOut\" to leave a new row out, back for something deleted before."
         },
         save: {
           type: "boolean",
@@ -247,7 +247,7 @@ function bringInChoicesFile() {
   const c = importFile(
     "bring_in_choices",
     "bring_in_choices",
-    "Import campers' elective choices from a file, as the Elective seats screen's Import choices does: this is how a week's electives start (the first bring-in makes the week's run), and later sheets bring choices in again. The file is read with the screen's own code (each camper, their bunk and their choices in order). Send it first without save: the answer is the review (how many campers, new or already here, choices made by hand that are kept, names Shoresh doesn't have yet, each at the answer the screen starts it at) and its seen. Change a new name's answer only when the person wants it otherwise (ask them about anything the file doesn't make plain), then send the same file and answers with save: true and the seen. It is done as you, with your own access, all or none; a camper's choices changed by hand are kept. This is how a person's AI brings in campers, their bunks and their choices, from a file or from the person's own words: one camper's new or changed choices go as a sheet of that one camper (csv_text with their camper number when the camp uses them, their name exactly as Shoresh has it, their bunk and their choices in order). Campers not on the sheet keep their choices. A camper is matched by number, or by name when there is none, so if the review counts that camper as new, stop and ask the person: saving would add a second camper.",
+    "Import campers' elective choices from a file, as the Elective seats screen's Import choices does: this is how a week's electives start (the first import starts the week's seats), and later sheets import choices again. The file is read with the screen's own code (each camper, their bunk and their choices in order). Send it first without save: the answer is the review (how many campers, new or already here, choices made by hand that are kept, names Shoresh doesn't have yet, each at the answer the screen starts it at) and its seen. Change a new name's answer only when the person wants it otherwise (ask them about anything the file doesn't make plain), then send the same file and answers with save: true and the seen. It is done as you, with your own access, all or none; a camper's choices changed by hand are kept. This is how a person's AI imports campers, their bunks and their choices, from a file or from the person's own words: one camper's new or changed choices go as a sheet of that one camper (csv_text with their camper number when the camp uses them, their name exactly as Shoresh has it, their bunk and their choices in order). Campers not on the sheet keep their choices. A camper is matched by number, or by name when there is none, so if the review counts that camper as new, stop and ask the person: saving would add a second camper.",
     {
       elective_set: {
         type: "string",
@@ -311,7 +311,7 @@ function setup(name, api, description, more = {}, required = []) {
         kind: {
           type: "string",
           description:
-            "What kind of record: week, program, division, group, time block, location type, location, activity, fixed activity, recurring activity, special day, special event or elective set (or the camp's own word for it, like bunk)."
+            "What it is: week, program, division, group, time block, location type, location, activity, fixed activity, recurring activity, special day, special event or elective set (or the camp's own word for it, like bunk)."
         },
         name: {
           type: "string",
@@ -340,7 +340,7 @@ const ACTIVITY_NAME = {
 const SETUP_FIELDS = {
   type: "object",
   description:
-    "The fields to set, by name, each value as text as a camp types it: dates like 2026-07-06, times like 9:00 AM, yes or no, numbers, and other records by name (a location, location type, division, time block, or an activity for rain_plan; \"none\" leaves it blank, or for a group's division puts it in no division). Each kind's fields: week start_date, end_date; program monday to sunday (yes or no: the days it runs); group division (moves it to another division of its program), availability (All day, Morning only, Afternoon only); time block start_time, end_time, part_of_day (Morning, Afternoon); location location_type, groups_that_fit, notes; activity location, length (in time blocks), times_per_week_min, times_per_week_max, no_weekly_max, priority (High, Low), outdoor, rain_plan, groups_at_once, no_group_limit; fixed activity time_block, last_time_block, length, early_day (a day like Wednesday or Day 3), early_blocks, location; recurring activity time_block, last_time_block, length, location, monday to sunday; special day notes; special event location, notes. Divisions, location types and elective sets have only a name."
+    "The fields to set, by name, each value as text as a camp types it: dates like 2026-07-06, times like 9:00 AM, yes or no, numbers, and other things in setup by name (a location, location type, division, time block, or an activity for rain_plan; \"none\" leaves it blank, or for a group's division puts it in no division). Each kind's fields: week start_date, end_date; program monday to sunday (yes or no: the days it runs); group division (moves it to another division of its program), availability (All day, Morning only, Afternoon only); time block start_time, end_time, part_of_day (Morning, Afternoon); location location_type, groups_that_fit, notes; activity location, length (in time blocks), times_per_week_min, times_per_week_max, no_weekly_max, priority (High, Low), outdoor, rain_plan, groups_at_once, no_group_limit; fixed activity time_block, last_time_block, length, early_day (a day like Wednesday or Day 3), early_blocks, location; recurring activity time_block, last_time_block, length, location, monday to sunday; special day notes; special event location, notes. Divisions, location types and elective sets have only a name."
 };
 
 /**
@@ -532,7 +532,7 @@ const CAPABILITIES = [
     api: "seasons",
     method: "GET",
     description:
-      "List the seasons the person can see in Shoresh, each with its camp, dates, short_week choice (keep or lower), weeks and programs, and opens_on: the season Shoresh's screens open on (null when that isn't one season, so ask which). Use it to find a name instead of guessing one. camps lists the camps the person can see: none yet means create_camp comes first, then create_season; a camp with no season means create_season. A season marked archived (true) is kept read-only: it can be read and copied, and changes to it are refused until bring_back_season brings it back; it is never the one opens_on names.",
+      "List the seasons the person can see in Shoresh, each with its camp, dates, short_week choice (keep or lower), weeks and programs, and opens_on: the season Shoresh's screens open on (none when that isn't one season, so ask which). Use it to find a name instead of guessing one. camps lists the camps the person can see: none yet means create_camp comes first, then create_season; a camp with no season means create_season. A season marked archived (true) is kept read-only: it can be read and copied, and changes to it are refused until bring_back_season brings it back; it is never the one opens_on names.",
     about:
       "The seasons this person can see in Shoresh, with their weeks and programs. These are the only names that exist.",
     inputSchema: { type: "object", properties: {}, additionalProperties: false }
@@ -944,7 +944,7 @@ const CAPABILITIES = [
     sendsFields: true,
     changesOffering: true,
     description:
-      "Change an elective's seats, its No limit tick or its minimum to run, as the cells of its row on the Electives list do, without sending a list file. Read it first with read_offerings and send back seen. Blank or 0 seats are saved: the seat run then places it with no limit and says so, and the list marks it, which comes back with the answer. Fewer seats than campers already have is saved too: those campers keep their seats until seats are assigned again, and the elective shows as over its seats. It is made as you, with your own access. If someone else changed it since, nothing is changed and Shoresh says so in one sentence: pass that on to the person and don't pick a side.",
+      "Change an elective's seats, its No limit tick or its minimum to run, as the cells of its row on the Electives list do, without sending a list file. Read it first with read_offerings and send back seen. Blank or 0 seats are saved: assigning seats then places it with no limit and says so, and the list marks it, which comes back with the answer. Fewer seats than campers already have is saved too: those campers keep their seats until seats are assigned again, and the elective shows as over its seats. It is made as you, with your own access. If someone else changed it since, nothing is changed and Shoresh says so in one sentence: pass that on to the person and don't pick a side.",
     inputSchema: {
       type: "object",
       properties: {
@@ -1114,7 +1114,7 @@ const CAPABILITIES = [
     ...act(
       "accept_finding",
       "accept_finding",
-      "Accept one line of a week's checks, as its Accept button on Generated Schedule or Manual Build does, without asking first: the line is kept with the week, so it stays away for anyone who opens the week, and comes back if it gets worse. It is done as you, with your own access. Only a line read_week_checks lists with can_accept true can be accepted; there is no undo through an agent (a Rebuild clears every accept).",
+      "Accept one line of a week's checks, as its Accept button on Generated Schedule or Manual Build does, without asking first: the line is kept with the week, so it stays away for anyone who opens the week, and comes back if it gets worse. It is done as you, with your own access. Only a line read_week_checks lists with can_accept true can be accepted; your AI can't undo it (a Rebuild clears every accept).",
       {
         ...EITHER_WEEK,
         finding: {
@@ -1397,7 +1397,7 @@ const CAPABILITIES = [
   setup(
     "rename_setup_record",
     "rename_setup_record",
-    "Rename one of a season's setup records, as Camp Setup's tables do when a name is changed: a week, program, division, group, time block, location type, location, activity, fixed activity, recurring activity, special day, special event or elective set. It is done as you, with your own access. If someone else changed it since, nothing is saved and Shoresh says so.",
+    "Rename one thing in a season's setup, as Camp Setup's tables do when a name is changed: a week, program, division, group, time block, location type, location, activity, fixed activity, recurring activity, special day, special event or elective set. It is done as you, with your own access. If someone else changed it since, nothing is saved and Shoresh says so.",
     {
       new_name: {
         type: "string",
@@ -1409,14 +1409,14 @@ const CAPABILITIES = [
   setup(
     "delete_setup_record",
     "delete_setup_record",
-    "Delete one of a season's setup records (the kinds rename_setup_record names), as Camp Setup's Delete does. Ask the person first with Camp Setup's own question, word for word: read it with read_setup_delete right before. What Camp Setup refuses to delete (something still uses it) is refused in its words with nothing deleted: pass that on to the person and don't work around it. The answer says how many schedules it was in; they keep its name. It is done as you, with your own access."
+    "Delete one thing in a season's setup (the kinds rename_setup_record names), as Camp Setup's Delete does. Ask the person first with Camp Setup's own question, word for word: read it with read_setup_delete right before. What Camp Setup refuses to delete (something still uses it) is refused in its words with nothing deleted: pass that on to the person and don't work around it. The answer says how many schedules it was in; they keep its name. It is done as you, with your own access."
   ),
   {
     // A read: GET, its fields in the web address (API-1.102).
     ...setup(
       "read_setup_delete",
       "delete_setup_record",
-      "Read the question Camp Setup asks before deleting one of a season's setup records: everything that goes with it (a program's or week's Manual Builds, Generated Schedules and saved versions, the special days a week takes off its days) or how many schedules a bunk or activity is in. Ask the person exactly that before delete_setup_record. What Camp Setup refuses to delete is refused in its words: pass that on and don't delete."
+      "Read the question Camp Setup asks before deleting one thing in a season's setup: everything that goes with it (a program's or week's Manual Builds, Generated Schedules and saved versions, the special days a week takes off its days) or how many schedules a bunk or activity is in. Ask the person exactly that before delete_setup_record. What Camp Setup refuses to delete is refused in its words: pass that on and don't delete."
     ),
     method: "GET",
     about:
@@ -1428,23 +1428,23 @@ const CAPABILITIES = [
     ...setup(
       "read_setup_record",
       "read_setup_record",
-      "Read what one of a season's setup records holds in the fields change_setup_record changes, as Camp Setup shows them. For an activity that is its location, length (in time blocks), times_per_week_min and times_per_week_max (how often a week), no_weekly_max, priority, outdoor, rain_plan, groups_at_once, no_group_limit and the weeks it runs in (who can do it and notes are read_activity_rules). For a week: start_date, end_date; a program: the days it runs; a group: division, availability, runs_in; a time block: start_time, end_time, part_of_day; a location: location_type, groups_that_fit, notes; a fixed or recurring activity: its time blocks, length, location and days. Values are said as Camp Setup shows them (dates like 2026-07-06, times like 9:00 AM, yes or no, other records by name, none or (blank) when empty; the weeks it runs in and who a recurring activity covers as lists of names). Read it right before changing it, and send those values back unchanged as seen."
+      "Read what one thing in a season's setup holds in the fields change_setup_record changes, as Camp Setup shows them. For an activity that is its location, length (in time blocks), times_per_week_min and times_per_week_max (how often a week), no_weekly_max, priority, outdoor, rain_plan, groups_at_once, no_group_limit and the weeks it runs in (who can do it and notes are read_activity_rules). For a week: start_date, end_date; a program: the days it runs; a group: division, availability, runs_in; a time block: start_time, end_time, part_of_day; a location: location_type, groups_that_fit, notes; a fixed or recurring activity: its time blocks, length, location and days. Values are said as Camp Setup shows them (dates like 2026-07-06, times like 9:00 AM, yes or no, other records by name, none or (blank) when empty; the weeks it runs in and who a recurring activity covers as lists of names). Read it right before changing it, and send those values back unchanged as seen."
     ),
     method: "GET",
     about:
-      "What the setup record holds now, as Camp Setup shows it. It holds no findings or problems.",
+      "What it holds now, as Camp Setup shows it. It holds no findings or problems.",
     sendsFields: false
   },
   setup(
     "change_setup_record",
     "change_setup_record",
-    "Change fields of one of a season's setup records other than its name (rename_setup_record renames), as Camp Setup's tables save a row. Read it first with read_setup_record and send what it said as seen. It covers a week's dates, a program's days, a group's division or availability, a time block's times, a location's type or how many groups fit, an activity's location, length, how often, priority, outdoor, rain plan or groups at once, a fixed or recurring activity's time block, length, place or days, the weeks something runs in, who a recurring activity covers, a special day's or event's notes or place. It is done as you, with your own access. If someone else changed those fields since, nothing is saved and Shoresh says so; what Camp Setup refuses is refused in its words. A fixed activity that would land on a recurring activity is asked about first with Camp Setup's own question (\"What is ... where ... is?\"); on the yes the recurring activity keeps its other time blocks, as on the screen. Anything else is done at once, with no confirm.",
+    "Change fields of one thing in a season's setup other than its name (rename_setup_record renames), as Camp Setup's tables save a row. Read it first with read_setup_record and send what it said as seen. It covers a week's dates, a program's days, a group's division or availability, a time block's times, a location's type or how many groups fit, an activity's location, length, how often, priority, outdoor, rain plan or groups at once, a fixed or recurring activity's time block, length, location or days, the weeks something runs in, who a recurring activity covers, a special day's notes, a special event's location or notes. It is done as you, with your own access. If someone else changed those fields since, nothing is saved and Shoresh says so; what Camp Setup refuses is refused in its words. A fixed activity that would land on a recurring activity is asked about first with Camp Setup's own question (\"What is ... where ... is?\"); on the yes the recurring activity keeps its other time blocks, as on the screen. Anything else is done at once, with no confirm.",
     {
       fields: CHANGED_SETUP_FIELDS,
       seen: {
         type: "object",
         description:
-          "What each field you change held when you read it with read_setup_record, by the same names, as that read said it. Shoresh compares it with what the record holds now: if someone changed it since, nothing is saved and the person should be told."
+          "What each field you change held when you read it with read_setup_record, by the same names, as that read said it. Shoresh compares it with what it holds now: if someone changed it since, nothing is saved and the person should be told."
       }
     },
     ["fields", "seen"]
@@ -1452,7 +1452,7 @@ const CAPABILITIES = [
   addedRecord(
     "add_setup_record",
     "add_setup_record",
-    "Add one setup record to a season, as Camp Setup's tables' Add does: a week, program, division, group, time block, location type, location, activity, fixed activity, recurring activity, special day, special event or elective set. It goes last in its table and starts from what that table's new row starts with (a new activity: once a week, one block long, low priority; a new location: one group fits; a new program: the days the other programs run); fields set more. A new week needs start_date and end_date, a time block start_time and end_time, a fixed or recurring activity its time_block, and a group its division (\"none\" for no division). Records in a program (divisions, groups, time blocks, fixed and recurring activities) go in the program named, or the season's only one. It is done as you, with your own access; what Camp Setup refuses is refused in its words. A fixed activity that would land on a recurring activity is asked about first with Camp Setup's own question (\"What is ... where ... is?\"); on the yes the recurring activity keeps its other time blocks, as on the screen. Anything else is done at once, with no confirm.",
+    "Add one thing to a season's setup, as Camp Setup's tables' Add does: a week, program, division, group, time block, location type, location, activity, fixed activity, recurring activity, special day, special event or elective set. It goes last in its table and starts from what that table's new row starts with (a new activity: once a week, one block long, low priority; a new location: one group fits; a new program: the days the other programs run); fields set more. A new week needs start_date and end_date, a time block start_time and end_time, a fixed or recurring activity its time_block, and a group its division (\"none\" for no division). Records in a program (divisions, groups, time blocks, fixed and recurring activities) go in the program named, or the season's only one. It is done as you, with your own access; what Camp Setup refuses is refused in its words. A fixed activity that would land on a recurring activity is asked about first with Camp Setup's own question (\"What is ... where ... is?\"); on the yes the recurring activity keeps its other time blocks, as on the screen. Anything else is done at once, with no confirm.",
     { fields: SETUP_FIELDS }
   ),
   {
@@ -1592,14 +1592,14 @@ const CAPABILITIES = [
     api: "read_same_locations",
     method: "GET",
     description:
-      "Read Camp Setup's \"Same location?\" question for a place: the season's locations whose names match it, capitals and spacing aside, each with its exact name, groups that fit and how many activities happen there, and which one the question would keep. Read it right before merge_locations and send what it said as seen.",
+      "Read Camp Setup's \"Same location?\" question for a location: the season's locations whose names match it, capitals and spacing aside, each with its exact name, groups that fit and how many activities happen there, and which one the question would keep. Read it right before merge_locations and send what it said as seen.",
     about:
-      "The matching places now, as Camp Setup's question shows them. They hold no findings or problems.",
+      "The matching locations now, as Camp Setup's question shows them. They hold no findings or problems.",
     inputSchema: {
       type: "object",
       properties: {
         season: SEASON,
-        name: { type: "string", description: "The place's name, like Pool." }
+        name: { type: "string", description: "The location's name, like Pool." }
       },
       required: ["name"],
       additionalProperties: false
@@ -1611,29 +1611,29 @@ const CAPABILITIES = [
     method: "POST",
     sendsFields: true,
     description:
-      "Merge places whose names match (capitals and spacing aside) into one, as Camp Setup's \"Same location?\" Merge does: everything at the others (activities, fixed and recurring activities, the weeks they are closed) moves to the one kept, and the others are deleted. This can't be undone here: ask the person first, naming the one kept, the ones deleted and the groups that fit, as that question does. Read them first with read_same_locations and send each place's exact name and groups_that_fit as seen. It is done as you, with your own access. If someone else changed those places since, nothing is merged and Shoresh says so.",
+      "Merge locations whose names match (capitals and spacing aside) into one, as Camp Setup's \"Same location?\" Merge does: everything at the others (activities, fixed and recurring activities, the weeks they are closed) moves to the one kept, and the others are deleted. This can't be undone here: ask the person first, naming the one kept, the ones deleted and the groups that fit, as that question does. Read them first with read_same_locations and send each location's exact name and groups_that_fit as seen. It is done as you, with your own access. If someone else changed those locations since, nothing is merged and Shoresh says so.",
     inputSchema: {
       type: "object",
       properties: {
         season: SEASON,
         name: {
           type: "string",
-          description: "The places' name, like Pool."
+          description: "The locations' name, like Pool."
         },
         keep: {
           type: "string",
           description:
-            "The exact name (capitals and spaces as read_same_locations said it) of the place to keep. Leave it out to keep the one the question would keep."
+            "The exact name (capitals and spaces as read_same_locations said it) of the location to keep. Leave it out to keep the one the question would keep."
         },
         groups_that_fit: {
           type: "string",
           description:
-            "How many groups fit at the place kept: a whole number, 1 or more. Leave it out for the most any of them fits, as the question starts."
+            "How many groups fit at the location kept: a whole number, 1 or more. Leave it out for the most any of them fits, as the question starts."
         },
         seen: {
           type: "object",
           description:
-            'Each place as read_same_locations said it: its exact name with its groups_that_fit, like {"Pool": "1", "pool": "2"}. If any place was added, renamed, changed or deleted since, nothing is merged and the person should be told.'
+            'Each location as read_same_locations said it: its exact name with its groups_that_fit, like {"Pool": "1", "pool": "2"}. If any location was added, renamed, changed or deleted since, nothing is merged and the person should be told.'
         }
       },
       required: ["name", "seen"],
@@ -2035,7 +2035,7 @@ const CAPABILITIES = [
   importFile(
     "import_list",
     "import_list",
-    "Import a list into one setup screen's list, as that screen's Import a list does: the file's rows are read, set against what the season has, and reviewed exactly as the screen reviews them, with the same code (which column is which, questions such as whether two similar names are the same thing, each difference from what is set up to Keep or Change, new rows to add or leave out, what is added with the list because rows name it). Send the file first without save: the answer is the review, its questions and its seen. Answer the questions (ask the person about anything the file doesn't make plain), send again until nothing is waiting, then send the same file and answers with save: true and the seen. It is done as you, with your own access, all or none. If someone changed the setup since the review, nothing is saved. undo_import undoes it. This is how a person's AI brings in divisions, groups, activities or any other setup list; campers' elective choices and bunks come in with bring_in_choices.",
+    "Import a list into one setup screen's list, as that screen's Import a list does: the file's rows are read, set against what the season has, and reviewed exactly as the screen reviews them, with the same code (which column is which, questions such as whether two similar names are the same thing, each difference from what is set up to Keep or Change, new rows to add or leave out, what is added with the list because rows name it). Send the file first without save: the answer is the review, its questions and its seen. Answer the questions (ask the person about anything the file doesn't make plain), send again until nothing is waiting, then send the same file and answers with save: true and the seen. It is done as you, with your own access, all or none. If someone changed the setup since the review, nothing is saved. undo_import undoes it. This is how a person's AI imports divisions, groups, activities or any other setup list; campers' elective choices and bunks are imported with bring_in_choices.",
     {
       list: {
         type: "string",
@@ -2075,7 +2075,7 @@ const CAPABILITIES = [
     sendsFields: true,
     importsLastYear: true,
     description:
-      "Import last year's schedule files, as Import last year does: the files are read, set against what the season has, and reviewed exactly as the screen reviews them, with the same code (each file's layout, questions such as which program a group is in or whether two similar names are the same thing, answers filled in from the camp's steady patterns, places named in the files, what an earlier import added that these files lack, what comes in, last year's schedule kept as a version). Send the files first without save: the answer is the review, its questions and its seen. Answer the questions (ask the person about anything the files don't make plain), send again with the same files, then send them with save: true and the seen. A question that can wait may be left open: it waits on Roots for later, as Add does. It is done as you, with your own access, all or none. If someone changed the setup, a week's schedule or the special days since the review, nothing is saved. undo_import undoes it.",
+      "Import last year's schedule files, as Import last year does: the files are read, set against what the season has, and reviewed exactly as the screen reviews them, with the same code (each file's layout, questions such as which program a group is in or whether two similar names are the same thing, answers filled in from the camp's steady patterns, locations named in the files, what an earlier import added that these files lack, what comes in, last year's schedule kept as a version). Send the files first without save: the answer is the review, its questions and its seen. Answer the questions (ask the person about anything the files don't make plain), send again with the same files, then send them with save: true and the seen. A question that can wait may be left open: it waits on Roots for later, as Add does. It is done as you, with your own access, all or none. If someone changed the setup, a week's schedule or the special days since the review, nothing is saved. undo_import undoes it.",
     inputSchema: {
       type: "object",
       properties: {
@@ -2089,7 +2089,7 @@ const CAPABILITIES = [
         layouts: {
           type: "object",
           description:
-            "A file's layout when the review isn't sure of it, by file name: allCamp, byGroup or byActivity."
+            'A file\'s layout when the review isn\'t sure of it, by file name: "allCamp" (All camp: a page per day), "byGroup" (By group: a page per group) or "byActivity" (By activity: the groups doing each activity listed in its cell).'
         },
         open_questions: {
           type: "boolean",

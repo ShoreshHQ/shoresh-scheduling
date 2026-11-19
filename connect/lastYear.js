@@ -85,7 +85,7 @@ function questionLine(m, card, suggestion, remembered, auto) {
       auto && auto.value === card.answer
         ? ` (auto-applied: ${auto.text}; to ask it again, send its id in ask_again)`
         : remembered[card.id] === card.answer
-          ? " (remembered from before)"
+          ? " (Answered as before)"
           : ""
     }.`;
   } else if (suggestion) {
