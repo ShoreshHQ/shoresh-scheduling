@@ -238,23 +238,67 @@ private class DeleteProtectionTest {
     Assert.areEqual(0, [SELECT COUNT() FROM Week__c WITH SYSTEM_MODE]);
   }
 
-  // With nothing published, the check is one query: the camp is looked up only for a refusal.
+  // With nothing published, deleting a program or a week reads published history once and no
+  // camp: the camp is looked up only for a refusal. Each delete is that one query plus one of its
+  // own (the program's drafts with events, DeletedDrafts; the week's special dates); which seasons
+  // are archived was already read while setting up.
   @IsTest
-  static void withoutPublishedHistoryTheCheckIsOneQuery() {
+  static void withoutPublishedHistoryADeleteReadsNoCamp() {
     Camp__c camp = ShoreshTestData.camp('Camp Willow');
     Season__c season = ShoreshTestData.season(camp.Id, 'Summer 2026');
     Program__c program = ShoreshTestData.program(season.Id, 'Main');
     Week__c week = ShoreshTestData.weeks(season.Id, 1)[0];
-    List<SObject> records = new List<SObject>{ season, program, week };
     Test.startTest();
     Integer before = Limits.getQueries();
-    PublishedHistory.refuseDeletes(records);
-    Integer used = Limits.getQueries() - before;
+    Database.delete(program, AccessLevel.SYSTEM_MODE);
+    Integer programQueries = Limits.getQueries() - before;
+    before = Limits.getQueries();
+    Database.delete(week, AccessLevel.SYSTEM_MODE);
+    Integer weekQueries = Limits.getQueries() - before;
     Test.stopTest();
-    Assert.areEqual(1, used);
-    for (SObject record : records) {
-      Assert.isFalse(record.hasErrors());
+    Assert.areEqual(2, programQueries, 'Deleting a program');
+    Assert.areEqual(2, weekQueries, 'Deleting a week');
+  }
+
+  // One delete across two camps: each refusal is in its own camp's words.
+  @IsTest
+  static void aBulkDeleteIsRefusedInEachCampsOwnWords() {
+    Camp__c willow = ShoreshTestData.camp('Camp Willow');
+    Camp__c oak = ShoreshTestData.camp('Camp Oak');
+    Database.insert(
+      new CampLabel__c(
+        Camp__c = oak.Id,
+        ModelTerm__c = 'Program',
+        Singular__c = 'Edah',
+        Plural__c = 'Edot'
+      ),
+      AccessLevel.SYSTEM_MODE
+    );
+    List<Program__c> programs = new List<Program__c>();
+    for (Camp__c camp : new List<Camp__c>{ willow, oak }) {
+      Season__c season = ShoreshTestData.season(camp.Id, 'Summer 2026');
+      Program__c program = ShoreshTestData.program(season.Id, camp.Name);
+      PublishedTestData.schedule(
+        program.Id,
+        ShoreshTestData.weeks(season.Id, 1)[0].Id
+      );
+      programs.add(program);
     }
+
+    List<Database.DeleteResult> results = Database.delete(
+      programs,
+      false,
+      AccessLevel.SYSTEM_MODE
+    );
+
+    Assert.areEqual(
+      '"Camp Willow" has published schedules, which are kept as history, so this program can\'t be deleted.',
+      results[0].getErrors()[0].getMessage()
+    );
+    Assert.areEqual(
+      '"Camp Oak" has published schedules, which are kept as history, so this Edah can\'t be deleted.',
+      results[1].getErrors()[0].getMessage()
+    );
   }
 
   @IsTest
