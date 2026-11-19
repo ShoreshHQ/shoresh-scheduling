@@ -9,19 +9,20 @@
 private class ImportLogEntriesTest {
   private static final String GRID_BEFORE = '{"b":[],"g":[],"i":[["A","","Canoe"]],"r":[]}';
   private static final String GRID_AFTER = '{"b":[],"g":[],"i":[],"r":[]}';
-  // A record's values, a who list, a week off, a camp word, a removed record, cells taken out.
+  // A record's values, a who list, a week off, a camp word, a removed record, cells taken out,
+  // each with its keys in the order the platform writes them (CI, today's writer, 2026-11-19).
   private static final String LOG =
-    '[{"id":"{archery}","type":"Activity__c","name":"Archery",' +
-    '"before":{"Notes__c":"Sunscreen"},"after":{"Notes__c":"Bring a hat"}},' +
-    '{"who":"{archery}","type":"ActivityEligibility__c","name":"Archery",' +
-    '"before":["{juniors}"],"after":["{seniors}"]},' +
-    '{"weekOn":"{weekOff}","week":"{week}","field":"Activity__c",' +
-    '"target":"{archery}","name":"Week 1","item":"Archery"},' +
-    '{"wordOff":"{word}","term":"Group","singular":"Bunk","plural":"Bunks"},' +
-    '{"removed":"{canoe}","type":"Activity__c","name":"Canoe"},' +
-    '{"cellsOut":"{day}","name":"Week 1 saved",' +
+    '[{"after":{"Notes__c":"Bring a hat"},"before":{"Notes__c":"Sunscreen"},' +
+    '"name":"Archery","type":"Activity__c","id":"{archery}"},' +
+    '{"after":["{seniors}"],"before":["{juniors}"],"name":"Archery",' +
+    '"type":"ActivityEligibility__c","who":"{archery}"},' +
+    '{"item":"Archery","name":"Week 1","target":"{archery}",' +
+    '"field":"Activity__c","week":"{week}","weekOn":"{weekOff}"},' +
+    '{"plural":"Bunks","singular":"Bunk","term":"Group","wordOff":"{word}"},' +
+    '{"name":"Canoe","type":"Activity__c","removed":"{canoe}"},' +
+    '{"after":"{\\"b\\":[],\\"g\\":[],\\"i\\":[],\\"r\\":[]}",' +
     '"before":"{\\"b\\":[],\\"g\\":[],\\"i\\":[[\\"A\\",\\"\\",\\"Canoe\\"]],\\"r\\":[]}",' +
-    '"after":"{\\"b\\":[],\\"g\\":[],\\"i\\":[],\\"r\\":[]}"}]';
+    '"name":"Week 1 saved","cellsOut":"{day}"}]';
 
   private class Camp {
     Id campId;
