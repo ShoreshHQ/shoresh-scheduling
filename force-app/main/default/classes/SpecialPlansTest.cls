@@ -333,6 +333,8 @@ public class SpecialPlansTest {
       Map<String, Id> ids = ShoreshTestData.lastSeasonIds;
       Id fieldDay = specialDay(season.Id, 'Field Day');
       Id colorWar = specialDay(season.Id, 'Color War');
+      // No plan at all: never saved, so not the director's work.
+      Id visitingDay = specialDay(season.Id, 'Visiting Day');
       SpecialEvent__c carnival = new SpecialEvent__c(
         Season__c = season.Id,
         Name = 'Carnival'
@@ -352,7 +354,7 @@ public class SpecialPlansTest {
       Assert.areEqual(
         new Set<Id>{ colorWar, carnival.Id },
         SpecialPlans.savedSinceFirst(
-          new Set<Id>{ fieldDay, colorWar, carnival.Id }
+          new Set<Id>{ fieldDay, colorWar, visitingDay, carnival.Id }
         )
       );
     }
