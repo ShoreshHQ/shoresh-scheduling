@@ -46,7 +46,7 @@ global with sharing class AgentConfirmGuess implements AgentWeeks.Action {
     String field = fieldOf(AgentFields.text(body, 'field'));
     if (!body.containsKey('seen') || body.get('seen') == null) {
       throw new ShoreshException(
-        'Say its value as read_setup_guesses gave it (seen), so a change someone made since isn\'t marked as looked at.'
+        'Say its value as read_setup_guesses gave it (seen), so a change someone made since isn\'t marked Looks right.'
       );
     }
     String seen = String.valueOf(body.get('seen'));

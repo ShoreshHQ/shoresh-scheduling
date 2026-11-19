@@ -91,7 +91,7 @@ global with sharing class AgentMergeLocations implements AgentWeeks.Action, Agen
     Map<String, Object> seen = AgentSetupFields.given(body.get('seen'));
     if (seen.isEmpty()) {
       throw new ShoreshException(
-        'Nothing was merged. Say each place as read_same_locations said it (seen: {exact name: groups_that_fit}).'
+        'Nothing was merged. Say each location as read_same_locations said it (seen: {exact name: groups_that_fit}).'
       );
     }
     // Locked: no one's save can come between the compare and the merge.
