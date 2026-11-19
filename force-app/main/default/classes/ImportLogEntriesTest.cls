@@ -1,9 +1,9 @@
 /**
  * The import log (Import__c.Changed__c) keeps its stored shape: a log saved before the log became
  * one module still undoes, and an import writes the same log byte for byte. LOG is one entry of
- * each kind, in the exact shape ImportWriter wrote before the change (checked against that writer
- * by whatAnImportWritesIsTheSameLog, run on the code before the change), with the test's own
- * records' Ids put in. Every test acts as a scheduler. Made-up camp only.
+ * each kind, in the exact shape ImportWriter writes (whatAnImportWritesIsTheSameLog, written first
+ * against the writer as it was before the log became one module), with the test's own records'
+ * Ids put in. Tests with records act as a scheduler. Made-up camp only.
  */
 @IsTest
 private class ImportLogEntriesTest {
@@ -225,17 +225,34 @@ private class ImportLogEntriesTest {
 
   /**
    * INGEST-5.7: what earlier imports brought in is read from their logs whatever else they
-   * logged: a who list one replaced, or cells one took out, never stops a second import.
+   * logged: a who list one replaced, or cells one took out, never stops a second import, and an
+   * item an import created is still counted as its.
    */
   @IsTest
   static void ingest57EveryKindOfEntryLeavesWhatImportsBroughtInReadable() {
     System.runAs(ShoreshTestData.scheduler()) {
       Camp c = camp();
+      Activity__c swim = ShoreshTestData.activity(c.seasonId, 'Swim', null);
+      insert as user swim;
+      List<String> fields = new List<String>{ 'Name', 'Season__c' };
       Database.insert(
         new Import__c(
           Season__c = c.seasonId,
           Files__c = 'maple-grove.xlsx',
-          Created__c = '{}',
+          Created__c = JSON.serialize(
+            new Map<String, Object>{
+              'Activity' => new Map<String, Object>{
+                'fieldsets' => new List<Object>{ fields },
+                'rows' => new List<Object>{
+                  new List<Object>{
+                    swim.Id,
+                    0,
+                    ImportUndoValues.digest(swim, fields)
+                  }
+                }
+              }
+            }
+          ),
           Changed__c = logFor(c)
         ),
         AccessLevel.SYSTEM_MODE
@@ -243,7 +260,7 @@ private class ImportLogEntriesTest {
       Test.startTest();
       Set<Id> untouched = ImportProvenance.untouched(c.seasonId);
       Test.stopTest();
-      Assert.isTrue(untouched.isEmpty(), String.valueOf(untouched));
+      Assert.areEqual(new Set<Id>{ swim.Id }, untouched);
     }
   }
 }
