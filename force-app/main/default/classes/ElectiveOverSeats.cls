@@ -63,7 +63,7 @@ public with sharing class ElectiveOverSeats {
   public static String noSeatsSet(ElectiveSeats.OfferingInfo offering) {
     return offering.proposed != true &&
       offering.noLimit != true &&
-      ElectiveSeatCounts.limitOf(offering.seats, offering.noLimit) == null
+      ElectiveSeatCounts.limitOf(offering) == null
       ? 'Choose how many ' +
         words.pluralInSentence('Seats') +
         ' "' +
@@ -112,7 +112,11 @@ public with sharing class ElectiveOverSeats {
     for (ElectiveSeats.SeatInfo seat : view.seats) {
       ElectiveSeats.CamperInfo camper = campers.get(seat.camperId);
       if (camper != null) {
-        counts.seat(camper.groupId, seat.day, seat.blockId, seat.offeringId);
+        counts.seat(
+          camper.groupId,
+          ElectiveTimes.slotOf(seat.day, seat.blockId),
+          seat.offeringId
+        );
       }
     }
     return counts;
@@ -124,10 +128,7 @@ public with sharing class ElectiveOverSeats {
     ElectiveSeats.OfferingInfo offering,
     ElectiveSeatCounts counts
   ) {
-    Integer seats = ElectiveSeatCounts.limitOf(
-      offering.seats,
-      offering.noLimit
-    );
+    Integer seats = ElectiveSeatCounts.limitOf(offering);
     Integer count = counts.at(period, offering.id);
     return seats != null &&
       count > seats

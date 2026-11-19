@@ -6,6 +6,12 @@
  * (ELECT-4.11). Both sides pass staticresources/ShoreshSeatExamples.json. Reads nothing.
  */
 public with sharing class ElectiveSeatCounts {
+  // day|block -> the times there, in division order.
+  private final Map<String, List<ElectivePeriod>> bySlot = new Map<String, List<ElectivePeriod>>();
+  // time key|offering -> its count; and each, in the order first counted.
+  private final Map<String, Counted> counts = new Map<String, Counted>();
+  private final List<Counted> order = new List<Counted>();
+
   /** One offering at one time, with the campers seated in it then. */
   public class Counted {
     public ElectivePeriod period;
@@ -13,26 +19,26 @@ public with sharing class ElectiveSeatCounts {
     public Integer count = 0;
   }
 
-  // day|block -> the times there, in division order.
-  private final Map<String, List<ElectivePeriod>> bySlot = new Map<String, List<ElectivePeriod>>();
-  // time key|offering -> its count; and each, in the order first counted.
-  private final Map<String, Counted> counts = new Map<String, Counted>();
-  private final List<Counted> order = new List<Counted>();
-
   /**
    * The offering's seats, or null for no limit: no seat limit ticked, or seats blank or 0
    * (ELECT-4.1; the engine's NO_SEATS_SET).
    */
-  public static Integer limitOf(Decimal seats, Boolean noLimit) {
-    return noLimit == true ||
-      seats == null ||
-      seats == 0
+  public static Integer limitOf(Offering__c offering) {
+    return offering.NoSeatLimit__c == true ||
+      offering.Seats__c == null ||
+      offering.Seats__c == 0
       ? null
-      : seats.intValue();
+      : offering.Seats__c.intValue();
   }
 
-  public static Integer limitOf(Offering__c offering) {
-    return limitOf(offering.Seats__c, offering.NoSeatLimit__c);
+  /** The same, for an offering as the seats screen has it. */
+  public static Integer limitOf(ElectiveSeats.OfferingInfo offering) {
+    return limitOf(
+      new Offering__c(
+        Seats__c = offering.seats,
+        NoSeatLimit__c = offering.noLimit == true
+      )
+    );
   }
 
   /** Counts at these times (one run's, as ElectiveTimes makes them). */
@@ -47,12 +53,12 @@ public with sharing class ElectiveSeatCounts {
   }
 
   /**
-   * A seat, counted at the time the camper's bunk (groupId; null for no bunk) takes on that day
-   * and block (ElectiveTimes.periodOf's rule), when that time offers its offering; else not at
-   * all, as the screen leaves a seat that no longer fits off its board.
+   * A seat, counted at the time the camper's bunk (groupId; null for no bunk) takes at its day
+   * and block (slot: ElectiveTimes.slotOf; ElectiveTimes.periodOf's rule), when that time offers
+   * its offering; else not at all, as the screen leaves a seat that no longer fits off its board.
    */
-  public void seat(Id groupId, Date day, String blockId, Id offeringId) {
-    List<ElectivePeriod> here = bySlot.get(ElectiveTimes.slotOf(day, blockId));
+  public void seat(Id groupId, String slot, Id offeringId) {
+    List<ElectivePeriod> here = bySlot.get(slot);
     ElectivePeriod at = here == null
       ? null
       : ElectiveTimes.takenBy(here, groupId);

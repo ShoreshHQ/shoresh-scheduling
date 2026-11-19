@@ -92,8 +92,7 @@ public with sharing class RootsSeats {
       if (camper != null) {
         counts.seat(
           camper.Group__c,
-          seat.Date__c,
-          ElectiveSeatChecks.blockOf(seat),
+          ElectiveTimes.slotOf(seat.Date__c, ElectiveSeatChecks.blockOf(seat)),
           seat.Offering__c
         );
       }

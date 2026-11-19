@@ -32,8 +32,7 @@ public with sharing class ElectiveSeatTally {
       );
       lockedCounts.seat(
         state.groupOf(seat.Camper__c),
-        seat.Date__c,
-        ElectiveSeatChecks.blockOf(seat),
+        ElectiveTimes.slotOf(seat.Date__c, ElectiveSeatChecks.blockOf(seat)),
         seat.Offering__c
       );
     }

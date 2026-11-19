@@ -598,9 +598,6 @@ private class RootsTableTest {
           new Assignment__c(
             ElectiveRun__c = camp.runId,
             Camper__c = at.camperId,
-            Group__c = Math.mod(camper, 2) == 0
-              ? camp.ids.get('Group A')
-              : camp.ids.get('Group B'),
             Date__c = at.day,
             TimeBlock__c = at.blockId,
             Offering__c = at.offeringId

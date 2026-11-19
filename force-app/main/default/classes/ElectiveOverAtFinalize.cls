@@ -19,8 +19,7 @@ public with sharing class ElectiveOverAtFinalize {
     for (Assignment__c seat : state.seats) {
       counts.seat(
         state.groupOf(seat.Camper__c),
-        seat.Date__c,
-        ElectiveSeatChecks.blockOf(seat),
+        ElectiveTimes.slotOf(seat.Date__c, ElectiveSeatChecks.blockOf(seat)),
         seat.Offering__c
       );
     }

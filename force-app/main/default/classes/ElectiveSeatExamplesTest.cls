@@ -6,7 +6,9 @@
  */
 @IsTest
 private class ElectiveSeatExamplesTest {
-  private static final String BUNK_PREFIX = Group__c.SObjectType.getDescribe()
+  private static final String BUNK_PREFIX = Group__c.SObjectType.getDescribe(
+      SObjectDescribeOptions.DEFERRED
+    )
     .getKeyPrefix();
   // ELECT-4.4
   @IsTest
@@ -38,7 +40,9 @@ private class ElectiveSeatExamplesTest {
     List<Object> cases = (List<Object>) examples().get('counts');
     Assert.isFalse(cases.isEmpty());
     Date day = Date.newInstance(2027, 7, 5);
-    Id offeringId = Offering__c.SObjectType.getDescribe()
+    Id offeringId = Offering__c.SObjectType.getDescribe(
+        SObjectDescribeOptions.DEFERRED
+      )
       .getKeyPrefix()
       .rightPad(15, '0');
     for (Object each : cases) {
@@ -60,11 +64,17 @@ private class ElectiveSeatExamplesTest {
       }
       ElectiveSeatCounts counts = new ElectiveSeatCounts(times);
       for (Object bunk : (List<Object>) example.get('seated')) {
-        counts.seat(bunkId(bunks, (String) bunk), day, 'b1', offeringId);
+        counts.seat(
+          bunkId(bunks, (String) bunk),
+          ElectiveTimes.slotOf(day, 'b1'),
+          offeringId
+        );
       }
       Integer seats = ElectiveSeatCounts.limitOf(
-        (Decimal) example.get('seats'),
-        (Boolean) example.get('noLimit')
+        new Offering__c(
+          Seats__c = (Decimal) example.get('seats'),
+          NoSeatLimit__c = (Boolean) example.get('noLimit')
+        )
       );
       List<Object> count = (List<Object>) example.get('count');
       List<Object> over = (List<Object>) example.get('over');
