@@ -5,9 +5,10 @@
  * connector for a person's AI (docs/protocol/api.md API-1.38 to API-1.40), so the two can never
  * edit, refuse or say anything differently.
  *
- * ctx: { week (the days shown), t (the camp's words), nameOf(slot, day), dayNameOf(dateValue),
- * isAwayOn(week, d, g, b), isLocked({ day, group, block }), liveLocks (the locked cells' keys, or
- * null where nothing is locked, Manual Build), replaced (the days a special day replaces, by date) }.
+ * ctx (editContextOf): { week (the days shown), t (the camp's words), nameOf(slot, day),
+ * dayNameOf(dateValue), isAwayOn(week, d, g, b), isLocked({ day, group, block }), liveLocks (the
+ * locked cells' keys, or null where nothing is locked, Manual Build), replaced (the days a special
+ * day replaces, by date), setUp (where setup puts each fixed and recurring activity, or null) }.
  * A position is { day, group, block }: indexes into the week, that day's groups and its time blocks.
  */
 import { dayLabel } from "./engine.shoreshScheduleViews.shoreshScheduleViews.mjs";
@@ -21,10 +22,11 @@ import {
   placement
 } from "./engine.shoreshWeekEditor.slotEdits.mjs";
 import { REFUSED, moveEdit, removeEdit, resizeEdit } from "./engine.shoreshWeekEditor.moves.mjs";
-import { eventRuns } from "./engine.shoreshWeekEditor.specials.mjs";
+import { eventRuns, replacedDays } from "./engine.shoreshWeekEditor.specials.mjs";
 import { LEFT_OUT, replan, toolRuns } from "./engine.shoreshWeekEditor.tools.mjs";
 import { rainCounts } from "./engine.shoreshWeekEditor.rain.mjs";
-import { lockKey, noteRows } from "./engine.shoreshWeekEditor.locks.mjs";
+import { isLockedAt, lockKey, noteRows } from "./engine.shoreshWeekEditor.locks.mjs";
+import { dayNameOf } from "./engine.shoreshWeekEditor.measure.mjs";
 
 /**
  * A hand edit is always made (Greg, 2026-10-26, engine care Q4): the director knows what can
@@ -59,6 +61,69 @@ export function nameOfSlot(slot, day, find) {
   return item.startsWith("S:")
     ? `${find.t.s("SpecialEvent")} (removed)`
     : `${find.t.s("Activity")} (removed)`;
+}
+
+/**
+ * Where setup puts each fixed and recurring activity this week (the draft's setUpCells, Apex
+ * ManualSetUpCells): { "date|groupId|blockId": "F:<Id>" | "^F:<Id>" }, or null when the draft
+ * has none (setup places none, or a draft read without them).
+ */
+export function setUpOf(draft) {
+  const cells = (draft && draft.setUpCells) || [];
+  return cells.length
+    ? Object.fromEntries(cells.map((cell) => [cell.key, cell.slot]))
+    : null;
+}
+
+/** Whether a group isn't at camp in a block of a day (indexes) of some week: the draft's away blocks. */
+export function isAwayIn(draft, week, d, g, b) {
+  const day = week[d];
+  const groupId = day.groups[g].id;
+  const blockId = day.blocks[b].id;
+  return ((draft && draft.away) || []).some(
+    (entry) => entry.groupId === groupId && entry.blockIds.includes(blockId)
+  );
+}
+
+/**
+ * What the edits here work with (ctx above), from what a screen holds: the draft (its schedule,
+ * activities, away blocks, specials and setUpCells), t (the camp's words), setup (the season's
+ * special events and elective sets a cell can name), locks (the live locks, or null: none),
+ * planName (a special day's or event's own schedule) and replaced (the days a special day
+ * replaces, if already worked out). The week editor and Shoresh's connector both build it here,
+ * so a person and their AI edit the same week the same way.
+ */
+export function editContextOf({
+  draft,
+  t,
+  setup,
+  locks = null,
+  planName,
+  replaced
+}) {
+  const week = draft.schedule.days;
+  const events = (setup && setup.special && setup.special.specialEvents) || [];
+  const sets = (setup && setup.electives && setup.electives.sets) || [];
+  const named = (record) => record && { name: record.Name };
+  const find = {
+    activity: (item) =>
+      (draft.activities || []).find((a) => `A:${a.id}` === item),
+    event: (item) => named(events.find((e) => `S:${e.Id}` === item)),
+    elective: (item) => named(sets.find((e) => `E:${e.Id}` === item)),
+    t
+  };
+  return {
+    week,
+    t,
+    nameOf: (slot, day) => nameOfSlot(slot, day, find),
+    dayNameOf: (dateValue) => dayNameOf(dateValue, planName),
+    isAwayOn: (w, d, g, b) => isAwayIn(draft, w, d, g, b),
+    // Any block of the placement locked locks the cell (LOCK-4.1).
+    isLocked: (slot) => isLockedAt(week, locks, slot),
+    liveLocks: locks,
+    replaced: replaced || replacedDays(draft),
+    setUp: setUpOf(draft)
+  };
 }
 
 /** "Bunk 3 · Monday · Period 2" */

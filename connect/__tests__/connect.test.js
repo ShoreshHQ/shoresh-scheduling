@@ -1283,7 +1283,7 @@ describe("Shoresh for AI tools and the command line", () => {
   });
 
   // LOCK-4.1
-  it("cellContextAsTheScreensEditor: an AI's edits work with what the week editor gives its edits, and a lock on any block of an activity locks all of it for an AI too", () => {
+  it("cellContextAsTheScreensEditor: a lock on any block of an activity locks all of it for an AI too", () => {
     const LWC = "../../force-app/main/default/lwc";
     const m = Object.assign(
       {},
@@ -1324,23 +1324,6 @@ describe("Shoresh for AI tools and the command line", () => {
       setup: {},
       labels: []
     });
-
-    // Every field the week editor gives its edits (shoreshWeekEditor editCtx), an AI's have too:
-    // one added on screen and not here fails this.
-    const source = fs.readFileSync(
-      path.join(__dirname, `${LWC}/shoreshWeekEditor/shoreshWeekEditor.js`),
-      "utf8"
-    );
-    const body = /get editCtx\(\) \{\s*return \{([\s\S]*?)\n {4}\};/.exec(
-      source
-    )[1];
-    const keys = [...body.matchAll(/^ {6}(\w+):/gm)].map(([, key]) => key);
-    expect(keys).toEqual(expect.arrayContaining(["week", "isLocked"]));
-    for (const ctx of [generated, manual]) {
-      for (const key of keys) {
-        expect([key, key in ctx]).toEqual([key, true]);
-      }
-    }
 
     // Both blocks of the half-locked Swim are locked, as the grid shows them; Open is not.
     const monday = generated.week.findIndex(

@@ -28,18 +28,6 @@ export function electivePlacesOf(setup) {
 }
 
 /**
- * Where setup puts each fixed and recurring activity this week (the draft's setUpCells, Apex
- * ManualSetUpCells): { "date|groupId|blockId": "F:<Id>" | "^F:<Id>" }, or null when the draft
- * has none (setup places none, or a draft read without them).
- */
-export function setUpOf(draft) {
-  const cells = (draft && draft.setUpCells) || [];
-  return cells.length
-    ? Object.fromEntries(cells.map((cell) => [cell.key, cell.slot]))
-    : null;
-}
-
-/**
  * The days checked. draft: Manual Build's draft (its records, away blocks and activities);
  * weekDays: the days; how: { t, setup, electivePlaces, replaced (the days a special day replaces,
  * by date), dayName(dateValue) }.
