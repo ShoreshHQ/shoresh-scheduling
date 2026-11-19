@@ -45,7 +45,7 @@ private class AgentArchiveSeasonTest {
     System.runAs(ShoreshTestData.scheduler()) {
       Camp__c camp = ShoreshTestData.camp('Camp Willow');
       Season__c summer = ShoreshTestData.season(camp.Id, 'Summer');
-      ShoreshTestData.publishedSchedule(
+      PublishedTestData.schedule(
         ShoreshTestData.program(summer.Id, 'Main').Id,
         ShoreshTestData.weeks(summer.Id, 1)[0].Id
       );

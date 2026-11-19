@@ -240,7 +240,7 @@ private class AgentCampSeasonTest {
         EndDate__c = Date.newInstance(2027, 8, 6)
       );
       Database.insert(season, AccessLevel.USER_MODE);
-      ShoreshTestData.publishedSchedule(
+      PublishedTestData.schedule(
         ShoreshTestData.program(season.Id, 'Main').Id,
         ShoreshTestData.weeks(season.Id, 1)[0].Id
       );

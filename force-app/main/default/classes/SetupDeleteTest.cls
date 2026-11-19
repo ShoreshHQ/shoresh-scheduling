@@ -322,7 +322,7 @@ private class SetupDeleteTest {
         WITH USER_MODE
       ]
       .Name;
-      ShoreshTestData.publishedSchedule(ids.get('Main'), ids.get('Week 1'));
+      PublishedTestData.schedule(ids.get('Main'), ids.get('Week 1'));
       Test.startTest();
       SetupDelete.Preview preview = SetupDelete.preview(ids.get('Season'));
       Test.stopTest();

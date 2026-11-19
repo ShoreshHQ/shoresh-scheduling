@@ -249,24 +249,6 @@ public class ShoreshTestData {
     return schedule;
   }
 
-  /** The program's week published, as Publish leaves it: published history. */
-  public static Schedule__c publishedSchedule(Id programId, Id weekId) {
-    Schedule__c schedule = new Schedule__c(
-      Program__c = programId,
-      Week__c = weekId,
-      Name = 'Published',
-      Status__c = 'Published',
-      Origin__c = 'Manual'
-    );
-    PublishedGuard.allow();
-    try {
-      Database.insert(schedule, AccessLevel.SYSTEM_MODE);
-    } finally {
-      PublishedGuard.done();
-    }
-    return schedule;
-  }
-
   /** A saved version of a program's week, as an import makes one. */
   public static Schedule__c version(Id programId, Id weekId, String name) {
     Schedule__c schedule = new Schedule__c(

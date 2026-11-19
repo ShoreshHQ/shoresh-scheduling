@@ -126,7 +126,7 @@ private class DeleteProtectionTest {
       AccessLevel.SYSTEM_MODE
     );
     Season__c season = ShoreshTestData.fullSeason(camp.Id);
-    ShoreshTestData.publishedSchedule(
+    PublishedTestData.schedule(
       ShoreshTestData.lastSeasonIds.get('Main'),
       ShoreshTestData.lastSeasonIds.get('Week 1')
     );
@@ -154,7 +154,7 @@ private class DeleteProtectionTest {
     Camp__c camp = ShoreshTestData.camp('Camp Willow');
     Season__c season = ShoreshTestData.season(camp.Id, 'Summer 2026');
     Program__c program = ShoreshTestData.program(season.Id, 'Main');
-    ShoreshTestData.publishedSchedule(
+    PublishedTestData.schedule(
       program.Id,
       ShoreshTestData.weeks(season.Id, 1)[0].Id
     );
@@ -183,7 +183,7 @@ private class DeleteProtectionTest {
         WHERE Season__c = :season.Id
         WITH SYSTEM_MODE
       ];
-      ShoreshTestData.publishedSchedule(
+      PublishedTestData.schedule(
         program.Id,
         ShoreshTestData.lastSeasonIds.get('Week 1')
       );
@@ -207,7 +207,7 @@ private class DeleteProtectionTest {
     Camp__c camp = ShoreshTestData.camp('Camp Willow');
     Season__c season = ShoreshTestData.season(camp.Id, 'Summer 2026');
     Week__c week = ShoreshTestData.weeks(season.Id, 1)[0];
-    ShoreshTestData.publishedSchedule(
+    PublishedTestData.schedule(
       ShoreshTestData.program(season.Id, 'Main').Id,
       week.Id
     );

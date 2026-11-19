@@ -33,7 +33,7 @@ private class ArchivedSeasonsTest {
         FROM Group__c
         WHERE Division__r.Program__r.Season__c = :season.Id
       ];
-      ShoreshTestData.publishedSchedule(
+      PublishedTestData.schedule(
         ShoreshTestData.lastSeasonIds.get('Main'),
         ShoreshTestData.lastSeasonIds.get('Week 1')
       );
