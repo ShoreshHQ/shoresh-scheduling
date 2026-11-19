@@ -191,4 +191,79 @@ private class AgentProposedTest {
       Assert.isTrue(proposed('Bechira'), 'Nothing else changed');
     }
   }
+
+  // CORE-1.0, CORE-1.34: guessed electives are read and refused in the camp's own words; its
+  // sets follow its Chug words.
+  @IsTest
+  static void proposedSaysTheCampsOwnWords() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      offeringsCamp();
+      Id campId = [
+        SELECT Camp__c
+        FROM Season__c
+        WHERE Name = 'Summer 2027'
+        WITH SYSTEM_MODE
+      ]
+      .Camp__c;
+      Database.insert(
+        new List<CampLabel__c>{
+          new CampLabel__c(
+            Camp__c = campId,
+            ModelTerm__c = 'Elective',
+            Singular__c = 'Chug',
+            Plural__c = 'Chugim'
+          ),
+          new CampLabel__c(
+            Camp__c = campId,
+            ModelTerm__c = 'Seats',
+            Singular__c = 'Spot',
+            Plural__c = 'Spots'
+          ),
+          new CampLabel__c(
+            Camp__c = campId,
+            ModelTerm__c = 'Camper',
+            Singular__c = 'Chanich',
+            Plural__c = 'Chanichim'
+          )
+        },
+        AccessLevel.SYSTEM_MODE
+      );
+      Test.startTest();
+      List<Object> read = ask(
+        new AgentReadProposed(),
+        'GET',
+        new Map<String, Object>{ 'season' => 'Summer 2027' }
+      );
+      List<Object> twoSets = ask(
+        new AgentConfirmProposed(),
+        'POST',
+        confirm(null, 'proposed')
+      );
+      List<Object> noSet = ask(
+        new AgentConfirmProposed(),
+        'POST',
+        confirm('Sports', 'proposed')
+      );
+      List<Object> done = ask(
+        new AgentConfirmProposed(),
+        'POST',
+        confirm('Chugim', 'proposed')
+      );
+      Test.stopTest();
+      String said = (String) read[1];
+      Assert.isTrue(said.contains('Drama (Chug Bechira)'), said);
+      Assert.areEqual(
+        'More than one Chug offers "Drama". Say which (elective_set): Bechira, Chugim. Nothing was changed.',
+        twoSets[1]
+      );
+      Assert.areEqual(
+        'No Chug "Sports" offers "Drama". Nothing was changed. read_proposed_offerings says what is guessed.',
+        noSet[1]
+      );
+      Assert.areEqual(
+        'Confirmed "Drama" in Chugim: it is offered now, and Chanichim can get a Spot in it.',
+        done[1]
+      );
+    }
+  }
 }

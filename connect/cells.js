@@ -35,10 +35,21 @@ function namesSaid(things, names) {
     : `There are no ${things} yet.`;
 }
 
-/** The one that reads as asked, or a refusal naming what there is (never guessed). */
+/**
+ * What a list holds in the camp's words, one and many, as a sentence says them ("Edah", "Edot":
+ * CORE-1.0, never the word with "s" added).
+ */
+function wordsOf(t, term) {
+  return { one: t.sIn(term), many: t.pIn(term) };
+}
+
+/**
+ * The one that reads as asked, or a refusal naming what there is (never guessed); what: the
+ * list's words (wordsOf).
+ */
 function onlyOne(list, asked, nameOf, what, where) {
   if (!String(asked || "").trim()) {
-    throw new Refused(`Say which ${what}.`);
+    throw new Refused(`Say which ${what.one}.`);
   }
   const found = list.filter((x) =>
     nameOf(x).some((n) => fold(n) === fold(asked))
@@ -48,12 +59,12 @@ function onlyOne(list, asked, nameOf, what, where) {
   }
   if (found.length > 1) {
     throw new Refused(
-      `Two ${what}s are called "${String(asked).slice(0, 80)}"${where}. Nothing was changed.`
+      `Two ${what.many} are called "${String(asked).slice(0, 80)}"${where}. Nothing was changed.`
     );
   }
   throw new Refused(
-    `There is no ${what} called "${String(asked).slice(0, 80)}"${where}. ${namesSaid(
-      `${what}s`,
+    `There is no ${what.one} called "${String(asked).slice(0, 80)}"${where}. ${namesSaid(
+      what.many,
       list.map((x) => nameOf(x)[0])
     )}`
   );
@@ -99,7 +110,7 @@ function groupIn(ctx, d, asked) {
     ctx.week[d].groups,
     asked,
     (g) => [g.name],
-    "group",
+    wordsOf(ctx.t, "Group"),
     " on that day"
   );
 }
@@ -107,15 +118,16 @@ function groupIn(ctx, d, asked) {
 /** The time block by its name ("Period 2") or its start ("09:00"). */
 function blockIn(ctx, d, asked) {
   const blocks = ctx.week[d].blocks;
+  const what = wordsOf(ctx.t, "TimeBlock");
   const byName = blocks.filter((b) => fold(b.name) === fold(asked));
   if (byName.length) {
-    return onlyOne(blocks, asked, (b) => [b.name], "time", " on that day");
+    return onlyOne(blocks, asked, (b) => [b.name], what, " on that day");
   }
   return onlyOne(
     blocks,
     asked,
     (b) => [b.name, String(b.startTime || "").slice(0, 5)],
-    "time",
+    what,
     " on that day"
   );
 }
@@ -390,14 +402,16 @@ function placeEvent(ctx, m, input, weekName) {
     ctx.events,
     input.event,
     (x) => [x.Name],
-    "special event",
+    wordsOf(ctx.t, "SpecialEvent"),
     " in this season"
   );
   const event = ctx.events[e];
   const d = dayIn(ctx, m, input.day, weekName);
   const asked = Array.isArray(input.groups) ? input.groups : [input.groups];
   if (!asked.length) {
-    throw new Refused("Say which groups (groups), like Bunk 3.");
+    throw new Refused(
+      `Say which ${ctx.t.pIn("Group")} (groups), like ${ctx.t.s("Group")} 3.`
+    );
   }
   const groups = [...new Set(asked.map((g) => groupIn(ctx, d, g)))].sort(
     (a, b) => a - b
@@ -405,7 +419,7 @@ function placeEvent(ctx, m, input, weekName) {
   groups.forEach((g, i) => {
     if (i > 0 && g !== groups[i - 1] + 1) {
       throw new Refused(
-        `Choose groups side by side, as the day shows them: ${ctx.week[d].groups.map((x) => x.name).join(", ")}.`
+        `Choose ${ctx.t.pIn("Group")} side by side, as the day shows them: ${ctx.week[d].groups.map((x) => x.name).join(", ")}.`
       );
     }
   });
@@ -441,15 +455,16 @@ function placeEvent(ctx, m, input, weekName) {
  * (as the week editor lists them, with their lengths) or elective sets; a name both have, or
  * neither, is refused, never guessed.
  */
-function typedOf(ctx, asked) {
+function typedOf(ctx, m, asked) {
   const activities = (ctx.draft.activities || []).filter(
     (a) => fold(a.name) === fold(asked)
   );
   const sets = ctx.sets.filter((e) => fold(e.Name) === fold(asked));
   const said = String(asked).slice(0, 80);
+  const { t } = ctx;
   if (activities.length && sets.length) {
     throw new Refused(
-      `"${said}" is both an activity and an elective set in this season, so Shoresh can't tell which you mean.`
+      `"${said}" is both ${m.article(t.sIn("Activity"))} and ${m.article(t.sIn("ElectiveSet"))} in this season, so Shoresh can't tell which you mean.`
     );
   }
   if (activities.length) {
@@ -460,8 +475,8 @@ function typedOf(ctx, asked) {
   }
   const byName = (a, b) => a.localeCompare(b);
   throw new Refused(
-    `There is no activity or elective set called "${said}" in this season. ${namesSaid(
-      "activities and elective sets",
+    `There is no ${t.sIn("Activity")} or ${t.sIn("ElectiveSet")} called "${said}" in this season. ${namesSaid(
+      `${t.pIn("Activity")} and ${t.pIn("ElectiveSet")}`,
       [
         ...(ctx.draft.activities || []).map((a) => a.name).sort(byName),
         ...ctx.sets.map((e) => e.Name).sort(byName)
@@ -489,7 +504,7 @@ function typedIn(ctx, m, input, slot) {
   const now = ctx.nameOf(m.placement(day, slot.group, slot.block).slot, day);
   const asked = String(input.activity || "").trim();
   if (asked && fold(asked) !== "open") {
-    const typed = typedOf(ctx, asked);
+    const typed = typedOf(ctx, m, asked);
     if (typed.set) {
       const rows = m.rowsCovered(ctx.week, [{ slot }]);
       const result = m.placeOverStep(ctx, rows, `E:${typed.set.Id}`, true);
@@ -696,7 +711,9 @@ function specialContextOf(m, body) {
     events: [],
     sets,
     replaced: new Map(),
-    setUp: null
+    setUp: null,
+    // An event's columns are its stations; a special day's, its groups.
+    columns: plan.kind === "SpecialEvent" ? "Station" : "Group"
   };
 }
 
@@ -732,7 +749,7 @@ async function specialCell(
         ctx.week[0].groups,
         input.column,
         (g) => [g.name],
-        "column",
+        wordsOf(ctx.t, ctx.columns),
         " in this schedule"
       ),
       block: blockIn(ctx, 0, input.time)
@@ -841,7 +858,7 @@ function draftOf(m, body, input) {
           day.groups,
           input.group,
           (g) => [g.name],
-          "group",
+          wordsOf(ctx.t, "Group"),
           " on that day"
         );
       }
@@ -856,7 +873,7 @@ function draftOf(m, body, input) {
       !groups.some((name) => fold(name) === fold(input.group))
     ) {
       throw new Refused(
-        `There is no group called "${String(input.group).slice(0, 80)}" on ${input.week}. ${namesSaid("groups", groups)}`
+        `There is no ${ctx.t.sIn("Group")} called "${String(input.group).slice(0, 80)}" on ${input.week}. ${namesSaid(ctx.t.pIn("Group"), groups)}`
       );
     }
   }

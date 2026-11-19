@@ -85,8 +85,8 @@ global with sharing class AgentConfirmGuess implements AgentWeeks.Action {
       ' "' +
       now.name +
       '", ' +
-      now.field +
-      ' ' +
+      now.fieldWords +
+      ': ' +
       now.value +
       '. Camp Setup no longer marks it as guessed.';
   }

@@ -24,6 +24,7 @@ global with sharing class AgentReadProposed implements AgentWeeks.Action {
     Season__c season = AgentChangeCampWords.seasonOf(
       RestContext.request.params.get('season')
     );
+    CampLabels words = CampLabels.forCamp(season.Camp__c);
     List<String> said = new List<String>();
     for (Offering__c offering : [
       SELECT ElectiveSet__r.Name, Activity__r.Name
@@ -34,7 +35,9 @@ global with sharing class AgentReadProposed implements AgentWeeks.Action {
     ]) {
       said.add(
         offering.Activity__r.Name +
-          ' (elective set ' +
+          ' (' +
+          words.singularInSentence('ElectiveSet') +
+          ' ' +
           offering.ElectiveSet__r.Name +
           ')'
       );
@@ -42,7 +45,9 @@ global with sharing class AgentReadProposed implements AgentWeeks.Action {
     if (said.isEmpty()) {
       return 'Nothing in "' +
         season.Name +
-        '" is guessed: every elective looks right.';
+        '" is guessed: every ' +
+        words.singularInSentence('Elective') +
+        ' looks right.';
     }
     return 'Guessed in "' +
       season.Name +

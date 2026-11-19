@@ -28,17 +28,19 @@ global with sharing class AgentLockElectiveSeat implements AgentWeeks.Action {
     Map<String, Object> body = AgentFields.body(FIELDS);
     if (!(body.get('locked') instanceof Boolean)) {
       throw new ShoreshException(
-        'Say whether to lock the seat (locked: true) or unlock it (locked: false).'
+        'Say whether to lock it (locked: true) or unlock it (locked: false).'
       );
     }
     Boolean locked = (Boolean) body.get('locked');
     AgentElectives.Run run = AgentElectives.committed(body);
+    CampLabels words = run.labels();
     Decimal seen = AgentElectives.seenOf(body, run);
     AgentElectives.holdAsSeen(run, seen);
     ElectiveSeats.RunView view = ElectiveSeatsController.openRun(run.id);
     ElectiveSeats.CamperInfo camper = AgentMoveElectiveSeat.camperOf(
       view,
-      AgentFields.text(body, 'camper')
+      AgentFields.text(body, 'camper'),
+      words
     );
     ElectivePeriod period = AgentMoveElectiveSeat.timeOf(
       view,
@@ -62,7 +64,7 @@ global with sharing class AgentLockElectiveSeat implements AgentWeeks.Action {
     } catch (Exception e) {
       throw new ShoreshException(
         'That ' +
-          run.labels().singularInSentence('Seats') +
+          words.singularInSentence('Seats') +
           ' wasn\'t changed. ' +
           ScreenErrors.words(e)
       );

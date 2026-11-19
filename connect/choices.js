@@ -12,7 +12,10 @@ const { fileOf } = require("./imports");
 
 const refused = (text) => ({ ok: false, status: 400, text });
 
-/** One of the names by fold, or a refusal naming them all. */
+/**
+ * One of the names by fold, or a refusal naming them all; what: their words in a sentence, one and
+ * many, in the camp's own (CORE-1.0), and the input that names one.
+ */
 function oneNamed(items, asked, nameOf, what, m) {
   const found = items.filter(
     (item) => m.foldName(nameOf(item)) === m.foldName(String(asked ?? ""))
@@ -21,8 +24,8 @@ function oneNamed(items, asked, nameOf, what, m) {
   const names = items.map(nameOf).join(", ") || "none";
   return {
     problem: asked
-      ? `There is no ${what} called ${JSON.stringify(String(asked).slice(0, 80))}. The ${what}s: ${names}.`
-      : `Say which ${what} (${what.replace(/ /g, "_")}). The ${what}s: ${names}.`
+      ? `There is no ${what.one} called ${JSON.stringify(String(asked).slice(0, 80))}. The ${what.many}: ${names}.`
+      : `Say which ${what.one} (${what.input}). The ${what.many}: ${names}.`
   };
 }
 
@@ -118,7 +121,11 @@ async function bringInChoices(capability, input, { read, send, answer, load }) {
     situation.sets || [],
     input.elective_set,
     (s) => s.name,
-    "elective set",
+    {
+      one: t.sIn("ElectiveSet"),
+      many: t.pIn("ElectiveSet"),
+      input: "elective_set"
+    },
     m
   );
   if (set.problem) return refused(set.problem);
@@ -126,7 +133,7 @@ async function bringInChoices(capability, input, { read, send, answer, load }) {
     setup.weeks || [],
     input.week,
     (w) => w.Name,
-    "week",
+    { one: t.sIn("Week"), many: t.pIn("Week"), input: "week" },
     m
   );
   if (week.problem) return refused(week.problem);
@@ -141,7 +148,13 @@ async function bringInChoices(capability, input, { read, send, answer, load }) {
   const schedule =
     schedules.length === 1 && input.schedule === undefined
       ? { item: schedules[0] }
-      : oneNamed(schedules, input.schedule, (s) => s.name, "schedule", m);
+      : oneNamed(
+          schedules,
+          input.schedule,
+          (s) => s.name,
+          { one: "schedule", many: "schedules", input: "schedule" },
+          m
+        );
   if (schedule.problem) return refused(schedule.problem);
 
   const { file, problem } = fileOf(input, m);
