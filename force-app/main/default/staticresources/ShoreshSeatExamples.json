@@ -9,11 +9,12 @@
     { "name": "blank seats are no limit", "seats": null, "noLimit": false, "locked": 0, "wanting": 4, "placed": 4 },
     { "name": "0 seats are no limit", "seats": 0, "noLimit": false, "locked": 1, "wanting": 4, "placed": 4 }
   ],
-  "countsAbout": "Campers counted in one offering at the elective times of one day and block, as the Elective seats screen (c/shoreshElectiveSeats seats.js) and ElectiveSeatCounts (Assign's check, Finalize, Roots, an AI) must both count them (ELECT-4.1, 4.11). times: each time's bunks (a time is a division's). seated: each camper's bunk. count and over: per time.",
+  "countsAbout": "Campers counted in one offering at the elective times of one day and block, as the Elective seats screen (c/shoreshElectiveSeats seats.js) and ElectiveSeatCounts (Assign's check, Finalize, Roots, an AI) must both count them (ELECT-4.1, 4.11). times: each time's bunks (a time is a division's). seated: each camper's bunk (null: no bunk, seated at the day and block's first time, as the screen shows them). count and over: per time.",
   "counts": [
     { "name": "two divisions in one block are two times", "seats": 3, "noLimit": false, "times": [["a"], ["b"]], "seated": ["a", "a", "b", "b"], "count": [2, 2], "over": [false, false] },
     { "name": "over in one division, not the other", "seats": 2, "noLimit": false, "times": [["a"], ["b"]], "seated": ["a", "a", "a", "b"], "count": [3, 1], "over": [true, false] },
     { "name": "bunks of one time share its seats", "seats": 3, "noLimit": false, "times": [["a1", "a2"]], "seated": ["a1", "a1", "a2", "a2"], "count": [4], "over": [true] },
+    { "name": "a camper with no bunk sits at the first time", "seats": 1, "noLimit": false, "times": [["a"], ["b"]], "seated": [null, "a", "b"], "count": [2, 1], "over": [true, false] },
     { "name": "no limit ticked is never over", "seats": 2, "noLimit": true, "times": [["a"]], "seated": ["a", "a", "a"], "count": [3], "over": [false] },
     { "name": "blank seats are never over", "seats": null, "noLimit": false, "times": [["a"]], "seated": ["a", "a", "a"], "count": [3], "over": [false] },
     { "name": "0 seats are never over", "seats": 0, "noLimit": false, "times": [["a"]], "seated": ["a", "a", "a"], "count": [3], "over": [false] }

@@ -103,7 +103,11 @@ private class ElectiveSeatExamplesTest {
     );
   }
 
+  /** A made-up bunk Id for the name; null (no bunk) stays null. */
   private static Id bunkId(Map<String, Id> bunks, String name) {
+    if (name == null) {
+      return null;
+    }
     if (!bunks.containsKey(name)) {
       bunks.put(name, BUNK_PREFIX.rightPad(14, '0') + bunks.size());
     }
