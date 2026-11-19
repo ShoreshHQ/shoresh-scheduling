@@ -40,7 +40,9 @@ fi
 
 if [ -n "$old_user" ] && grep -qxF -- "$old_user" <<< "$active"; then
   echo "Deleting the old test org..."
-  sf org delete scratch --target-org "$old_user" --no-prompt >/dev/null
+  # sf can fail after the org is already gone, for instance while forgetting a sign-in made
+  # in that org that it no longer has (2026-11-18). The Dev Hub check below decides.
+  sf org delete scratch --target-org "$old_user" --no-prompt >/dev/null 2>&1 || true
   after=$(active_orgs) || { echo "Stopping: could not confirm the old test org was deleted. Nothing new was created."; exit 1; }
   if grep -qxF -- "$old_user" <<< "$after"; then
     echo "Stopping: the old test org is still there after deleting it. Nothing new was created."
