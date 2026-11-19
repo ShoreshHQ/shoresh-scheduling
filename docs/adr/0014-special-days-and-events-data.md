@@ -57,7 +57,9 @@ Slice 6 (choices 32 to 36) takes a special day off a day and cleans up: desktop
    the same compact grid, split rule and revision check as `ScheduleDay__c` (ADR 0005). A plan's
    time blocks are its own (ids local to the plan, not time block records); its rows are groups
    for a special day, and stations or teams for an event. `SpecialPlans` reads and writes plans
-   with `ScheduleGrid`, `ScheduleGridParts` and `ScheduleDays.readDay`, unchanged.
+   with `ScheduleGrid`, `ScheduleGridParts` and `ScheduleDays.readDay`, unchanged; it also writes
+   the first plans of the days an import or a list adds (`writeFirst`, revision 1) and says which
+   were saved again since (`savedSinceFirst`, what Undo keeps).
 7. **Names are unique in a season**, per kind (a hidden `Key__c`, as for location types), so a
    name always means one special day or one event (an import can match by name). A special day
    and an event may share a name. A special event's location must be in its season.
