@@ -6,10 +6,6 @@
  */
 public with sharing class ElectiveOverAtFinalize {
   private final ElectiveRunState state;
-  private final List<String> order = new List<String>();
-  private final Map<String, Integer> counts = new Map<String, Integer>();
-  private final Map<String, ElectivePeriod> periods = new Map<String, ElectivePeriod>();
-  private final Map<String, Offering__c> offerings = new Map<String, Offering__c>();
 
   public ElectiveOverAtFinalize(ElectiveRunState state) {
     this.state = state;
@@ -18,57 +14,41 @@ public with sharing class ElectiveOverAtFinalize {
   /** Each line, in the order the run's seats are read; empty when none is over. */
   public List<String> find() {
     DayWords.use(state.run.Season__c);
+    // A seat with no time now is refused before this.
+    ElectiveSeatCounts counts = new ElectiveSeatCounts(state.live.periods);
     for (Assignment__c seat : state.seats) {
-      count(seat);
+      counts.seat(
+        state.groupOf(seat.Camper__c),
+        seat.Date__c,
+        ElectiveSeatChecks.blockOf(seat),
+        seat.Offering__c
+      );
     }
     List<String> lines = new List<String>();
-    for (String key : order) {
-      Offering__c offering = offerings.get(key);
-      if (counts.get(key) > offering.Seats__c) {
-        lines.add(lineFor(key, offering));
+    for (ElectiveSeatCounts.Counted each : counts.counted()) {
+      Offering__c offering = state.offeringsById.get(each.offeringId);
+      Integer seats = ElectiveSeatCounts.limitOf(offering);
+      if (seats != null && each.count > seats) {
+        lines.add(lineFor(each, offering, seats));
       }
     }
     return lines;
   }
 
-  /** The seat counted at its time now; a seat with no time now is refused before this. */
-  private void count(Assignment__c seat) {
-    ElectivePeriod at = state.live.periodOf(
-      state.groupOf(seat.Camper__c),
-      seat.Date__c,
-      ElectiveSeatChecks.blockOf(seat)
-    );
-    Offering__c offering = state.offeringsById.get(seat.Offering__c);
-    if (at == null || !limited(offering)) {
-      return;
-    }
-    String key = at.key + '|' + seat.Offering__c;
-    if (!counts.containsKey(key)) {
-      order.add(key);
-      periods.put(key, at);
-      offerings.put(key, offering);
-    }
-    counts.put(key, 1 + (counts.get(key) ?? 0));
-  }
-
-  private String lineFor(String key, Offering__c offering) {
+  private String lineFor(
+    ElectiveSeatCounts.Counted each,
+    Offering__c offering,
+    Integer seats
+  ) {
     return offering.Activity__r.Name +
       ' is over its ' +
       state.labels().pluralInSentence('Seats') +
       ' on ' +
-      periods.get(key).words() +
+      each.period.words() +
       ': ' +
-      counts.get(key) +
+      each.count +
       ' of ' +
-      offering.Seats__c.intValue() +
+      seats +
       '.';
-  }
-
-  /** Blank or 0 seats, or no limit, are no limit (ELECT-4.1). */
-  private static Boolean limited(Offering__c offering) {
-    return offering != null &&
-      offering.NoSeatLimit__c != true &&
-      offering.Seats__c != null &&
-      offering.Seats__c != 0;
   }
 }
