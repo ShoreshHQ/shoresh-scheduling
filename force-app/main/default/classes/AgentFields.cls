@@ -59,6 +59,17 @@ public with sharing class AgentFields {
     return ((String) value).normalizeSpace();
   }
 
+  /** Whether two or more of the names read as asked (as camps type names). */
+  public static Boolean twoReadAs(List<String> names, String asked) {
+    Integer alike = 0;
+    for (String name : names) {
+      if (IncomingBatch.fold(name) == IncomingBatch.fold(asked)) {
+        alike++;
+      }
+    }
+    return alike > 1;
+  }
+
   /**
    * Where the one name that reads as asked is (as camps type names), or -1 when none does. Two
    * that read the same are refused, naming both: Shoresh never picks one silently. aWhat: what

@@ -116,16 +116,10 @@ public with sharing class AgentLockScope {
    * term is read only when two read alike and are refused.
    */
   private Integer onlyOne(List<String> names, String asked, String term) {
-    Integer alike = 0;
-    for (String name : names) {
-      if (IncomingBatch.fold(name) == IncomingBatch.fold(asked)) {
-        alike++;
-      }
-    }
     return AgentFields.onlyOne(
       names,
       asked,
-      alike > 1 ? words().withArticle(term) : null
+      AgentFields.twoReadAs(names, asked) ? words().withArticle(term) : null
     );
   }
 
