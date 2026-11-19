@@ -15,14 +15,15 @@ public with sharing class SetupMatchDots {
   // Why SetupMatchCarry left a placement out (cells: "groupId|blockId").
   private Map<String, String> carried;
 
+  /** now: the day setup makes now, or null when it is no longer a day of the week. */
   public SetupMatchDots(
     SetupMatchRules rules,
     SetupMatchNames names,
-    Boolean dayGoes
+    ScheduleGrid now
   ) {
     this.rules = rules;
     this.names = names;
-    this.dayGoes = dayGoes;
+    dayGoes = now == null;
   }
 
   /**

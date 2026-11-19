@@ -47,7 +47,7 @@ public with sharing class SetupMatchDay {
     }
     after = new SetupMatchCells(now);
     sameFrame = SetupMatchCells.sameFrame(was, now);
-    whyByCell = new SetupMatchDots(rules, names, now == null)
+    whyByCell = new SetupMatchDots(rules, names, now)
       .explain(before, after, carried);
     dotsOf();
     group();
