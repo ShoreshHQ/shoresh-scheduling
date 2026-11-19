@@ -86,7 +86,7 @@ global with sharing class AgentConfirmProposed implements AgentWeeks.Action {
     }
     if (AgentFields.text(body, 'seen') != 'proposed') {
       throw new ShoreshException(
-        'Say what read_proposed_offerings said it is (seen: "proposed"), so one confirmed since isn\'t confirmed again.'
+        'Say what read_proposed_offerings said it is (seen: "proposed"), so one marked Looks right since isn\'t marked again.'
       );
     }
   }

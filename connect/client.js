@@ -945,7 +945,7 @@ async function loadOfferings(namespace) {
 }
 
 /**
- * Bring in choices' own modules (API-1.117), as scripts/build-connect.js ships them: the reader,
+ * Import choices' own modules (API-1.117), as scripts/build-connect.js ships them: the reader,
  * the review's working, the import engine's files and names, the camp's words and field names.
  */
 async function choiceModules(namespace) {

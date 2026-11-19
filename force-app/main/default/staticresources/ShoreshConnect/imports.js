@@ -182,7 +182,7 @@ function tableLines(p, setup, m, leaveOut) {
       });
       const out = row.leaveOut
         ? row.leaveOut.pressed === "true"
-          ? ` [left out; to bring it in, leave ${JSON.stringify(row.leaveOut.key)} out of answers]`
+          ? ` [left out; to import it, leave ${JSON.stringify(row.leaveOut.key)} out of answers]`
           : ` [to leave it out, answer ${JSON.stringify(row.leaveOut.key)}: "${m.LEAVE_OUT}"]`
         : "";
       return `${row.said}${row.name}${cells.length ? ` (${cells.join(", ")})` : ""}${row.note ? ` · ${row.note}` : ""}${choices.length ? ` · ${choices.join(" · ")}` : ""}${out}`;
@@ -214,7 +214,7 @@ function questionLines(cards, suggestions, remembered) {
       how = 'times, like "09:00-10:00"';
     }
     const answered = card.answer
-      ? ` Answered: "${card.answer}"${chosen ? ` (${chosen.label})` : ""}${remembered[card.id] === card.answer ? ", remembered from before" : ""}.`
+      ? ` Answered: "${card.answer}"${chosen ? ` (${chosen.label})` : ""}${remembered[card.id] === card.answer ? ", Answered as before" : ""}.`
       : "";
     const suggested =
       !card.answer && suggestions[card.id]

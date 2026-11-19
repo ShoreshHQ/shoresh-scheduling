@@ -151,6 +151,24 @@ describe("Shoresh for AI tools and the command line", () => {
     expect(JSON.parse(seen[0].stdin)).toEqual(asked);
   });
 
+  // Design guide §2, word picks (Greg, 2026-11-12): the AI connector uses the same words as the screens.
+  it("gregsWordPicks: no tool's description, about or input says Bring in, null, a record, a seat run or a place (a quoted answer key aside)", () => {
+    const said = JSON.stringify(
+      CAPABILITIES.map((c) => [c.description, c.about, c.inputSchema])
+    );
+    for (const banned of [
+      /\bbr(ing|ings|ought)[ -]in\b/i,
+      /\(null\b/i,
+      /(?<![\\"])\brecords?\b(?!\\?")/i,
+      /seat run/i,
+      /\bplaces?\b(?! it)/i,
+      /through an agent/i,
+      /remembered from before/i
+    ]) {
+      expect([banned, said.match(banned)]).toEqual([banned, null]);
+    }
+  });
+
   // API-1.6, API-1.5
   // API-1.19
   it("plainNames: every action is list_seasons, read_<thing>, bring_in_choices, change_<thing>, build_week, try_another_option, bring_back_option, fill_open_cells, start_over_week, publish_week, unpublish_week, lock_cells, unlock_cells, move_cell, take_out_cell, copy_cells, start_manual_week, finalize_electives, accept_finding, undo_last_agent_change, <verb>_version, rename/delete/add_setup_record, fill_in_weeks, merge_locations, confirm_setup_guess, confirm_proposed_offering, copy_season, update_to_match_setup, switch_to_rain_plans, assign_elective_seats, move_elective_seat, lock_elective_seat, start_new_elective_version, clear_electives, put_special_day_on_day, take_special_day_off_day, place_special_event, set_up_noted_item, import_list, import_worksheet, import_last_year, import_special_schedule, undo_import, apply_to_other_weeks, download_<file>, forget_learned_answer, forget_learned_pattern, undo_learned_answer, make_linked_choice, delete_linked_choice, delete_offering, create_camp, create_season, delete_season, archive_season, bring_back_season, clear_day or clear_week, said without jargon", () => {
@@ -2394,6 +2412,36 @@ describe("Shoresh for AI tools and the command line", () => {
     expect(review.done.text).toMatch(
       /Before it can be saved: 1 difference to answer/
     );
+    // A new row left out says how to import it after all (Greg's word picks: Import, never Bring in).
+    const leaveKey = review.done.text.match(
+      /\[to leave it out, answer ("[^"]+"): "leaveOut"\]/
+    )[1];
+    // An answer the camp gave before reads as the screen says it: Answered as before.
+    const similarId = "similar|activity|archery|archry|Archery|Archry";
+    const again = await call(
+      "import_list",
+      { ...file, csv_text: "Activity,Location\nArchery,Pool\nArchry,Pool" },
+      {
+        run: async () =>
+          `HTTP/1.1 200\n\n${JSON.stringify({
+            season: "Summer 2026",
+            setup,
+            answers: [{ key: similarId, answer: "b" }],
+            seen: "s1"
+          })}`,
+        imports
+      }
+    );
+    expect(again.text).toContain(
+      `[id "${similarId}"] Are “Archry” and “Archery” the same activity? Answer with "b" = Same: “Archery”, "different" = Different: add “Archry”, "leaveOut" = Leave it out for now. Answered: "b" (Same: “Archery”), Answered as before.`
+    );
+    const leftOutRow = await send({
+      ...file,
+      answers: { [JSON.parse(leaveKey)]: "leaveOut" }
+    });
+    expect(leftOutRow.done.text).toContain(
+      `[left out; to import it, leave ${leaveKey} out of answers]`
+    );
 
     // No seen: nothing read or sent. Another seen: refused before anything is sent.
     expect((await send({ ...file, save: true })).done.status).toBe(400);
@@ -2975,6 +3023,10 @@ describe("Shoresh for AI tools and the command line", () => {
     expect(unknown.text).toContain(
       '- "Drama": added as an activity (How often 0) (the screen\'s start)'
     );
+    // Greg's word picks (2026-11-12): Import, never Bring in.
+    expect(unknown.text).toContain(
+      "Names on the sheet Shoresh doesn't have yet, each as it will be imported:"
+    );
     expect(review.text).toContain('save: true and seen: "none"');
     const asked = JSON.parse(seen[1].stdin);
     expect(asked.save).toBeUndefined();
@@ -3312,12 +3364,12 @@ describe("Shoresh for AI tools and the command line", () => {
       labels: [],
       electives: { sets: [], offerings: [], linkedChoices: [] }
     };
-    const send = async (setup, input) => {
+    const send = async (setup, input, remembered = []) => {
       const sent = [];
       const read = JSON.stringify({
         season: "Summer 2027",
         setup,
-        answers: [],
+        answers: remembered,
         imported: {},
         seen: "s1"
       });
@@ -3347,6 +3399,13 @@ describe("Shoresh for AI tools and the command line", () => {
     );
     expect(review.done.text).toContain(
       `Which week is last year's schedule? Answer with "Week 1" = Week 1 (starts Jun 28), "Week 2" = Week 2 (starts Jul 5), "leaveOut" = Leave it out for now.`
+    );
+    // An answer the camp gave before reads as the screen says it: Answered as before.
+    const before = await send(empty, {}, [
+      { key: "week|the file's week", answer: "Week 1" }
+    ]);
+    expect(before.done.text).toContain(
+      `Which week is last year's schedule? Answer with "Week 1" = Week 1 (starts Jun 28), "Week 2" = Week 2 (starts Jul 5), "leaveOut" = Leave it out for now. Answered: Week 1 (starts Jun 28) (Answered as before).`
     );
     // Answered by choice, the save keeps last year's week as a version, as the screen's does.
     const answers = { [similar]: "a", "week|the file's week": "Week 1" };

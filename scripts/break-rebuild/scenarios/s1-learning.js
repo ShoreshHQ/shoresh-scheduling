@@ -107,14 +107,13 @@ module.exports = [
       rec.check(
         "MEMO-6.1",
         "the next import shows the answer as remembered, still changeable",
-        q2 &&
-          /Answered: Same: use .Music.* \(remembered from before\)/.test(q2),
+        q2 && /Answered: Same: use .Music.* \(Answered as before\)/.test(q2),
         second.text
       );
       rec.check(
         "MEMO-6.1",
         "the file's week is remembered too",
-        /remembered from before/.test(
+        /Answered as before/.test(
           question(second.text, "week|the file's week") ?? ""
         ),
         second.text
@@ -277,7 +276,7 @@ module.exports = [
       rec.check(
         "MEMO-6.4",
         "after that Undo the import uses the answer again",
-        /remembered from before/.test(question(sixth.text, MUSIC) ?? ""),
+        /Answered as before/.test(question(sixth.text, MUSIC) ?? ""),
         sixth.text
       );
       const second2 = await forgetOnce();
