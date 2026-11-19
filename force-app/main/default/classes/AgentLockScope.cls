@@ -9,8 +9,9 @@ public with sharing class AgentLockScope {
   public String place;
   // The week's days as read, the revision the change is made at.
   public List<ScheduleDays.DayGrid> days;
-  // The camp's words, for what is refused (CORE-1.0).
-  private CampLabels words;
+  // The week, and the camp's words for what is refused (CORE-1.0), read only when refusing.
+  private AgentWeeks.Week week;
+  private CampLabels campWords;
 
   /** The scope body names in the week, for action (Lock or Unlock). */
   public AgentLockScope(
@@ -19,14 +20,10 @@ public with sharing class AgentLockScope {
     AgentWeeks.Week week
   ) {
     change.action = action;
-    words = AgentVersions.labelsOf(week);
+    this.week = week;
     days = ScheduleDays.read(week.draft.Id);
-    String groupAsked = scoped(
-      AgentFields.text(body, 'group'),
-      'group',
-      words.singularInSentence('Group')
-    );
-    String dayAsked = scoped(AgentFields.text(body, 'day'), 'day', 'day');
+    String groupAsked = scoped(AgentFields.text(body, 'group'), 'group');
+    String dayAsked = scoped(AgentFields.text(body, 'day'), 'day');
     String timeAsked = AgentFields.text(body, 'time');
     checkAsked(dayAsked, groupAsked, timeAsked);
     ScheduleGrid grid = null;
@@ -54,11 +51,14 @@ public with sharing class AgentLockScope {
 
   /**
    * A day or group is never left out (API-1.107): leaving one out would reach every one, so
-   * "all" says that on purpose, and nothing said is refused naming what is missing (word: field
-   * in the camp's words).
+   * "all" says that on purpose, and nothing said is refused naming what is missing, a group in
+   * the camp's word.
    */
-  private String scoped(String asked, String field, String word) {
+  private String scoped(String asked, String field) {
     if (String.isBlank(asked)) {
+      String word = field == 'group'
+        ? words().singularInSentence('Group')
+        : field;
       throw new ShoreshException(
         'Nothing was changed: say which ' +
           word +
@@ -83,9 +83,9 @@ public with sharing class AgentLockScope {
     if (String.isBlank(dayAsked) && String.isBlank(groupAsked)) {
       throw new ShoreshException(
         'Nothing was changed: "all" days of "all" ' +
-          words.pluralInSentence('Group') +
+          words().pluralInSentence('Group') +
           ' is the whole week, which the Lock menu has no shortcut for. Name a day, ' +
-          words.withArticle('Group') +
+          words().withArticle('Group') +
           ', or both.'
       );
     }
@@ -95,12 +95,38 @@ public with sharing class AgentLockScope {
     ) {
       throw new ShoreshException(
         'One cell is a day, ' +
-          words.withArticle('Group') +
+          words().withArticle('Group') +
           ' and ' +
-          words.withArticle('TimeBlock') +
+          words().withArticle('TimeBlock') +
           ': say all three (day, group, time).'
       );
     }
+  }
+
+  /** The camp's words, read the first time something is refused. */
+  private CampLabels words() {
+    if (campWords == null) {
+      campWords = AgentVersions.labelsOf(week);
+    }
+    return campWords;
+  }
+
+  /**
+   * Where the one name that reads as asked is (AgentFields.onlyOne), or -1; the camp's word for
+   * term is read only when two read alike and are refused.
+   */
+  private Integer onlyOne(List<String> names, String asked, String term) {
+    Integer alike = 0;
+    for (String name : names) {
+      if (IncomingBatch.fold(name) == IncomingBatch.fold(asked)) {
+        alike++;
+      }
+    }
+    return AgentFields.onlyOne(
+      names,
+      asked,
+      alike > 1 ? words().withArticle(term) : null
+    );
   }
 
   /** The day's grid when a day was named; otherwise every readable day of the week. */
@@ -135,22 +161,18 @@ public with sharing class AgentLockScope {
           names.add(g.name);
         }
       }
-      Integer found = AgentFields.onlyOne(
-        here,
-        asked,
-        words.withArticle('Group')
-      );
+      Integer found = onlyOne(here, asked, 'Group');
       if (found >= 0) {
         return each.groups[found];
       }
     }
     throw new ShoreshException(
       'There is no ' +
-        words.singularInSentence('Group') +
+        words().singularInSentence('Group') +
         ' called "' +
         asked.left(80) +
         '" in this schedule. ' +
-        AgentWeeks.namesSaid(words.pluralInSentence('Group'), names)
+        AgentWeeks.namesSaid(words().pluralInSentence('Group'), names)
     );
   }
 
@@ -162,21 +184,20 @@ public with sharing class AgentLockScope {
       names.add(block.name);
       starts.add(block.startTime == null ? '' : block.startTime.left(5));
     }
-    String aBlock = words.withArticle('TimeBlock');
-    Integer found = AgentFields.onlyOne(names, asked, aBlock);
+    Integer found = onlyOne(names, asked, 'TimeBlock');
     if (found < 0) {
-      found = AgentFields.onlyOne(starts, asked, aBlock);
+      found = onlyOne(starts, asked, 'TimeBlock');
     }
     if (found >= 0) {
       return grid.blocks[found];
     }
     throw new ShoreshException(
       'There is no ' +
-        words.singularInSentence('TimeBlock') +
+        words().singularInSentence('TimeBlock') +
         ' called "' +
         asked.left(80) +
         '" on that day. ' +
-        AgentWeeks.namesSaid(words.pluralInSentence('TimeBlock'), names)
+        AgentWeeks.namesSaid(words().pluralInSentence('TimeBlock'), names)
     );
   }
 }

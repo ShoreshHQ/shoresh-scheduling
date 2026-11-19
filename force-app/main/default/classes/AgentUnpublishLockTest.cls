@@ -393,9 +393,20 @@ private class AgentUnpublishLockTest {
         AccessLevel.SYSTEM_MODE
       );
       Test.startTest();
-      Integer before = Limits.getQueries();
       List<Object> none = post('lock', new Map<String, Object>());
-      Integer used = Limits.getQueries() - before;
+      Map<String, Object> allOfAll = new Map<String, Object>{
+        'group' => 'all',
+        'day' => 'all'
+      };
+      // Read once a request (CLAUDE.md #60): this refusal says the camp's words twice, and they
+      // cost one query read cold and none when this request's CampLabels already has them.
+      CampLabels.forget();
+      Integer before = Limits.getQueries();
+      List<Object> whole = post('lock', allOfAll);
+      Integer cold = Limits.getQueries() - before;
+      before = Limits.getQueries();
+      post('lock', allOfAll);
+      Integer warm = Limits.getQueries() - before;
       List<Object> noGroup = post(
         'unlock',
         new Map<String, Object>{ 'group' => 'Group Z', 'day' => 'all' }
@@ -433,7 +444,11 @@ private class AgentUnpublishLockTest {
         'One cell is a day, an Edah and a Perek: say all three (day, group, time).',
         timeOnly[1]
       );
-      Assert.isTrue(used < 100, 'A refused lock reads ' + used + ' queries');
+      Assert.areEqual(
+        'Nothing was changed: "all" days of "all" Edot is the whole week, which the Lock menu has no shortcut for. Name a day, an Edah, or both.',
+        whole[1]
+      );
+      Assert.areEqual(1, cold - warm, 'camp words: one query, read once');
     }
   }
 }

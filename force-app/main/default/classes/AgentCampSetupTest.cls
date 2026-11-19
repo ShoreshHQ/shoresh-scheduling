@@ -354,13 +354,19 @@ private class AgentCampSetupTest {
         AccessLevel.SYSTEM_MODE
       );
       Test.startTest();
+      Map<String, Object> pool = new Map<String, Object>{
+        'season' => season.Name,
+        'name' => 'Pool'
+      };
+      // Read once a request (CLAUDE.md #60): this answer says the camp's words many times, and
+      // they cost one query read cold and none when this request's CampLabels already has them.
+      CampLabels.forget();
       Integer before = Limits.getQueries();
-      List<Object> read = ask(
-        new AgentSameLocations(),
-        'GET',
-        new Map<String, Object>{ 'season' => season.Name, 'name' => 'Pool' }
-      );
-      Integer used = Limits.getQueries() - before;
+      List<Object> read = ask(new AgentSameLocations(), 'GET', pool);
+      Integer cold = Limits.getQueries() - before;
+      before = Limits.getQueries();
+      ask(new AgentSameLocations(), 'GET', pool);
+      Integer warm = Limits.getQueries() - before;
       List<Object> one = ask(
         new AgentSameLocations(),
         'GET',
@@ -389,7 +395,7 @@ private class AgentCampSetupTest {
         'Nothing was merged. Give the Edot that fit (groups_that_fit) as a whole number, 1 or more.',
         badFit[1]
       );
-      Assert.isTrue(used < 100, 'Same location? reads ' + used + ' queries');
+      Assert.areEqual(1, cold - warm, 'camp words: one query, read once');
     }
   }
 }

@@ -483,26 +483,29 @@ private class AgentBuildTest {
         AccessLevel.SYSTEM_MODE
       );
       Test.startTest();
-      Integer before = Limits.getQueries();
       List<Object> noSeats = send(
         'finalize_electives',
         week(new Map<String, Object>{ 'elective_set' => 'Morning' })
       );
-      Integer used = Limits.getQueries() - before;
-      List<Object> noSuchSet = send(
-        'finalize_electives',
-        week(new Map<String, Object>{ 'elective_set' => 'Sports' })
+      Map<String, Object> sports = week(
+        new Map<String, Object>{ 'elective_set' => 'Sports' }
       );
+      // Read once a request (CLAUDE.md #60): this refusal says the camp's words twice, and they
+      // cost one query read cold and none when this request's CampLabels already has them.
+      CampLabels.forget();
+      Integer before = Limits.getQueries();
+      List<Object> noSuchSet = send('finalize_electives', sports);
+      Integer cold = Limits.getQueries() - before;
+      before = Limits.getQueries();
+      send('finalize_electives', sports);
+      Integer warm = Limits.getQueries() - before;
       Test.stopTest();
       Assert.areEqual('Not finalized. No Spots are assigned yet.', noSeats[1]);
       Assert.areEqual(
         'There is no Chug called "Sports" that this user can see. The Chugim: Morning.',
         noSuchSet[1]
       );
-      Assert.isTrue(
-        used < 100,
-        'A refused Finalize reads ' + used + ' queries'
-      );
+      Assert.areEqual(1, cold - warm, 'camp words: one query, read once');
     }
   }
 }
