@@ -228,10 +228,22 @@ private class AgentReadTest {
       'There is no week called "Week 9" in Summer 2026. Its weeks: Week 1, Week 2, Week 3, Week 4, Week 5, Week 6.',
       noWeek.get('message')
     );
-    Map<String, Object> noSeason = get(
-      new OutgoingGroupSchedule(),
-      new Map<String, String>{ 'season' => 'Summer 2027', 'week' => 'Week 1' }
+    // API-1.105: a key or Flow is "this connection"; a person's AI is "you".
+    Map<String, String> noSuchSeason = new Map<String, String>{
+      'season' => 'Summer 2027',
+      'week' => 'Week 1'
+    };
+    Map<String, Object> noSeason;
+    System.runAs(camp.sender('Read_Group_Schedules')) {
+      noSeason = get(new OutgoingGroupSchedule(), noSuchSeason);
+    }
+    Assert.areEqual(
+      'There is no season called "Summer 2027" that this connection can see. Seasons this connection can see: Summer 2026.',
+      noSeason.get('message')
     );
+    System.runAs(camp.sender('Shoresh_Scheduler')) {
+      noSeason = get(new OutgoingGroupSchedule(), noSuchSeason);
+    }
     Assert.areEqual(
       'There is no season called "Summer 2027" that you can see. Seasons you can see: Summer 2026.',
       noSeason.get('message')

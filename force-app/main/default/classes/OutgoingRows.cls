@@ -61,7 +61,9 @@ public with sharing class OutgoingRows {
       found.isEmpty()
         ? 'There is no season called "' +
           given.left(80) +
-          '" that you can see. ' +
+          '" that ' +
+          whoSees() +
+          ' can see. ' +
           seasonsSaid()
         : 'More than one season is called "' +
           given.left(80) +
@@ -101,7 +103,15 @@ public with sharing class OutgoingRows {
     return SeasonToOpen.find();
   }
 
-  /** "Seasons you can see: Summer 2026, Summer 2025." */
+  /**
+   * Who is told what they can see: "you" to a person's AI, "this connection" to a key or Flow on
+   * an outgoing door (API-1.105).
+   */
+  public static String whoSees() {
+    return AgentRefusal.say('this connection', 'you');
+  }
+
+  /** "Seasons you can see: Summer 2026, Summer 2025." (to a key or Flow: "this connection") */
   public static String seasonsSaid() {
     List<Season__c> seen = seasonsSeen();
     Set<Id> camps = new Set<Id>();
@@ -118,8 +128,8 @@ public with sharing class OutgoingRows {
       );
     }
     return names.isEmpty()
-      ? 'Shoresh has no season you can see yet.'
-      : 'Seasons you can see: ' + String.join(names, ', ') + '.';
+      ? 'Shoresh has no season ' + whoSees() + ' can see yet.'
+      : 'Seasons ' + whoSees() + ' can see: ' + String.join(names, ', ') + '.';
   }
 
   /**
