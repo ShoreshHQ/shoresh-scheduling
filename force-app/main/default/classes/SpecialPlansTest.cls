@@ -276,4 +276,87 @@ public class SpecialPlansTest {
       Assert.isTrue(saveQueries <= 4, 'Save used ' + saveQueries + ' queries');
     }
   }
+
+  @IsTest
+  static void newItemsFirstPlansAreSavedTogetherAtTheFirstRevision() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      Camp__c camp = ShoreshTestData.camp('Camp Willow');
+      Season__c season = ShoreshTestData.fullSeason(camp.Id);
+      Map<String, Id> ids = ShoreshTestData.lastSeasonIds;
+      Id fieldDay = specialDay(season.Id, 'Field Day');
+      SpecialEvent__c carnival = new SpecialEvent__c(
+        Season__c = season.Id,
+        Name = 'Carnival'
+      );
+      Database.insert(carnival, AccessLevel.USER_MODE);
+      ScheduleGrid big = plan(ids, 2);
+      // Small enough that each group's row needs its own part.
+      ScheduleGridParts.partLimit = big.toText().length() - 20;
+
+      Test.startTest();
+      Integer start = Limits.getQueries();
+      SpecialPlans.writeFirst(
+        season.Id,
+        new Map<Id, ScheduleGrid>{
+          fieldDay => big,
+          carnival.Id => plan(ids, 1)
+        }
+      );
+      Integer used = Limits.getQueries() - start;
+      Test.stopTest();
+
+      // None of its own: only the plan part check (special days, special events).
+      Assert.isTrue(used <= 2, 'First save used ' + used + ' queries');
+      Assert.areEqual(
+        2,
+        [
+          SELECT COUNT()
+          FROM PlanPart__c
+          WHERE SpecialDay__c = :fieldDay
+          WITH USER_MODE
+        ]
+      );
+      SpecialPlans.Plan day = SpecialPlans.read(fieldDay);
+      Assert.areEqual(1, day.revision);
+      Assert.areEqual(big.toText(), day.grid.toText(), 'Joined back unchanged');
+      SpecialPlans.Plan event = SpecialPlans.read(carnival.Id);
+      Assert.areEqual(1, event.revision);
+      Assert.areEqual(plan(ids, 1).toText(), event.grid.toText());
+    }
+  }
+
+  @IsTest
+  static void aPlanSavedAgainSinceItsFirstSaveIsTheDirectorsWork() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      Camp__c camp = ShoreshTestData.camp('Camp Willow');
+      Season__c season = ShoreshTestData.fullSeason(camp.Id);
+      Map<String, Id> ids = ShoreshTestData.lastSeasonIds;
+      Id fieldDay = specialDay(season.Id, 'Field Day');
+      Id colorWar = specialDay(season.Id, 'Color War');
+      // No plan at all: never saved, so not the director's work.
+      Id visitingDay = specialDay(season.Id, 'Visiting Day');
+      SpecialEvent__c carnival = new SpecialEvent__c(
+        Season__c = season.Id,
+        Name = 'Carnival'
+      );
+      Database.insert(carnival, AccessLevel.USER_MODE);
+      SpecialPlans.writeFirst(
+        season.Id,
+        new Map<Id, ScheduleGrid>{
+          fieldDay => plan(ids, 1),
+          colorWar => plan(ids, 1),
+          carnival.Id => plan(ids, 1)
+        }
+      );
+      SpecialPlans.write(colorWar, plan(ids, 2), 1);
+      SpecialPlans.write(carnival.Id, plan(ids, 2), 1);
+
+      Assert.areEqual(
+        new Set<Id>{ colorWar, carnival.Id },
+        SpecialPlans.savedSinceFirst(
+          new Set<Id>{ fieldDay, colorWar, visitingDay, carnival.Id }
+        )
+      );
+    }
+  }
 }

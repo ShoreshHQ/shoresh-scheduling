@@ -6,6 +6,12 @@
  * save across several parts writes all of them or none. Runs in user mode.
  */
 public with sharing class SpecialPlans {
+  private static final Integer FIRST_REVISION = 1;
+  private static final Map<Schema.SObjectType, Schema.SObjectField> OWNER_FIELDS = new Map<Schema.SObjectType, Schema.SObjectField>{
+    SpecialDay__c.SObjectType => PlanPart__c.SpecialDay__c,
+    SpecialEvent__c.SObjectType => PlanPart__c.SpecialEvent__c
+  };
+
   /** A plan as read: its grid (null when nothing is saved yet), revision, or why it can't be read. */
   public class Plan {
     public Id itemId;
@@ -26,7 +32,7 @@ public with sharing class SpecialPlans {
       List<PlanPart__c> parts = partsByItem.get(itemId);
       Plan plan = new Plan();
       plan.itemId = itemId;
-      if (parts != null) {
+      if (!parts.isEmpty()) {
         // Same format and rules as a schedule day, so its reader is used as it is.
         ScheduleDays.DayGrid read = ScheduleDays.readDay(
           null,
@@ -53,22 +59,19 @@ public with sharing class SpecialPlans {
     // Locking the item makes two saves of its plan run one after the other.
     Item item = locked(itemId);
     List<PlanPart__c> before = partsOf(new Set<Id>{ itemId }).get(itemId);
-    before = before == null ? new List<PlanPart__c>() : before;
     Integer revision = nextRevision(item, before, expectedRevision);
-    List<String> texts = ScheduleGridParts.split(grid);
-    List<PlanPart__c> toSave = new List<PlanPart__c>();
-    for (Integer i = 0; i < texts.size(); i++) {
-      PlanPart__c part = i < before.size()
-        ? new PlanPart__c(Id = before[i].Id)
-        : newPart(item, itemId);
-      part.Part__c = i + 1;
-      part.Plan__c = texts[i];
-      part.GridFormatVersion__c = ScheduleGridLocks.formatOf(grid);
-      part.Revision__c = revision;
-      toSave.add(part);
+    List<PlanPart__c> toSave = asParts(grid, revision);
+    List<PlanPart__c> added = new List<PlanPart__c>();
+    for (Integer i = 0; i < toSave.size(); i++) {
+      if (i < before.size()) {
+        toSave[i].Id = before[i].Id;
+      } else {
+        added.add(toSave[i]);
+      }
     }
+    own(added, item.seasonId, itemId);
     List<PlanPart__c> toDelete = new List<PlanPart__c>();
-    for (Integer i = texts.size(); i < before.size(); i++) {
+    for (Integer i = toSave.size(); i < before.size(); i++) {
       toDelete.add(before[i]);
     }
     Savepoint beforeSave = Database.setSavepoint();
@@ -80,6 +83,42 @@ public with sharing class SpecialPlans {
       throw e;
     }
     return revision;
+  }
+
+  /**
+   * Saves the first plan (revision 1) of each of these items, just added with nothing saved yet,
+   * in one write and no query: the plans an import or a list of special days starts them with.
+   */
+  public static void writeFirst(Id seasonId, Map<Id, ScheduleGrid> gridByItem) {
+    List<PlanPart__c> parts = new List<PlanPart__c>();
+    for (Id itemId : gridByItem.keySet()) {
+      List<PlanPart__c> first = asParts(gridByItem.get(itemId), FIRST_REVISION);
+      own(first, seasonId, itemId);
+      parts.addAll(first);
+    }
+    UserModeWrites.save(parts);
+  }
+
+  /**
+   * Of these items, those whose plan was saved again since it was first written: the director's
+   * work since an import or a list started it (Undo keeps them). One query.
+   */
+  public static Set<Id> savedSinceFirst(Set<Id> itemIds) {
+    Set<Id> result = new Set<Id>();
+    for (PlanPart__c part : [
+      SELECT SpecialDay__c, SpecialEvent__c
+      FROM PlanPart__c
+      WHERE
+        (SpecialDay__c IN :itemIds
+        OR SpecialEvent__c IN :itemIds)
+        AND Revision__c > :FIRST_REVISION
+      WITH USER_MODE
+    ]) {
+      result.add(part.SpecialDay__c);
+      result.add(part.SpecialEvent__c);
+    }
+    result.remove(null);
+    return result;
   }
 
   /** The revision this save writes; refused if the plan was saved since it was opened. */
@@ -99,7 +138,7 @@ public with sharing class SpecialPlans {
           ' since you opened it. Open it again to see their changes, then make yours.'
       );
     }
-    return current == null ? 1 : current + 1;
+    return current == null ? FIRST_REVISION : current + 1;
   }
 
   private class Item {
@@ -150,18 +189,39 @@ public with sharing class SpecialPlans {
     return item;
   }
 
-  private static PlanPart__c newPart(Item item, Id itemId) {
-    PlanPart__c part = new PlanPart__c(Season__c = item.seasonId);
-    if (itemId.getSObjectType() == SpecialDay__c.SObjectType) {
-      part.SpecialDay__c = itemId;
-    } else {
-      part.SpecialEvent__c = itemId;
+  /** A grid as the parts that hold it, at this revision, not yet given their item. */
+  private static List<PlanPart__c> asParts(
+    ScheduleGrid grid,
+    Integer revision
+  ) {
+    List<PlanPart__c> parts = new List<PlanPart__c>();
+    List<String> texts = ScheduleGridParts.split(grid);
+    for (Integer i = 0; i < texts.size(); i++) {
+      parts.add(
+        new PlanPart__c(
+          Part__c = i + 1,
+          Plan__c = texts[i],
+          GridFormatVersion__c = ScheduleGridLocks.formatOf(grid),
+          Revision__c = revision
+        )
+      );
     }
-    return part;
+    return parts;
+  }
+
+  /** Makes new parts belong to their item: a special day or a special event. */
+  private static void own(List<PlanPart__c> parts, Id seasonId, Id itemId) {
+    for (PlanPart__c part : parts) {
+      part.Season__c = seasonId;
+      part.put(OWNER_FIELDS.get(itemId.getSObjectType()), itemId);
+    }
   }
 
   private static Map<Id, List<PlanPart__c>> partsOf(Set<Id> itemIds) {
     Map<Id, List<PlanPart__c>> result = new Map<Id, List<PlanPart__c>>();
+    for (Id itemId : itemIds) {
+      result.put(itemId, new List<PlanPart__c>());
+    }
     for (PlanPart__c part : [
       SELECT
         Id,
@@ -179,9 +239,6 @@ public with sharing class SpecialPlans {
       Id owner = part.SpecialDay__c != null
         ? part.SpecialDay__c
         : part.SpecialEvent__c;
-      if (!result.containsKey(owner)) {
-        result.put(owner, new List<PlanPart__c>());
-      }
       result.get(owner).add(part);
     }
     return result;
