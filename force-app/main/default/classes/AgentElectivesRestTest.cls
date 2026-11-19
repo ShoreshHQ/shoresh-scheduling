@@ -385,4 +385,33 @@ private class AgentElectivesRestTest {
       Assert.areEqual('Cleared these Spots and 2 Chanichim.', cleared[1]);
     }
   }
+
+  // API-1.105, CORE-1.0: a padlock on a seat the camper doesn't hold is refused in the camp's own
+  // singular, without the screen's "Reload the page".
+  @IsTest
+  static void aLockWithNoSeatThereIsRefusedWithoutThePage() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      AgentElectivesTestData.camp();
+      campWords();
+      Map<String, Object> lock = new Map<String, Object>{
+        'camper' => 'Synthetic Camper 1',
+        'day' => 'Monday',
+        'time' => 'Period 1',
+        'locked' => true,
+        'seen' => AgentElectivesTestData.seen(AgentElectivesTestData.revision())
+      };
+      Test.startTest();
+      List<Object> refused = AgentElectivesTestData.send(
+        'lock_elective_seat',
+        'POST',
+        AgentElectivesTestData.asked(lock)
+      );
+      Test.stopTest();
+      Assert.areEqual(400, refused[0], String.valueOf(refused[1]));
+      Assert.areEqual(
+        'That Spot wasn\'t changed. That Spot is no longer there.',
+        refused[1]
+      );
+    }
+  }
 }

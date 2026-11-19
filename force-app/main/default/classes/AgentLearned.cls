@@ -21,6 +21,8 @@ global with sharing class AgentLearned {
   global static void get() {
     RestResponse response = RestContext.response;
     response.addHeader('Content-Type', 'application/json');
+    // An AI's read: it hears the screen's refusals without their advice (API-1.105).
+    AgentRefusal.forAgent = true;
     try {
       for (String key : RestContext.request.params.keySet()) {
         if (key != 'season') {
@@ -59,6 +61,8 @@ global with sharing class AgentLearned {
           OutgoingRows.answered(ours ? e.getMessage() : ScreenErrors.words(e))
         )
       );
+    } finally {
+      AgentRefusal.forAgent = false;
     }
   }
 

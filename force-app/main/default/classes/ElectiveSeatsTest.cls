@@ -870,6 +870,16 @@ private class ElectiveSeatsTest {
         message
       );
       Assert.isTrue(used <= 3, 'Queries for one refusal: ' + used);
+      // API-1.105: an AI reading the seats (read_elective_seats_now) has no page to reload.
+      AgentRefusal.forAgent = true;
+      try {
+        ElectiveSeatsController.openRun(gone);
+      } catch (AuraHandledException e) {
+        message = e.getMessage();
+      } finally {
+        AgentRefusal.forAgent = false;
+      }
+      Assert.areEqual('These seats are no longer there.', message);
     }
   }
 }

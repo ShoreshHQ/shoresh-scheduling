@@ -82,8 +82,11 @@ public with sharing class ChoicesImportActivities {
         }
         if (choice.a != null && !inSeason.contains(choice.a)) {
           throw new ShoreshException(
-            ChoicesImport.rowWords(sheetCamper) +
-            'a choice names an activity that is no longer in this season. Reload the page.'
+            AgentRefusal.withFix(
+              ChoicesImport.rowWords(sheetCamper) +
+              'a choice names an activity that is no longer in this season.',
+              'Reload the page.'
+            )
           );
         }
       }

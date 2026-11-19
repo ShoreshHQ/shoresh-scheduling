@@ -527,7 +527,7 @@ private class IncomingCamperTest {
         }
       );
       Assert.areEqual(
-        'problem: There is no season called "Summer 2031" that you can see.',
+        'problem: There is no season called "Summer 2031" that this connection can see.',
         IncomingTestData.said(noSeason, 1)
       );
       Map<String, Object> notJson = IncomingTestData.post('camper', 'campers');

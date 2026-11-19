@@ -114,6 +114,11 @@ private class ScreenErrorsTest {
       'Shoresh couldn\'t tell why. Try again.',
       ScreenErrors.words(unexpected)
     );
+    // A screen's read an AI goes through (read_elective_seats_now's openRun, and the rest).
+    AgentRefusal.forAgent = true;
+    String loading = ScreenErrors.ofLoading(unexpected).getMessage();
+    AgentRefusal.forAgent = false;
+    Assert.areEqual('Shoresh couldn\'t tell why. Try again.', loading);
   }
 
   @IsTest

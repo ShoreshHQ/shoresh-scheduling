@@ -40,16 +40,19 @@ public with sharing class ScreenErrors {
   }
 
   /**
-   * The words of(e) would carry, for a web address's answer (it can't make one): a read too, since
-   * an AI or the command line has no page to reload (API-1.105).
+   * The words of(e) would carry, for a web address's answer (it can't make one): a read's too,
+   * since an AI or the command line has no page to reload (API-1.105).
    */
   public static String words(Exception e) {
     return messageFor(e, COULD_NOT_SAVE);
   }
 
-  /** For a screen that could not load what it shows. */
+  /**
+   * For a screen that could not load what it shows; an AI reading through it has no page to
+   * reload, so it hears "Try again" (API-1.105).
+   */
   public static AuraHandledException ofLoading(Exception e) {
-    return of(messageFor(e, COULD_NOT_OPEN));
+    return of(messageFor(e, AgentRefusal.say(COULD_NOT_OPEN, COULD_NOT_SAVE)));
   }
 
   /**

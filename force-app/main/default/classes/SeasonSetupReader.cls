@@ -22,9 +22,10 @@ public with sharing class SeasonSetupReader {
         ? CampLabels.modelTermsOnly()
         : CampLabels.forCamp(campId);
       throw new ShoreshException(
-        'That ' +
-          labels.singularInSentence('Season') +
-          ' wasn\'t found. Reload the page.'
+        AgentRefusal.withFix(
+          'That ' + labels.singularInSentence('Season') + ' wasn\'t found.',
+          'Reload the page.'
+        )
       );
     }
     return setup;
