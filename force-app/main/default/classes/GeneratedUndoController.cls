@@ -12,11 +12,10 @@ public with sharing class GeneratedUndoController {
     String seenRevisions
   ) {
     try {
-      ManualVersions.restoreInto(
+      ManualVersions.undoInto(
         GeneratedDrafts.lockedToEdit(scheduleId),
         versionId,
-        seenRevisions,
-        ManualVersions.BEFORE_UNDO
+        seenRevisions
       );
       return true;
     } catch (ManualVersions.ChangedSinceException e) {

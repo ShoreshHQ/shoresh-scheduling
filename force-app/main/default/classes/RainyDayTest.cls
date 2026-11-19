@@ -339,19 +339,25 @@ private class RainyDayTest {
     }
   }
 
+  /** A generated week with a "Rain plan full" mark on Group A's Monday Gym games. */
+  private static Id markedGeneratedWeek() {
+    ids = GeneratedTestData.camp();
+    Id draftId = GeneratedTestData.generated();
+    SlotEdits.Edit marksOnly = new SlotEdits.Edit();
+    marksOnly.runs = new List<SlotEdits.Run>();
+    withRain(marksOnly, new List<String>{ mark('Group A', 'Gym games') });
+    GeneratedTestData.handEdits(
+      draftId,
+      new List<SlotEdits.Edit>{ marksOnly },
+      GeneratedDrafts.revisionOf(ScheduleDays.read(draftId))
+    );
+    return draftId;
+  }
+
   @IsTest
   static void onGeneratedTheVersionKeepsItsOriginAndALockKeepsTheMarks() {
     System.runAs(ShoreshTestData.scheduler()) {
-      ids = GeneratedTestData.camp();
-      Id draftId = GeneratedTestData.generated();
-      SlotEdits.Edit marksOnly = new SlotEdits.Edit();
-      marksOnly.runs = new List<SlotEdits.Run>();
-      withRain(marksOnly, new List<String>{ mark('Group A', 'Gym games') });
-      GeneratedTestData.handEdits(
-        draftId,
-        new List<SlotEdits.Edit>{ marksOnly },
-        GeneratedDrafts.revisionOf(ScheduleDays.read(draftId))
-      );
+      Id draftId = markedGeneratedWeek();
       Test.startTest();
       Integer before = Limits.getQueries();
       Id versionId = RainyDayController.keepGeneratedWeek(
@@ -390,16 +396,7 @@ private class RainyDayTest {
   @IsTest
   static void aRebuildKeepsTheMarksInItsVersionAndUndoBringsThemBack() {
     System.runAs(ShoreshTestData.scheduler()) {
-      ids = GeneratedTestData.camp();
-      Id draftId = GeneratedTestData.generated();
-      SlotEdits.Edit marksOnly = new SlotEdits.Edit();
-      marksOnly.runs = new List<SlotEdits.Run>();
-      withRain(marksOnly, new List<String>{ mark('Group A', 'Gym games') });
-      GeneratedTestData.handEdits(
-        draftId,
-        new List<SlotEdits.Edit>{ marksOnly },
-        GeneratedDrafts.revisionOf(ScheduleDays.read(draftId))
-      );
+      Id draftId = markedGeneratedWeek();
       Test.startTest();
       GeneratedWeek.Result rebuilt = GeneratedTestData.save(
         GeneratedTestData.filled(

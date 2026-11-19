@@ -152,8 +152,7 @@ public with sharing class GeneratedScheduleController {
       ManualVersions.restoreInto(
         GeneratedDrafts.lockedToEdit(scheduleId),
         versionId,
-        seenRevisions,
-        ManualVersions.BEFORE_RESTORE
+        seenRevisions
       );
       return true;
     } catch (ManualVersions.ChangedSinceException e) {

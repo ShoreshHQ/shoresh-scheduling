@@ -48,12 +48,7 @@ public with sharing class ManualVersions {
    * version's Id (null when the draft had no days to keep).
    */
   public static Id restore(Id draftId, Id versionId, String seenRevisions) {
-    return restoreInto(
-      ManualDrafts.locked(draftId),
-      versionId,
-      seenRevisions,
-      BEFORE_RESTORE
-    );
+    return restoreInto(ManualDrafts.locked(draftId), versionId, seenRevisions);
   }
 
   /**
@@ -62,70 +57,98 @@ public with sharing class ManualVersions {
    * takes the version's option when it has one. A version Generated Schedule didn't build (Manual
    * Build's or an imported one) restored into a Generated draft comes in with its placed cells
    * locked: each was a hand choice, and a hand choice is a lock (Greg, 2026-10-19; ADR 0010 §50).
-   * keptAs: the name of the version the draft is kept as first (BEFORE_RESTORE, or BEFORE_UNDO).
    */
   public static Id restoreInto(
     Schedule__c draft,
     Id versionId,
-    String seenRevisions,
-    String keptAs
+    String seenRevisions
   ) {
-    Id draftId = draft.Id;
-    Schedule__c version = versionOf(versionId, draft);
-    List<ScheduleDays.DayGrid> current = ScheduleDays.read(draftId);
-    if (ScheduleDays.stamp(current) != seenRevisions) {
-      throw new ChangedSinceException();
+    return new Restoring(BEFORE_RESTORE).into(draft, versionId, seenRevisions);
+  }
+
+  /**
+   * Undo of a build (GeneratedUndoController): restoreInto, the week kept first named after what
+   * was pressed, "Before Undo" (word walk W6).
+   */
+  public static Id undoInto(
+    Schedule__c draft,
+    Id versionId,
+    String seenRevisions
+  ) {
+    return new Restoring(BEFORE_UNDO).into(draft, versionId, seenRevisions);
+  }
+
+  /** Restore or Undo: the version brought back, the week as it was kept first as keptAs. */
+  private with sharing class Restoring {
+    // BEFORE_RESTORE, or BEFORE_UNDO.
+    private String keptAs;
+
+    Restoring(String keptAs) {
+      this.keptAs = keptAs;
     }
-    List<ScheduleDays.DayGrid> restored = readable(
-      ScheduleDays.read(version.Id)
-    );
-    lockHandChoices(draft, version, restored);
-    Savepoint beforeRestore = Database.setSavepoint();
-    try {
-      Id kept = null;
-      if (!current.isEmpty()) {
-        kept = newVersion(draft, keptAs, AUTO_SAVED);
-        writeDays(kept, readable(current));
+
+    Id into(Schedule__c draft, Id versionId, String seenRevisions) {
+      Id draftId = draft.Id;
+      Schedule__c version = ManualVersions.versionOf(versionId, draft);
+      List<ScheduleDays.DayGrid> current = ScheduleDays.read(draftId);
+      if (ScheduleDays.stamp(current) != seenRevisions) {
+        throw new ManualVersions.ChangedSinceException();
       }
-      Map<Date, Integer> revisions = new Map<Date, Integer>();
-      for (ScheduleDays.DayGrid day : current) {
-        revisions.put(day.day, day.revision);
-      }
-      List<ScheduleDaySaves.DaySave> saves = new List<ScheduleDaySaves.DaySave>();
-      Set<Date> restoredDays = new Set<Date>();
-      for (ScheduleDays.DayGrid day : restored) {
-        ScheduleDaySaves.DaySave save = new ScheduleDaySaves.DaySave(
-          day.day,
-          day.grid,
-          revisions.get(day.day)
-        );
-        // The version's rainy-day marks come back with its cells, as the desktop's flags do
-        // (toSnapshotSlot); "Before rainy Monday" has none from that Monday, so it is still the
-        // way back from a rainy day (repo docs/adr/0019 choice 9).
-        save.rain = day.rain;
-        saves.add(save);
-        restoredDays.add(day.day);
-      }
-      // The version's days come back as they were, a day its week has since lost included
-      // (a "Before update" of a shortened week, WEEK-6.6): it shows as no longer a day of the
-      // week, and Update to match setup takes it off again, never dropped unseen.
-      ScheduleDaySaves.writeAsItWas(draftId, saves);
-      // A day the version doesn't have goes from the draft too: the draft is the version now.
-      Database.delete(
-        [
-          SELECT Id
-          FROM ScheduleDay__c
-          WHERE Schedule__c = :draftId AND Date__c NOT IN :restoredDays
-          WITH USER_MODE
-        ],
-        true,
-        AccessLevel.USER_MODE
+      List<ScheduleDays.DayGrid> restored = ManualVersions.readable(
+        ScheduleDays.read(version.Id)
       );
-      takeOption(draft, version);
-      return kept;
-    } catch (Exception e) {
-      Database.rollback(beforeRestore);
-      throw e;
+      ManualVersions.lockHandChoices(draft, version, restored);
+      Savepoint beforeRestore = Database.setSavepoint();
+      try {
+        Id kept = null;
+        if (!current.isEmpty()) {
+          kept = ManualVersions.newVersion(
+            draft,
+            keptAs,
+            ManualVersions.AUTO_SAVED
+          );
+          ManualVersions.writeDays(kept, ManualVersions.readable(current));
+        }
+        Map<Date, Integer> revisions = new Map<Date, Integer>();
+        for (ScheduleDays.DayGrid day : current) {
+          revisions.put(day.day, day.revision);
+        }
+        List<ScheduleDaySaves.DaySave> saves = new List<ScheduleDaySaves.DaySave>();
+        Set<Date> restoredDays = new Set<Date>();
+        for (ScheduleDays.DayGrid day : restored) {
+          ScheduleDaySaves.DaySave save = new ScheduleDaySaves.DaySave(
+            day.day,
+            day.grid,
+            revisions.get(day.day)
+          );
+          // The version's rainy-day marks come back with its cells, as the desktop's flags do
+          // (toSnapshotSlot); "Before rainy Monday" has none from that Monday, so it is still the
+          // way back from a rainy day (repo docs/adr/0019 choice 9).
+          save.rain = day.rain;
+          saves.add(save);
+          restoredDays.add(day.day);
+        }
+        // The version's days come back as they were, a day its week has since lost included
+        // (a "Before update" of a shortened week, WEEK-6.6): it shows as no longer a day of the
+        // week, and Update to match setup takes it off again, never dropped unseen.
+        ScheduleDaySaves.writeAsItWas(draftId, saves);
+        // A day the version doesn't have goes from the draft too: the draft is the version now.
+        Database.delete(
+          [
+            SELECT Id
+            FROM ScheduleDay__c
+            WHERE Schedule__c = :draftId AND Date__c NOT IN :restoredDays
+            WITH USER_MODE
+          ],
+          true,
+          AccessLevel.USER_MODE
+        );
+        ManualVersions.takeOption(draft, version);
+        return kept;
+      } catch (Exception e) {
+        Database.rollback(beforeRestore);
+        throw e;
+      }
     }
   }
 
