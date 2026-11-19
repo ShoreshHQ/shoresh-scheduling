@@ -61,9 +61,14 @@ public with sharing class AgentFields {
 
   /**
    * Where the one name that reads as asked is (as camps type names), or -1 when none does. Two
-   * that read the same are refused, naming both: Shoresh never picks one silently.
+   * that read the same are refused, naming both: Shoresh never picks one silently. aWhat: what
+   * they are, with its article, in the camp's words ("a group", "an Edah": CORE-1.0).
    */
-  public static Integer onlyOne(List<String> names, String asked, String what) {
+  public static Integer onlyOne(
+    List<String> names,
+    String asked,
+    String aWhat
+  ) {
     Integer found = -1;
     if (String.isBlank(asked)) {
       return found;
@@ -78,8 +83,8 @@ public with sharing class AgentFields {
             names[found] +
             '" and "' +
             names[i] +
-            '" are both a ' +
-            what +
+            '" are both ' +
+            aWhat +
             ' called that on that day, so Shoresh can\'t tell which you mean. Nothing was changed.'
         );
       }

@@ -449,4 +449,60 @@ private class AgentBuildTest {
       );
     }
   }
+
+  // CORE-1.0, CORE-1.34, CORE-1.35: a camp that says Chug and Spot hears its own words, with its
+  // own plurals (Chugim, never "Chugs"), when Finalize is refused; its sets follow its Chug words.
+  @IsTest
+  static void finalizeRefusalsSayTheCampsOwnWords() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      GeneratedTestData.camp();
+      Id seasonId = GeneratedTestData.ids.get('Season');
+      Id campId = [
+        SELECT Camp__c
+        FROM Season__c
+        WHERE Id = :seasonId
+        WITH SYSTEM_MODE
+      ]
+      .Camp__c;
+      insert new ElectiveSet__c(Season__c = seasonId, Name = 'Morning');
+      Database.insert(
+        new List<CampLabel__c>{
+          new CampLabel__c(
+            Camp__c = campId,
+            ModelTerm__c = 'Elective',
+            Singular__c = 'Chug',
+            Plural__c = 'Chugim'
+          ),
+          new CampLabel__c(
+            Camp__c = campId,
+            ModelTerm__c = 'Seats',
+            Singular__c = 'Spot',
+            Plural__c = 'Spots'
+          )
+        },
+        AccessLevel.SYSTEM_MODE
+      );
+      Test.startTest();
+      Integer before = Limits.getQueries();
+      List<Object> noSeats = send(
+        'finalize_electives',
+        week(new Map<String, Object>{ 'elective_set' => 'Morning' })
+      );
+      Integer used = Limits.getQueries() - before;
+      List<Object> noSuchSet = send(
+        'finalize_electives',
+        week(new Map<String, Object>{ 'elective_set' => 'Sports' })
+      );
+      Test.stopTest();
+      Assert.areEqual('Not finalized. No Spots are assigned yet.', noSeats[1]);
+      Assert.areEqual(
+        'There is no Chug called "Sports" that this user can see. The Chugim: Morning.',
+        noSuchSet[1]
+      );
+      Assert.isTrue(
+        used < 100,
+        'A refused Finalize reads ' + used + ' queries'
+      );
+    }
+  }
 }

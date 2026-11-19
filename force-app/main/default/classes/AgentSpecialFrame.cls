@@ -94,7 +94,7 @@ global with sharing class AgentSpecialFrame implements AgentWeeks.Action, AgentA
     change.action = ACTIONS.get(asked);
     change.name = AgentFields.text(body, 'name');
     String target = AgentFields.text(body, 'target');
-    aimed(body, found.grid, change);
+    aimed(body, found, change);
     SpecialSchedule.PlanView view = changed(
       found,
       change,
@@ -117,21 +117,25 @@ global with sharing class AgentSpecialFrame implements AgentWeeks.Action, AgentA
   /** What the change is aimed at (a time block or station, by name), its times and its step. */
   private static void aimed(
     Map<String, Object> body,
-    ScheduleGrid grid,
+    AgentSpecials.Found found,
     SpecialScheduleFrame.Change change
   ) {
+    ScheduleGrid grid = found.grid;
     String asked = AgentFields.text(body, 'action').toLowerCase();
     String target = AgentFields.text(body, 'target');
     if (asked == 'add_time_block') {
       timesOf(body, change, null);
     } else if (asked.endsWith('time_block')) {
       ScheduleGrid.Block block = grid.blocks[
-        AgentSpecials.blockIn(grid, target)
+        AgentSpecials.blockIn(grid, target, found.labels)
       ];
       change.targetId = block.id;
       timesOf(body, change, block);
     } else if (asked.endsWith('station') && asked != 'add_station') {
-      change.targetId = grid.groups[AgentSpecials.columnIn(grid, target)].id;
+      change.targetId = grid.groups[
+          AgentSpecials.stationIn(grid, target, found.labels)
+        ]
+        .id;
     }
     if (asked.startsWith('move')) {
       change.direction = DIRECTIONS.get(

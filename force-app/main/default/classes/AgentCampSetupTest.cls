@@ -292,7 +292,7 @@ private class AgentCampSetupTest {
       Assert.isTrue(
         String.valueOf(read[1])
           .contains(
-            '"Pool" (groups_that_fit 1, 1 activity here); "pool" (groups_that_fit 2, 0 activities here). Camp Setup would keep "Pool" with groups_that_fit 2.'
+            '"Pool" (groups that fit: 1, 1 activity here); "pool" (groups that fit: 2, 0 activities here). Camp Setup would keep "Pool" (groups that fit: 2).'
           ),
         String.valueOf(read[1])
       );
@@ -302,7 +302,7 @@ private class AgentCampSetupTest {
       Assert.isTrue(
         String.valueOf(merged[1])
           .startsWith(
-            'Merged into "Pool" (groups_that_fit 2): "pool" deleted, and everything there moved to it.'
+            'Merged into "Pool" (groups that fit: 2): "pool" deleted, and everything there moved to it.'
           ),
         String.valueOf(merged[1])
       );
@@ -320,6 +320,76 @@ private class AgentCampSetupTest {
         ]
         .GroupsThatFit__c
       );
+    }
+  }
+
+  // CORE-1.0, CORE-1.34: "Same location?" says the camp's Location word and its groups that fit
+  // in the camp's Group plural ("Edot that fit"), never the input's name groups_that_fit.
+  @IsTest
+  static void sameLocationsSayTheCampsOwnWords() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      GeneratedTestData.camp();
+      Season__c season = season();
+      Database.insert(
+        new List<SObject>{
+          new Location__c(
+            Season__c = season.Id,
+            Name = 'pool',
+            GroupsThatFit__c = 2,
+            SortOrder__c = 99
+          ),
+          new CampLabel__c(
+            Camp__c = season.Camp__c,
+            ModelTerm__c = 'Group',
+            Singular__c = 'Edah',
+            Plural__c = 'Edot'
+          ),
+          new CampLabel__c(
+            Camp__c = season.Camp__c,
+            ModelTerm__c = 'Location',
+            Singular__c = 'Migrash',
+            Plural__c = 'Migrashim'
+          )
+        },
+        AccessLevel.SYSTEM_MODE
+      );
+      Test.startTest();
+      Integer before = Limits.getQueries();
+      List<Object> read = ask(
+        new AgentSameLocations(),
+        'GET',
+        new Map<String, Object>{ 'season' => season.Name, 'name' => 'Pool' }
+      );
+      Integer used = Limits.getQueries() - before;
+      List<Object> one = ask(
+        new AgentSameLocations(),
+        'GET',
+        new Map<String, Object>{ 'season' => season.Name, 'name' => 'Gym' }
+      );
+      List<Object> badFit = ask(
+        new AgentMergeLocations(),
+        'POST',
+        new Map<String, Object>{
+          'season' => season.Name,
+          'name' => 'Pool',
+          'groups_that_fit' => 'two',
+          'seen' => new Map<String, Object>{ 'Pool' => '1', 'pool' => '2' }
+        }
+      );
+      Test.stopTest();
+      String said = String.valueOf(read[1]);
+      Assert.isTrue(said.startsWith('The Migrashim whose names match'), said);
+      Assert.isTrue(said.contains('"Pool" (Edot that fit: 1, '), said);
+      Assert.isFalse(said.contains('groups_that_fit'), said);
+      Assert.areEqual(
+        'Fewer than two Migrashim are called "Gym", capitals and spacing aside, so there is nothing to merge.',
+        one[1]
+      );
+      Assert.areEqual(
+        'Nothing was merged. Give the Edot that fit (groups_that_fit) as a whole number, 1 or more.',
+        badFit[1]
+      );
+      Assert.isTrue(used < 100, 'Same location? reads ' + used + ' queries');
     }
   }
 }

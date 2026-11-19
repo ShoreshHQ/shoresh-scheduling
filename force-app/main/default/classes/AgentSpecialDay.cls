@@ -174,7 +174,8 @@ global with sharing class AgentSpecialDay implements AgentWeeks.Action {
         ORDER BY SortOrder__c, Name
       ],
       name,
-      labels.singularInSentence('SpecialDay')
+      season,
+      'SpecialDay'
     );
   }
 

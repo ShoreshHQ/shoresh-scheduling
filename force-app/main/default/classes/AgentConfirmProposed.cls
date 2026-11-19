@@ -26,6 +26,7 @@ global with sharing class AgentConfirmProposed implements AgentWeeks.Action {
     Season__c season = AgentChangeCampWords.seasonOf(
       AgentFields.text(body, 'season')
     );
+    CampLabels words = CampLabels.forCamp(season.Camp__c);
     String activity = AgentFields.text(body, 'activity');
     String setName = AgentFields.text(body, 'elective_set');
     refuseUnsaid(body, activity);
@@ -41,7 +42,8 @@ global with sharing class AgentConfirmProposed implements AgentWeeks.Action {
         FOR UPDATE
       ],
       activity,
-      setName
+      setName,
+      words
     );
     String named =
       '"' +
@@ -74,7 +76,11 @@ global with sharing class AgentConfirmProposed implements AgentWeeks.Action {
     }
     return 'Confirmed ' +
       named +
-      ': it is offered now, and campers can get a seat in it.';
+      ': it is offered now, and ' +
+      words.pluralInSentence('Camper') +
+      ' can get ' +
+      words.withArticle('Seats') +
+      ' in it.';
   }
 
   /** No activity, or no seen "proposed", is refused before anything is read. */
@@ -91,12 +97,16 @@ global with sharing class AgentConfirmProposed implements AgentWeeks.Action {
     }
   }
 
-  /** The offering named, in the elective set asked about when the activity is in two. */
+  /**
+   * The offering named, in the elective set asked about when the activity is in two; refused in
+   * the camp's words (words, CORE-1.0).
+   */
   @TestVisible
   private static Offering__c onlyOne(
     List<Offering__c> found,
     String activity,
-    String setName
+    String setName,
+    CampLabels words
   ) {
     List<Offering__c> matched = new List<Offering__c>();
     List<String> sets = new List<String>();
@@ -112,7 +122,8 @@ global with sharing class AgentConfirmProposed implements AgentWeeks.Action {
     }
     if (matched.isEmpty()) {
       throw new ShoreshException(
-        'No elective set' +
+        'No ' +
+          words.singularInSentence('ElectiveSet') +
           (String.isBlank(setName) ? '' : ' "' + setName.left(80) + '"') +
           ' offers "' +
           activity.left(80) +
@@ -124,7 +135,9 @@ global with sharing class AgentConfirmProposed implements AgentWeeks.Action {
     if (matched.size() > 1) {
       sets.sort();
       throw new ShoreshException(
-        'More than one elective set offers "' +
+        'More than one ' +
+          words.singularInSentence('ElectiveSet') +
+          ' offers "' +
           activity.left(80) +
           '". Say which (elective_set): ' +
           String.join(sets, ', ') +

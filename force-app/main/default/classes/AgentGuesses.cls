@@ -25,6 +25,8 @@ public with sharing class AgentGuesses {
     /** A group's program, a linked choice's elective set; null otherwise. */
     public String place;
     public String field;
+    /** The field in words, in the camp's ("times per week", "Edot that fit"; CORE-1.0). */
+    public String fieldWords;
     /** The guess's own field name, as confirmGuess takes it. */
     public String guessField;
     public String value;
@@ -54,6 +56,23 @@ public with sharing class AgentGuesses {
     }
   }
 
+  /** A guessed field as Camp Setup's columns name it, in the camp's words. */
+  private static String fieldWordsOf(String guessField, CampLabels labels) {
+    if (guessField == SetupGuessValues.OFTEN) {
+      return labels.singularInSentence('TimesPerWeek');
+    }
+    if (guessField == SetupGuessValues.FITS) {
+      return labels.singularInSentence('GroupsThatFit');
+    }
+    if (guessField == SetupGuessValues.DIVISION) {
+      return labels.singularInSentence('Division');
+    }
+    if (guessField == SetupGuessValues.PERIODS) {
+      return labels.pluralInSentence('TimeBlock');
+    }
+    return 'who can do it';
+  }
+
   /** The season's guesses still marked, in the screen's order, as the setup screen reads them. */
   public static List<Entry> standing(Id seasonId, CampLabels labels) {
     Reading reading = new Reading(
@@ -73,6 +92,7 @@ public with sharing class AgentGuesses {
         : labels.singularInSentence(known.term);
       one.guessField = guess.field;
       one.field = SAID.get(guess.field);
+      one.fieldWords = fieldWordsOf(guess.field, labels);
       one.value = reading.valueOf(guess);
       result.add(one);
     }

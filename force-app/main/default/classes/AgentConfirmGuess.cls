@@ -80,15 +80,15 @@ global with sharing class AgentConfirmGuess implements AgentWeeks.Action {
     } catch (Exception e) {
       throw new ShoreshException(ScreenErrors.words(e) + NOTHING);
     }
-    return 'Marked the ' +
+    return 'Marked Looks right: the ' +
       now.kind +
       ' "' +
       now.name +
-      '": ' +
-      now.field +
-      ' ' +
+      '", ' +
+      now.fieldWords +
+      ': ' +
       now.value +
-      ' as looked at. Camp Setup no longer marks it as guessed.';
+      '. Camp Setup no longer marks it as guessed.';
   }
 
   /**

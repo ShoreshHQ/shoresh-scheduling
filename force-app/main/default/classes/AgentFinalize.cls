@@ -36,13 +36,18 @@ global with sharing class AgentFinalize implements AgentWeeks.Action, AgentAskFi
     AgentAskFirst.stateIs(
       String.valueOf(ElectiveSeatsController.openRun(runId).revision)
     );
+    CampLabels words = IncomingSeason.labelsOf(season.Id);
     return 'This finalizes ' +
       electiveSet.Name +
       ' in ' +
       week.Name +
       ' (' +
       season.Name +
-      '), as the Elective seats screen\'s Finalize does: the seats being worked on now become the final ones.';
+      '), as the ' +
+      words.electiveSeatsTitle() +
+      ' screen\'s Finalize does: the ' +
+      words.pluralInSentence('Seats') +
+      ' being worked on now become the final ones.';
   }
 
   public String run() {
@@ -112,14 +117,20 @@ global with sharing class AgentFinalize implements AgentWeeks.Action, AgentAskFi
       for (ElectiveSet__c each : sets) {
         names.add(each.Name);
       }
+      CampLabels words = IncomingSeason.labelsOf(season.Id);
       throw new ShoreshException(
         sets.isEmpty()
-          ? season.Name + ' has no electives yet.'
-          : 'Say which electives (elective_set): ' +
+          ? season.Name +
+            ' has no ' +
+            words.pluralInSentence('ElectiveSet') +
+            ' yet.'
+          : 'Say which ' +
+            words.singularInSentence('ElectiveSet') +
+            ' (elective_set): ' +
             String.join(names, ', ') +
             '.'
       );
     }
-    return (ElectiveSet__c) AgentWeeks.named(sets, name, 'elective set');
+    return (ElectiveSet__c) AgentWeeks.named(sets, name, season, 'ElectiveSet');
   }
 }

@@ -9,6 +9,8 @@ public with sharing class AgentLockScope {
   public String place;
   // The week's days as read, the revision the change is made at.
   public List<ScheduleDays.DayGrid> days;
+  // The camp's words, for what is refused (CORE-1.0).
+  private CampLabels words;
 
   /** The scope body names in the week, for action (Lock or Unlock). */
   public AgentLockScope(
@@ -17,9 +19,14 @@ public with sharing class AgentLockScope {
     AgentWeeks.Week week
   ) {
     change.action = action;
+    words = AgentVersions.labelsOf(week);
     days = ScheduleDays.read(week.draft.Id);
-    String groupAsked = scoped(AgentFields.text(body, 'group'), 'group');
-    String dayAsked = scoped(AgentFields.text(body, 'day'), 'day');
+    String groupAsked = scoped(
+      AgentFields.text(body, 'group'),
+      'group',
+      words.singularInSentence('Group')
+    );
+    String dayAsked = scoped(AgentFields.text(body, 'day'), 'day', 'day');
     String timeAsked = AgentFields.text(body, 'time');
     checkAsked(dayAsked, groupAsked, timeAsked);
     ScheduleGrid grid = null;
@@ -47,19 +54,20 @@ public with sharing class AgentLockScope {
 
   /**
    * A day or group is never left out (API-1.107): leaving one out would reach every one, so
-   * "all" says that on purpose, and nothing said is refused naming what is missing.
+   * "all" says that on purpose, and nothing said is refused naming what is missing (word: field
+   * in the camp's words).
    */
-  private String scoped(String asked, String field) {
+  private String scoped(String asked, String field, String word) {
     if (String.isBlank(asked)) {
       throw new ShoreshException(
         'Nothing was changed: say which ' +
-          field +
+          word +
           ' (' +
           field +
           ') to ' +
           change.action.toLowerCase() +
           ', or "all" for every ' +
-          field +
+          word +
           '.'
       );
     }
@@ -74,7 +82,11 @@ public with sharing class AgentLockScope {
   ) {
     if (String.isBlank(dayAsked) && String.isBlank(groupAsked)) {
       throw new ShoreshException(
-        'Nothing was changed: "all" days of "all" groups is the whole week, which the Lock menu has no shortcut for. Name a day, a group, or both.'
+        'Nothing was changed: "all" days of "all" ' +
+          words.pluralInSentence('Group') +
+          ' is the whole week, which the Lock menu has no shortcut for. Name a day, ' +
+          words.withArticle('Group') +
+          ', or both.'
       );
     }
     if (
@@ -82,7 +94,11 @@ public with sharing class AgentLockScope {
       (String.isBlank(dayAsked) || String.isBlank(groupAsked))
     ) {
       throw new ShoreshException(
-        'One cell is a day, a group and a time: say all three (day, group, time).'
+        'One cell is a day, ' +
+          words.withArticle('Group') +
+          ' and ' +
+          words.withArticle('TimeBlock') +
+          ': say all three (day, group, time).'
       );
     }
   }
@@ -106,7 +122,7 @@ public with sharing class AgentLockScope {
   }
 
   /** The group by its name, on the first of those grids that has it. */
-  private static ScheduleGrid.GroupRef groupIn(
+  private ScheduleGrid.GroupRef groupIn(
     List<ScheduleGrid> grids,
     String asked
   ) {
@@ -119,39 +135,48 @@ public with sharing class AgentLockScope {
           names.add(g.name);
         }
       }
-      Integer found = AgentFields.onlyOne(here, asked, 'group');
+      Integer found = AgentFields.onlyOne(
+        here,
+        asked,
+        words.withArticle('Group')
+      );
       if (found >= 0) {
         return each.groups[found];
       }
     }
     throw new ShoreshException(
-      'There is no group called "' +
+      'There is no ' +
+        words.singularInSentence('Group') +
+        ' called "' +
         asked.left(80) +
         '" in this schedule. ' +
-        AgentWeeks.namesSaid('groups', names)
+        AgentWeeks.namesSaid(words.pluralInSentence('Group'), names)
     );
   }
 
   /** The time block by its name ("Period 2") or its start ("09:00"), as AgentCell finds it. */
-  private static ScheduleGrid.Block blockIn(ScheduleGrid grid, String asked) {
+  private ScheduleGrid.Block blockIn(ScheduleGrid grid, String asked) {
     List<String> names = new List<String>();
     List<String> starts = new List<String>();
     for (ScheduleGrid.Block block : grid.blocks) {
       names.add(block.name);
       starts.add(block.startTime == null ? '' : block.startTime.left(5));
     }
-    Integer found = AgentFields.onlyOne(names, asked, 'time');
+    String aBlock = words.withArticle('TimeBlock');
+    Integer found = AgentFields.onlyOne(names, asked, aBlock);
     if (found < 0) {
-      found = AgentFields.onlyOne(starts, asked, 'time');
+      found = AgentFields.onlyOne(starts, asked, aBlock);
     }
     if (found >= 0) {
       return grid.blocks[found];
     }
     throw new ShoreshException(
-      'There is no time called "' +
+      'There is no ' +
+        words.singularInSentence('TimeBlock') +
+        ' called "' +
         asked.left(80) +
         '" on that day. ' +
-        AgentWeeks.namesSaid('times', names)
+        AgentWeeks.namesSaid(words.pluralInSentence('TimeBlock'), names)
     );
   }
 }

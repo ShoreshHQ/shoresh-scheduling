@@ -54,7 +54,7 @@ global with sharing class AgentChangeSetup implements AgentWeeks.Action, AgentAs
     // The weeks it runs in and who it covers go with the row as its ticks (API-1.53, API-1.54).
     Map<String, Object> lists = AgentRunsIn.takeOut(given, found.term);
     put = AgentSetupFields.put(record, given, found);
-    AgentSetupNotes.refuseTooFewGroups(record);
+    AgentSetupNotes.refuseTooFewGroups(record, found.labels);
     refuseNothingAsked(put, lists, found);
     seen = AgentSetupFields.seen(found.id, body.get('seen'), put);
     if (!lists.isEmpty()) {
