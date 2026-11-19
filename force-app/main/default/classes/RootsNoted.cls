@@ -5,7 +5,6 @@
  * imported versions, two queries whatever their size; in user mode.
  */
 public with sharing class RootsNoted {
-  private static final String IMPORTED = 'Imported';
   private static final String VERSION = 'Version';
   // What Roots offers to set up: a special event ('S'), a special day ('D') or a trip ('T'), which
   // is set up as a special day (SPECIAL-1.5).
@@ -26,7 +25,7 @@ public with sharing class RootsNoted {
         WHERE
           Week__r.Season__c = :seasonId
           AND Status__c = :VERSION
-          AND Origin__c = :IMPORTED
+          AND Origin__c = :ManualVersions.IMPORTED
         WITH USER_MODE
         ORDER BY CreatedDate, Id
       ]

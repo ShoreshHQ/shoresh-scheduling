@@ -125,7 +125,7 @@ public with sharing class PublishedGuard {
           OR PublishedBy__c != NULL
           OR PublishKey__c != NULL
           OR (Status__c = 'Version'
-          AND Origin__c = 'Imported'))
+          AND Origin__c = :ManualVersions.IMPORTED))
         WITH SYSTEM_MODE
       ]
     );

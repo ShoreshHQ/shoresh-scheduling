@@ -11,9 +11,8 @@ public with sharing class GeneratedUndoController {
     Id versionId,
     String seenRevisions
   ) {
-    ManualVersions.keptAs = ManualVersions.BEFORE_UNDO;
     try {
-      ManualVersions.restoreInto(
+      ManualVersions.undoInto(
         GeneratedDrafts.lockedToEdit(scheduleId),
         versionId,
         seenRevisions
@@ -23,8 +22,6 @@ public with sharing class GeneratedUndoController {
       return false;
     } catch (Exception e) {
       throw ScreenErrors.of(e);
-    } finally {
-      ManualVersions.keptAs = ManualVersions.BEFORE_RESTORE;
     }
   }
 }
