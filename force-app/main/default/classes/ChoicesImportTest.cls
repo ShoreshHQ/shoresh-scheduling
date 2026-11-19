@@ -739,7 +739,7 @@ private class ChoicesImportTest {
   // ---------------------------------------------------------------- helpers
 
   @IsTest
-  static void commentsAddUpAndChoicesCompareByWhatTheyAre() {
+  static void commentsAddUpAndNamesFold() {
     Assert.areEqual('A', ChoicesImportCampers.commentWith(null, ' A '));
     Assert.areEqual('A', ChoicesImportCampers.commentWith('A', ''));
     Assert.areEqual(
@@ -747,19 +747,6 @@ private class ChoicesImportTest {
       ChoicesImportCampers.commentWith('A and B', 'B')
     );
     Assert.areEqual('A\nC', ChoicesImportCampers.commentWith('A', 'C'));
-    Assert.areEqual(
-      ChoicesImportChoices.signature(
-        '[{"n":"Archery","r":1,"k":"ranked"},{"n":"Drama","r":2,"k":"ranked"}]'
-      ),
-      ChoicesImportChoices.signature(
-        '[{"n":"drama","r":2,"k":"ranked"},{"n":"ARCHERY","r":1,"k":"ranked"}]'
-      )
-    );
-    Assert.areNotEqual(
-      ChoicesImportChoices.signature('[{"n":"Archery","r":1,"k":"ranked"}]'),
-      ChoicesImportChoices.signature('[{"n":"Archery","r":2,"k":"ranked"}]')
-    );
-    Assert.areEqual('not json', ChoicesImportChoices.signature('not json'));
     Assert.areEqual('potterywheel', ChoicesImport.fold('Pottery-Wheel '));
   }
 

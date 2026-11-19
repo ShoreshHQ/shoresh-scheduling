@@ -155,8 +155,9 @@ name). Flow and words follow the desktop's choices-sheet import (`AssignmentPane
     erases, the same words are not added twice, other words go on a new line after it (ADR 0018
     §3 left this to E6). Shoresh's name for a camper number is kept. The choices go to one
     `Preference__c` per camper per run: `ImportedChoices__c` is always what this sheet says;
-    `Choices__c` is the same unless it was changed by hand (`ManualChange__c`), which is kept
-    (plan §2). The sheet's bunk is the camper's group that week when the schedule's program has
+    `Choices__c` is the same unless it was changed by hand (`ManualChange__c`, or no longer
+    the choices last brought in: ELECT-2.6, `CamperChoices.mergeIn`), which is kept (plan §2).
+    The sheet's bunk is the camper's group that week when the schedule's program has
     a group of that name; a sheet with no bunk for a known camper keeps the saved one.
 16. **The choices' format** (`Choices__c`, `ImportedChoices__c`; ADR 0018 left it to E6): JSON, a
     list in the sheet's order, each `{ n, a, r, k, d, p }` with blank keys left out: `n` the name
