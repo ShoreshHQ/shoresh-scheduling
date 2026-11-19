@@ -49,7 +49,7 @@ public with sharing class ImportSpecialDayWrites {
     }
     writer.saveTracked('SpecialDay', days);
     List<SpecialDate__c> dates = new List<SpecialDate__c>();
-    List<PlanPart__c> parts = new List<PlanPart__c>();
+    Map<Id, ScheduleGrid> plans = new Map<Id, ScheduleGrid>();
     for (Integer i = 0; i < entries.size(); i++) {
       writer.result.countAdded('SpecialDay');
       for (Id weekId : weekIds[i]) {
@@ -62,29 +62,10 @@ public with sharing class ImportSpecialDayWrites {
           )
         );
       }
-      parts.addAll(partsOf(days[i].Id, grids[i]));
+      plans.put(days[i].Id, grids[i]);
     }
     writer.saveTracked('SpecialDate', dates);
-    UserModeWrites.save(parts);
-  }
-
-  private List<PlanPart__c> partsOf(Id dayId, ScheduleGrid grid) {
-    List<PlanPart__c> parts = new List<PlanPart__c>();
-    List<String> texts = ScheduleGridParts.split(grid);
-    for (Integer p = 0; p < texts.size(); p++) {
-      parts.add(
-        new PlanPart__c(
-          Season__c = plan.seasonId,
-          SpecialDay__c = dayId,
-          Part__c = p + 1,
-          Plan__c = texts[p],
-          GridFormatVersion__c = ScheduleGridLocks.formatOf(grid),
-          // Revision 1 is the import's: a later save is the director's (Undo keeps it).
-          Revision__c = 1
-        )
-      );
-    }
-    return parts;
+    SpecialPlans.writeFirst(plan.seasonId, plans);
   }
 
   /**
