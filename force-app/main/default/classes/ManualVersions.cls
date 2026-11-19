@@ -15,7 +15,7 @@ public with sharing class ManualVersions {
   public static final String BEFORE_RESTORE = 'Before Restore';
   // The week kept first when Undo brings back what a build kept (GeneratedUndoController).
   public static final String BEFORE_UNDO = 'Before Undo';
-  // An imported week's version (ImportVersionWrites): its reason and its origin.
+  // An imported week's version: its reason and its origin (Origin__c, read by the import guards).
   public static final String IMPORTED = 'Imported';
 
   /** Save version: the draft as it is now, kept under a name. Returns the version's Id. */
