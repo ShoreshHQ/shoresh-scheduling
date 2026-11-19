@@ -235,7 +235,7 @@ public with sharing class ChoicesImport {
         result.renamed.add(renamed);
       }
       Preference__c had = choices.savedFor(saved.Id);
-      if (had != null && had.ManualChange__c) {
+      if (had != null && CamperChoices.handChanged(had)) {
         result.handChanged.add(i);
         if (differs(had, request.campers[i])) {
           result.differs.add(i);
@@ -268,8 +268,7 @@ public with sharing class ChoicesImport {
 
   /** Whether the sheet now gives other choices than the ones changed by hand. */
   private static Boolean differs(Preference__c had, SheetCamper sheetCamper) {
-    return ChoicesImportChoices.signature(had.Choices__c) !=
-      ChoicesImportChoices.signature(sheetCamper.choices);
+    return !CamperChoices.same(had.Choices__c, sheetCamper.choices);
   }
 
   /** The answers about names to remember for the camp (only those about names). */

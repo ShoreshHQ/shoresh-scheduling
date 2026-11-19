@@ -135,8 +135,6 @@ public with sharing class ElectiveSeats {
     public Id groupId;
     @AuraEnabled
     public String choices;
-    @AuraEnabled
-    public Boolean manualChange = false;
   }
 
   public class SeatInfo {
@@ -294,7 +292,6 @@ public with sharing class ElectiveSeats {
     made.comment = pref.Camper__r.ParentComments__c;
     made.groupId = pref.Group__c;
     made.choices = pref.Choices__c;
-    made.manualChange = pref.ManualChange__c == true;
     return made;
   }
 
