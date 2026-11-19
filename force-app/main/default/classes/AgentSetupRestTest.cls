@@ -708,7 +708,8 @@ private class AgentSetupRestTest {
   static void somethingGoneSinceItWasFoundIsNamed() {
     AgentSetupRecords.Found swim = new AgentSetupRecords.Found();
     swim.id = Id.valueOf(
-      Activity__c.SObjectType.getDescribe().getKeyPrefix() + '000000000000'
+      Activity__c.SObjectType.getDescribe(SObjectDescribeOptions.DEFERRED)
+        .getKeyPrefix() + '000000000000'
     );
     swim.name = 'Swim';
     try {
