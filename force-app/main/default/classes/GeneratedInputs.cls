@@ -11,7 +11,6 @@
  */
 public with sharing class GeneratedInputs {
   private static final String VERSION_STATUS = 'Version';
-  private static final String IMPORTED_ORIGIN = 'Imported';
 
   public class Inputs {
     // The program and week as the server has them (18-character Ids): the engine compares them
@@ -236,7 +235,7 @@ public with sharing class GeneratedInputs {
           AND ((Status__c = :ManualDrafts.DRAFT
           AND Origin__c = :GeneratedDrafts.GENERATED)
           OR (Status__c = :VERSION_STATUS
-          AND Origin__c = :IMPORTED_ORIGIN))
+          AND Origin__c = :ManualVersions.IMPORTED))
         WITH USER_MODE
         ORDER BY CreatedDate, Id
       ]) {

@@ -37,9 +37,9 @@ public with sharing class ImportVersionWrites {
         Program__c = writer.keys.of(entry.text('programKey')),
         Week__c = weekOf(entry),
         Name = entry.text('name').left(80),
-        Status__c = 'Version',
-        Origin__c = 'Imported',
-        VersionReason__c = 'Imported'
+        Status__c = ManualVersions.VERSION,
+        Origin__c = ManualVersions.IMPORTED,
+        VersionReason__c = ManualVersions.IMPORTED
       );
       List<ScheduleDaySaves.DaySave> days = days(entry);
       // The same files imported again: the version kept last time is the same, so it isn't kept
@@ -70,8 +70,8 @@ public with sharing class ImportVersionWrites {
         FROM Schedule__c
         WHERE
           Program__r.Season__c = :seasonId
-          AND Status__c = 'Version'
-          AND Origin__c = 'Imported'
+          AND Status__c = :ManualVersions.VERSION
+          AND Origin__c = :ManualVersions.IMPORTED
         WITH USER_MODE
       ]
     );
