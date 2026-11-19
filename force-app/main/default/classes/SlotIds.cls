@@ -12,16 +12,13 @@ public with sharing class SlotIds {
   /** The identity of each slot in a group's row. */
   public static List<String> ofRow(ScheduleGrid grid, Integer g) {
     List<String> result = new List<String>();
-    String carrying = OPEN;
-    for (String token : grid.rows[g]) {
-      if (token == ScheduleGrid.CARRIES_ON) {
-        result.add(ScheduleGrid.CARRIES_ON + carrying);
-      } else {
-        carrying = String.isBlank(token)
-          ? OPEN
-          : of(grid.items[Integer.valueOf(token) - 1]);
-        result.add(carrying);
-      }
+    List<ScheduleGrid.Item> held = ScheduleGridCells.itemsIn(grid, g);
+    for (Integer b = 0; b < held.size(); b++) {
+      result.add(
+        (ScheduleGridCells.carriesOn(grid, g, b)
+          ? ScheduleGrid.CARRIES_ON
+          : '') + (held[b] == null ? OPEN : of(held[b]))
+      );
     }
     return result;
   }

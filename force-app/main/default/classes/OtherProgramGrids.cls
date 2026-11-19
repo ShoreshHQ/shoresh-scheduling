@@ -89,17 +89,15 @@ public with sharing class OtherProgramGrids {
 
   /** One group's cells: what is placed in each, the carried-on blocks included. */
   private void addRow(Date day, ScheduleGrid grid, Integer g) {
-    List<String> row = grid.rows[g];
-    String owner = '';
-    for (Integer b = 0; b < Math.min(grid.blocks.size(), row.size()); b++) {
-      owner = row[b] == ScheduleGrid.CARRIES_ON ? owner : row[b];
-      if (String.isNotBlank(owner)) {
+    List<ScheduleGrid.Item> held = ScheduleGridCells.itemsIn(grid, g);
+    for (Integer b = 0; b < held.size(); b++) {
+      if (held[b] != null) {
         OtherProgramUse.Entry entry = OtherProgramUse.at(
           day,
           grid.blocks[b].startTime,
           grid.blocks[b].endTime
         );
-        place(entry, grid.items[Integer.valueOf(owner) - 1]);
+        place(entry, held[b]);
         entry.groups = 1;
         tally.add(entry);
       }
