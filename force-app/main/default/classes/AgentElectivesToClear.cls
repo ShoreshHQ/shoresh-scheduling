@@ -21,7 +21,10 @@ global with sharing class AgentElectivesToClear {
       response.responseBody = Blob.valueOf(
         JSON.serialize(
           OutgoingRows.answered(
-            said(ElectiveSeatsController.clearPicture(season.Id))
+            said(
+              ElectiveSeatsController.clearPicture(season.Id),
+              IncomingSeason.labelsOf(season.Id)
+            )
           )
         )
       );
@@ -39,21 +42,36 @@ global with sharing class AgentElectivesToClear {
     }
   }
 
-  /** "2 sets of seats, 1 of them final"; "1 set of seats, final" (or draft). */
-  private static String seatSets(Integer runs, Integer finals) {
+  /** "2 sets of seats, 1 of them final"; "1 set of seats, final" (or draft); seats: the camp's. */
+  private static String seatSets(Integer runs, Integer finals, String seats) {
     if (runs == 1) {
-      return '1 set of seats, ' + (finals == 1 ? 'final' : 'draft');
+      return '1 set of ' + seats + ', ' + (finals == 1 ? 'final' : 'draft');
     }
-    return runs + ' sets of seats, ' + finals + ' of them final';
+    return runs + ' sets of ' + seats + ', ' + finals + ' of them final';
   }
 
-  /** The picture, in lines. */
-  public static String said(ElectiveClear.Picture picture) {
+  /**
+   * The Elective set word beside the Elective word, as the screens' setsBesideElectives: "Chug
+   * sets" where the camp's sets follow its "Chugim" (CORE-1.34), so the two never read alike.
+   */
+  private static String setsBesideElectives(CampLabels words) {
+    String sets = words.pluralInSentence('ElectiveSet');
+    return sets.equals(words.pluralInSentence('Elective'))
+      ? words.singular('Elective') + ' sets'
+      : sets;
+  }
+
+  /** The picture, in lines, in the camp's words (words, CORE-1.0). */
+  public static String said(ElectiveClear.Picture picture, CampLabels words) {
+    String campers = words.pluralInSentence('Camper');
+    String seats = words.pluralInSentence('Seats');
     List<String> lines = new List<String>{
       picture.seasonName +
       ': ' +
       picture.campers +
-      ' campers in all. seen: ' +
+      ' ' +
+      campers +
+      ' in all. seen: ' +
       picture.stamp
     };
     for (ElectiveClear.WeekCounts week : picture.weeks) {
@@ -62,27 +80,38 @@ global with sharing class AgentElectivesToClear {
           week.name +
           ': ' +
           week.campers +
-          ' campers (' +
+          ' ' +
+          campers +
+          ' (' +
           week.campersOnlyHere +
           ' only this week), ' +
           week.choices +
           ' choices, ' +
           week.seats +
-          ' seats, ' +
-          seatSets(week.runs, week.finals) +
+          ' ' +
+          seats +
+          ', ' +
+          seatSets(week.runs, week.finals, seats) +
           (week.working.isEmpty()
             ? ''
             : '; still being worked on: ' + String.join(week.working, ', '))
       );
     }
     lines.add(
-      'Stays for next summer: elective sets ' +
+      'Stays for next summer: ' +
+        setsBesideElectives(words) +
+        ' ' +
         String.join(picture.sets, ', ') +
-        '; electives ' +
+        '; ' +
+        words.pluralInSentence('Elective') +
+        ' ' +
         String.join(picture.offerings, ', ') +
         (picture.linked.isEmpty()
           ? ''
-          : '; linked choices ' + String.join(picture.linked, ', ')) +
+          : '; ' +
+            words.pluralInSentence('LinkedChoice') +
+            ' ' +
+            String.join(picture.linked, ', ')) +
         '.'
     );
     return String.join(lines, '\n');

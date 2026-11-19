@@ -51,18 +51,33 @@ public with sharing class AgentSpecials {
     for (SObject row : rows) {
       names.add((String) row.get('Name'));
     }
-    Integer at = AgentFields.onlyOne(names, asked, 'special day or event');
+    String dayOrEvent =
+      labels.singularInSentence('SpecialDay') +
+      ' or ' +
+      labels.singularInSentence('SpecialEvent');
+    Integer at = AgentFields.onlyOne(
+      names,
+      asked,
+      CampWordRules.withArticle(dayOrEvent)
+    );
     if (at < 0) {
       throw new ShoreshException(
         (String.isBlank(asked)
-            ? 'Say which special day or event (special).'
-            : 'There is no special day or event called "' +
+            ? 'Say which ' + dayOrEvent + ' (special).'
+            : 'There is no ' +
+              dayOrEvent +
+              ' called "' +
               asked.left(80) +
               '" in ' +
               season.Name +
               '.') +
           ' ' +
-          AgentWeeks.namesSaid('special days and events', names)
+          AgentWeeks.namesSaid(
+            labels.pluralInSentence('SpecialDay') +
+              ' and ' +
+              labels.pluralInSentence('SpecialEvent'),
+            names
+          )
       );
     }
     Found found = new Found();
@@ -120,42 +135,62 @@ public with sharing class AgentSpecials {
     return owner;
   }
 
-  /** The time block by its name ("Relays") or its start ("09:50"); -1 when none reads so. */
-  public static Integer blockIn(ScheduleGrid grid, String asked) {
+  /**
+   * The time block by its name ("Relays") or its start ("09:50"); refused in the camp's words
+   * (words) when none reads so.
+   */
+  public static Integer blockIn(
+    ScheduleGrid grid,
+    String asked,
+    CampLabels words
+  ) {
     List<String> names = new List<String>();
     List<String> starts = new List<String>();
     for (ScheduleGrid.Block block : grid.blocks) {
       names.add(block.name);
       starts.add(block.startTime == null ? '' : block.startTime.left(5));
     }
-    Integer found = AgentFields.onlyOne(names, asked, 'time');
+    String aBlock = words.withArticle('TimeBlock');
+    Integer found = AgentFields.onlyOne(names, asked, aBlock);
     if (found < 0) {
-      found = AgentFields.onlyOne(starts, asked, 'time');
+      found = AgentFields.onlyOne(starts, asked, aBlock);
     }
     if (found < 0) {
       throw new ShoreshException(
-        'There is no time called "' +
+        'There is no ' +
+          words.singularInSentence('TimeBlock') +
+          ' called "' +
           asked.left(80) +
           '" in this schedule. ' +
-          AgentWeeks.namesSaid('times', names)
+          AgentWeeks.namesSaid(words.pluralInSentence('TimeBlock'), names)
       );
     }
     return found;
   }
 
-  /** The column (a group, or an event's station) by its name. */
-  public static Integer columnIn(ScheduleGrid grid, String asked) {
+  /** An event's station (one of its columns) by its name, refused in the camp's words. */
+  public static Integer stationIn(
+    ScheduleGrid grid,
+    String asked,
+    CampLabels words
+  ) {
     List<String> names = new List<String>();
     for (ScheduleGrid.GroupRef each : grid.groups) {
       names.add(each.name);
     }
-    Integer found = AgentFields.onlyOne(names, asked, 'column');
+    Integer found = AgentFields.onlyOne(
+      names,
+      asked,
+      words.withArticle('Station')
+    );
     if (found < 0) {
       throw new ShoreshException(
-        'There is no column called "' +
+        'There is no ' +
+          words.singularInSentence('Station') +
+          ' called "' +
           asked.left(80) +
           '" in this schedule. ' +
-          AgentWeeks.namesSaid('columns', names)
+          AgentWeeks.namesSaid(words.pluralInSentence('Station'), names)
       );
     }
     return found;

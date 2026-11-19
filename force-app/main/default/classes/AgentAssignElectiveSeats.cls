@@ -265,9 +265,11 @@ global with sharing class AgentAssignElectiveSeats implements AgentWeeks.Action,
     }
   }
 
-  private static ShoreshException unreadable() {
+  private ShoreshException unreadable() {
     return new ShoreshException(
-      'Those seats could not be read. Download Shoresh\'s connector again from Settings in Shoresh.'
+      'Those ' +
+        held.labels().pluralInSentence('Seats') +
+        ' could not be read. Download Shoresh\'s connector again from Settings in Shoresh.'
     );
   }
 }

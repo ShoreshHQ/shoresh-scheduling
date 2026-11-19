@@ -360,4 +360,95 @@ private class AgentUnpublishLockTest {
       );
     }
   }
+
+  // CORE-1.0, CORE-1.35: a camp that says Edah and Perek hears its own words, with its own plurals
+  // (never "Edahs"), in a Lock's refusals, as on every screen.
+  @IsTest
+  static void lockRefusalsSayTheCampsOwnWords() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      GeneratedTestData.camp();
+      GeneratedTestData.generated();
+      Id campId = [
+        SELECT Camp__c
+        FROM Season__c
+        WHERE Id = :GeneratedTestData.ids.get('Season')
+        WITH SYSTEM_MODE
+      ]
+      .Camp__c;
+      Database.insert(
+        new List<CampLabel__c>{
+          new CampLabel__c(
+            Camp__c = campId,
+            ModelTerm__c = 'Group',
+            Singular__c = 'Edah',
+            Plural__c = 'Edot'
+          ),
+          new CampLabel__c(
+            Camp__c = campId,
+            ModelTerm__c = 'TimeBlock',
+            Singular__c = 'Perek',
+            Plural__c = 'Prakim'
+          )
+        },
+        AccessLevel.SYSTEM_MODE
+      );
+      Test.startTest();
+      List<Object> none = post('lock', new Map<String, Object>());
+      Map<String, Object> allOfAll = new Map<String, Object>{
+        'group' => 'all',
+        'day' => 'all'
+      };
+      // Read once a request (CLAUDE.md #60): this refusal says the camp's words twice, and they
+      // cost one query read cold and none when this request's CampLabels already has them.
+      CampLabels.forget();
+      Integer before = Limits.getQueries();
+      List<Object> whole = post('lock', allOfAll);
+      Integer cold = Limits.getQueries() - before;
+      before = Limits.getQueries();
+      post('lock', allOfAll);
+      Integer warm = Limits.getQueries() - before;
+      List<Object> noGroup = post(
+        'unlock',
+        new Map<String, Object>{ 'group' => 'Group Z', 'day' => 'all' }
+      );
+      List<Object> noTime = post(
+        'lock',
+        new Map<String, Object>{
+          'group' => 'Group A',
+          'day' => 'Monday',
+          'time' => 'Period 9'
+        }
+      );
+      List<Object> timeOnly = post(
+        'lock',
+        new Map<String, Object>{
+          'group' => 'all',
+          'day' => 'Monday',
+          'time' => 'Period 2'
+        }
+      );
+      Test.stopTest();
+      Assert.areEqual(
+        'Nothing was changed: say which Edah (group) to lock, or "all" for every Edah.',
+        none[1]
+      );
+      Assert.areEqual(
+        'There is no Edah called "Group Z" in this schedule. The Edot: Group A, Group B, Group C.',
+        noGroup[1]
+      );
+      Assert.areEqual(
+        'There is no Perek called "Period 9" on that day. The Prakim: Period 1, Period 2, Lunch.',
+        noTime[1]
+      );
+      Assert.areEqual(
+        'One cell is a day, an Edah and a Perek: say all three (day, group, time).',
+        timeOnly[1]
+      );
+      Assert.areEqual(
+        'Nothing was changed: "all" days of "all" Edot is the whole week, which the Lock menu has no shortcut for. Name a day, an Edah, or both.',
+        whole[1]
+      );
+      Assert.areEqual(1, cold - warm, 'camp words: one query, read once');
+    }
+  }
 }

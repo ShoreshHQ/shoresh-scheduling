@@ -91,7 +91,7 @@ global with sharing class AgentAddSetup implements AgentWeeks.Action, AgentAskFi
     record = AgentSetupNewRow.of(found);
     record.put('Name', name);
     put = AgentSetupFields.put(record, body.get('fields'), found);
-    AgentSetupNotes.refuseTooFewGroups(record);
+    AgentSetupNotes.refuseTooFewGroups(record, found.labels);
     ask = AgentFixedOver.of(record, put.extras, found);
   }
 

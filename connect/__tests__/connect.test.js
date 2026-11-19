@@ -1907,10 +1907,40 @@ describe("Shoresh for AI tools and the command line", () => {
       groups: [],
       time: "Period 1"
     });
-    expect(none.done.text).toBe("Say which groups (groups), like Bunk 3.");
+    expect(none.done.text).toBe("Say which groups (groups), like Group 3.");
     expect(unknown.done.text).toBe(
       'There is no special event called "Carnival" in this season. The special events: Color War.'
     );
+
+    // CORE-1.0, CORE-1.35: a camp that says Edah, Perek and Maccabiah hears its own words, with
+    // its own plurals (never "Edahs"), in every refusal; nothing is sent.
+    const custom = (term, singular, plural) => ({
+      term,
+      singular,
+      plural,
+      isCustom: true
+    });
+    read.labels = [
+      custom("Group", "Edah", "Edot"),
+      custom("TimeBlock", "Perek", "Prakim"),
+      custom("SpecialEvent", "Maccabiah", "Maccabiot")
+    ];
+    const cell = { day: "Monday", groups: ["Bunk 1"], time: "Period 1" };
+    const ownWords = await Promise.all(
+      [
+        { ...cell, event: "Color War", groups: [] },
+        { ...cell, event: "Carnival" },
+        { ...cell, event: "Color War", groups: ["Bunk 9"] },
+        { ...cell, event: "Color War", time: "Period 9" }
+      ].map(send)
+    );
+    expect(ownWords.map((sent) => sent.done.text)).toEqual([
+      "Say which Edot (groups), like Edah 3.",
+      'There is no Maccabiah called "Carnival" in this season. The Maccabiot: Color War.',
+      'There is no Edah called "Bunk 9" on that day. The Edot: Bunk 1, Bunk 2.',
+      'There is no Perek called "Period 9" on that day. The Prakim: Flag, Period 1, Period 2, Period 3.'
+    ]);
+    ownWords.forEach((sent) => expect(sent.seen).toHaveLength(1));
   });
 
   // API-1.76, API-1.77, API-1.78, API-1.79
