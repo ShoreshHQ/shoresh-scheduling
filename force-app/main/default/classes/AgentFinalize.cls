@@ -131,6 +131,6 @@ global with sharing class AgentFinalize implements AgentWeeks.Action, AgentAskFi
             '.'
       );
     }
-    return (ElectiveSet__c) AgentWeeks.named(sets, name, season, 'ElectiveSet');
+    return (ElectiveSet__c) AgentWeeks.named(sets, name, 'ElectiveSet');
   }
 }

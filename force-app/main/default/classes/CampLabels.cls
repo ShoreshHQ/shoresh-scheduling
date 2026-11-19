@@ -152,18 +152,6 @@ public with sharing class CampLabels {
     return singular('Elective') + ' ' + plural('Seats').toLowerCase();
   }
 
-  /**
-   * The Elective set word inside a sentence beside the Elective word, as the screens'
-   * setsBesideElectives: "Chug sets" where the camp's sets follow its "Chugim" (CORE-1.34), so
-   * the two never read alike; else the Elective set plural ("elective sets").
-   */
-  public String setsBesideElectives() {
-    String sets = pluralInSentence('ElectiveSet');
-    return sets.equals(pluralInSentence('Elective'))
-      ? singular('Elective') + ' sets'
-      : sets;
-  }
-
   /** CORE-1.34: this word has no record of its own and follows a word the camp set. */
   public Boolean follows(String term) {
     return followed(term) != null;

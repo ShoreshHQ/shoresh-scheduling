@@ -14,6 +14,12 @@ public with sharing class AgentGuesses {
     SetupGuessValues.DIVISION => 'division',
     SetupGuessValues.PERIODS => 'periods'
   };
+  // The camp word a guessed field is said in, by the guess's own field (who has none).
+  private static final Map<String, String> TERM_OF = new Map<String, String>{
+    SetupGuessValues.OFTEN => 'TimesPerWeek',
+    SetupGuessValues.FITS => 'GroupsThatFit',
+    SetupGuessValues.DIVISION => 'Division'
+  };
 
   /** One field of one record still marked as guessed. */
   public class Entry {
@@ -58,19 +64,11 @@ public with sharing class AgentGuesses {
 
   /** A guessed field as Camp Setup's columns name it, in the camp's words. */
   private static String fieldWordsOf(String guessField, CampLabels labels) {
-    if (guessField == SetupGuessValues.OFTEN) {
-      return labels.singularInSentence('TimesPerWeek');
-    }
-    if (guessField == SetupGuessValues.FITS) {
-      return labels.singularInSentence('GroupsThatFit');
-    }
-    if (guessField == SetupGuessValues.DIVISION) {
-      return labels.singularInSentence('Division');
-    }
     if (guessField == SetupGuessValues.PERIODS) {
       return labels.pluralInSentence('TimeBlock');
     }
-    return 'who can do it';
+    String term = TERM_OF.get(guessField);
+    return term == null ? 'who can do it' : labels.singularInSentence(term);
   }
 
   /** The season's guesses still marked, in the screen's order, as the setup screen reads them. */

@@ -15,6 +15,8 @@ global with sharing class AgentConfirmProposed implements AgentWeeks.Action {
     'seen'
   };
   private static final String NOTHING = ' Nothing was changed.';
+  // The camp's words, for what is refused (CORE-1.0).
+  private CampLabels words;
 
   @HttpPost
   global static void post() {
@@ -26,7 +28,7 @@ global with sharing class AgentConfirmProposed implements AgentWeeks.Action {
     Season__c season = AgentChangeCampWords.seasonOf(
       AgentFields.text(body, 'season')
     );
-    CampLabels words = CampLabels.forCamp(season.Camp__c);
+    words = CampLabels.forCamp(season.Camp__c);
     String activity = AgentFields.text(body, 'activity');
     String setName = AgentFields.text(body, 'elective_set');
     refuseUnsaid(body, activity);
@@ -42,8 +44,7 @@ global with sharing class AgentConfirmProposed implements AgentWeeks.Action {
         FOR UPDATE
       ],
       activity,
-      setName,
-      words
+      setName
     );
     String named =
       '"' +
@@ -99,14 +100,12 @@ global with sharing class AgentConfirmProposed implements AgentWeeks.Action {
 
   /**
    * The offering named, in the elective set asked about when the activity is in two; refused in
-   * the camp's words (words, CORE-1.0).
+   * the camp's words.
    */
-  @TestVisible
-  private static Offering__c onlyOne(
+  private Offering__c onlyOne(
     List<Offering__c> found,
     String activity,
-    String setName,
-    CampLabels words
+    String setName
   ) {
     List<Offering__c> matched = new List<Offering__c>();
     List<String> sets = new List<String>();

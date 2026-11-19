@@ -108,20 +108,15 @@ public with sharing class AgentWeeks {
           : 'Say which program (program): ' + String.join(names, ', ') + '.'
       );
     }
-    return (Program__c) named(programs, name, season, 'Program');
+    return (Program__c) named(programs, name, 'Program');
   }
 
   /**
    * The one record of that name (as camps type names); refused in plain words otherwise, naming
-   * the ones there are so no one has to guess (API-1.25), in the season's camp words for term
-   * (CORE-1.0), read only when refusing.
+   * the ones there are so no one has to guess (API-1.25), in the camp words for term of the
+   * season this request found (CORE-1.0), read only when refusing.
    */
-  public static SObject named(
-    List<SObject> rows,
-    String name,
-    Season__c season,
-    String term
-  ) {
+  public static SObject named(List<SObject> rows, String name, String term) {
     List<String> names = new List<String>();
     for (SObject row : rows) {
       if (
@@ -131,7 +126,9 @@ public with sharing class AgentWeeks {
       }
       names.add((String) row.get('Name'));
     }
-    CampLabels words = IncomingSeason.labelsOf(season.Id);
+    CampLabels words = OutgoingRows.used == null
+      ? CampLabels.modelTermsOnly()
+      : IncomingSeason.labelsOf(OutgoingRows.used.Id);
     throw new ShoreshException(
       'There is no ' +
         words.singularInSentence(term) +

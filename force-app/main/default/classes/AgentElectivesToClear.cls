@@ -50,6 +50,17 @@ global with sharing class AgentElectivesToClear {
     return runs + ' sets of ' + seats + ', ' + finals + ' of them final';
   }
 
+  /**
+   * The Elective set word beside the Elective word, as the screens' setsBesideElectives: "Chug
+   * sets" where the camp's sets follow its "Chugim" (CORE-1.34), so the two never read alike.
+   */
+  private static String setsBesideElectives(CampLabels words) {
+    String sets = words.pluralInSentence('ElectiveSet');
+    return sets.equals(words.pluralInSentence('Elective'))
+      ? words.singular('Elective') + ' sets'
+      : sets;
+  }
+
   /** The picture, in lines, in the camp's words (words, CORE-1.0). */
   public static String said(ElectiveClear.Picture picture, CampLabels words) {
     String campers = words.pluralInSentence('Camper');
@@ -88,7 +99,7 @@ global with sharing class AgentElectivesToClear {
     }
     lines.add(
       'Stays for next summer: ' +
-        words.setsBesideElectives() +
+        setsBesideElectives(words) +
         ' ' +
         String.join(picture.sets, ', ') +
         '; ' +
