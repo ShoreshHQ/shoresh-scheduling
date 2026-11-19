@@ -56,14 +56,19 @@ public with sharing class AgentSetupNotes {
     return value == null ? '' : String.valueOf(value).normalizeSpace();
   }
 
-  /** A location takes at least one group, as the screen's box does (min 1). */
-  public static void refuseTooFewGroups(SObject record) {
+  /**
+   * A location takes at least one group, as the screen's box does (min 1); refused in the camp's
+   * words (labels).
+   */
+  public static void refuseTooFewGroups(SObject record, CampLabels labels) {
     Object fit = record instanceof Location__c
       ? record.get(Location__c.GroupsThatFit__c)
       : null;
     if (fit != null && (Decimal) fit < 1) {
       throw new ShoreshException(
-        'Give the groups that fit as a whole number, 1 or more.'
+        'Give the ' +
+          labels.singularInSentence('GroupsThatFit') +
+          ' as a whole number, 1 or more.'
       );
     }
   }

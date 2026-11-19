@@ -588,6 +588,64 @@ describe("an AI's change is the screen's, and so is its Undo", () => {
     expect(sf.seen).toHaveLength(1);
   });
 
+  // CORE-1.0, CORE-1.35: a column asked for that isn't there is refused in the camp's own words:
+  // an event's columns are its stations, a special day's its groups, each with its own plural.
+  it("aSpecialColumnIsRefusedInTheCampsWords: Tachana / Tachanot on an event, Edah / Edot on a special day, nothing sent", async () => {
+    const day = {
+      dateValue: "2000-01-01",
+      problem: null,
+      blocks: [
+        { id: "b1", name: "Opening", startTime: "09:00", endTime: "09:45" }
+      ],
+      groups: [{ id: "g1", name: "Blue" }],
+      items: [],
+      rows: [","]
+    };
+    const labels = [
+      {
+        term: "Station",
+        singular: "Tachana",
+        plural: "Tachanot",
+        isCustom: true
+      },
+      { term: "Group", singular: "Edah", plural: "Edot", isCustom: true }
+    ];
+    const refused = await Promise.all(
+      ["SpecialEvent", "SpecialDay"].map(async (kind) => {
+        const plan = {
+          itemId: "a0X1",
+          kind,
+          name: "Color War",
+          schedule: { days: [day] },
+          activities: []
+        };
+        const sf = sfAnswering([answer({ plan, setup: {}, labels })]);
+        const done = await call(
+          "change_special_schedule_cell",
+          {
+            season: "Summer 2026",
+            special: "Color War",
+            column: "Red",
+            time: "Opening",
+            was: "Open",
+            activity: "Open"
+          },
+          sf
+        );
+        expect(sf.seen).toHaveLength(1);
+        return done.text;
+      })
+    );
+    expect(refused).toEqual([
+      expect.stringMatching(
+        /^There is no Tachana called "Red" in this schedule\. The Tachanot: Blue\./
+      ),
+      expect.stringMatching(
+        /^There is no Edah called "Red" in this schedule\. The Edot: Blue\./
+      )
+    ]);
+  });
+
   // API-1.14, API-1.77: a special day's or event's own schedule, typed as its page types and
   // undone as its page's Undo.
   it("aSpecialCellIsTypedAndUndoneAsItsPage: full length through the page's own editor, its runs back held for that plan; a frame change ends it", async () => {

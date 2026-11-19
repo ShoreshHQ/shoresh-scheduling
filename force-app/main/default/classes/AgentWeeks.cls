@@ -108,14 +108,15 @@ public with sharing class AgentWeeks {
           : 'Say which program (program): ' + String.join(names, ', ') + '.'
       );
     }
-    return (Program__c) named(programs, name, 'program');
+    return (Program__c) named(programs, name, 'Program');
   }
 
   /**
    * The one record of that name (as camps type names); refused in plain words otherwise, naming
-   * the ones there are so no one has to guess (API-1.25).
+   * the ones there are so no one has to guess (API-1.25), in the camp words for term of the
+   * season this request found (CORE-1.0), read only when refusing.
    */
-  public static SObject named(List<SObject> rows, String name, String what) {
+  public static SObject named(List<SObject> rows, String name, String term) {
     List<String> names = new List<String>();
     for (SObject row : rows) {
       if (
@@ -125,13 +126,16 @@ public with sharing class AgentWeeks {
       }
       names.add((String) row.get('Name'));
     }
+    CampLabels words = OutgoingRows.used == null
+      ? CampLabels.modelTermsOnly()
+      : IncomingSeason.labelsOf(OutgoingRows.used.Id);
     throw new ShoreshException(
       'There is no ' +
-        what +
+        words.singularInSentence(term) +
         ' called "' +
         name.left(80) +
         '" that this user can see. ' +
-        namesSaid(what + 's', names)
+        namesSaid(words.pluralInSentence(term), names)
     );
   }
 

@@ -13,7 +13,9 @@ today. `node scripts/protocol-index.js` lists which are which.
 Each term has one meaning. The words in "Avoid" do not appear on screens.
 
 - **CORE-1.0** Every term MAY carry the camp's own word, which MUST then be used on every screen
-  and message. Anyone with Shoresh access MAY change camp words.
+  and message, every answer and refusal to an AI included ("There is no Edah called…", "The
+  Edot: …"), with the camp's own plural, never the word with "s" added. Anyone with Shoresh
+  access MAY change camp words.
 - **CORE-1.34** A word the camp left standard MUST follow the camp's word it belongs to: Elective
   set reads as the camp's Elective words ("Chug" / "Chugim"), Groups that fit and Groups at once as
   the camp's Group plural ("Bunks that fit"), until the camp sets that word itself (word walk W1).

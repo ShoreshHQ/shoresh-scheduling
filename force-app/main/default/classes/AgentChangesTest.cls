@@ -471,18 +471,18 @@ private class AgentChangesTest {
       AgentFields.onlyOne(
         new List<String>{ 'Bunk 1', 'Bunk 2' },
         'bunk 2',
-        'group'
+        'a group'
       )
     );
     Assert.areEqual(
       -1,
-      AgentFields.onlyOne(new List<String>{ 'Bunk 1' }, '', 'group')
+      AgentFields.onlyOne(new List<String>{ 'Bunk 1' }, '', 'a group')
     );
     try {
       AgentFields.onlyOne(
         new List<String>{ 'Bunk 1', 'bunk  1' },
         'Bunk 1',
-        'group'
+        'a group'
       );
       Assert.fail('Expected look-alike names to be refused');
     } catch (ShoreshException e) {
