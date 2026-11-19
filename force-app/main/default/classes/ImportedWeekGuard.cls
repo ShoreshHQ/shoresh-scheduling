@@ -9,7 +9,6 @@
  */
 public with sharing class ImportedWeekGuard {
   private static final String VERSION = 'Version';
-  private static final String IMPORTED = 'Imported';
   // How many of an import's own writes, Undos or season deletes are under way.
   private static Integer allowed = 0;
 
@@ -30,7 +29,7 @@ public with sharing class ImportedWeekGuard {
   public static Boolean isImported(Schedule__c schedule) {
     return schedule != null &&
       schedule.Status__c == VERSION &&
-      schedule.Origin__c == IMPORTED;
+      schedule.Origin__c == ManualVersions.IMPORTED;
   }
 
   /** Before delete of schedules. */

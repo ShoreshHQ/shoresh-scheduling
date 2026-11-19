@@ -4,7 +4,7 @@
  * check (ADR 0005 §9). If someone else saved the week since it was read, nothing is written and
  * the answer is a conflict, for the screen to say so; nothing is overwritten unseen. Rebuild and
  * Start over save the draft as a version first (Greg, 2026-10-17), and so does Try another (as on
- * the desktop, which keeps one before every build that replaces a week). The save takes its lock
+ * the desktop, which keeps one before every build that replaces a week), through ManualVersions. The save takes its lock
  * (the program's for a first save, the draft's after) before it reads anything it checks, so a
  * save that waited sees what the one before it left. What it checks against is GeneratedSetup,
  * read once; the days are checked by GeneratedFrames, GeneratedChecks (with GeneratedClosures for
@@ -121,7 +121,11 @@ public with sharing class GeneratedSaves {
     Savepoint beforeSave = Database.setSavepoint();
     try {
       Id versionId = VERSION_FIRST.containsKey(request.action)
-        ? saveVersion(draft, days)
+        ? ManualVersions.keepAutomatically(
+            draft,
+            VERSION_FIRST.get(request.action),
+            days
+          )
         : null;
       // The engine's notes are this build's: none kept from the week it replaces. Accepted
       // lines go too (WeekAccepts, CORE-6.8), as the desktop's Rebuild clears set-aside findings.
@@ -163,27 +167,6 @@ public with sharing class GeneratedSaves {
       written.add(day);
     }
     return SchedulePublish.stateOf(program.Id, setup.week, written);
-  }
-
-  /** The draft as it is now, kept as a version (Auto-saved) before it is replaced. */
-  private Id saveVersion(Schedule__c draft, List<ScheduleDays.DayGrid> days) {
-    Schedule__c version = new Schedule__c(
-      Program__c = draft.Program__c,
-      Week__c = draft.Week__c,
-      Name = VERSION_FIRST.get(request.action),
-      Status__c = ManualVersions.VERSION,
-      Origin__c = GeneratedDrafts.GENERATED,
-      VersionReason__c = ManualVersions.AUTO_SAVED,
-      SourceSchedule__c = draft.Id,
-      EngineOption__c = draft.EngineOption__c
-    );
-    Database.insert(version, AccessLevel.USER_MODE);
-    List<ScheduleGrid> grids = new List<ScheduleGrid>();
-    for (ScheduleDays.DayGrid day : days) {
-      grids.add(day.grid);
-    }
-    ScheduleDaySaves.write(version.Id, daySaves(days, grids, false));
-    return version.Id;
   }
 
   /** The days to write: each one's grid, at the revision it was read at (or as new). */
