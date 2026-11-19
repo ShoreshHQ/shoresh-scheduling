@@ -31,11 +31,11 @@ global with sharing class AgentMoveElectiveSeat implements AgentWeeks.Action {
     Decimal seen = AgentElectives.seenOf(body, run);
     AgentElectives.holdAsSeen(run, seen);
     ElectiveSeats.RunView view = ElectiveSeatsController.openRun(run.id);
-    CampLabels words = run.labels();
+    CampLabels campWords = run.labels();
     ElectiveSeats.CamperInfo camper = camperOf(
       view,
       AgentFields.text(body, 'camper'),
-      words
+      campWords
     );
     ElectivePeriod period = timeOf(
       view,
@@ -45,7 +45,7 @@ global with sharing class AgentMoveElectiveSeat implements AgentWeeks.Action {
     ElectiveSeats.OfferingInfo offering = offeringOf(
       view,
       AgentFields.text(body, 'elective'),
-      words
+      campWords
     );
     Map<String, Object> request = new Map<String, Object>{
       'runId' => run.id,
