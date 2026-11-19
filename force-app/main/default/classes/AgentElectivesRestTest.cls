@@ -301,6 +301,13 @@ private class AgentElectivesRestTest {
         'POST',
         AgentElectivesTestData.asked(pottery)
       );
+      Map<String, Object> lateTime = move.clone();
+      lateTime.put('time', 'Period 9');
+      List<Object> noTime = AgentElectivesTestData.send(
+        'move_elective_seat',
+        'POST',
+        AgentElectivesTestData.asked(lateTime)
+      );
       Test.stopTest();
       Assert.areEqual(
         'There is no Chanich called "Nobody" in these Spots. Read them with read_elective_seats_now.',
@@ -314,6 +321,13 @@ private class AgentElectivesRestTest {
         said
       );
       Assert.isTrue(said.contains('Archery') && said.contains('Drama'), said);
+      String noTimeSaid = String.valueOf(noTime[1]);
+      Assert.isTrue(
+        noTimeSaid.startsWith(
+          'There is no Chug time on Monday at Period 9. The times: '
+        ),
+        noTimeSaid
+      );
     }
   }
 

@@ -702,4 +702,23 @@ private class AgentSetupRestTest {
       Assert.areEqual(409, casing[0], String.valueOf(casing[1]));
     }
   }
+
+  // Design guide §2: something gone since it was found is refused by its name, never "That".
+  @IsTest
+  static void somethingGoneSinceItWasFoundIsNamed() {
+    AgentSetupRecords.Found swim = new AgentSetupRecords.Found();
+    swim.id = Id.valueOf(
+      Activity__c.SObjectType.getDescribe().getKeyPrefix() + '000000000000'
+    );
+    swim.name = 'Swim';
+    try {
+      AgentActivityRules.lock(swim);
+      Assert.fail('Nothing is held that is gone');
+    } catch (ShoreshException e) {
+      Assert.areEqual(
+        '"Swim" is no longer there, or you can\'t see it.',
+        e.getMessage()
+      );
+    }
+  }
 }

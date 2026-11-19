@@ -85,6 +85,37 @@ private class ScreenErrorsTest {
     }
   }
 
+  // API-1.105: an AI or the command line has no page to reload; it hears the problem alone.
+  @IsTest
+  static void anAiIsNeverToldToReloadThePage() {
+    Camp__c camp = ShoreshTestData.camp('Camp Willow');
+    Season__c season = ShoreshTestData.season(camp.Id, 'Summer 2026');
+    Program__c gone = ShoreshTestData.program(season.Id, 'Main');
+    Database.delete(gone, AccessLevel.SYSTEM_MODE);
+    Exception unexpected;
+    try {
+      List<Integer> none = new List<Integer>();
+      Assert.fail('Not reached: ' + none[3]);
+    } catch (Exception e) {
+      unexpected = e;
+    }
+    AgentRefusal.forAgent = true;
+    try {
+      UserModeWrites.save(
+        new List<SObject>{ new Program__c(Id = gone.Id, Name = 'Renamed') }
+      );
+      Assert.fail('A removed row is not saved');
+    } catch (UserModeWrites.SaveException e) {
+      Assert.areEqual('"Renamed": That was removed.', ScreenErrors.words(e));
+    } finally {
+      AgentRefusal.forAgent = false;
+    }
+    Assert.areEqual(
+      'Shoresh couldn\'t tell why. Try again.',
+      ScreenErrors.words(unexpected)
+    );
+  }
+
   @IsTest
   static void aNumberedRowIsNotNamedInTheMessage() {
     Camp__c camp = ShoreshTestData.camp('Camp Willow');
