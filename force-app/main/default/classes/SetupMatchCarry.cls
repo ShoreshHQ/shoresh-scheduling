@@ -8,10 +8,10 @@
  * same draft and setup always give the same day. A placement that can't go is left out, with why.
  */
 public with sharing class SetupMatchCarry {
-  // The day now, as cells (identities by cell).
-  public Map<String, String> cells;
+  // The day now, as cells (identities by cell): the placements carry carries over go in.
+  public Map<String, String> cells { get; private set; }
   // Why each cell of a placement left out can't go.
-  public Map<String, String> whyByCell = new Map<String, String>();
+  private Map<String, String> whyByCell = new Map<String, String>();
 
   private static final String AT_ITS_TIME = 'Now at its set time';
   // The elective sets the day now has at their time, each with a group it is there for
@@ -40,9 +40,10 @@ public with sharing class SetupMatchCarry {
 
   /**
    * Carries the draft's placements. Set-time items aren't carried (the day now has its own), but
-   * one whose group or time blocks changed says so, as an activity's placement does.
+   * one whose group or time blocks changed says so, as an activity's placement does. Gives why
+   * each cell left out can't go (cells: "groupId|blockId").
    */
-  public void carry(SetupMatchCells before) {
+  public Map<String, String> carry(SetupMatchCells before) {
     for (String first : before.placements) {
       String owner = before.at(first);
       if (owner == SlotIds.OPEN) {
@@ -66,6 +67,7 @@ public with sharing class SetupMatchCarry {
         }
       }
     }
+    return whyByCell;
   }
 
   private void leaveOut(List<String> placement, String why) {
