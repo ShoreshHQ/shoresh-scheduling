@@ -61,6 +61,12 @@ private class ImportLogEntriesTest {
       new List<WeekException__c>{ c.weekOff },
       new List<Id>()
     );
+    // Saved as a copy: read back for its Id.
+    c.weekOff = [
+      SELECT Id
+      FROM WeekException__c
+      WHERE Week__c = :c.week AND Activity__c = :c.archery.Id
+    ];
     c.word = new CampLabel__c(
       Camp__c = c.campId,
       ModelTerm__c = 'Group',
