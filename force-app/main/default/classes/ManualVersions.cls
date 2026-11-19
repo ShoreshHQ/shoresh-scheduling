@@ -15,8 +15,8 @@ public with sharing class ManualVersions {
   public static final String BEFORE_RESTORE = 'Before Restore';
   // The week kept first when Undo brings back what a build kept (GeneratedUndoController).
   public static final String BEFORE_UNDO = 'Before Undo';
-  // What restoreInto names the week it keeps first (GeneratedUndoController sets it for Undo).
-  public static String keptAs = BEFORE_RESTORE;
+  // An imported week's version (ImportVersionWrites): its reason and its origin.
+  public static final String IMPORTED = 'Imported';
 
   /** Save version: the draft as it is now, kept under a name. Returns the version's Id. */
   public static Id save(Id draftId, String name) {
@@ -48,7 +48,12 @@ public with sharing class ManualVersions {
    * version's Id (null when the draft had no days to keep).
    */
   public static Id restore(Id draftId, Id versionId, String seenRevisions) {
-    return restoreInto(ManualDrafts.locked(draftId), versionId, seenRevisions);
+    return restoreInto(
+      ManualDrafts.locked(draftId),
+      versionId,
+      seenRevisions,
+      BEFORE_RESTORE
+    );
   }
 
   /**
@@ -57,11 +62,13 @@ public with sharing class ManualVersions {
    * takes the version's option when it has one. A version Generated Schedule didn't build (Manual
    * Build's or an imported one) restored into a Generated draft comes in with its placed cells
    * locked: each was a hand choice, and a hand choice is a lock (Greg, 2026-10-19; ADR 0010 §50).
+   * keptAs: the name of the version the draft is kept as first (BEFORE_RESTORE, or BEFORE_UNDO).
    */
   public static Id restoreInto(
     Schedule__c draft,
     Id versionId,
-    String seenRevisions
+    String seenRevisions,
+    String keptAs
   ) {
     Id draftId = draft.Id;
     Schedule__c version = versionOf(versionId, draft);
@@ -182,8 +189,9 @@ public with sharing class ManualVersions {
   }
 
   /**
-   * An automatic version of the draft's days as they are (Update to match setup keeps one before
-   * it takes away a director's placement). Refused if a day can't be read.
+   * An automatic version of the draft's days as they are, their rainy-day marks too (Update to
+   * match setup keeps one before it takes away a director's placement; Rebuild, Try another and
+   * Start over before they replace the week). Refused if a day can't be read.
    */
   public static Id keepAutomatically(
     Schedule__c draft,

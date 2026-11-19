@@ -124,7 +124,12 @@ public with sharing class GeneratedDrafts {
       );
       Database.insert(draft, AccessLevel.USER_MODE);
       // A new draft has no days, so the revision it was "seen" at is empty.
-      ManualVersions.restoreInto(lockedToEdit(draft.Id), versionId, '');
+      ManualVersions.restoreInto(
+        lockedToEdit(draft.Id),
+        versionId,
+        '',
+        ManualVersions.BEFORE_RESTORE
+      );
       return true;
     } catch (Exception e) {
       Database.rollback(beforeStart);
