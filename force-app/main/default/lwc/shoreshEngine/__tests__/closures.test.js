@@ -1,7 +1,8 @@
 /**
  * CLOSE (docs/protocol/close.md) in the engine: a group away this week is not sent to the build
  * (GeneratedInputs leaves it out), so its row comes back exactly as it was, nothing new placed in
- * it and nothing cleared; a closure that leaves a group nothing to do is shown, cell by cell.
+ * it and nothing cleared; a closure that leaves a group nothing to do is shown, cell by cell; a
+ * day marked rainy is built as any other (Greg 2026-11-20, as the desktop).
  */
 import { generateWeek } from "c/shoreshEngine";
 import { activity, at, block, camp, cellsOf, dateAt, group } from "./data/camp";
@@ -52,5 +53,23 @@ describe("closures and groups away", () => {
       expect(open.reason).toBe("No activity this week is set up for Bunk g1");
     });
     expect(at(result, 0, "g2", 0)).toBe("arts");
+  });
+
+  // CLOSE-4.8
+  it("a day marked rainy is built as any other day: its rain marks change nothing", () => {
+    const spec = {
+      groups: [group("g1")],
+      blocks: [block(0), block(1)],
+      // Swim is the outdoor one; the build doesn't know or ask.
+      activities: [activity("swim"), activity("arts")]
+    };
+    const dry = generateWeek(camp(spec));
+    const rainy = camp(spec);
+    // A rainy day's marks as the week carries them (RainMarks: group|block|activity|S).
+    rainy.days[0].rain = ["g1|b0|arts|S", "g1|b1|swim"];
+    const wet = generateWeek(rainy);
+    expect(wet.ok).toBe(true);
+    expect(cellsOf(wet.days)).toEqual(cellsOf(dry.days));
+    expect([at(wet, 0, "g1", 0), at(wet, 0, "g1", 1)]).toContain("swim");
   });
 });

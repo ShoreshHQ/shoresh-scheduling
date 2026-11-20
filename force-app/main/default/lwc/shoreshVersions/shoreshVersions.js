@@ -344,7 +344,8 @@ export default class ShoreshVersions extends LightningElement {
   handleStartRename(event) {
     const id = event.currentTarget.dataset.id;
     this.renamingId = id;
-    this.renameValue = this._versions.find((v) => v.id === id).name;
+    // An empty box, as the desktop's (VersionsDropdown): the new name is typed, not edited.
+    this.renameValue = "";
     this.focusRenameInputAfterRender = true;
   }
 
