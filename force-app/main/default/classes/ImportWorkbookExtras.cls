@@ -87,7 +87,7 @@ public with sharing class ImportWorkbookExtras {
 
   /**
    * Removes weeks off (WeekException__c) the workbook ticks back on; each must be in the season.
-   * Logged as { weekOn, week, field, target, name (the week's), item (the item's name) } for Undo.
+   * Each is logged for Undo (ImportLogEntries.WeekOn).
    */
   public void weeksBackOn(List<ImportPlan.Entry> entries) {
     Set<Id> ids = new Set<Id>();
@@ -128,17 +128,9 @@ public with sharing class ImportWorkbookExtras {
     }
     for (WeekException__c off : found) {
       Schema.SObjectField field = targetField(off);
-      Id target = (Id) off.get(field);
       writer.logWeekBackOn(
-        new Map<String, Object>{
-          ImportUndoLog.WEEK_ON => off.Id,
-          'week' => off.Week__c,
-          'field' => ShoreshSchema.localName(field),
-          'target' => target,
-          'name' => off.Week__r.Name,
-          'item' => off.getSObject(field).get('Name')
-        },
-        target
+        new ImportLogEntries.WeekOn(off, field),
+        (Id) off.get(field)
       );
     }
     Database.delete(found, AccessLevel.USER_MODE);
