@@ -26,7 +26,12 @@ private class NewRowExamplesTest {
     for (Object each : rows) {
       Map<String, Object> example = (Map<String, Object>) each;
       String kind = (String) example.get('kind');
-      SObject row = kind == 'Location' ? new Location__c() : new Activity__c();
+      SObject row;
+      if (kind == 'Location') {
+        row = new Location__c();
+      } else {
+        row = new Activity__c();
+      }
       AgentSetupNewRow.startsWith(kind, row);
       // Each field by its local name, as the examples write it; numbers as text (1 and 1.0).
       Map<String, String> started = new Map<String, String>();
