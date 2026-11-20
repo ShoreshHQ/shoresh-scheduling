@@ -99,7 +99,11 @@ public with sharing class GeneratedSaves {
         draft.Id,
         daySaves(blank, grids, false)
       );
-      GeneratedWeek.Result result = saved(draft.Id, blank, written, null);
+      GeneratedWeek.Result result = saved(
+        draft.Id,
+        WeekTickets.afterWrite(blank, written),
+        null
+      );
       result.published = publishedBeside(blank, grids);
       result.engineNotes = notes;
       return result;
@@ -148,7 +152,11 @@ public with sharing class GeneratedSaves {
         draft.Id,
         daySaves(days, grids, true)
       );
-      GeneratedWeek.Result result = saved(draft.Id, days, written, versionId);
+      GeneratedWeek.Result result = saved(
+        draft.Id,
+        WeekTickets.afterWrite(days, written),
+        versionId
+      );
       result.locks = GeneratedLockCells.lockedIn(days, grids);
       result.published = publishedBeside(days, grids);
       result.engineNotes = notes;
@@ -203,16 +211,18 @@ public with sharing class GeneratedSaves {
     return result;
   }
 
-  /** What the save leaves: the week's ticket after the write (written), so nothing is read again. */
+  /**
+   * What the save leaves: its revision is the week's ticket after the write (WeekTickets.afterWrite
+   * on what ScheduleDaySaves.write returned), so nothing is read again.
+   */
   private static GeneratedWeek.Result saved(
     Id draftId,
-    List<ScheduleDays.DayGrid> days,
-    Map<Date, Integer> written,
+    String revision,
     Id versionId
   ) {
     GeneratedWeek.Result result = new GeneratedWeek.Result();
     result.scheduleId = draftId;
-    result.revision = WeekTickets.afterWrite(days, written);
+    result.revision = revision;
     result.versionId = versionId;
     return result;
   }

@@ -102,15 +102,11 @@ public with sharing class SlotSaves {
     SlotEdits.Result result = saves.saveOn(draft, edits);
     // Shown with "deleted since" as Generated Schedule's own reader works it out.
     result.schedule = GeneratedInputs.view(draft);
-    // Given only when the days were at the screen's revision before the save: otherwise someone
-    // else saved the week since the screen read it, and a whole-week save built on the screen's
-    // copy must stay a conflict (the screen reads the week again).
-    result.revision = WeekTickets.seenNullAsEmpty(
-        WeekTickets.stamp(saves.asRead),
-        seen
-      )
-      ? WeekTickets.afterWrite(saves.asRead, saves.written)
-      : null;
+    result.revision = GeneratedEdits.revisionAfter(
+      saves.asRead,
+      saves.written,
+      seen
+    );
     return result;
   }
 

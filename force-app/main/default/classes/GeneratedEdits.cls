@@ -100,4 +100,20 @@ public with sharing class GeneratedEdits {
       }
     }
   }
+
+  /**
+   * The draft's ticket after the save (written: ScheduleDaySaves.write's revisions), given only
+   * when the days were at the screen's revision before it: otherwise someone else saved the week
+   * since the screen read it, and a whole-week save built on the screen's copy must stay a
+   * conflict (the screen reads the week again).
+   */
+  public static String revisionAfter(
+    List<ScheduleDays.DayGrid> read,
+    Map<Date, Integer> written,
+    String seen
+  ) {
+    return WeekTickets.seenNullAsEmpty(WeekTickets.stamp(read), seen)
+      ? WeekTickets.afterWrite(read, written)
+      : null;
+  }
 }
