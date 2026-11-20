@@ -149,6 +149,18 @@ private class AgentCopyAndMatchTest {
       }
       Map<String, Object> stale = seen.clone();
       stale.put(AgentCopySeason.WHOLE, 'something else');
+      // The ask-first question says, in plain words, that Shoresh stays where it is.
+      RestContext.request = new RestRequest();
+      RestContext.request.httpMethod = 'POST';
+      RestContext.request.requestBody = Blob.valueOf(
+        JSON.serialize(copyAsk(season, 'Next summer', seen))
+      );
+      RestContext.response = new RestResponse();
+      AgentWeeks.answer(new AgentCopySeason());
+      String question = (String) ((Map<String, Object>) JSON.deserializeUntyped(
+          RestContext.response.responseBody.toString()
+        ))
+        .get('message');
       Integer before = seasons();
       Test.startTest();
       List<Object> noSeen = ask(
@@ -173,6 +185,14 @@ private class AgentCopyAndMatchTest {
         copyAsk(season, 'Next summer', seen)
       );
       Test.stopTest();
+      Assert.isTrue(
+        question.contains(
+          '"' +
+            season.Name +
+            '" itself is unchanged, and Shoresh doesn\'t switch to "Next summer": name it to work in it.'
+        ),
+        question
+      );
       Assert.areEqual(400, noSeen[0], String.valueOf(noSeen[1]));
       Assert.areEqual(409, refused[0], String.valueOf(refused[1]));
       Assert.areEqual(before, afterRefused, 'nothing copied when refused');

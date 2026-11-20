@@ -37,7 +37,7 @@ global with sharing class AgentChangeActivityRules implements AgentWeeks.Action 
     AgentActivityRules.useSeasonIfDayAsked(found.id, given);
     // Read the asked values first: one that doesn't read is refused before anything is locked.
     readAsked();
-    AgentActivityRules.lock(found.id);
+    AgentActivityRules.lock(found);
     // What was seen is said as the panel shows it: compared here, under the lock, so the
     // activity as it is now is the ticket handed to the save.
     refuseIfChangedSince(seen);

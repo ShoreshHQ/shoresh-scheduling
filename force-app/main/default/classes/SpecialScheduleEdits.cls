@@ -31,7 +31,10 @@ public with sharing class SpecialScheduleEdits {
     if (plan.grid == null) {
       throw new ShoreshException(
         plan.problem == null
-          ? 'This schedule has no time blocks yet. Reload the page.'
+          ? AgentRefusal.withFix(
+              'This schedule has no time blocks yet.',
+              'Reload the page.'
+            )
           : 'This schedule could not be read: ' + plan.problem + '.'
       );
     }
@@ -134,7 +137,10 @@ public with sharing class SpecialScheduleEdits {
   private static void checkCarriesOn(String previous, String slot) {
     if (!SlotIds.owner(previous).equals(slot.substring(1))) {
       throw new ShoreshException(
-        'That change could not be read. Reload the page and try again.'
+        AgentRefusal.withFix(
+          'That change could not be read.',
+          'Reload the page and try again.'
+        )
       );
     }
   }

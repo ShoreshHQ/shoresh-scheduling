@@ -46,12 +46,15 @@ public with sharing class OutgoingDoors {
     String season = request.params.get('season');
     String week = request.params.get('week');
     Boolean asCsv = CSV.equalsIgnoreCase(request.params.get('format'));
+    // A person's AI (Shoresh Scheduler, API-4.7) hears "you"; a key or machine connection hears
+    // "this connection" (API-1.105), as on the incoming doors.
+    AgentRefusal.forAgent = IncomingBatch.isPerson();
     try {
       if (!IncomingBatch.holds(capability.permissionSet())) {
         refuse(
           response,
           403,
-          'This user can\'t read ' +
+          'This connection can\'t read ' +
             capability.what() +
             '. A Salesforce admin can give it the "' +
             capability.permissionLabel() +
@@ -83,6 +86,8 @@ public with sharing class OutgoingDoors {
       refuse(response, 400, e.getMessage());
     } catch (Exception e) {
       refuse(response, 500, ScreenErrors.of(e).getMessage());
+    } finally {
+      AgentRefusal.forAgent = false;
     }
   }
 
@@ -261,7 +266,7 @@ public with sharing class OutgoingDoors {
     private List<Map<String, Object>> records(Season__c season, String week) {
       if (!allowed) {
         throw new ShoreshException(
-          'This user can\'t send ' +
+          'This connection can\'t send ' +
             capability.what() +
             '. A Salesforce admin can give it the "' +
             capability.permissionLabel() +

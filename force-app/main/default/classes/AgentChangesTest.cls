@@ -404,7 +404,10 @@ private class AgentChangesTest {
       List<Object> answer = send('schedule_cell', asked);
       Test.stopTest();
       Assert.areEqual(400, answer[0]);
-      Assert.areEqual(AgentWeeks.NO_ACCESS, answer[1]);
+      Assert.areEqual(
+        'You can\'t change schedules in Shoresh. A Salesforce admin can give you the "Shoresh Scheduler" permission set.',
+        answer[1]
+      );
     }
     Assert.areEqual(GeneratedTestData.a('Gym games'), periodTwo(draftId));
   }

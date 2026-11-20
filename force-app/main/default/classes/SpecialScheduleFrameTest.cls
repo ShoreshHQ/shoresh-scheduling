@@ -264,4 +264,41 @@ private class SpecialScheduleFrameTest {
       );
     }
   }
+
+  // API-1.105: a station gone since the page was opened is refused; only a screen is told to
+  // reload, an AI (change_special_schedule_frame) hears the problem alone.
+  @IsTest
+  static void aStationGoneSinceIsRefusedWithoutThePageToAnAi() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      Id eventId = SpecialScheduleTestData.colorWar(SetTimeTestData.camp());
+      Integer revision = SpecialSchedule.open(eventId).revision;
+      SpecialScheduleFrame.Change gone = SpecialScheduleTestData.change(
+        'renameStation',
+        'gone',
+        'Red'
+      );
+      Assert.areEqual(
+        'That was changed by someone else since. Reload the page.',
+        frameRefusal(eventId, revision, gone)
+      );
+      AgentRefusal.forAgent = true;
+      String toAnAi = frameRefusal(eventId, revision, gone);
+      AgentRefusal.forAgent = false;
+      Assert.areEqual('That was changed by someone else since.', toAnAi);
+    }
+  }
+
+  private static String frameRefusal(
+    Id eventId,
+    Integer revision,
+    SpecialScheduleFrame.Change change
+  ) {
+    try {
+      SpecialScheduleController.changeFrame(eventId, revision, change);
+    } catch (AuraHandledException e) {
+      return e.getMessage();
+    }
+    Assert.fail('A station gone since is refused');
+    return null;
+  }
 }

@@ -101,7 +101,10 @@ public with sharing class RainMarks {
     ScheduleDays.DayGrid read = days.get(day);
     if (read == null) {
       throw new ShoreshException(
-        'That day is not in this schedule. Reload the page.'
+        AgentRefusal.withFix(
+          'That day is not in this schedule.',
+          'Reload the page.'
+        )
       );
     }
     if (read.grid == null) {
@@ -158,7 +161,10 @@ public with sharing class RainMarks {
 
   private static ShoreshException unreadable() {
     return new ShoreshException(
-      'That change could not be read. Reload the page and try again.'
+      AgentRefusal.withFix(
+        'That change could not be read.',
+        'Reload the page and try again.'
+      )
     );
   }
 }

@@ -17,14 +17,13 @@ public with sharing class ImportUndoWho {
     this.result = result;
   }
 
-  /** entries: [{ who: owner id, type (the rows' object), name, before, after: [target ids] }]. */
-  public void run(List<Object> entries) {
+  public void run(List<ImportLogEntries.Who> entries) {
     if (entries.isEmpty()) {
       return;
     }
     read(entries);
-    for (Object item : entries) {
-      undoOne((Map<String, Object>) item);
+    for (ImportLogEntries.Who entry : entries) {
+      undoOne(entry);
     }
     Database.delete(remove, AccessLevel.USER_MODE);
     List<Database.SaveResult> outcomes = Database.insert(
@@ -44,23 +43,19 @@ public with sharing class ImportUndoWho {
   }
 
   /** The owners as they are now (kind by kind), and which divisions and groups still exist. */
-  private void read(List<Object> entries) {
+  private void read(List<ImportLogEntries.Who> entries) {
     // By each kind's term: the kinds are objects without equals/hashCode of their own.
     Map<String, ImportWhoKinds.Kind> kinds = new Map<String, ImportWhoKinds.Kind>();
     Map<String, Set<Id>> ownersByKind = new Map<String, Set<Id>>();
     Set<Id> targets = new Set<Id>();
-    for (Object item : entries) {
-      Map<String, Object> entry = (Map<String, Object>) item;
-      ImportWhoKinds.Kind kind = kindOf(entry);
+    for (ImportLogEntries.Who entry : entries) {
+      ImportWhoKinds.Kind kind = entry.kind();
       if (!kinds.containsKey(kind.term)) {
         kinds.put(kind.term, kind);
         ownersByKind.put(kind.term, new Set<Id>());
       }
-      ownersByKind.get(kind.term)
-        .add((Id) (String) entry.get(ImportUndoLog.WHO));
-      for (String target : texts(entry.get('before'))) {
-        targets.add(targetId(target));
-      }
+      ownersByKind.get(kind.term).add(entry.ownerId());
+      targets.addAll(entry.before());
     }
     for (String term : kinds.keySet()) {
       now.putAll(kinds.get(term).ownersWithRows(ownersByKind.get(term)));
@@ -83,13 +78,13 @@ public with sharing class ImportUndoWho {
     }
   }
 
-  private void undoOne(Map<String, Object> entry) {
-    SObject owner = now.get((Id) (String) entry.get(ImportUndoLog.WHO));
+  private void undoOne(ImportLogEntries.Who entry) {
+    SObject owner = now.get(entry.ownerId());
     if (owner == null) {
-      result.gone.add((String) entry.get('name'));
+      result.gone.add(entry.name());
       return;
     }
-    ImportWhoKinds.Kind kind = kindOf(entry);
+    ImportWhoKinds.Kind kind = entry.kind();
     List<SObject> rows = owner.getSObjects(kind.relationship) ??
       new List<SObject>();
     List<String> current = new List<String>();
@@ -97,19 +92,19 @@ public with sharing class ImportUndoWho {
       current.add(ImportWhoKinds.targetOf(row));
     }
     current.sort();
-    if (current != texts(entry.get('after'))) {
+    if (current != entry.after()) {
       result.keptEdited.add((String) owner.get('Name'));
       return;
     }
     remove.addAll(rows);
     Boolean missing = false;
-    for (String target : texts(entry.get('before'))) {
-      if (!stillThere.contains(targetId(target))) {
+    for (Id target : entry.before()) {
+      if (!stillThere.contains(target)) {
         // A division or group deleted since can't be put back in the list.
         missing = true;
         continue;
       }
-      SObject row = kind.row(owner.Id, (Id) target, seasonOf(owner));
+      SObject row = kind.row(owner.Id, target, seasonOf(owner));
       putBackNames.add((String) owner.get('Name'));
       putBack.add(row);
     }
@@ -143,45 +138,5 @@ public with sharing class ImportUndoWho {
       return seasons;
     }
     set;
-  }
-
-  /**
-   * The entry's kind of who list, checked against its owner: an import's record is text that can
-   * be edited, so anything else (another object, an owner of the other kind) is the refusal.
-   */
-  private static ImportWhoKinds.Kind kindOf(Map<String, Object> entry) {
-    ImportWhoKinds.Kind kind = ImportWhoKinds.forChild(entry.get('type'));
-    if (
-      ImportFields.ofRecord(entry.get(ImportUndoLog.WHO)) != kind.ownerObject ||
-      !(entry.get('name') instanceof String)
-    ) {
-      throw ImportFields.unreadableLog();
-    }
-    return kind;
-  }
-
-  /** A division or group from the log, or the refusal. */
-  private static Id targetId(String target) {
-    Schema.SObjectType type = ImportFields.ofRecord(target);
-    if (type != Division__c.SObjectType && type != Group__c.SObjectType) {
-      throw ImportFields.unreadableLog();
-    }
-    return (Id) target;
-  }
-
-  /** A list of texts from the log, sorted, or the refusal. */
-  private static List<String> texts(Object values) {
-    if (!(values instanceof List<Object>)) {
-      throw ImportFields.unreadableLog();
-    }
-    List<String> result = new List<String>();
-    for (Object value : (List<Object>) values) {
-      if (!(value instanceof String)) {
-        throw ImportFields.unreadableLog();
-      }
-      result.add((String) value);
-    }
-    result.sort();
-    return result;
   }
 }
