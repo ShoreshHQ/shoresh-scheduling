@@ -43,7 +43,7 @@ private class GeneratedLocksTest {
 
   /** What the draft's days are saved at now, as a screen that just read them has it. */
   private static String revisionNow(Id draftId) {
-    return GeneratedDrafts.revisionOf(ScheduleDays.read(draftId));
+    return WeekTickets.stamp(ScheduleDays.read(draftId));
   }
 
   /** A lock change from a screen that has the week as it is now. */

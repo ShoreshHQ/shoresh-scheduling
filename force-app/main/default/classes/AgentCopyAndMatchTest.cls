@@ -361,7 +361,7 @@ private class AgentCopyAndMatchTest {
         'POST',
         updateAsk(weekAsked, read)
       );
-      String updated = ScheduleDays.stamp(ScheduleDays.read(draftId));
+      String updated = WeekTickets.stamp(ScheduleDays.read(draftId));
       Map<String, Object> undoAsked = new Map<String, Object>(weekAsked);
       undoAsked.put(
         'held',
@@ -370,7 +370,7 @@ private class AgentCopyAndMatchTest {
       Integer before = Limits.getQueries();
       List<Object> undone = ask(new AgentUndo(), 'POST', undoAsked);
       Integer queries = Limits.getQueries() - before;
-      String after = ScheduleDays.stamp(ScheduleDays.read(draftId));
+      String after = WeekTickets.stamp(ScheduleDays.read(draftId));
       Test.stopTest();
       Assert.isTrue(queries < 40, 'Undo used ' + queries + ' queries');
       Assert.areEqual(200, done[0], String.valueOf(done[1]));
