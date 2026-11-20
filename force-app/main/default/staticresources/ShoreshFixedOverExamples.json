@@ -143,14 +143,6 @@
       "asks": null
     },
     {
-      "name": "only on a day the program doesn't run",
-      "recurring": [
-        { "name": "Swim", "timeBlock": "Period 1", "length": 2, "days": ["Friday"] }
-      ],
-      "save": { "name": "Rest", "timeBlock": "Period 2" },
-      "asks": null
-    },
-    {
       "name": "no group it covers is there then",
       "onlyMornings": ["Group C"],
       "recurring": [

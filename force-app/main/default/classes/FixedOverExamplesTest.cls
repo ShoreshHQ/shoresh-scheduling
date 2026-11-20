@@ -165,14 +165,6 @@ private class FixedOverExamplesTest {
   }
 
   @IsTest
-  static void aDayTheProgramDoesntRun() {
-    System.runAs(ShoreshTestData.scheduler()) {
-      List<String> words = run('only on a day the program doesn\'t run');
-      Assert.areEqual(words[0], words[1]);
-    }
-  }
-
-  @IsTest
   static void noGroupItCoversIsThere() {
     System.runAs(ShoreshTestData.scheduler()) {
       List<String> words = run('no group it covers is there then');

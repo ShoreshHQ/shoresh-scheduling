@@ -1177,6 +1177,16 @@ describe("c-shoresh-program", () => {
       expect(detail.onDone).toHaveBeenCalled();
     });
 
+    // Not a shared example: the server refuses a recurring activity ticked for a day its program
+    // doesn't run (SetTimeMessages CLOSED_DAY), so only the screen can be handed one.
+    it("CORE-3.9 counter-case: no question for one only on a day the program doesn't run", async () => {
+      const friday = await render(
+        "fixedActivities",
+        entryWith([{ ...fieldDay, Monday__c: false, Friday__c: true }])
+      );
+      expect((await saveLunch(friday)).saves).toHaveLength(1);
+    });
+
     it("CORE-3.9 counter-case: no question when no group it covers is there, as the save's check counts", async () => {
       const noGroups = await render("fixedActivities", {
         ...entryWith([fieldDay]),
