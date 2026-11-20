@@ -153,7 +153,7 @@ suppressions:
       reason: "Record fields are the API's plain-English names (API-1.5)."
   "main/default/classes/IncomingCamperElectiveChoice.cls":
     - rule_selector: "pmd:FieldNamingConventions"
-      max_suppressed_violations: 9
+      max_suppressed_violations: 10
       reason: "Record fields are the API's plain-English names (API-1.5)."
   # A Flow action's answer in a managed package must be global for a camp's Flows to use it.
   "main/default/classes/IncomingResult.cls":
