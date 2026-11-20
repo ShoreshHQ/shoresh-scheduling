@@ -23,7 +23,7 @@ deploy ignores change-tracking conflicts: the repository is always what should e
 
 ### How much of the test org a pull request needs
 
-A full check (every Apex class) takes 45 to 65 minutes, and the job stops at 90, and every pull request waits for the one before it. So a
+A full check (every Apex class) takes 45 to 65 minutes (the job stops at 90), and every pull request waits for the one before it. So a
 first, quick check ("Which org checks this change needs", `scripts/ci-pr-category.js`) looks at
 the files the pull request changes and picks one of three:
 

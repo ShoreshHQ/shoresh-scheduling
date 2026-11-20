@@ -12,8 +12,7 @@ public with sharing class ImportUndoWeeksOff {
     this.seasonId = seasonId;
   }
 
-  /** entries: [{ weekOn, week, field, target, name (the week's), item (the item's name) }]. */
-  public void run(List<Object> entries) {
+  public void run(List<ImportLogEntries.WeekOn> entries) {
     if (entries.isEmpty()) {
       return;
     }
@@ -21,12 +20,10 @@ public with sharing class ImportUndoWeeksOff {
     Set<Id> targets = new Set<Id>();
     List<WeekException__c> wanted = new List<WeekException__c>();
     List<String> names = new List<String>();
-    for (Object item : entries) {
-      Map<String, Object> entry = (Map<String, Object>) item;
-      WeekException__c off = checked(entry);
+    for (ImportLogEntries.WeekOn entry : entries) {
+      WeekException__c off = entry.weekOff();
       wanted.add(off);
-      // Named by its item and week: "Swim (Week 2)".
-      names.add(text(entry, 'item') + ' (' + text(entry, 'name') + ')');
+      names.add(entry.label());
       weeks.add(off.Week__c);
       targets.add(targetOf(off));
     }
@@ -64,42 +61,6 @@ public with sharing class ImportUndoWeeksOff {
       result.add(week.Id);
     }
     return result;
-  }
-
-  /** A name from the log: text, or the refusal. */
-  private static String text(Map<String, Object> entry, String key) {
-    Object value = entry.get(key);
-    if (!(value instanceof String) || String.isBlank((String) value)) {
-      throw ImportFields.unreadableLog();
-    }
-    return (String) value;
-  }
-
-  /** A week off from the log, every name and Id checked against what an import writes. */
-  private static WeekException__c checked(Map<String, Object> entry) {
-    Schema.SObjectField field = ImportFields.field(
-      WeekException__c.SObjectType,
-      entry.get('field')
-    );
-    if (
-      field == WeekException__c.Week__c ||
-      ImportFields.ofRecord(entry.get('week')) != Week__c.SObjectType
-    ) {
-      throw ImportFields.unreadableLog();
-    }
-    // Checked before it is read as an Id, so text that isn't one is refused the same way.
-    if (
-      ImportFields.ofRecord(entry.get('target')) !=
-      field.getDescribe().getReferenceTo()[0]
-    ) {
-      throw ImportFields.unreadableLog();
-    }
-    Id target = (Id) (String) entry.get('target');
-    WeekException__c off = new WeekException__c(
-      Week__c = (Id) (String) entry.get('week')
-    );
-    off.put(field, target);
-    return off;
   }
 
   /** The items still there, read by their objects (only those ImportFields lists). */

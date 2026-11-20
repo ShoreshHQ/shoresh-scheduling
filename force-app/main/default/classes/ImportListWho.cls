@@ -61,12 +61,10 @@ public with sharing class ImportListWho {
         old.add(row);
       }
       before.sort();
-      ImportWriter.WhoChange change = new ImportWriter.WhoChange();
-      change.owner = owner;
-      change.type = ShoreshSchema.localName(who.childType);
-      change.before = before;
-      change.after = after.get(owner.Id);
-      writer.logWho(change);
+      writer.logWho(
+        new ImportLogEntries.Who(owner, ShoreshSchema.localName(who.childType))
+          .lists(before, after.get(owner.Id))
+      );
     }
     Database.delete(old, AccessLevel.USER_MODE);
     UserModeWrites.save(replacing);
