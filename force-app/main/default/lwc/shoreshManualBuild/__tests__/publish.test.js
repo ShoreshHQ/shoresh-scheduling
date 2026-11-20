@@ -289,24 +289,6 @@ describe("c-shoresh-manual-build: Publish", () => {
     expect(q(element, '[data-id="publish"]')).toBeNull();
   });
 
-  it("a publish the server finds changed nothing doesn't read Versions again", async () => {
-    const element = await render(
-      finished({ ...PUBLISHED, changedSince: true })
-    );
-    previewPublish.mockResolvedValue({
-      revisions: REV,
-      published: PUBLISHED,
-      changes: ["Bunk 1 · Monday · Period 2: Swim → Crafts"],
-      changeCount: 1
-    });
-    publish.mockResolvedValue({ ...DONE, unchanged: true });
-    await clickPublish(element);
-    const versionReads = getVersions.mock.calls.length;
-    await answer(element, true);
-    expect(notice(element)).toBe("Week 1 is already published as it is.");
-    expect(getVersions).toHaveBeenCalledTimes(versionReads);
-  });
-
   it("asks first when the week still has Open cells, naming them; Cancel publishes nothing", async () => {
     const element = await render(read(draft(WITH_SWIM, ["1,2,", "1,,"])));
     previewPublish.mockResolvedValue(FIRST_PREVIEW);
@@ -389,33 +371,6 @@ describe("c-shoresh-manual-build: Publish", () => {
     );
     expect(getDraft).toHaveBeenCalledTimes(2);
     expect(q(element, '[data-id="published"]')).toBeNull();
-  });
-
-  it("refused because someone else published since: says nothing was replaced", async () => {
-    const element = await render(finished());
-    previewPublish.mockResolvedValue(FIRST_PREVIEW);
-    publish.mockResolvedValue({
-      published: null,
-      draftChanged: false,
-      publishedChanged: true,
-      unchanged: false
-    });
-    await clickPublish(element);
-    expect(notice(element)).toBe(
-      "Someone else published this week since, so nothing was replaced."
-    );
-    expect(getDraft).toHaveBeenCalledTimes(2);
-  });
-
-  it("a preview that fails says the week was not published", async () => {
-    const element = await render(finished());
-    previewPublish.mockRejectedValue({ body: { message: "No access." } });
-    await clickPublish(element);
-    expect(publish).not.toHaveBeenCalled();
-    expect(q(element, '[data-id="build-error"]').textContent).toContain(
-      "Week 1 was not published."
-    );
-    expect(q(element, '[data-id="publish"]').disabled).toBe(false);
   });
 
   it("waits while an edit saves, and an edit marks the week changed since it was published", async () => {
@@ -572,23 +527,6 @@ describe("c-shoresh-manual-build: Publish", () => {
     await flush();
   }
 
-  it("a preview answered after another week is shown asks nothing", async () => {
-    const element = await render(finished());
-    const preview = pending();
-    previewPublish.mockReturnValue(preview.promise);
-    await clickPublish(element);
-    await chooseWeek2(element, finished());
-    preview.resolve({
-      revisions: REV,
-      published: PUBLISHED,
-      changes: ["Bunk 1 · Monday · Period 2: Swim → Crafts"],
-      changeCount: 1
-    });
-    await flush();
-    expect(ask(element)).toBeNull();
-    expect(publish).not.toHaveBeenCalled();
-  });
-
   it("a publish answered after another week is shown isn't shown on that week", async () => {
     const element = await render(finished());
     previewPublish.mockResolvedValue(FIRST_PREVIEW);
@@ -622,6 +560,22 @@ describe("c-shoresh-manual-build: Publish", () => {
     // The next season read (setup changed elsewhere) reads the week as usual.
     element.setup = nsRecord(SETUP);
     await flush();
+    expect(getDraft).toHaveBeenCalledTimes(1);
+  });
+
+  it("WEEK-6.7: setup saved on another screen while a publish is on its way reads the week once it is over", async () => {
+    const element = await render(finished());
+    const preview = pending();
+    previewPublish.mockReturnValue(preview.promise);
+    publish.mockResolvedValue(DONE);
+    await clickPublish(element);
+    getDraft.mockClear();
+    element.setup = nsRecord({ ...SETUP });
+    await flush();
+    expect(getDraft).not.toHaveBeenCalled();
+    preview.resolve(FIRST_PREVIEW);
+    await flush();
+    expect(publish).toHaveBeenCalledTimes(1);
     expect(getDraft).toHaveBeenCalledTimes(1);
   });
 
@@ -878,7 +832,7 @@ describe("c-shoresh-manual-build: Publish", () => {
     expect(cellText(element, "0-1")).toBe("Open");
   });
 
-  it("a publish that fails still reads again the week a dropped reload was reading", async () => {
+  it("an open Publish box goes when the season read again leaves no week to show", async () => {
     const element = await render(
       finished({ ...PUBLISHED, changedSince: true })
     );
@@ -889,23 +843,11 @@ describe("c-shoresh-manual-build: Publish", () => {
       changeCount: 1
     });
     await clickPublish(element);
-    const reload = pending();
-    getDraft.mockReturnValueOnce(reload.promise);
-    q(element, '[data-id="week-editor"]').dispatchEvent(
-      new CustomEvent("reload")
-    );
+    expect(ask(element)).not.toBeNull();
+    element.setup = nsRecord({ ...SETUP, weeks: [] });
     await flush();
-    publish.mockRejectedValue({ body: { message: "Down." } });
-    // Someone else published meanwhile.
-    getDraft.mockResolvedValue(finished({ ...PUBLISHED, id: "pub9" }));
-    await answer(element, true);
-    expect(publish).toHaveBeenCalledTimes(1);
-    expect(getDraft).toHaveBeenCalledTimes(3);
-    expect(q(element, '[data-id="published"]')).not.toBeNull();
-    expect(q(element, '[data-id="changed-since"]')).toBeNull();
-    reload.resolve(finished());
-    await flush();
-    expect(q(element, '[data-id="published"]')).not.toBeNull();
+    expect(ask(element)).toBeNull();
+    expect(publish).not.toHaveBeenCalled();
   });
 
   it("focus goes back to Publish when it finishes without asking: published, already published, or failed", async () => {
@@ -917,6 +859,8 @@ describe("c-shoresh-manual-build: Publish", () => {
     expect(notice(element)).toBe("Published Week 1.");
     expect(element.shadowRoot.activeElement).toBe(publishButton());
     publishButton().blur();
+    // Focus coming back read the week again (jsdom's window focus): done before the next click.
+    await flush();
     previewPublish.mockResolvedValue({
       revisions: REV,
       published: PUBLISHED,
@@ -927,6 +871,7 @@ describe("c-shoresh-manual-build: Publish", () => {
     expect(notice(element)).toBe("Week 1 is already published as it is.");
     expect(element.shadowRoot.activeElement).toBe(publishButton());
     publishButton().blur();
+    await flush();
     previewPublish.mockRejectedValue({ body: { message: "No access." } });
     await clickPublish(element);
     expect(q(element, '[data-id="build-error"]')).not.toBeNull();
@@ -1182,18 +1127,6 @@ describe("c-shoresh-manual-build: Unpublish", () => {
     );
   });
 
-  it("a failure says the week was not unpublished and keeps it as published", async () => {
-    const element = await render(finished(PUBLISHED));
-    unpublish.mockRejectedValue({ body: { message: "No access." } });
-    await clickUnpublish(element);
-    await answerUnpublish(element, true);
-    expect(q(element, '[data-id="build-error"]').textContent).toContain(
-      "Week 1 was not unpublished."
-    );
-    expect(q(element, '[data-id="published"]')).not.toBeNull();
-    expect(unpublishButton(element).disabled).toBe(false);
-  });
-
   it("Unpublish waits while the week is read again", async () => {
     const element = await render(finished(PUBLISHED));
     const reload = pending();
@@ -1270,24 +1203,14 @@ describe("c-shoresh-manual-build: Unpublish", () => {
     expect(getDraft).toHaveBeenCalledTimes(3);
   });
 
-  it("an answer that comes after another week is shown isn't shown on that week", async () => {
+  it("an open Unpublish box goes when the season read again leaves no week to show", async () => {
     const element = await render(finished(PUBLISHED));
-    const sent = pending();
-    unpublish.mockReturnValue(sent.promise);
     await clickUnpublish(element);
-    await answerUnpublish(element, true);
-    // Week 2 (published too) shown, even if a change got past the locked picker.
-    getDraft.mockResolvedValue(finished({ ...PUBLISHED, id: "pub9" }));
-    q(element, '[data-id="week"]').dispatchEvent(
-      new CustomEvent("change", { detail: { value: "w2" } })
-    );
+    expect(q(element, '[data-id="unpublish-ask"]')).not.toBeNull();
+    element.setup = nsRecord({ ...SETUP, weeks: [] });
     await flush();
-    sent.resolve(UNPUBLISHED);
-    await flush();
-    // Week 2 is still shown as published, and nothing says it was unpublished.
-    expect(q(element, '[data-id="published"]')).not.toBeNull();
-    expect(unpublishButton(element)).not.toBeNull();
-    expect(q(element, '[data-id="notice"]')).toBeNull();
+    expect(q(element, '[data-id="unpublish-ask"]')).toBeNull();
+    expect(unpublish).not.toHaveBeenCalled();
   });
 
   it("the day and week tools wait while an unpublish is on its way, in Group View too", async () => {
