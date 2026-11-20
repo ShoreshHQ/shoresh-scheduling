@@ -219,7 +219,7 @@ public class GeneratedTestData {
     ];
     return drafts.isEmpty()
       ? null
-      : GeneratedDrafts.revisionOf(ScheduleDays.read(drafts[0].Id));
+      : WeekTickets.stamp(ScheduleDays.read(drafts[0].Id));
   }
 
   public static List<String> slots(Id scheduleId, List<Integer> dayAndGroup) {

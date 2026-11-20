@@ -1,7 +1,7 @@
 /**
- * bring_in_choices (API-1.117): the Elective seats screen's own Import choices, so an AI can
+ * import_choices (API-1.117): the Elective seats screen's own Import choices, so an AI can
  * start a week's electives as a person does. What the screen reads is read as it reads it (GET
- * /v1/bring_in_choices: the season's setup, the camp's remembered answers, the screen's own sets
+ * /v1/import_choices: the season's setup, the camp's remembered answers, the screen's own sets
  * and runs); the file is read and the request worked out with the screen's own modules
  * (c/shoreshChoicesReader readChoices, c/shoreshChoicesImport review.js), shipped beside this
  * file; the count is the server's own check, said in the screen's own lines (countLines). With

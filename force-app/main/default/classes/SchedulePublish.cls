@@ -147,7 +147,7 @@ public with sharing class SchedulePublish {
     DayWords.use(draft.Program__r.Season__r);
     Preview result = new Preview();
     List<ScheduleDays.DayGrid> days = readable(ScheduleDays.read(draft.Id));
-    result.revisions = ScheduleDays.stamp(days);
+    result.revisions = WeekTickets.stamp(days);
     ManualBuildSetupNow.asShown(draft, days);
     WeekNow week = new WeekNow(days, ScheduleSpecials.now(draft.Week__c, days));
     ScheduleSpecials.refuseUnreadable(week.specials);
@@ -190,7 +190,7 @@ public with sharing class SchedulePublish {
     // refuses a second first publish of the week made at the same moment.
     Result result = new Result();
     List<ScheduleDays.DayGrid> days = ScheduleDays.read(draft.Id);
-    if (ScheduleDays.stamp(days) != seenRevisions) {
+    if (!WeekTickets.seenNullNever(WeekTickets.stamp(days), seenRevisions)) {
       result.draftChanged = true;
       return result;
     }

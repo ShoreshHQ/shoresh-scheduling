@@ -15,7 +15,7 @@ private class GeneratedVersionsTest {
 
   /** What the draft's days are saved at now, as a screen that just read them has it. */
   private static String revisionNow(Id draftId) {
-    return GeneratedDrafts.revisionOf(ScheduleDays.read(draftId));
+    return WeekTickets.stamp(ScheduleDays.read(draftId));
   }
 
   /** Lock or Unlock Group A's Monday Period 2, from a screen that has the week now. */

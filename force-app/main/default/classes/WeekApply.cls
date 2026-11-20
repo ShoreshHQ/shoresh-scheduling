@@ -119,7 +119,7 @@ public with sharing class WeekApply {
     Id draftId = targetDraftId();
     Map<Id, List<ScheduleDays.DayGrid>> read = readBoth(draftId);
     List<ScheduleDays.DayGrid> sourceDays = read.get(source.Id);
-    if (seenSource != null && ScheduleDays.stamp(sourceDays) != seenSource) {
+    if (!WeekTickets.seenNullSkips(WeekTickets.stamp(sourceDays), seenSource)) {
       outcome.changedSince = true;
       return outcome;
     }
@@ -138,7 +138,9 @@ public with sharing class WeekApply {
     Schedule__c draft = draftId == null ? null : lockedDraft(draftId);
     Map<Id, List<ScheduleDays.DayGrid>> read = readBoth(draftId);
     List<ScheduleDays.DayGrid> sourceDays = read.get(source.Id);
-    if (seenOf(sourceDays, read.get(draftId)) != seen) {
+    if (
+      !WeekTickets.seenNullNever(seenOf(sourceDays, read.get(draftId)), seen)
+    ) {
       outcome.changedSince = true;
       return outcome;
     }
@@ -210,9 +212,9 @@ public with sharing class WeekApply {
     List<ScheduleDays.DayGrid> sourceDays,
     List<ScheduleDays.DayGrid> targetDays
   ) {
-    return ScheduleDays.stamp(sourceDays) +
+    return WeekTickets.stamp(sourceDays) +
       '|' +
-      ScheduleDays.stamp(targetDays ?? new List<ScheduleDays.DayGrid>());
+      WeekTickets.stamp(targetDays ?? new List<ScheduleDays.DayGrid>());
   }
 
   /** A target day that can't be read: its week can't be kept in Versions, so nothing changes. */

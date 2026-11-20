@@ -11,7 +11,7 @@
  *        save (SpecialScheduleController.saveCells), each made only while its cells hold what the
  *        agent saw, so someone else's change is never replaced unseen.
  * Its Undo is the page's: the connector holds the runs back for the conversation and sends them to
- * undo_last_agent_change (API-1.14).
+ * undo_last_change (API-1.14).
  */
 @RestResource(urlMapping='/v1/change_special_schedule_cell')
 global with sharing class AgentSpecialCell implements AgentWeeks.Action {

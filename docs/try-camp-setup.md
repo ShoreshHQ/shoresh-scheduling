@@ -1337,7 +1337,7 @@ both Send and Read permission sets.
 | ------------------------------- | ----------------------- |
 | Each bunk's schedule            | Read group schedules    |
 | Each activity's schedule        | Read activity schedules |
-| Elective offerings (for a form) | Read elective offerings |
+| Elective offerings (for a form) | Read electives offered |
 | Elective seats (who got what)   | Read elective seats     |
 
 Only published weeks go out, and elective seats only after **Finalize**. Unpublished work, saved
@@ -1362,7 +1362,7 @@ schedule, or from a button).
    the second, in Setup type _Permission Sets_ in **Quick Find**, open (or create with **New**)
    one of your own permission sets, click **External Credential Principal Access**, and add the sign-in you made in step 1. Assign that permission set too.
 3. In your Flow, add an **Action**, search **Shoresh**, and pick one of:
-   **send_group_schedule**, **send_activity_schedule**, **send_elective_offerings**,
+   **send_group_schedule**, **send_activity_schedule**, **send_electives_offered**,
    **send_elective_seats**. Fill in **to_system** (the Named Credential's name), **season**
    (like _Summer 2026_), **week** (like _Week 1_), and **as_csv** (_True_ if the other system wants a
    spreadsheet file, _False_ if it wants data; ask them). If the Flow starts when a record is
@@ -1391,14 +1391,14 @@ Open **Settings** at the foot of the Shoresh menu.
     `/v1/camper_elective_choice`. Each record is answered _saved_, _unchanged_ or _problem_
     with one sentence.
   - Read (GET `?season=&week=`, add `&format=csv` for a file): `/v1/group_schedule`,
-    `/v1/activity_schedule`, `/v1/elective_offerings`, `/v1/elective_seats`.
+    `/v1/activity_schedule`, `/v1/electives_offered`, `/v1/elective_seats`.
 - Every incoming record has `season` and `source_system`. Campers are matched on
   `source_system` + `camper_id`, never by name, so send the same ID every time.
   - `division`: `division_name`, `program` · `group`: `group_name`, `division` ·
     `activity`: `activity_name`
   - `camper`: `camper_id`, `camper_name`, `camper_number`, `withdrawn`, `changed_at`
   - `camper_group`: `camper_id`, `camper_name`, `bunk`, `week` (leave out for every week)
-  - `camper_elective_choice`: `camper_id`, `camper_name`, `elective`, `week`,
+  - `camper_elective_choice`: `camper_id`, `camper_name`, `elective_set`, `week`,
     `first_choice` … `fifth_choice`, `changed_at`
 - Going out: group schedule `week, date, group, time_block, start_time, end_time, activity,
 division`;

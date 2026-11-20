@@ -1,10 +1,10 @@
 /**
- * read_offerings: what the Electives list's rows read, through an agent or the command line
- * (docs/protocol/api.md API-1.135). Web address /v1/offerings, GET ?season=&elective_set=: the set,
+ * read_electives_list: what the Electives list's rows read, through an agent or the command line
+ * (docs/protocol/api.md API-1.135). Web address /v1/electives_list, GET ?season=&elective_set=: the set,
  * the season's setup and the camp's words, for the connector to work out with the list's own module
  * (c/shoreshElectiveDetails offerings.js) what each row holds and marks.
  */
-@RestResource(urlMapping='/v1/offerings')
+@RestResource(urlMapping='/v1/electives_list')
 global with sharing class AgentOfferings {
   @HttpGet
   global static void get() {

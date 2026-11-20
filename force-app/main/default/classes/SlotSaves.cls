@@ -25,7 +25,11 @@ public with sharing class SlotSaves {
   // The program's setup as saveOn read it (not read by makeWith).
   private SlotRules.Setup setup;
   private Map<Date, ScheduleDays.DayGrid> days = new Map<Date, ScheduleDays.DayGrid>();
+  // The days in date order, as read before the edits.
+  private List<ScheduleDays.DayGrid> asRead;
   private Set<Date> changed = new Set<Date>();
+  // Each written day's new revision (ScheduleDaySaves.write).
+  private Map<Date, Integer> written = new Map<Date, Integer>();
   // The "Rain plan full" marks an edit made leaves on a day (a rainy day, or its Undo).
   private Map<Date, List<String>> rain = new Map<Date, List<String>>();
   // Generated Schedule: what an edit fills is locked.
@@ -99,8 +103,8 @@ public with sharing class SlotSaves {
     // Shown with "deleted since" as Generated Schedule's own reader works it out.
     result.schedule = GeneratedInputs.view(draft);
     result.revision = GeneratedEdits.revisionAfter(
-      saves.days,
-      saves.changed,
+      saves.asRead,
+      saves.written,
       seen
     );
     return result;
@@ -122,6 +126,7 @@ public with sharing class SlotSaves {
     List<ScheduleDays.DayGrid> read,
     List<SlotEdits.Edit> edits
   ) {
+    asRead = read;
     for (ScheduleDays.DayGrid day : read) {
       days.put(day.day, day);
     }
@@ -163,7 +168,7 @@ public with sharing class SlotSaves {
       toSave.add(save);
     }
     if (!toSave.isEmpty()) {
-      ScheduleDaySaves.write(scheduleId, toSave);
+      written = ScheduleDaySaves.write(scheduleId, toSave);
     }
   }
 

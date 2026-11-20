@@ -95,7 +95,7 @@ function rowForAgent(offering, activity, seatsWord) {
 }
 
 /**
- * A set's rows on the Electives list (API-1.135). read: what /v1/offerings answers ({ elective_set,
+ * A set's rows on the Electives list (API-1.135). read: what /v1/electives_list answers ({ elective_set,
  * set_id, setup, labels }). activity: only that row; one the set doesn't offer is said.
  */
 export function offeringsForAgent(read, { activity } = {}) {

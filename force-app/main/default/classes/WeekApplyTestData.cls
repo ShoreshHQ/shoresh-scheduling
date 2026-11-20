@@ -143,7 +143,7 @@ public class WeekApplyTestData {
     WeekApply.Outcome preview = WeekApplyController.previewApply(
       sourceId,
       ids.get(week),
-      ScheduleDays.stamp(ScheduleDays.read(sourceId))
+      WeekTickets.stamp(ScheduleDays.read(sourceId))
     );
     return WeekApplyController.applyToWeek(
       sourceId,

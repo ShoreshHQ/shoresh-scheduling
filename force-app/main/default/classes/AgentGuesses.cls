@@ -3,7 +3,7 @@
  * command line (docs/protocol/api.md API-1.59, API-1.60): the screen's own read
  * (SeasonSetupController.getSeasonSetup, its guesses), each guess named by its kind in the camp's
  * words, its name, where it sits (a group's program, a linked choice's elective set), its field
- * and its value now, so read_setup_guesses and confirm_setup_guess say them the same way.
+ * and its value now, so read_setup_guesses and mark_looks_right say them the same way.
  */
 public with sharing class AgentGuesses {
   // The field as the agent names it, by the guess's own field.
@@ -12,7 +12,7 @@ public with sharing class AgentGuesses {
     SetupGuessValues.WHO => 'who',
     SetupGuessValues.FITS => 'groups_that_fit',
     SetupGuessValues.DIVISION => 'division',
-    SetupGuessValues.PERIODS => 'periods'
+    SetupGuessValues.PERIODS => 'times'
   };
   // The camp word a guessed field is said in, by the guess's own field (who has none).
   private static final Map<String, String> TERM_OF = new Map<String, String>{

@@ -14,7 +14,7 @@ public with sharing class AgentImports {
   /** Import last year: it also reads what earlier imports brought in, and saves weeks' versions. */
   public static final String LAST_YEAR = 'lastYear';
   public static final String SCREEN_LIST = 'list';
-  /** Bring in choices (API-1.117): it also reads the Elective seats screen's own sets and runs. */
+  /** Import choices (API-1.117): it also reads the Elective seats screen's own sets and runs. */
   public static final String CHOICES = 'choices';
   private static final Set<String> FIELDS = new Set<String>{
     'season',
