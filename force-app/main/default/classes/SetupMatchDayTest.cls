@@ -81,6 +81,16 @@ private class SetupMatchDayTest {
     return result;
   }
 
+  /** Whether any dot of the day says something moved. */
+  private static Boolean saysMoved(SetupMatchDay compared) {
+    for (SetupMatch.Dot dot : compared.dots) {
+      if (dot.words.contains(' moved to ')) {
+        return true;
+      }
+    }
+    return false;
+  }
+
   @IsTest
   static void aPlainMoveNamesWhereItWent() {
     SetupMatchDay compared = compare(
@@ -130,6 +140,7 @@ private class SetupMatchDayTest {
       dotsOf(compared),
       'Nothing moved: it goes here'
     );
+    Assert.isFalse(saysMoved(compared), 'Moved nowhere');
   }
 
   @IsTest
@@ -161,6 +172,7 @@ private class SetupMatchDayTest {
       new Map<String, String>{ '2' => 'Rest is no longer set up here' },
       dotsOf(compared)
     );
+    Assert.isFalse(saysMoved(compared), 'Moved nowhere');
     Assert.areEqual(
       'Rest is no longer set up here',
       compared.changes[0].lines[0].reason
