@@ -9,7 +9,7 @@
 global with sharing class AgentImportWorksheet implements AgentWeeks.Action {
   @HttpGet
   global static void get() {
-    AgentImports.answerRead(AgentImports.SCREEN_LIST);
+    AgentRequest.answer(new AgentImports.Reads(AgentImports.SCREEN_LIST));
   }
 
   @HttpPost

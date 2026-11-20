@@ -121,7 +121,7 @@ private class AgentBuildTest {
         RestContext.response.responseBody.toString()
       );
       Assert.areEqual(
-        new Set<String>{ 'inputs', 'setup', 'labels' },
+        new Set<String>{ 'inputs', 'setup', 'labels', 'season' },
         read.keySet()
       );
     }

@@ -7,31 +7,17 @@
  * update_to_match_setup sends back.
  */
 @RestResource(urlMapping='/v1/read_setup_changes')
-global with sharing class AgentReadSetupChanges implements AgentWeeks.Action {
-  private static final Set<String> FIELDS = new Set<String>{
-    'season',
-    'week',
-    'program',
-    'schedule'
-  };
-
+global with sharing class AgentReadSetupChanges implements AgentRequest.SentenceRead {
   @HttpGet
   global static void get() {
-    AgentWeeks.answer(new AgentReadSetupChanges());
+    AgentRequest.answer(new AgentReadSetupChanges());
   }
 
-  public String run() {
-    Map<String, Object> asked = new Map<String, Object>();
-    for (String key : RestContext.request.params.keySet()) {
-      if (!FIELDS.contains(key)) {
-        throw new ShoreshException(
-          'Shoresh doesn\'t know the field "' +
-            key.left(40) +
-            '". The fields are: season, week, program, schedule.'
-        );
-      }
-      asked.put(key, RestContext.request.params.get(key));
-    }
+  public Set<String> fields() {
+    return new Set<String>{ 'season', 'week', 'program', 'schedule' };
+  }
+
+  public String run(Map<String, Object> asked) {
     AgentWeeks.Week week = AgentSchedules.placeOfEither(asked);
     AgentSchedules.requireDraft(week);
     // The screens' own list.

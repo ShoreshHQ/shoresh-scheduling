@@ -6,17 +6,19 @@
  * What a day has is what put_special_day_on_day and take_special_day_off_day take as seen.
  */
 @RestResource(urlMapping='/v1/read_special_days')
-global with sharing class AgentReadSpecialDays implements AgentWeeks.Action {
-  private static final Set<String> FIELDS = new Set<String>{ 'season' };
-
+global with sharing class AgentReadSpecialDays implements AgentRequest.SentenceRead {
   @HttpGet
   global static void get() {
-    AgentWeeks.answer(new AgentReadSpecialDays());
+    AgentRequest.answer(new AgentReadSpecialDays());
   }
 
-  public String run() {
+  public Set<String> fields() {
+    return new Set<String>{ 'season' };
+  }
+
+  public String run(Map<String, Object> asked) {
     Season__c season = AgentChangeCampWords.seasonOf(
-      AgentFields.text(asked(), 'season')
+      AgentFields.text(asked, 'season')
     );
     CampLabels labels = CampLabels.forCamp(season.Camp__c);
     Map<Id, List<String>> placedAt = placedAt(season.Id);
@@ -67,22 +69,6 @@ global with sharing class AgentReadSpecialDays implements AgentWeeks.Action {
       '. A week day not named here has no ' +
       labels.singularInSentence('SpecialDay') +
       ': its seen is "none".';
-  }
-
-  /** The fields in the web address; one Shoresh doesn't know is refused. */
-  private static Map<String, Object> asked() {
-    Map<String, Object> asked = new Map<String, Object>();
-    for (String key : RestContext.request.params.keySet()) {
-      if (!FIELDS.contains(key)) {
-        throw new ShoreshException(
-          'Shoresh doesn\'t know the field "' +
-            key.left(40) +
-            '". The fields are: season.'
-        );
-      }
-      asked.put(key, RestContext.request.params.get(key));
-    }
-    return asked;
   }
 
   /** Each special day's and event's week days, as the screen says them ('Tuesday of "Week 1"'). */

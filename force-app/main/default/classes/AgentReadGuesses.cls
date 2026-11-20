@@ -5,24 +5,19 @@
  * said with its value now, as mark_looks_right takes it back as seen.
  */
 @RestResource(urlMapping='/v1/read_setup_guesses')
-global with sharing class AgentReadGuesses implements AgentWeeks.Action {
+global with sharing class AgentReadGuesses implements AgentRequest.SentenceRead {
   @HttpGet
   global static void get() {
-    AgentWeeks.answer(new AgentReadGuesses());
+    AgentRequest.answer(new AgentReadGuesses());
   }
 
-  public String run() {
-    for (String key : RestContext.request.params.keySet()) {
-      if (key != 'season') {
-        throw new ShoreshException(
-          'Shoresh doesn\'t know the field "' +
-            key.left(40) +
-            '". The fields are: season.'
-        );
-      }
-    }
+  public Set<String> fields() {
+    return new Set<String>{ 'season' };
+  }
+
+  public String run(Map<String, Object> asked) {
     Season__c season = AgentChangeCampWords.seasonOf(
-      RestContext.request.params.get('season')
+      (String) asked.get('season')
     );
     List<String> said = new List<String>();
     for (

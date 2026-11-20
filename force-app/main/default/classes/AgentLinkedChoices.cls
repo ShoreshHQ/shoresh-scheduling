@@ -6,44 +6,29 @@
  * (c/shoreshElectiveDetails linkedChoices.js) what the editor shows and marks.
  */
 @RestResource(urlMapping='/v1/linked_choices')
-global with sharing class AgentLinkedChoices {
+global with sharing class AgentLinkedChoices implements AgentRequest.Read {
   @HttpGet
   global static void get() {
-    RestResponse response = RestContext.response;
-    response.addHeader('Content-Type', 'application/json');
-    // An AI's read: it hears the screen's refusals without their advice (API-1.105).
-    AgentRefusal.forAgent = true;
-    try {
-      Map<String, Object> asked = new Map<String, Object>();
-      for (String field : new List<String>{ 'season', 'elective_set' }) {
-        asked.put(field, RestContext.request.params.get(field));
-      }
-      AgentLinkedChoiceRefs refs = new AgentLinkedChoiceRefs(asked);
-      // Where it sits first: its reading is the heaviest, so nothing else is held meanwhile.
-      LinkedChoicePlaces.Places places = refs.places();
-      response.statusCode = 200;
-      response.responseBody = Blob.valueOf(
-        OutgoingRows.said(
-          new Map<String, Object>{
-            'elective_set' => refs.electiveSet.Name,
-            'set_id' => refs.electiveSet.Id,
-            'setup' => SeasonSetupController.getSeasonSetup(refs.season.Id),
-            'labels' => refs.labels.all(),
-            'places' => places
-          }
-        )
-      );
-    } catch (Exception e) {
-      Boolean ours =
-        e instanceof ShoreshException || e instanceof AuraHandledException;
-      response.statusCode = ours ? 400 : 500;
-      response.responseBody = Blob.valueOf(
-        JSON.serialize(
-          OutgoingRows.answered(ours ? e.getMessage() : ScreenErrors.words(e))
-        )
-      );
-    } finally {
-      AgentRefusal.forAgent = false;
-    }
+    AgentRequest.answer(new AgentLinkedChoices());
+  }
+
+  public Set<String> fields() {
+    return new Set<String>{ 'season', 'elective_set' };
+  }
+
+  public String run(Map<String, Object> asked) {
+    AgentLinkedChoiceRefs refs = new AgentLinkedChoiceRefs(asked);
+    // Where it sits first: its reading is the heaviest, so nothing else is held meanwhile.
+    LinkedChoicePlaces.Places places = refs.places();
+    return JSON.serialize(
+      new Map<String, Object>{
+        'elective_set' => refs.electiveSet.Name,
+        'set_id' => refs.electiveSet.Id,
+        'setup' => SeasonSetupController.getSeasonSetup(refs.season.Id),
+        'labels' => refs.labels.all(),
+        'places' => places
+      },
+      true
+    );
   }
 }

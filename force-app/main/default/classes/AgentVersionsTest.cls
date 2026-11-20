@@ -18,15 +18,20 @@ private class AgentVersionsTest {
 
   /** GET /v1/versions for Week 1 of Main; answers [status, body]. */
   private static List<Object> readList() {
-    RestContext.request = new RestRequest();
-    RestContext.request.httpMethod = 'GET';
-    RestContext.request.params.putAll(
+    return readList(
       new Map<String, String>{
         'season' => season(),
         'week' => 'Week 1',
         'program' => 'Main'
       }
     );
+  }
+
+  /** GET /v1/versions with these fields; answers [status, body]. */
+  private static List<Object> readList(Map<String, String> params) {
+    RestContext.request = new RestRequest();
+    RestContext.request.httpMethod = 'GET';
+    RestContext.request.params.putAll(params);
     RestContext.response = new RestResponse();
     AgentVersions.get();
     return new List<Object>{
@@ -104,6 +109,48 @@ private class AgentVersionsTest {
         JSON.deserializeUntyped(JSON.serialize(versions())),
         body.get('versions')
       );
+    }
+  }
+
+  // API-1.108: list_versions says which season it used, here with none named.
+  @IsTest
+  static void theListSaysTheSeasonItUsed() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      GeneratedTestData.camp();
+      Test.startTest();
+      List<Object> read = readList(
+        new Map<String, String>{ 'week' => 'Week 1', 'program' => 'Main' }
+      );
+      Integer queries = Limits.getQueries();
+      Test.stopTest();
+      Assert.areEqual(200, read[0], String.valueOf(read[1]));
+      Assert.areEqual(season(), ((Map<String, Object>) read[1]).get('season'));
+      Assert.isTrue(queries < 30, 'Queries: ' + queries);
+    }
+  }
+
+  // API-1.152: a field the list doesn't take is refused, naming the ones it does, never ignored.
+  @IsTest
+  static void aFieldTheListDoesntTakeIsRefused() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      GeneratedTestData.camp();
+      Test.startTest();
+      List<Object> read = readList(
+        new Map<String, String>{
+          'season' => season(),
+          'week' => 'Week 1',
+          'program' => 'Main',
+          'schedule' => 'Manual Build'
+        }
+      );
+      Test.stopTest();
+      Assert.areEqual(400, read[0], String.valueOf(read[1]));
+      Map<String, Object> answer = (Map<String, Object>) read[1];
+      Assert.areEqual(
+        'Shoresh doesn\'t know the field "schedule". The fields are: program, season, week.',
+        answer.get('message')
+      );
+      Assert.areEqual(season(), answer.get('season'));
     }
   }
 

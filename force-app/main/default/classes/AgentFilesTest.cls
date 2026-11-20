@@ -9,14 +9,14 @@
 private class AgentFilesTest {
   /** One GET to a door; answers [status, the answer read]. */
   private static List<Object> read(
-    AgentFiles.Read door,
+    AgentRequest.Read door,
     Map<String, String> params
   ) {
     RestContext.request = new RestRequest();
     RestContext.request.httpMethod = 'GET';
     RestContext.request.params.putAll(params);
     RestContext.response = new RestResponse();
-    AgentFiles.answer(door);
+    AgentRequest.answer(door);
     return new List<Object>{
       RestContext.response.statusCode,
       JSON.deserializeUntyped(RestContext.response.responseBody.toString())
@@ -33,7 +33,7 @@ private class AgentFilesTest {
   }
 
   /** The special schedule file's own read (SpecialScheduleController.openPlan) of one item. */
-  private class PlanRead implements AgentFiles.Read {
+  private class PlanRead implements AgentRequest.Read {
     private Id itemId;
     PlanRead(Id itemId) {
       this.itemId = itemId;

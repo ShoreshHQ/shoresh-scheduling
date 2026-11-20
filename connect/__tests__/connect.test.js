@@ -97,6 +97,63 @@ describe("Shoresh for AI tools and the command line", () => {
     }
   });
 
+  // API-1.152: the field-level twin of matchesTheApi. Each web address's GET declares its fields
+  // once (AgentRequest.Read fields()); a read tool sends exactly those, and a change tool whose
+  // address also has a GET (what the screen reads first) has each of them as an input.
+  it("fieldsMatchTheApi: every read sends exactly the fields its web address takes", () => {
+    const { queryFields } = require("../camp");
+    const source = (name) =>
+      fs.readFileSync(path.join(CLASSES, `${name}.cls`), "utf8");
+    // The GET's fields: the fields() of the read its get() answers with (nested, or its own class).
+    const getFields = (text) => {
+      const get = /@HttpGet\s+global static void get\(\)\s*\{([^}]*)\}/.exec(
+        text
+      );
+      if (!get) return null;
+      const made = /AgentRequest\.answer\(new ([\w.]+)\(/.exec(get[1]);
+      if (!made) return undefined;
+      const declared = new RegExp(`\\bclass ${made[1].split(".").pop()}\\b`);
+      const where = declared.test(text) ? text : source(made[1].split(".")[0]);
+      const fields =
+        /Set<String> fields\(\)\s*\{\s*return new Set<String>(?:\{([^}]*)\})?\(?\)?;/.exec(
+          where.slice(where.search(declared))
+        );
+      return [...(fields[1] ?? "").matchAll(/'([^']*)'/g)]
+        .map((m) => m[1])
+        .sort();
+    };
+    // The published schedule reads: OutgoingDoors answers them, for keys and Flow too (API-1.1).
+    const outgoing = [];
+    for (const f of fs.readdirSync(CLASSES).filter((f) => f.endsWith(".cls"))) {
+      const text = source(f.slice(0, -4));
+      const address = /@RestResource\(\s*urlMapping\s*=\s*'\/v1\/([^']*)'/.exec(
+        text
+      );
+      const fields = address && getFields(text);
+      if (!fields) {
+        if (fields === undefined) outgoing.push(address[1]);
+        continue;
+      }
+      for (const c of CAPABILITIES.filter((c) => c.api === address[1])) {
+        if (c.method === "GET") {
+          expect([c.name, queryFields(c).sort()]).toEqual([c.name, fields]);
+        } else {
+          const inputs = Object.keys(c.inputSchema.properties);
+          expect([c.name, fields.filter((f) => !inputs.includes(f))]).toEqual([
+            c.name,
+            []
+          ]);
+        }
+      }
+    }
+    expect(outgoing.sort()).toEqual([
+      "activity_schedule",
+      "elective_seats",
+      "electives_offered",
+      "group_schedule"
+    ]);
+  });
+
   // API-1.6 (Greg 2026-11-15, AI = screen)
   it("personsAiBringsDataInAsTheScreens: the outside systems' bring_in_* doors are no tool or command; a person's AI is pointed to import_list and import_choices", () => {
     const { usage } = require("../cli");
@@ -451,6 +508,7 @@ describe("Shoresh for AI tools and the command line", () => {
     expect(undone).toEqual({
       ok: true,
       status: 200,
+      season: "Summer 2026",
       text: "Undone: Placed Soccer · Group A · Monday · Period 2."
     });
     expect(
@@ -746,7 +804,12 @@ describe("Shoresh for AI tools and the command line", () => {
       option: 1,
       days: []
     });
-    expect(built).toEqual({ ok: true, status: 200, text: "Built Week 1." });
+    expect(built).toEqual({
+      ok: true,
+      status: 200,
+      season: "Summer 2026",
+      text: "Built Week 1."
+    });
 
     // With the counter's own modules: after the save, the week's checks are read as the counter
     // reads them and said with the build, so an AI can pass on what the screen shows beside the
@@ -925,6 +988,7 @@ describe("Shoresh for AI tools and the command line", () => {
     expect(got).toEqual({
       ok: true,
       status: 200,
+      season: "Summer 2026",
       about: byName("read_week_checks").about,
       text: JSON.stringify({ placed: "3 of 4 placed" }, null, 2)
     });
@@ -982,6 +1046,7 @@ describe("Shoresh for AI tools and the command line", () => {
     expect(accepted).toEqual({
       ok: true,
       status: 200,
+      season: "Summer 2026",
       text: "Accepted: Swim, 2 of 4."
     });
     expect(seen[1].args.slice(3, 6)).toEqual([
@@ -1002,6 +1067,9 @@ describe("Shoresh for AI tools and the command line", () => {
       c.localFields
     ]);
     expect(local).toEqual([
+      ["read_electives_list", ["activity"]],
+      ["read_linked_choices", ["activity"]],
+      ["read_week_draft", ["day", "group"]],
       ["download_schedule", ["as", "view"]],
       ["download_elective_files", ["file"]],
       ["download_setup", ["list"]]
@@ -1171,7 +1239,12 @@ describe("Shoresh for AI tools and the command line", () => {
         "POST"
       ]);
       expect(JSON.parse(seen[0].stdin)).toEqual({ ...asked, ...more });
-      expect(done).toEqual({ ok: true, status: 200, text: message });
+      expect(done).toEqual({
+        ok: true,
+        status: 200,
+        season: "Summer 2026",
+        text: message
+      });
     }
     const refused = await call(
       "delete_version",
@@ -1221,7 +1294,12 @@ describe("Shoresh for AI tools and the command line", () => {
         "POST"
       ]);
       expect(JSON.parse(seen[0].stdin)).toEqual({ ...asked, ...more });
-      expect(done).toEqual({ ok: true, status: 200, text: message });
+      expect(done).toEqual({
+        ok: true,
+        status: 200,
+        season: "Summer 2026",
+        text: message
+      });
     }
     const conflict = await call("unpublish_week", asked, {
       run: sfAnswering(
@@ -1499,7 +1577,12 @@ describe("Shoresh for AI tools and the command line", () => {
         after: [`A:${swim}`]
       })
     ]);
-    expect(moved.done).toEqual({ ok: true, status: 200, text: "Done." });
+    expect(moved.done).toEqual({
+      ok: true,
+      status: 200,
+      season: "Summer 2026",
+      text: "Done."
+    });
     expect(moved.sent.revision).toBeUndefined();
 
     // LOCK-4.8: the week as the agent read it goes with the edit, for the save to hold and compare.
@@ -1772,6 +1855,7 @@ describe("Shoresh for AI tools and the command line", () => {
     expect(same.done).toEqual({
       ok: true,
       status: 200,
+      season: "Summer 2026",
       text: "Nothing to paste: Bunk 1 · Monday · Period 1 already matches."
     });
     expect(same.seen).toHaveLength(1);
@@ -1929,7 +2013,12 @@ describe("Shoresh for AI tools and the command line", () => {
         after: [`S:${colorWar}`, `^S:${colorWar}`]
       })
     );
-    expect(placed.done).toEqual({ ok: true, status: 200, text: "Done." });
+    expect(placed.done).toEqual({
+      ok: true,
+      status: 200,
+      season: "Summer 2026",
+      text: "Done."
+    });
 
     // A locked cell refuses it, in the screen's words; nothing is sent.
     const locked = await send({
@@ -2291,13 +2380,19 @@ describe("Shoresh for AI tools and the command line", () => {
         cells: [earlier, `${bunk1}|${p1}|${art.Id}|switched`]
       }
     ]);
-    expect(monday.done).toEqual({ ok: true, status: 200, text: "Done." });
+    expect(monday.done).toEqual({
+      ok: true,
+      status: 200,
+      season: "Summer 2026",
+      text: "Done."
+    });
 
     // Nothing outdoors: the screen's receipt, nothing sent.
     const tuesday = await send("Tuesday");
     expect(tuesday.done).toEqual({
       ok: true,
       status: 200,
+      season: "Summer 2026",
       text: "Rainy Tuesday: nothing outdoors to switch"
     });
     expect(tuesday.seen).toHaveLength(1);
@@ -4767,7 +4862,12 @@ describe("Shoresh for AI tools and the command line", () => {
     });
     expect(seen[0].args[3]).toBe("/services/apexrest/v1/publish_week");
     expect(JSON.parse(seen[0].stdin)).toEqual(asked);
-    expect(done).toEqual({ ok: true, status: 200, text: "Published Week 1." });
+    expect(done).toEqual({
+      ok: true,
+      status: 200,
+      season: "Summer 2026",
+      text: "Published Week 1."
+    });
   });
 
   // API-1.123
@@ -5230,7 +5330,12 @@ describe("Shoresh for AI tools and the command line", () => {
       },
       { run: answering(sent), edits }
     );
-    expect(moved).toEqual({ ok: true, status: 200, text: "Done." });
+    expect(moved).toEqual({
+      ok: true,
+      status: 200,
+      season: "Summer 2026",
+      text: "Done."
+    });
     expect(sent[1].args[3]).toBe("/services/apexrest/v1/move_cell");
     const body = JSON.parse(sent[1].stdin);
     expect(body).toMatchObject({ ...asked, said: "" });
@@ -5336,6 +5441,7 @@ describe("Shoresh for AI tools and the command line", () => {
     expect(special).toEqual({
       ok: true,
       status: 200,
+      season: "Summer 2026",
       text: "Tuesday is Visiting Day: left as it is."
     });
     expect(specialSent).toHaveLength(1);

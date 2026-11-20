@@ -10,6 +10,6 @@
 global with sharing class AgentReadDraft {
   @HttpGet
   global static void get() {
-    AgentChecks.respond('draft');
+    AgentRequest.answer(new AgentChecks('draft'));
   }
 }

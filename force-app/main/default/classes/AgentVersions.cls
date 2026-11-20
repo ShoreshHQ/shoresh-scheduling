@@ -8,49 +8,33 @@
  * and by when it was saved when two share a name, never guessed.
  */
 @RestResource(urlMapping='/v1/versions')
-global with sharing class AgentVersions {
+global with sharing class AgentVersions implements AgentRequest.Read {
   @HttpGet
   global static void get() {
-    RestResponse response = RestContext.response;
-    response.addHeader('Content-Type', 'application/json');
-    // An AI's read: it hears the screen's refusals without their advice (API-1.105).
-    AgentRefusal.forAgent = true;
-    try {
-      Map<String, Object> asked = new Map<String, Object>();
-      for (String field : new List<String>{ 'season', 'week', 'program' }) {
-        asked.put(field, RestContext.request.params.get(field));
+    AgentRequest.answer(new AgentVersions());
+  }
+
+  public Set<String> fields() {
+    return new Set<String>{ 'season', 'week', 'program' };
+  }
+
+  public String run(Map<String, Object> asked) {
+    AgentWeeks.Week week = AgentWeeks.placeOf(asked);
+    return JSON.serialize(
+      new Map<String, Object>{
+        'week' => week.name,
+        'program' => week.program.Name,
+        // A delete is on the panel once the week is built or started on Manual Build (API-1.41).
+        'built' => week.draft != null ||
+        ManualDrafts.find(week.program.Id, week.weekId) != null,
+        // Its saved times are said on the camp's clock (CORE-6.11).
+        'time_zone' => CampClock.zoneOfProgram(week.program.Id),
+        'versions' => SchedulesController.getVersions(
+          week.program.Id,
+          week.weekId
+        )
       }
-      AgentWeeks.Week week = AgentWeeks.placeOf(asked);
-      response.statusCode = 200;
-      response.responseBody = Blob.valueOf(
-        JSON.serialize(
-          new Map<String, Object>{
-            'week' => week.name,
-            'program' => week.program.Name,
-            // A delete is on the panel once the week is built or started on Manual Build (API-1.41).
-            'built' => week.draft != null ||
-            ManualDrafts.find(week.program.Id, week.weekId) != null,
-            // Its saved times are said on the camp's clock (CORE-6.11).
-            'time_zone' => CampClock.zoneOfProgram(week.program.Id),
-            'versions' => SchedulesController.getVersions(
-              week.program.Id,
-              week.weekId
-            )
-          }
-        )
-      );
-    } catch (Exception e) {
-      Boolean ours =
-        e instanceof ShoreshException || e instanceof AuraHandledException;
-      response.statusCode = ours ? 400 : 500;
-      response.responseBody = Blob.valueOf(
-        JSON.serialize(
-          OutgoingRows.answered(ours ? e.getMessage() : ScreenErrors.words(e))
-        )
-      );
-    } finally {
-      AgentRefusal.forAgent = false;
-    }
+    );
   }
 
   /**

@@ -7,41 +7,23 @@
  * stamp).
  */
 @RestResource(urlMapping='/v1/electives_to_clear')
-global with sharing class AgentElectivesToClear {
+global with sharing class AgentElectivesToClear implements AgentRequest.SentenceRead {
   @HttpGet
   global static void get() {
-    RestResponse response = RestContext.response;
-    response.addHeader('Content-Type', 'application/json');
-    // An AI's read: it hears the screen's refusals without their advice (API-1.105).
-    AgentRefusal.forAgent = true;
-    try {
-      AgentWeeks.requireScheduler();
-      Season__c season = OutgoingRows.seasonCalled(
-        RestContext.request.params.get('season')
-      );
-      response.statusCode = 200;
-      response.responseBody = Blob.valueOf(
-        JSON.serialize(
-          OutgoingRows.answered(
-            said(
-              ElectiveSeatsController.clearPicture(season.Id),
-              IncomingSeason.labelsOf(season.Id)
-            )
-          )
-        )
-      );
-    } catch (Exception e) {
-      Boolean ours =
-        e instanceof ShoreshException || e instanceof AuraHandledException;
-      response.statusCode = ours ? 400 : 500;
-      response.responseBody = Blob.valueOf(
-        JSON.serialize(
-          OutgoingRows.answered(ours ? e.getMessage() : ScreenErrors.words(e))
-        )
-      );
-    } finally {
-      AgentRefusal.forAgent = false;
-    }
+    AgentRequest.answer(new AgentElectivesToClear());
+  }
+
+  public Set<String> fields() {
+    return new Set<String>{ 'season' };
+  }
+
+  public String run(Map<String, Object> asked) {
+    AgentWeeks.requireScheduler();
+    Season__c season = OutgoingRows.seasonCalled((String) asked.get('season'));
+    return said(
+      ElectiveSeatsController.clearPicture(season.Id),
+      IncomingSeason.labelsOf(season.Id)
+    );
   }
 
   /** "2 sets of seats, 1 of them final"; "1 set of seats, final" (or draft); seats: the camp's. */

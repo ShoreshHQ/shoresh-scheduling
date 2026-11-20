@@ -28,17 +28,16 @@ global with sharing class AgentAssignElectiveSeats implements AgentWeeks.Action,
 
   @HttpGet
   global static void get() {
-    RestResponse response = RestContext.response;
-    response.addHeader('Content-Type', 'application/json');
-    // An AI's read: it hears the screen's refusals without their advice (API-1.105).
-    AgentRefusal.forAgent = true;
-    try {
-      Map<String, Object> asked = new Map<String, Object>();
-      for (
-        String field : new List<String>{ 'season', 'week', 'elective_set' }
-      ) {
-        asked.put(field, RestContext.request.params.get(field));
-      }
+    AgentRequest.answer(new WhatAssignReads());
+  }
+
+  /** The GET: what the screen reads to assign: its run and the camp's words. */
+  private with sharing class WhatAssignReads implements AgentRequest.Read {
+    public Set<String> fields() {
+      return new Set<String>{ 'season', 'week', 'elective_set' };
+    }
+
+    public String run(Map<String, Object> asked) {
       AgentElectives.Run run = AgentElectives.committed(asked);
       ElectiveSeats.RunView view = ElectiveSeatsController.openRun(run.id);
       ElectiveSet__c electiveSet = [
@@ -47,28 +46,14 @@ global with sharing class AgentAssignElectiveSeats implements AgentWeeks.Action,
         WHERE Id = :view.run.setId
         WITH USER_MODE
       ];
-      response.statusCode = 200;
-      response.responseBody = Blob.valueOf(
-        JSON.serialize(
-          new Map<String, Object>{
-            'view' => view,
-            'labels' => CampLabels.forCamp(electiveSet.Season__r.Camp__c).all(),
-            'dayNaming' => DayWords.namingOf(electiveSet.Season__c)
-          },
-          true
-        )
+      return JSON.serialize(
+        new Map<String, Object>{
+          'view' => view,
+          'labels' => CampLabels.forCamp(electiveSet.Season__r.Camp__c).all(),
+          'dayNaming' => DayWords.namingOf(electiveSet.Season__c)
+        },
+        true
       );
-    } catch (Exception e) {
-      Boolean ours =
-        e instanceof ShoreshException || e instanceof AuraHandledException;
-      response.statusCode = ours ? 400 : 500;
-      response.responseBody = Blob.valueOf(
-        JSON.serialize(
-          OutgoingRows.answered(ours ? e.getMessage() : ScreenErrors.words(e))
-        )
-      );
-    } finally {
-      AgentRefusal.forAgent = false;
     }
   }
 

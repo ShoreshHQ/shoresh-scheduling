@@ -28,12 +28,15 @@ private class AgentSetupChangeTest {
       RestContext.request.requestBody = Blob.valueOf(JSON.serialize(body));
     }
     RestContext.response = new RestResponse();
-    AgentWeeks.Action door = action == 'change'
-      ? (AgentWeeks.Action) new AgentChangeSetup()
-      : action == 'read'
-          ? (AgentWeeks.Action) new AgentReadSetup()
-          : new AgentAddSetup();
-    AgentWeeks.answer(door);
+    if (action == 'read') {
+      AgentRequest.answer(new AgentReadSetup());
+    } else {
+      AgentWeeks.answer(
+        action == 'change'
+          ? (AgentWeeks.Action) new AgentChangeSetup()
+          : new AgentAddSetup()
+      );
+    }
     Map<String, Object> answer = (Map<String, Object>) JSON.deserializeUntyped(
       RestContext.response.responseBody.toString()
     );

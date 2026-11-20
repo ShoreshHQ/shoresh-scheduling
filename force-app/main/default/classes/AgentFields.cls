@@ -18,19 +18,36 @@ public with sharing class AgentFields {
     }
     Map<String, Object> given = (Map<String, Object>) parsed;
     for (String name : given.keySet()) {
-      if (!fields.contains(name)) {
-        List<String> known = new List<String>(fields);
-        known.sort();
-        throw new ShoreshException(
-          'Shoresh doesn\'t know the field "' +
-            name.left(40) +
-            '". The fields are: ' +
-            String.join(known, ', ') +
-            '.'
-        );
-      }
+      requireKnown(name, fields);
     }
     return given;
+  }
+
+  /** The web address's fields (a read's), as text; a field Shoresh doesn't know is refused. */
+  public static Map<String, Object> query(Set<String> fields) {
+    Map<String, Object> asked = new Map<String, Object>();
+    Map<String, String> params = RestContext.request.params;
+    for (String name : params.keySet()) {
+      requireKnown(name, fields);
+      asked.put(name, params.get(name));
+    }
+    return asked;
+  }
+
+  /** A field Shoresh doesn't know is refused, naming the ones it does. */
+  private static void requireKnown(String name, Set<String> fields) {
+    if (fields.contains(name)) {
+      return;
+    }
+    List<String> known = new List<String>(fields);
+    known.sort();
+    throw new ShoreshException(
+      'Shoresh doesn\'t know the field "' +
+        name.left(40) +
+        '". The fields are: ' +
+        String.join(known, ', ') +
+        '.'
+    );
   }
 
   /** A list field as sent (none when left out); a value that isn't a list is refused. */

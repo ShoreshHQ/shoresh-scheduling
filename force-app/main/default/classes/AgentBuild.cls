@@ -35,29 +35,17 @@ global with sharing class AgentBuild implements AgentWeeks.Action {
 
   @HttpGet
   global static void get() {
-    RestResponse response = RestContext.response;
-    response.addHeader('Content-Type', 'application/json');
-    // An AI's read: it hears the screen's refusals without their advice (API-1.105).
-    AgentRefusal.forAgent = true;
-    try {
-      Map<String, Object> asked = new Map<String, Object>();
-      for (String field : new List<String>{ 'season', 'week', 'program' }) {
-        asked.put(field, RestContext.request.params.get(field));
-      }
-      Map<String, Object> read = readOf(AgentWeeks.placeOf(asked));
-      response.statusCode = 200;
-      response.responseBody = Blob.valueOf(JSON.serialize(read, true));
-    } catch (Exception e) {
-      Boolean ours =
-        e instanceof ShoreshException || e instanceof AuraHandledException;
-      response.statusCode = ours ? 400 : 500;
-      response.responseBody = Blob.valueOf(
-        JSON.serialize(
-          OutgoingRows.answered(ours ? e.getMessage() : ScreenErrors.words(e))
-        )
-      );
-    } finally {
-      AgentRefusal.forAgent = false;
+    AgentRequest.answer(new WhatGenerateReads());
+  }
+
+  /** The GET: what Generate reads for the week (readOf). */
+  private with sharing class WhatGenerateReads implements AgentRequest.Read {
+    public Set<String> fields() {
+      return new Set<String>{ 'season', 'week', 'program' };
+    }
+
+    public String run(Map<String, Object> asked) {
+      return JSON.serialize(AgentBuild.readOf(AgentWeeks.placeOf(asked)), true);
     }
   }
 

@@ -22,42 +22,35 @@ public with sharing class AgentImports {
     'plan'
   };
 
-  /** What the screen reads before a file, answered as JSON (refusals as {"message"}). */
-  public static void answerRead(String door) {
-    RestResponse response = RestContext.response;
-    response.addHeader('Content-Type', 'application/json');
-    // An AI's read: it hears the screen's refusals without their advice (API-1.105).
-    AgentRefusal.forAgent = true;
-    try {
-      Boolean open = AgentImportQuestions.asked(door);
+  /** The GET: what the screen reads before a file, for one door. */
+  public with sharing virtual class Reads implements AgentRequest.Read {
+    private String door;
+
+    public Reads(String door) {
+      this.door = door;
+    }
+
+    public virtual Set<String> fields() {
+      return new Set<String>{ 'season' };
+    }
+
+    public String run(Map<String, Object> asked) {
       Season__c season = AgentChangeCampWords.seasonOf(
-        RestContext.request.params.get('season')
+        (String) asked.get('season')
       );
-      Map<String, Object> read = readOf(season, door);
-      if (open) {
+      Map<String, Object> read = AgentImports.readOf(season, door);
+      // Only Import last year's read takes it (API-1.144).
+      if ((String) asked.get(AgentImportQuestions.FIELD) == 'true') {
         // INGEST-5.5: the last import's files as it read them, as Roots' questions left open it.
         read.put('open_files', AgentImportQuestions.openFilesOf(season.Id));
       }
-      response.statusCode = 200;
-      response.responseBody = Blob.valueOf(JSON.serialize(read, true));
-    } catch (Exception e) {
-      Boolean ours =
-        e instanceof ShoreshException || e instanceof AuraHandledException;
-      response.statusCode = ours ? 400 : 500;
-      response.responseBody = Blob.valueOf(
-        JSON.serialize(
-          OutgoingRows.answered(ours ? e.getMessage() : ScreenErrors.words(e))
-        )
-      );
-    } finally {
-      AgentRefusal.forAgent = false;
+      return JSON.serialize(read, true);
     }
   }
 
   /** The screen's own reads, and the stamp a save carries back as seen. */
   public static Map<String, Object> readOf(Season__c season, String door) {
     Map<String, Object> read = new Map<String, Object>{
-      'season' => season.Name,
       'setup' => SeasonSetupController.getSeasonSetupInCamp(
         season.Camp__c,
         season.Id

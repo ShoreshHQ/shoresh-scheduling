@@ -23,11 +23,9 @@ public with sharing class AgentAskFirst {
     String preview();
   }
 
-  /** Runs action as the runner does, asking first when it is a Preview (POST only). */
+  /** Runs action as the runner does, asking first when it is a Preview. */
   public static String run(AgentWeeks.Action action) {
-    if (
-      !(action instanceof Preview) || RestContext.request.httpMethod == 'GET'
-    ) {
+    if (!(action instanceof Preview)) {
       return action.run();
     }
     String given = taken();

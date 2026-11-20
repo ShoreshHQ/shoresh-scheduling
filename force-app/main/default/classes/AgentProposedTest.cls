@@ -7,7 +7,7 @@
 @IsTest
 private class AgentProposedTest {
   private static List<Object> ask(
-    AgentWeeks.Action door,
+    Object door,
     String method,
     Map<String, Object> body
   ) {
@@ -21,7 +21,11 @@ private class AgentProposedTest {
       RestContext.request.requestBody = Blob.valueOf(JSON.serialize(body));
     }
     RestContext.response = new RestResponse();
-    AgentWeeks.answer(door);
+    if (door instanceof AgentRequest.Read) {
+      AgentRequest.answer((AgentRequest.Read) door);
+    } else {
+      AgentWeeks.answer((AgentWeeks.Action) door);
+    }
     Map<String, Object> answer = (Map<String, Object>) JSON.deserializeUntyped(
       RestContext.response.responseBody.toString()
     );

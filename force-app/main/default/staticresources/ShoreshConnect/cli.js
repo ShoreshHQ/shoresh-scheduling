@@ -15,7 +15,7 @@
  * The rules: docs/protocol/api.md, Command line (API-1.109 to API-1.113).
  */
 const { CAPABILITIES, byName } = require("./capabilities");
-const { call, withSeasonNamed } = require("./client");
+const { call } = require("./client");
 const { oneCommandAtATime } = require("./learned");
 const { toolResult } = require("./mcp");
 
@@ -122,10 +122,7 @@ async function main(
   oneCommandAtATime(true);
   try {
     const { name, input, org } = parse(argv);
-    let said = withSeasonNamed(
-      await callFn(name, input, { org: org ?? env.SHORESH_ORG }),
-      input
-    );
+    let said = await callFn(name, input, { org: org ?? env.SHORESH_ORG });
     if (
       byName(name).undoesLast &&
       !said.ok &&

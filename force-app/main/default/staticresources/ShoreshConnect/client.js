@@ -149,7 +149,10 @@ async function call(name, input, options = {}) {
       return out;
     }
   });
-  const said = season && done && !done.season ? { ...done, season } : done;
+  const said = withSeasonNamed(
+    season && done && !done.season ? { ...done, season } : done,
+    input
+  );
   // Shoresh asked first and did nothing yet (API-1.106): never mistaken for done (API-1.115).
   return said?.ok && String(said.text).startsWith(NOT_YET)
     ? { ...said, asksFirst: true }
@@ -1248,7 +1251,6 @@ async function check({ org, run = runSf } = {}) {
 
 module.exports = {
   TOO_BIG,
-  withSeasonNamed,
   NOT_YET,
   PERSON_DECIDES,
   toAgent,

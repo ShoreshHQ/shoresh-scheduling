@@ -4,10 +4,10 @@
  * as the screens read it (SeasonSetupController.getSeasonSetupInCamp), with the camp's words.
  */
 @RestResource(urlMapping='/v1/setup_file')
-global with sharing class AgentSetupFile implements AgentFiles.Read {
+global with sharing class AgentSetupFile implements AgentRequest.Read {
   @HttpGet
   global static void get() {
-    AgentFiles.answer(new AgentSetupFile());
+    AgentRequest.answer(new AgentSetupFile());
   }
 
   public Set<String> fields() {

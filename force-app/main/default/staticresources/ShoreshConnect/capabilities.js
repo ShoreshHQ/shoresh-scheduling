@@ -917,6 +917,8 @@ const CAPABILITIES = [
   ),
   {
     name: "read_electives_list",
+    // Used on this computer, never sent.
+    localFields: ["activity"],
     api: "electives_list",
     method: "GET",
     readsOfferings: true,
@@ -990,6 +992,8 @@ const CAPABILITIES = [
   },
   {
     name: "read_linked_choices",
+    // Used on this computer, never sent.
+    localFields: ["activity"],
     api: "linked_choices",
     method: "GET",
     readsLinkedChoices: true,
@@ -1069,6 +1073,8 @@ const CAPABILITIES = [
   },
   {
     name: "read_week_draft",
+    // Used on this computer, never sent.
+    localFields: ["day", "group"],
     api: "read_week_draft",
     method: "GET",
     readsDraft: true,

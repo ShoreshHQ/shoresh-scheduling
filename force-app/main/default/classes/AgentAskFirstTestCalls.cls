@@ -9,7 +9,12 @@
  */
 @IsTest
 public class AgentAskFirstTestCalls {
-  public static void answer(AgentWeeks.Action action) {
+  public static void answer(Object door) {
+    if (door instanceof AgentRequest.Read) {
+      AgentRequest.answer((AgentRequest.Read) door);
+      return;
+    }
+    AgentWeeks.Action action = (AgentWeeks.Action) door;
     Blob sent = RestContext.request.requestBody;
     AgentWeeks.answer(action);
     String confirm = confirmIn(RestContext.response);

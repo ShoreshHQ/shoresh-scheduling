@@ -6,24 +6,19 @@
  * was made and the seen undo_import carries back.
  */
 @RestResource(urlMapping='/v1/read_last_imports')
-global with sharing class AgentReadLastImports implements AgentWeeks.Action {
+global with sharing class AgentReadLastImports implements AgentRequest.SentenceRead {
   @HttpGet
   global static void get() {
-    AgentWeeks.answer(new AgentReadLastImports());
+    AgentRequest.answer(new AgentReadLastImports());
   }
 
-  public String run() {
-    for (String key : RestContext.request.params.keySet()) {
-      if (key != 'season') {
-        throw new ShoreshException(
-          'Shoresh doesn\'t know the field "' +
-            key.left(40) +
-            '". The fields are: season.'
-        );
-      }
-    }
+  public Set<String> fields() {
+    return new Set<String>{ 'season' };
+  }
+
+  public String run(Map<String, Object> asked) {
     Season__c season = AgentChangeCampWords.seasonOf(
-      RestContext.request.params.get('season')
+      (String) asked.get('season')
     );
     SeasonSetupReader.SeasonSetup setup = SeasonSetupController.getSeasonSetup(
       season.Id

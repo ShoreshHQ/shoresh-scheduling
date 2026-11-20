@@ -4,30 +4,19 @@
  * guess a season's or a week's name. User mode: only what the person can see.
  */
 @RestResource(urlMapping='/v1/seasons')
-global with sharing class AgentSeasons {
+global with sharing class AgentSeasons implements AgentRequest.Read {
   @HttpGet
   global static void get() {
-    RestResponse response = RestContext.response;
-    response.addHeader('Content-Type', 'application/json');
-    // An AI's read: it hears the screen's refusals without their advice (API-1.105).
-    AgentRefusal.forAgent = true;
-    try {
-      response.statusCode = 200;
-      response.responseBody = Blob.valueOf(JSON.serialize(answer()));
-    } catch (Exception e) {
-      response.statusCode = e instanceof ShoreshException ? 400 : 500;
-      response.responseBody = Blob.valueOf(
-        JSON.serialize(
-          new Map<String, String>{
-            'message' => e instanceof ShoreshException
-              ? e.getMessage()
-              : ScreenErrors.words(e)
-          }
-        )
-      );
-    } finally {
-      AgentRefusal.forAgent = false;
-    }
+    AgentRequest.answer(new AgentSeasons());
+  }
+
+  /** None: every season the person can see. */
+  public Set<String> fields() {
+    return new Set<String>();
+  }
+
+  public String run(Map<String, Object> asked) {
+    return JSON.serialize(answer());
   }
 
   /** The camp's "In a short week" choice, as the season form has it (WEEK-4.2). */

@@ -109,7 +109,12 @@ describe("an AI's change is the screen's, and so is its Undo", () => {
       },
       sf
     );
-    expect(done).toEqual({ ok: true, status: 200, text: "Done." });
+    expect(done).toEqual({
+      ok: true,
+      status: 200,
+      season: "Summer 2026",
+      text: "Done."
+    });
     expect(sf.seen[1].args[3]).toBe("/services/apexrest/v1/schedule_cell");
     const sent = sf.seen[1].body;
     expect(sent.change).toBe("Placed Soccer · Bunk 1 · Monday · Period 2");

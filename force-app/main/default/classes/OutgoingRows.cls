@@ -36,13 +36,20 @@ public with sharing class OutgoingRows {
     return result;
   }
 
-  /** A read's body, saying which season it used when it doesn't already (API-1.108). */
-  public static String said(Map<String, Object> body) {
+  /**
+   * A read's answer (a JSON object, as the read serialized it), saying first which season it
+   * used (API-1.108). The read never says it itself.
+   */
+  public static String said(String answer) {
     Season__c season = used ?? SeasonAsked.found();
-    if (season != null && !body.containsKey('season')) {
-      body.put('season', season.Name);
+    if (season == null) {
+      return answer;
     }
-    return JSON.serialize(body, true);
+    String rest = answer.substring(1).trim();
+    return '{"season":' +
+      JSON.serialize(season.Name) +
+      (rest == '}' ? '' : ',') +
+      rest;
   }
 
   private static Season__c seasonNamed(String name) {

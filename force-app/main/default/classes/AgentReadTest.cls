@@ -343,7 +343,27 @@ private class AgentReadTest {
       );
     }
     Assert.areEqual('Week 1', answer.get('week'));
+  }
+
+  // API-1.108: the week view's read says the season it used, as every read does.
+  @IsTest
+  static void theWeekViewSaysItsSeason() {
+    IncomingTestData camp = new IncomingTestData();
+    schedule(camp, 'Published', grid(camp));
+    System.runAs(camp.sender('Shoresh_Scheduler')) {
+      RestContext.request = new RestRequest();
+      RestContext.request.httpMethod = 'GET';
+      RestContext.request.params.put('week', 'Week 1');
+      RestContext.response = new RestResponse();
+      AgentWeekView.get();
+    }
+    String body = RestContext.response.responseBody.toString();
+    Assert.areEqual(200, RestContext.response.statusCode, body);
+    Map<String, Object> answer = (Map<String, Object>) JSON.deserializeUntyped(
+      body
+    );
     Assert.areEqual('Summer 2026', answer.get('season'));
+    Assert.areEqual('Week 1', answer.get('week'));
   }
 
   // API-1.28: a schedule read's answer opens the week on the Schedules screen in the camp's own
