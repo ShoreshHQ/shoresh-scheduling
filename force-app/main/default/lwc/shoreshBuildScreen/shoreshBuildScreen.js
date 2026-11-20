@@ -1,10 +1,10 @@
 /**
- * What Generated Schedule and Manual Build do the same way, word for word: choosing a program and
- * week, what setup changed, what's still needed, applying to other weeks, and the Versions list.
- * Each screen keeps its own fields and what differs. Update to match setup is c/shoreshBuildWeek;
- * publish, restore and reading the week stay on each screen for now.
+ * What Generated Schedule and Manual Build show the same way, word for word: choosing a program
+ * and week, what's still needed, the setup dots and the menu's Update, applying to other weeks,
+ * and telling the page what changed. Each screen keeps its own fields and what differs. What acts
+ * on the week (Update to match setup, publish, the Versions list and its actions) is
+ * c/shoreshBuildWeek; reading the week stays on each screen.
  */
-import getVersions from "@salesforce/apex/SchedulesController.getVersions";
 import { campZone } from "c/shoreshCampClock";
 import { FIELD } from "c/shoreshSchema";
 import { stillNeeded, stillNeededSentence } from "c/shoreshSetupRules";
@@ -182,26 +182,6 @@ export const BuildScreen = (Base) =>
       this.template.querySelector('[data-id="versions"]').focusButton();
       if (event.detail.sourceChanged) {
         this.load(true);
-      }
-    }
-    async loadVersions() {
-      this.versionsTicket += 1;
-      const ticket = this.versionsTicket;
-      // An older read answering after a newer one (or after another week was chosen) is dropped.
-      const latest = () => ticket === this.versionsTicket;
-      try {
-        const rows = await getVersions({
-          programId: this.programId,
-          weekId: this.weekId
-        });
-        if (latest()) {
-          this.versions = rows || [];
-        }
-      } catch {
-        // The list shows as empty; the week itself is unaffected.
-        if (latest()) {
-          this.versions = [];
-        }
       }
     }
     /**

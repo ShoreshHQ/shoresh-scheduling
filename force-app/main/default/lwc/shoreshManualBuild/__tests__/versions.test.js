@@ -363,25 +363,6 @@ describe("c-shoresh-manual-build: versions and Start from another week", () => {
     await flush();
   });
 
-  it("a refused Save version says why, keeps the name typed, and says nothing was saved", async () => {
-    const element = await render(draft(WITH_SWIM, ["1,2,", "1,,"]));
-    saveVersion.mockRejectedValue({ body: { message: "That name is taken." } });
-    const panel = await versionsPanel(element);
-    const input = panel.querySelector('[data-id="save-name"]');
-    input.value = "Before the trip";
-    input.dispatchEvent(new CustomEvent("input"));
-    await flush();
-    panel.querySelector('[data-id="save-button"]').click();
-    await flush();
-    expect(q(element, '[data-id="build-error"]').textContent).toBe(
-      "Before the trip wasn't saved. That name is taken."
-    );
-    expect(q(element, '[data-id="notice"]')).toBeNull();
-    expect(panel.querySelector('[data-id="save-name"]').value).toBe(
-      "Before the trip"
-    );
-  });
-
   it("a Save version that fails for a reason Shoresh didn't write never shows Salesforce's text", async () => {
     const element = await render(draft(WITH_SWIM, ["1,2,", "1,,"]));
     const consoleError = jest
@@ -469,32 +450,6 @@ describe("c-shoresh-manual-build: versions and Start from another week", () => {
     await flush();
     const panel = await versionsPanel(element);
     expect(restoreButton(panel)).toBeNull();
-  });
-
-  it("an older read of the list answering after a newer one is not shown", async () => {
-    const late = pending();
-    getVersions.mockReturnValueOnce(late.promise);
-    getDraft.mockResolvedValue(draft(WITH_SWIM, ["1,2,", "1,,"]));
-    const element = createElement("c-shoresh-manual-build", {
-      is: ShoreshManualBuild
-    });
-    element.terms = buildTerms(LABELS);
-    element.setup = nsRecord(SETUP);
-    document.body.appendChild(element);
-    await flush();
-    // Save version reads the list again; that newer answer comes first.
-    getVersions.mockResolvedValue(VERSIONS);
-    saveVersion.mockResolvedValue("a0S000000000023AAA");
-    q(element, '[data-id="versions"]').dispatchEvent(
-      new CustomEvent("save", {
-        detail: { name: "Rainy Monday", onDone: () => {} }
-      })
-    );
-    await flush();
-    late.resolve([]);
-    await flush();
-    const panel = await versionsPanel(element);
-    expect(restoreButton(panel)).not.toBeNull();
   });
 
   it("Save version keeps the week under the name typed", async () => {
@@ -878,6 +833,28 @@ describe("c-shoresh-manual-build: versions and Start from another week", () => {
       expect(q(element, '[data-id="restore-refused"]')).toBeNull();
     });
 
+    it("WEEK-6.7: setup saved during a Restore that is then refused keeps the refusal's line; its Reload reads the week", async () => {
+      const element = await render(
+        withRevisions(draft(WITH_SWIM, ["1,2,", "1,,"]), "2026-06-29:1")
+      );
+      const sent = pending();
+      restoreVersion.mockReturnValue(sent.promise);
+      const panel = await versionsPanel(element);
+      restoreButton(panel).click();
+      await flush();
+      getDraft.mockClear();
+      element.setup = nsRecord({ ...SETUP });
+      await flush();
+      sent.resolve({ changedSince: true });
+      await flush();
+      expect(getDraft).not.toHaveBeenCalled();
+      const line = q(element, '[data-id="restore-refused"]');
+      expect(line).not.toBeNull();
+      line.querySelector('[data-id="reload"]').click();
+      await flush();
+      expect(getDraft).toHaveBeenCalledTimes(1);
+    });
+
     it("after a delete, focus goes to the next version once the list without it is back", async () => {
       getVersions.mockResolvedValue(TWO);
       const element = await render(draft(WITH_SWIM, ["1,2,", "1,,"]));
@@ -1096,6 +1073,25 @@ describe("c-shoresh-manual-build: versions and Start from another week", () => {
       await deleteTwice();
       expect(deleteVersion).toHaveBeenCalledTimes(2);
       expect(heard).toEqual([{ weekId: "w1", programId: "p1", season: false }]);
+    });
+
+    it("WEEK-6.7: setup saved on another screen while a version is saved reads the week once it is saved", async () => {
+      const element = await render(draft(WITH_SWIM, ["1,2,", "1,,"]));
+      const saving = pending();
+      saveVersion.mockReturnValue(saving.promise);
+      q(element, '[data-id="versions"]').dispatchEvent(
+        new CustomEvent("save", {
+          detail: { name: "Rainy Monday", onDone: () => {} }
+        })
+      );
+      await flush();
+      getDraft.mockClear();
+      element.setup = nsRecord({ ...SETUP });
+      await flush();
+      expect(getDraft).not.toHaveBeenCalled();
+      saving.resolve("a0S000000000023AAA");
+      await flush();
+      expect(getDraft).toHaveBeenCalledTimes(1);
     });
 
     it("WEEK-6.7: a version changed on another screen is read again here, for this week only", async () => {
