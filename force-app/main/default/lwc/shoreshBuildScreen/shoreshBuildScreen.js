@@ -1,8 +1,8 @@
 /**
  * What Generated Schedule and Manual Build do the same way, word for word: choosing a program and
  * week, what setup changed, what's still needed, applying to other weeks, and the Versions list.
- * Each screen keeps its own fields and what differs. Publish, restore and reading the week stay
- * on each screen: they look alike but differ, some of it on purpose.
+ * Each screen keeps its own fields and what differs. Update to match setup is c/shoreshBuildWeek;
+ * publish, restore and reading the week stay on each screen for now.
  */
 import getVersions from "@salesforce/apex/SchedulesController.getVersions";
 import { campZone } from "c/shoreshCampClock";
@@ -111,17 +111,6 @@ export const BuildScreen = (Base) =>
     handleEditorReload() {
       this.load(true);
     }
-    /**
-     * Reads what setup changed since the week was made (its own request, so opening the week costs
-     * no more). An answer older than the latest ask, or for a week no longer shown, is dropped.
-     * Returns the preview, or null.
-     */
-    loadSetupChanges() {
-      const read = this.readSetupChanges();
-      // The newest read, for one that finds it was overtaken (handleSetupMatch).
-      this.setupRead = read;
-      return read;
-    }
     /** The cells setup changed, as the editor takes them: cell key to the dot's words. */
     get setupDots() {
       const preview = this.setupPreview;
@@ -163,11 +152,6 @@ export const BuildScreen = (Base) =>
     }
     get setupHeading() {
       return `Update ${this.weekName} to match setup?`;
-    }
-    /** The list, open again with words to read out (read out even when the same as last time). */
-    setupAskWith(notice, announcement, kept, updated = false) {
-      this.setupSaid += 1;
-      return { notice, announcement, kept, updated, said: this.setupSaid };
     }
     /**
      * Asks the page to put focus on the menu's Update to match setup (setupfocus { focused }: the

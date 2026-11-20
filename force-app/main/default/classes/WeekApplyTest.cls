@@ -26,7 +26,7 @@ private class WeekApplyTest {
       WeekApply.Outcome preview = WeekApplyController.previewApply(
         source,
         WeekApplyTestData.ids.get('Week 2'),
-        ScheduleDays.stamp(ScheduleDays.read(source))
+        WeekTickets.stamp(ScheduleDays.read(source))
       );
       Assert.isTrue(preview.startsDraft);
       Assert.areEqual(2, preview.cellsChanging);
@@ -350,7 +350,7 @@ private class WeekApplyTest {
       ManualVersions.restore(
         target,
         kept.Id,
-        ScheduleDays.stamp(ScheduleDays.read(target))
+        WeekTickets.stamp(ScheduleDays.read(target))
       );
       Test.stopTest();
       Assert.areEqual(
@@ -446,7 +446,7 @@ private class WeekApplyTest {
       Test.startTest();
       SchedulePublish.Result published = ManualBuildController.publish(
         target,
-        ScheduleDays.stamp(ScheduleDays.read(target)),
+        WeekTickets.stamp(ScheduleDays.read(target)),
         null
       );
       WeekApply.Outcome done = WeekApplyTestData.applied(source, 'Week 2');
@@ -538,8 +538,8 @@ private class WeekApplyTest {
         ),
         'Not by saving'
       );
-      String sourceBefore = ScheduleDays.stamp(ScheduleDays.read(source));
-      String otherBefore = ScheduleDays.stamp(ScheduleDays.read(other));
+      String sourceBefore = WeekTickets.stamp(ScheduleDays.read(source));
+      String otherBefore = WeekTickets.stamp(ScheduleDays.read(other));
       Assert.isTrue(WeekApplyTestData.applied(source, 'Week 2').applied);
       Test.stopTest();
       Assert.areEqual(
@@ -552,12 +552,9 @@ private class WeekApplyTest {
       );
       Assert.areEqual(
         sourceBefore,
-        ScheduleDays.stamp(ScheduleDays.read(source))
+        WeekTickets.stamp(ScheduleDays.read(source))
       );
-      Assert.areEqual(
-        otherBefore,
-        ScheduleDays.stamp(ScheduleDays.read(other))
-      );
+      Assert.areEqual(otherBefore, WeekTickets.stamp(ScheduleDays.read(other)));
     }
   }
 

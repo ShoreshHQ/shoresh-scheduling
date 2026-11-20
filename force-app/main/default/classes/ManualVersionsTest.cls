@@ -63,7 +63,7 @@ private class ManualVersionsTest {
 
   /** The draft's revisions as a screen opened now would send them back with Restore. */
   private static String seen(Id draftId) {
-    return ScheduleDays.stamp(ScheduleDays.read(draftId));
+    return WeekTickets.stamp(ScheduleDays.read(draftId));
   }
 
   /** Restore as the screen does it, having just read the week. */

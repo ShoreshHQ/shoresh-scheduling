@@ -25,9 +25,13 @@ public with sharing class ScheduleDaySaves {
     }
   }
 
-  /** Saves the days, all or none. Refuses a day saved by someone else since it was opened. */
-  public static void write(Id scheduleId, List<DaySave> saves) {
-    writeAll(new Map<Id, List<DaySave>>{ scheduleId => saves });
+  /**
+   * Saves the days, all or none. Refuses a day saved by someone else since it was opened.
+   * Returns each saved day's new revision (WeekTickets.afterWrite), so nothing is read again.
+   */
+  public static Map<Date, Integer> write(Id scheduleId, List<DaySave> saves) {
+    return writeAll(new Map<Id, List<DaySave>>{ scheduleId => saves })
+      .get(scheduleId);
   }
 
   /**
@@ -46,9 +50,11 @@ public with sharing class ScheduleDaySaves {
 
   /**
    * Saves several schedules' days at once (an import's versions), all or none: one lock, one
-   * read of the days already saved, one write.
+   * read of the days already saved, one write. Returns each schedule's new day revisions.
    */
-  public static void writeAll(Map<Id, List<DaySave>> savesBySchedule) {
+  public static Map<Id, Map<Date, Integer>> writeAll(
+    Map<Id, List<DaySave>> savesBySchedule
+  ) {
     Map<Id, Schedule__c> schedules = new Map<Id, Schedule__c>(
       [
         SELECT
@@ -82,6 +88,7 @@ public with sharing class ScheduleDaySaves {
     );
     List<ScheduleDay__c> toSave = new List<ScheduleDay__c>();
     List<ScheduleDay__c> toDelete = new List<ScheduleDay__c>();
+    Map<Id, Map<Date, Integer>> revisions = new Map<Id, Map<Date, Integer>>();
     for (Id scheduleId : savesBySchedule.keySet()) {
       Batch batch = new Batch(
         scheduleId,
@@ -94,6 +101,7 @@ public with sharing class ScheduleDaySaves {
       }
       toSave.addAll(batch.toSave);
       toDelete.addAll(batch.toDelete);
+      revisions.put(scheduleId, batch.revisions);
     }
     Savepoint beforeSave = Database.setSavepoint();
     try {
@@ -103,6 +111,7 @@ public with sharing class ScheduleDaySaves {
       Database.rollback(beforeSave);
       throw e;
     }
+    return revisions;
   }
 
   private static Integer nextRevision(
@@ -124,6 +133,7 @@ public with sharing class ScheduleDaySaves {
     private Map<Date, List<ScheduleDay__c>> existing;
     private List<ScheduleDay__c> toSave = new List<ScheduleDay__c>();
     private List<ScheduleDay__c> toDelete = new List<ScheduleDay__c>();
+    private Map<Date, Integer> revisions = new Map<Date, Integer>();
 
     private Batch(Id scheduleId, Map<Date, List<ScheduleDay__c>> existing) {
       this.scheduleId = scheduleId;
@@ -135,6 +145,7 @@ public with sharing class ScheduleDaySaves {
         ? existing.get(save.day)
         : new List<ScheduleDay__c>();
       Integer revision = nextRevision(before, save.expectedRevision);
+      revisions.put(save.day, revision);
       List<String> texts = ScheduleGridParts.split(save.grid);
       Integer first = toSave.size();
       for (Integer i = 0; i < texts.size(); i++) {

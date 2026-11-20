@@ -83,14 +83,6 @@ public with sharing class SeenSaves {
   }
 
   /**
-   * Whether the week is still at the revision the person read (the ticket), its draft already
-   * held (GeneratedDrafts.lockedToEdit). No ticket is never as seen.
-   */
-  public static Boolean week(List<ScheduleDays.DayGrid> days, String ticket) {
-    return stamp(GeneratedDrafts.revisionOf(days), ticket);
-  }
-
-  /**
    * Whether a thing, already held, still has the stamp the person read (the ticket), exactly:
    * no ticket is never as seen.
    */

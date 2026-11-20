@@ -1086,7 +1086,7 @@ private class SetupMatchTest {
           LIMIT 1
         ]
         .Id,
-        ScheduleDays.stamp(ScheduleDays.read(draftId))
+        WeekTickets.stamp(ScheduleDays.read(draftId))
       );
       SetupMatch.Preview again = SetupMatchController.getSetupChanges(draftId);
       Test.stopTest();
@@ -1145,7 +1145,7 @@ private class SetupMatchTest {
       // Nothing was saved: the week is as it was.
       Assert.areEqual(
         preview.revisions,
-        ScheduleDays.stamp(ScheduleDays.read(draftId))
+        WeekTickets.stamp(ScheduleDays.read(draftId))
       );
     }
   }
