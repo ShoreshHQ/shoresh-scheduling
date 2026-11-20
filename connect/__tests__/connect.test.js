@@ -98,7 +98,7 @@ describe("Shoresh for AI tools and the command line", () => {
   });
 
   // API-1.6 (Greg 2026-11-15, AI = screen)
-  it("personsAiBringsDataInAsTheScreens: the outside systems' bring_in_* doors are no tool or command; a person's AI is pointed to import_list and bring_in_choices", () => {
+  it("personsAiBringsDataInAsTheScreens: the outside systems' bring_in_* doors are no tool or command; a person's AI is pointed to import_list and import_choices", () => {
     const { usage } = require("../cli");
     const offered = [
       ...tools().map((t) => t.name),
@@ -130,7 +130,7 @@ describe("Shoresh for AI tools and the command line", () => {
       ]);
     }
     expect(byName("import_list").description).toMatch(/Import a list/);
-    expect(byName("bring_in_choices")).toBeDefined();
+    expect(byName("import_choices")).toBeDefined();
   });
 
   it("API-1.125: apply_to_other_weeks names both weeks, either screen, and asks first", async () => {
@@ -171,14 +171,72 @@ describe("Shoresh for AI tools and the command line", () => {
 
   // API-1.6, API-1.5
   // API-1.19
-  it("plainNames: every action is list_seasons, read_<thing>, bring_in_choices, change_<thing>, build_week, try_another_option, bring_back_option, fill_open_cells, start_over_week, publish_week, unpublish_week, lock_cells, unlock_cells, move_cell, take_out_cell, copy_cells, start_manual_week, finalize_electives, accept_finding, undo_last_agent_change, <verb>_version, rename/delete/add_setup_record, fill_in_weeks, merge_locations, confirm_setup_guess, confirm_proposed_offering, copy_season, update_to_match_setup, switch_to_rain_plans, assign_elective_seats, move_elective_seat, lock_elective_seat, start_new_elective_version, clear_electives, put_special_day_on_day, take_special_day_off_day, place_special_event, set_up_noted_item, import_list, import_worksheet, import_last_year, import_special_schedule, undo_import, apply_to_other_weeks, download_<file>, forget_learned_answer, forget_learned_pattern, undo_learned_answer, make_linked_choice, delete_linked_choice, delete_offering, create_camp, create_season, delete_season, archive_season, bring_back_season, clear_day or clear_week, said without jargon", () => {
+  it("plainNames: every action is list_seasons, read_<thing>, import_choices, change_<thing>, build_week, try_another_option, bring_back_option, fill_open_cells, start_over_week, publish_week, unpublish_week, lock_cells, unlock_cells, move_cell, take_out_cell, copy_cells, start_manual_week, finalize_electives, accept_line, undo_last_change, <verb>_version, rename/delete/add_to_setup, fill_in_weeks, merge_locations, mark_looks_right, elective_looks_right, copy_season, update_to_match_setup, rainy_day, assign_elective_seats, move_elective_seat, lock_elective_seat, change_seats, clear_electives, put_special_day_on_day, take_special_day_off_day, place_special_event, set_it_up, import_list, import_worksheet, import_last_year, import_special_schedule, undo_import, apply_to_other_weeks, download_<file>, forget_learned_answer, forget_learned_pattern, undo_learned_answer, make_linked_choice, delete_linked_choice, delete_elective, create_camp, create_season, delete_season, archive_season, bring_back_season, clear_day or clear_week, said without jargon", () => {
     for (const c of CAPABILITIES) {
       expect(c.name).toMatch(
-        /^((read|change)_[a-z]+(_[a-z]+)*|bring_in_choices|list_seasons|undo_last_agent_change|build_week|try_another_option|bring_back_option|fill_open_cells|start_over_week|(un)?publish_week|(un)?lock_cells|move_cell|take_out_cell|copy_cells|start_manual_week|finalize_electives|accept_finding|(list|save|restore|rename|delete)_versions?|(rename|delete|add)_setup_record|fill_in_weeks|merge_locations|confirm_setup_guess|confirm_proposed_offering|copy_season|update_to_match_setup|switch_to_rain_plans|assign_elective_seats|move_elective_seat|lock_elective_seat|start_new_elective_version|clear_electives|put_special_day_on_day|take_special_day_off_day|place_special_event|set_up_noted_item|import_list|import_worksheet|import_last_year|import_special_schedule|undo_import|apply_to_other_weeks|download_(schedule|special_schedule|elective_files|setup)|forget_learned_(answer|pattern)|undo_learned_answer|make_linked_choice|delete_linked_choice|delete_offering|create_camp|create_season|delete_season|archive_season|bring_back_season|clear_day|clear_week)$/
+        /^((read|change)_[a-z]+(_[a-z]+)*|import_choices|list_seasons|undo_last_change|build_week|try_another_option|bring_back_option|fill_open_cells|start_over_week|(un)?publish_week|(un)?lock_cells|move_cell|take_out_cell|copy_cells|start_manual_week|finalize_electives|accept_line|(list|save|restore|rename|delete)_versions?|rename_in_setup|delete_from_setup|add_to_setup|fill_in_weeks|merge_locations|mark_looks_right|elective_looks_right|copy_season|update_to_match_setup|rainy_day|assign_elective_seats|move_elective_seat|lock_elective_seat|change_seats|clear_electives|put_special_day_on_day|take_special_day_off_day|place_special_event|set_it_up|import_list|import_worksheet|import_last_year|import_special_schedule|undo_import|apply_to_other_weeks|download_(schedule|special_schedule|elective_files|setup)|forget_learned_(answer|pattern)|undo_learned_answer|make_linked_choice|delete_linked_choice|delete_elective|create_camp|create_season|delete_season|archive_season|bring_back_season|clear_day|clear_week)$/
       );
       expect(JSON.stringify(c)).not.toMatch(
         /resource|payload|entity|idempoten|endpoint|sobject/i
       );
+    }
+  });
+
+  // API-1.6
+  it("namesInTheScreensWords: no tool, web address, input or value an AI sends says a word the screens don't use", () => {
+    const OLD =
+      /bring_?in|offering|proposed|setup_?record|setup_delete|confirm_setup_guess|agent|finding|period|_rules|rain_plans|noted_item|elective_version|leaveOut|allCamp|byGroup|byActivity/i;
+    // Every name in an input schema, and every value it allows.
+    const namesIn = (schema) =>
+      schema && typeof schema === "object"
+        ? [
+            ...Object.keys(schema.properties || {}),
+            ...(schema.enum || []),
+            ...Object.values(schema.properties || {}).flatMap(namesIn),
+            ...namesIn(schema.items)
+          ]
+        : [];
+    for (const c of CAPABILITIES) {
+      for (const name of [c.name, c.api, ...namesIn(c.inputSchema)]) {
+        expect([c.name, name]).not.toEqual([
+          c.name,
+          expect.stringMatching(OLD)
+        ]);
+      }
+      expect([c.name, c.description]).not.toEqual([
+        c.name,
+        expect.stringMatching(
+          /"(leaveOut|allCamp|byGroup|byActivity|proposed)"/
+        )
+      ]);
+    }
+    // The import engine's own camelCase values are said and taken in plain words.
+    const { aiWord, engineWord } = require("../imports");
+    const engine = {
+      LEAVE_OUT: "leaveOut",
+      LAYOUTS: ["allCamp", "byGroup", "byActivity"]
+    };
+    expect(
+      ["leaveOut", "allCamp", "byGroup", "byActivity", "b"].map((w) =>
+        aiWord(engine, w)
+      )
+    ).toEqual(["leave_out", "all_camp", "by_group", "by_activity", "b"]);
+    expect(
+      ["leave_out", "all_camp", "by_group", "by_activity", "b"].map((w) =>
+        engineWord(engine, w)
+      )
+    ).toEqual(["leaveOut", "allCamp", "byGroup", "byActivity", "b"]);
+    // The final seats sent out read as such, never like the screen's seats now.
+    expect(byName("read_elective_seats")).toBeUndefined();
+    // The web addresses themselves, AI or not.
+    const DIR = path.resolve(__dirname, "../../force-app/main/default/classes");
+    for (const f of fs.readdirSync(DIR).filter((n) => n.endsWith(".cls"))) {
+      const address = /@RestResource\(\s*urlMapping\s*=\s*'([^']*)'/.exec(
+        fs.readFileSync(path.join(DIR, f), "utf8")
+      );
+      if (address) {
+        expect([f, address[1]]).not.toEqual([f, expect.stringMatching(OLD)]);
+      }
     }
   });
 
@@ -242,7 +300,11 @@ describe("Shoresh for AI tools and the command line", () => {
       "Error (RefreshTokenAuthError): Error authenticating with the refresh token due to: connect ETIMEDOUT"
     ]) {
       await expect(
-        call("read_elective_seats", {}, { org: "camp", run: async () => out })
+        call(
+          "read_final_elective_seats",
+          {},
+          { org: "camp", run: async () => out }
+        )
       ).rejects.toThrow(noAnswer);
     }
     for (const out of [
@@ -251,7 +313,11 @@ describe("Shoresh for AI tools and the command line", () => {
       "ENOENT"
     ]) {
       await expect(
-        call("read_elective_seats", {}, { org: "camp", run: async () => out })
+        call(
+          "read_final_elective_seats",
+          {},
+          { org: "camp", run: async () => out }
+        )
       ).rejects.toThrow(/^Couldn't reach Salesforce as "camp". Sign in once/);
     }
     // A warning sf prints before the answer is passed over, not taken for no answer.
@@ -277,7 +343,7 @@ describe("Shoresh for AI tools and the command line", () => {
     ).toEqual({ status: 403, body: '{\n  "message": "No."\n}' });
     await expect(
       call(
-        "read_elective_seats",
+        "read_final_elective_seats",
         {},
         { org: "nobody", run: async () => SIGNED_OUT }
       )
@@ -340,7 +406,7 @@ describe("Shoresh for AI tools and the command line", () => {
 
   // API-1.10
   // API-1.11
-  it("personsOwnChanges: change_schedule_cell reads the week as the screen opens it and sends its edit to /v1/schedule_cell; undo_last_agent_change sends what this conversation holds to /v1/undo_last_agent_change", async () => {
+  it("personsOwnChanges: change_schedule_cell reads the week as the screen opens it and sends its edit to /v1/schedule_cell; undo_last_change sends what this conversation holds to /v1/undo_last_change", async () => {
     const seen = [];
     const fields = {
       season: "Summer 2026",
@@ -359,7 +425,7 @@ describe("Shoresh for AI tools and the command line", () => {
       "/services/apexrest/v1/week_checks?season=Summer+2026&week=Week+1"
     );
     const undone = await call(
-      "undo_last_agent_change",
+      "undo_last_change",
       { season: "Summer 2026", week: "Week 1" },
       {
         run: sfAnswering(
@@ -372,7 +438,7 @@ describe("Shoresh for AI tools and the command line", () => {
       }
     );
     expect(seen[1].args.slice(3, 6)).toEqual([
-      "/services/apexrest/v1/undo_last_agent_change",
+      "/services/apexrest/v1/undo_last_change",
       "--method",
       "POST"
     ]);
@@ -519,14 +585,14 @@ describe("Shoresh for AI tools and the command line", () => {
       };
     const seenRead = [];
     const said = await call(
-      "read_offerings",
+      "read_electives_list",
       {},
       { run: runOf(seenRead), offerings, camp: packaged }
     );
-    expect(seenRead[0].args[3]).toContain("/shoresh/v1/offerings");
+    expect(seenRead[0].args[3]).toContain("/shoresh/v1/electives_list");
     expect(JSON.parse(said.text).offerings[0].activity).toBe("Swim");
     const none = await call(
-      "read_offerings",
+      "read_electives_list",
       { activity: "Nope" },
       { run: runOf([]), offerings, camp: packaged }
     );
@@ -538,7 +604,7 @@ describe("Shoresh for AI tools and the command line", () => {
       seen: { seats: "2" }
     };
     const seen = [];
-    const changed = await call("change_offering", change, {
+    const changed = await call("change_elective", change, {
       run: runOf(seen),
       offerings,
       camp: packaged
@@ -547,7 +613,7 @@ describe("Shoresh for AI tools and the command line", () => {
     expect(changed.text).toBe('Changed. Choose how many seats "Swim" has.');
     // A read that fails after the save doesn't undo what was said.
     const answers = ['HTTP/1.1 200\n\n{"message":"Changed."}'];
-    const after = await call("change_offering", change, {
+    const after = await call("change_elective", change, {
       run: async () => answers.shift() ?? "",
       offerings,
       camp: packaged
@@ -589,7 +655,7 @@ describe("Shoresh for AI tools and the command line", () => {
     const seen = [];
     const made = await call(
       "make_linked_choice",
-      { activity: "Pottery", periods: [{ day: "Monday", time: "Period 1" }] },
+      { activity: "Pottery", times: [{ day: "Monday", time: "Period 1" }] },
       {
         run: runOf(seen, 'Made the linked choice "x".'),
         linked,
@@ -608,7 +674,7 @@ describe("Shoresh for AI tools and the command line", () => {
     ];
     const after = await call(
       "make_linked_choice",
-      { activity: "Pottery", periods: [{ day: "Monday", time: "Period 1" }] },
+      { activity: "Pottery", times: [{ day: "Monday", time: "Period 1" }] },
       {
         run: async () => answers.shift() ?? "",
         linked,
@@ -791,7 +857,7 @@ describe("Shoresh for AI tools and the command line", () => {
 
   // API-1.20
   // API-1.30, API-1.31
-  it("checksHereAcceptThere: read_week_checks reads what the counter reads and answers the counter's words; accept_finding keeps only a line it lists, through /v1/accept_finding", async () => {
+  it("checksHereAcceptThere: read_week_checks reads what the counter reads and answers the counter's words; accept_line keeps only a line it lists, through /v1/accept_line", async () => {
     const read = {
       inputs: { shoresh__Thing__c: 1 },
       setup: {},
@@ -896,7 +962,7 @@ describe("Shoresh for AI tools and the command line", () => {
     seen.length = 0;
     for (const finding of ["Art: 1 of 3", overlap.text]) {
       const refused = await call(
-        "accept_finding",
+        "accept_line",
         { ...asked, finding },
         { run: answers([]), checks }
       );
@@ -909,8 +975,8 @@ describe("Shoresh for AI tools and the command line", () => {
 
     seen.length = 0;
     const accepted = await call(
-      "accept_finding",
-      { ...asked, finding: " swim:  2 of 4" },
+      "accept_line",
+      { ...asked, line: " swim:  2 of 4" },
       { run: answers(['HTTP/1.1 200\n\n{"message":"Accepted."}']), checks }
     );
     expect(accepted).toEqual({
@@ -919,7 +985,7 @@ describe("Shoresh for AI tools and the command line", () => {
       text: "Accepted: Swim, 2 of 4."
     });
     expect(seen[1].args.slice(3, 6)).toEqual([
-      "/services/apexrest/v1/accept_finding",
+      "/services/apexrest/v1/accept_line",
       "--method",
       "POST"
     ]);
@@ -1955,7 +2021,7 @@ describe("Shoresh for AI tools and the command line", () => {
         end_time: "2:00 PM",
         seen: "4"
       },
-      set_up_noted_item: {
+      set_it_up: {
         week: "Week 1",
         kind: "special event",
         name: "Carnival"
@@ -2117,7 +2183,7 @@ describe("Shoresh for AI tools and the command line", () => {
         locked: false,
         seen: "3"
       },
-      start_new_elective_version: {
+      change_seats: {
         season: "Summer 2026",
         week: "Week 1",
         seen: "4"
@@ -2136,7 +2202,7 @@ describe("Shoresh for AI tools and the command line", () => {
   });
 
   // API-1.65
-  it("rainyDayAsTheScreensEditor: switch_to_rain_plans works the day out with the week editor's own rainy day and sends its runs, marks, words and the day's marks as read", async () => {
+  it("rainyDayAsTheScreensEditor: rainy_day works the day out with the week editor's own rainy day and sends its runs, marks, words and the day's marks as read", async () => {
     const LWC = "../../force-app/main/default/lwc";
     const { nsRecord } = require("shoresh-jest/namespace");
     const edits = async () =>
@@ -2186,7 +2252,7 @@ describe("Shoresh for AI tools and the command line", () => {
         `HTTP/1.1 ${status}\n\n${JSON.stringify({ message })}`
       ];
       const done = await call(
-        "switch_to_rain_plans",
+        "rainy_day",
         { ...asked, day },
         {
           run: async (args, stdin) => {
@@ -2201,7 +2267,7 @@ describe("Shoresh for AI tools and the command line", () => {
 
     const monday = await send("Monday");
     expect(monday.seen[1].args.slice(3, 6)).toEqual([
-      "/services/apexrest/v1/switch_to_rain_plans",
+      "/services/apexrest/v1/rainy_day",
       "--method",
       "POST"
     ]);
@@ -2427,7 +2493,7 @@ describe("Shoresh for AI tools and the command line", () => {
     );
     // A new row left out says how to import it after all (Greg's word picks: Import, never Bring in).
     const leaveKey = review.done.text.match(
-      /\[to leave it out, answer ("[^"]+"): "leaveOut"\]/
+      /\[to leave it out, answer ("[^"]+"): "leave_out"\]/
     )[1];
     // An answer the camp gave before reads as the screen says it: Answered as before.
     const similarId = "similar|activity|archery|archry|Archery|Archry";
@@ -2446,11 +2512,11 @@ describe("Shoresh for AI tools and the command line", () => {
       }
     );
     expect(again.text).toContain(
-      `[id "${similarId}"] Are “Archry” and “Archery” the same activity? Answer with "b" = Same: “Archery”, "different" = Different: add “Archry”, "leaveOut" = Leave it out for now. Answered: "b" (Same: “Archery”), Answered as before.`
+      `[id "${similarId}"] Are “Archry” and “Archery” the same activity? Answer with "b" = Same: “Archery”, "different" = Different: add “Archry”, "leave_out" = Leave it out for now. Answered: "b" (Same: “Archery”), Answered as before.`
     );
     const leftOutRow = await send({
       ...file,
-      answers: { [JSON.parse(leaveKey)]: "leaveOut" }
+      answers: { [JSON.parse(leaveKey)]: "leave_out" }
     });
     expect(leftOutRow.done.text).toContain(
       `[left out; to import it, leave ${leaveKey} out of answers]`
@@ -2591,17 +2657,17 @@ describe("Shoresh for AI tools and the command line", () => {
   });
 
   // API-1.151 (AI test 2026-11-17 items 51, 68 and 68a)
-  it("toolsPointToTheScreensWayNotAround: Fill in weeks' refusal is passed on with no week added unasked, and one camper's picks said in words go through bring_in_choices", () => {
+  it("toolsPointToTheScreensWayNotAround: Fill in weeks' refusal is passed on with no week added unasked, and one camper's picks said in words go through import_choices", () => {
     const fill = byName("fill_in_weeks").description;
     expect(fill).toContain(
       "A season that already has weeks is refused, as on the screen: tell the person so, and add no week unasked"
     );
-    expect(fill).not.toContain("add more with add_setup_record");
-    expect(byName("bring_in_choices").description).toContain(
+    expect(fill).not.toContain("add more with add_to_setup");
+    expect(byName("import_choices").description).toContain(
       "from a file or from the person's own words: one camper's new or changed choices go as a sheet of that one camper"
     );
     // Matched by number, or by name: a camper the review counts as new would be a second one.
-    expect(byName("bring_in_choices").description).toContain(
+    expect(byName("import_choices").description).toContain(
       "if the review counts that camper as new, stop and ask the person: saving would add a second camper."
     );
   });
@@ -2931,7 +2997,7 @@ describe("Shoresh for AI tools and the command line", () => {
   });
 
   // API-1.117
-  it("bringsInChoicesAsTheSeatsScreen: a choices file is read and reviewed with the screen's own modules, checked by the screen's own check, and brought in only with save and the run as seen", async () => {
+  it("importsChoicesAsTheSeatsScreen: a choices file is read and reviewed with the screen's own modules, checked by the screen's own check, and imported only with save and the run as seen", async () => {
     const LWC = "../../force-app/main/default/lwc";
     const choices = async () => ({
       ...require(`${LWC}/shoreshImportEngine/shoreshImportEngine.js`),
@@ -3012,7 +3078,7 @@ describe("Shoresh for AI tools and the command line", () => {
     const message = (o) => ok(JSON.stringify({ message: JSON.stringify(o) }));
 
     const seen = [];
-    const review = await call("bring_in_choices", input, {
+    const review = await call("import_choices", input, {
       run: answering([ok(JSON.stringify(read)), message(check)], seen),
       choices
     });
@@ -3022,7 +3088,7 @@ describe("Shoresh for AI tools and the command line", () => {
     // A name Shoresh doesn't have: the review says what the screen starts it at, for the AI to
     // offer the person (UX pass 2026-11-10: the screen starts every name at an answer).
     const unknown = await call(
-      "bring_in_choices",
+      "import_choices",
       {
         ...input,
         csv_text:
@@ -3062,7 +3128,7 @@ describe("Shoresh for AI tools and the command line", () => {
     ]);
 
     const stale = await call(
-      "bring_in_choices",
+      "import_choices",
       { ...input, save: true, seen: "3" },
       {
         run: answering([ok(JSON.stringify(read)), message(check)], []),
@@ -3073,7 +3139,7 @@ describe("Shoresh for AI tools and the command line", () => {
 
     const savedSeen = [];
     const done = await call(
-      "bring_in_choices",
+      "import_choices",
       { ...input, save: true, seen: "none" },
       {
         run: answering(
@@ -3100,7 +3166,7 @@ describe("Shoresh for AI tools and the command line", () => {
 
     // A week with no schedule yet: said as the screen says it, with the step to take, never a
     // list of none to pick from.
-    const unbuilt = await call("bring_in_choices", input, {
+    const unbuilt = await call("import_choices", input, {
       run: answering(
         [
           ok(
@@ -3117,7 +3183,7 @@ describe("Shoresh for AI tools and the command line", () => {
     });
     // ELECT-2.5: a saved version (last year's imported one) is never the week's schedule: the
     // refusal says to restore it or build the week, and nothing is offered to pick.
-    const onlyVersion = await call("bring_in_choices", input, {
+    const onlyVersion = await call("import_choices", input, {
       run: answering(
         [
           ok(
@@ -3153,7 +3219,7 @@ describe("Shoresh for AI tools and the command line", () => {
       [S.Origin]: "Generated",
       [S.Program]: "p1"
     };
-    const both = await call("bring_in_choices", input, {
+    const both = await call("import_choices", input, {
       run: answering(
         [
           ok(
@@ -3257,7 +3323,7 @@ describe("Shoresh for AI tools and the command line", () => {
       const seen = [];
       const answers = [ok(JSON.stringify(read)), message(check)];
       const said = await call(
-        "bring_in_choices",
+        "import_choices",
         { ...input, ...extra },
         {
           run: async (args, stdin) => {
@@ -3408,17 +3474,17 @@ describe("Shoresh for AI tools and the command line", () => {
     const review = await send(empty, {});
     const similar = "similar|activity|music|musik|Music|Musik";
     expect(review.done.text).toContain(
-      `[id "${similar}"] Are “Music” and “Musik” the same activity? Answer with "a" = Same: call it “Music”, "b" = Same: call it “Musik”, "different" = Different: keep both, "leaveOut" = Leave it out for now.`
+      `[id "${similar}"] Are “Music” and “Musik” the same activity? Answer with "a" = Same: call it “Music”, "b" = Same: call it “Musik”, "different" = Different: keep both, "leave_out" = Leave it out for now.`
     );
     expect(review.done.text).toContain(
-      `Which week is last year's schedule? Answer with "Week 1" = Week 1 (starts Jun 28), "Week 2" = Week 2 (starts Jul 5), "leaveOut" = Leave it out for now.`
+      `Which week is last year's schedule? Answer with "Week 1" = Week 1 (starts Jun 28), "Week 2" = Week 2 (starts Jul 5), "leave_out" = Leave it out for now.`
     );
     // An answer the camp gave before reads as the screen says it: Answered as before.
     const before = await send(empty, {}, [
       { key: "week|the file's week", answer: "Week 1" }
     ]);
     expect(before.done.text).toContain(
-      `Which week is last year's schedule? Answer with "Week 1" = Week 1 (starts Jun 28), "Week 2" = Week 2 (starts Jul 5), "leaveOut" = Leave it out for now. Answered: Week 1 (starts Jun 28) (Answered as before).`
+      `Which week is last year's schedule? Answer with "Week 1" = Week 1 (starts Jun 28), "Week 2" = Week 2 (starts Jul 5), "leave_out" = Leave it out for now. Answered: Week 1 (starts Jun 28) (Answered as before).`
     );
     // Answered by choice, the save keeps last year's week as a version, as the screen's does.
     const answers = { [similar]: "a", "week|the file's week": "Week 1" };
@@ -4258,16 +4324,16 @@ describe("Shoresh for AI tools and the command line", () => {
 
   // API-1.47, API-1.48
   it("setupRecordsAsCampSetup: renaming and deleting a setup record send its kind, name and program to their own web address, with no week", async () => {
-    for (const name of ["rename_setup_record", "delete_setup_record"]) {
+    for (const name of ["rename_in_setup", "delete_from_setup"]) {
       const schema = byName(name).inputSchema;
       expect(schema.required).toEqual(
-        name === "rename_setup_record"
+        name === "rename_in_setup"
           ? ["kind", "name", "new_name"]
           : ["kind", "name"]
       );
       expect(schema.properties.week).toBeUndefined();
     }
-    expect(byName("delete_setup_record").description).toMatch(
+    expect(byName("delete_from_setup").description).toMatch(
       /Ask the person first/
     );
     const asked = {
@@ -4277,18 +4343,18 @@ describe("Shoresh for AI tools and the command line", () => {
       new_name: "Cedar"
     };
     const seen = [];
-    const done = await call("rename_setup_record", asked, {
+    const done = await call("rename_in_setup", asked, {
       run: sfAnswering(
         200,
         JSON.stringify({ message: 'Renamed the bunk "Bunk 3" to "Cedar".' }),
         seen
       )
     });
-    expect(seen[0].args[3]).toBe("/services/apexrest/v1/rename_setup_record");
+    expect(seen[0].args[3]).toBe("/services/apexrest/v1/rename_in_setup");
     expect(JSON.parse(seen[0].stdin)).toEqual(asked);
     expect(done.text).toBe('Renamed the bunk "Bunk 3" to "Cedar".');
     const refused = await call(
-      "delete_setup_record",
+      "delete_from_setup",
       { kind: "location", name: "Gym" },
       {
         run: sfAnswering(
@@ -4307,51 +4373,51 @@ describe("Shoresh for AI tools and the command line", () => {
 
   // API-1.102
   it("askBeforeDeleteAsCampSetup: Camp Setup's question before a delete is read from the delete's own web address, by name", async () => {
-    expect(byName("delete_setup_record").description).toMatch(
-      /read_setup_delete/
+    expect(byName("delete_from_setup").description).toMatch(
+      /read_delete_question/
     );
     const question = 'Delete "Main"? Anything inside it is deleted too.';
     const read = [];
     const done = await call(
-      "read_setup_delete",
+      "read_delete_question",
       { season: "Summer 2026", kind: "program", name: "Main" },
       {
         run: sfAnswering(200, JSON.stringify({ message: question }), read)
       }
     );
     expect(read[0].args[3]).toBe(
-      "/services/apexrest/v1/delete_setup_record?season=Summer+2026&kind=program&name=Main"
+      "/services/apexrest/v1/delete_from_setup?season=Summer+2026&kind=program&name=Main"
     );
     expect(done.text).toBe(question);
   });
 
   // API-1.49, API-1.50
   it("setupFieldsAsCampSetup: changing a setup record's fields and adding one send kind, name, program and fields to their own web address, with no week", async () => {
-    expect(byName("change_setup_record").inputSchema.required).toEqual([
+    expect(byName("change_in_setup").inputSchema.required).toEqual([
       "kind",
       "name",
       "fields",
       "seen"
     ]);
-    expect(byName("change_setup_record").description).toMatch(
-      /read_setup_record and send what it said as seen/
+    expect(byName("change_in_setup").description).toMatch(
+      /read_from_setup and send what it said as seen/
     );
-    expect(byName("read_setup_record").inputSchema.required).toEqual([
+    expect(byName("read_from_setup").inputSchema.required).toEqual([
       "kind",
       "name"
     ]);
-    expect(byName("add_setup_record").inputSchema.required).toEqual([
+    expect(byName("add_to_setup").inputSchema.required).toEqual([
       "kind",
       "name"
     ]);
-    for (const name of ["change_setup_record", "add_setup_record"]) {
+    for (const name of ["change_in_setup", "add_to_setup"]) {
       const schema = byName(name).inputSchema;
       expect(schema.properties.week).toBeUndefined();
       expect(schema.properties.fields.type).toBe("object");
     }
-    expect(
-      byName("add_setup_record").inputSchema.properties.name.description
-    ).toBe("What to call it.");
+    expect(byName("add_to_setup").inputSchema.properties.name.description).toBe(
+      "What to call it."
+    );
     const asked = {
       season: "Summer 2026",
       kind: "activity",
@@ -4360,7 +4426,7 @@ describe("Shoresh for AI tools and the command line", () => {
       seen: { length: "1", location: "Gym" }
     };
     const seen = [];
-    const done = await call("change_setup_record", asked, {
+    const done = await call("change_in_setup", asked, {
       run: sfAnswering(
         200,
         JSON.stringify({
@@ -4369,14 +4435,14 @@ describe("Shoresh for AI tools and the command line", () => {
         seen
       )
     });
-    expect(seen[0].args[3]).toBe("/services/apexrest/v1/change_setup_record");
+    expect(seen[0].args[3]).toBe("/services/apexrest/v1/change_in_setup");
     expect(JSON.parse(seen[0].stdin)).toEqual(asked);
     expect(done.text).toBe(
       'Changed the activity "Swim": length 2, location Pool.'
     );
     const added = [];
     await call(
-      "add_setup_record",
+      "add_to_setup",
       { kind: "location", name: "Lake" },
       {
         run: sfAnswering(
@@ -4386,10 +4452,10 @@ describe("Shoresh for AI tools and the command line", () => {
         )
       }
     );
-    expect(added[0].args[3]).toBe("/services/apexrest/v1/add_setup_record");
+    expect(added[0].args[3]).toBe("/services/apexrest/v1/add_to_setup");
     const read = [];
     await call(
-      "read_setup_record",
+      "read_from_setup",
       { season: "Summer 2026", kind: "time block", name: "Lunch" },
       {
         run: sfAnswering(
@@ -4400,7 +4466,7 @@ describe("Shoresh for AI tools and the command line", () => {
       }
     );
     expect(read[0].args[3]).toBe(
-      "/services/apexrest/v1/read_setup_record?season=Summer+2026&kind=time+block&name=Lunch"
+      "/services/apexrest/v1/read_from_setup?season=Summer+2026&kind=time+block&name=Lunch"
     );
     expect(JSON.parse(added[0].stdin)).toEqual({
       kind: "location",
@@ -4410,7 +4476,7 @@ describe("Shoresh for AI tools and the command line", () => {
 
   // API-1.51, API-1.52
   it("activityRulesAndWeeksAsCampSetup: an activity's details are read by name in the web address and changed with what was seen; filling in weeks sends the season's dates as seen", async () => {
-    expect(byName("change_activity_rules").inputSchema.required).toEqual([
+    expect(byName("change_activity_details").inputSchema.required).toEqual([
       "name",
       "fields",
       "seen"
@@ -4418,14 +4484,14 @@ describe("Shoresh for AI tools and the command line", () => {
     expect(byName("fill_in_weeks").inputSchema.required).toEqual(["seen"]);
     const read = [];
     await call(
-      "read_activity_rules",
+      "read_activity_details",
       { season: "Summer 2026", name: "Swim" },
       {
         run: sfAnswering(200, JSON.stringify({ message: "The activity" }), read)
       }
     );
     expect(read[0].args[3]).toBe(
-      "/services/apexrest/v1/read_activity_rules?season=Summer+2026&name=Swim"
+      "/services/apexrest/v1/read_activity_details?season=Summer+2026&name=Swim"
     );
     const asked = {
       season: "Summer 2026",
@@ -4434,11 +4500,11 @@ describe("Shoresh for AI tools and the command line", () => {
       seen: { who_can_do_it: "everyone" }
     };
     const changed = [];
-    await call("change_activity_rules", asked, {
+    await call("change_activity_details", asked, {
       run: sfAnswering(200, JSON.stringify({ message: "Changed" }), changed)
     });
     expect(changed[0].args[3]).toBe(
-      "/services/apexrest/v1/change_activity_rules"
+      "/services/apexrest/v1/change_activity_details"
     );
     expect(JSON.parse(changed[0].stdin)).toEqual(asked);
     const weeks = {
@@ -4515,7 +4581,7 @@ describe("Shoresh for AI tools and the command line", () => {
 
   // API-1.59, API-1.60
   it("guessesReadAndConfirmedWithTheValueSeen: the guesses are read by season in the web address, and Looks right sends the guess's kind, name, field and value as seen", async () => {
-    expect(byName("confirm_setup_guess").inputSchema.required).toEqual([
+    expect(byName("mark_looks_right").inputSchema.required).toEqual([
       "kind",
       "name",
       "field",
@@ -4538,10 +4604,10 @@ describe("Shoresh for AI tools and the command line", () => {
       seen: "1 to 2 a week"
     };
     const sent = [];
-    await call("confirm_setup_guess", body, {
+    await call("mark_looks_right", body, {
       run: sfAnswering(200, JSON.stringify({ message: "Done" }), sent)
     });
-    expect(sent[0].args[3]).toBe("/services/apexrest/v1/confirm_setup_guess");
+    expect(sent[0].args[3]).toBe("/services/apexrest/v1/mark_looks_right");
     expect(JSON.parse(sent[0].stdin)).toEqual(body);
   });
 
@@ -4600,47 +4666,46 @@ describe("Shoresh for AI tools and the command line", () => {
   });
 
   // API-1.100, API-1.101
-  it("proposedReadAndConfirmedWithProposedSeen: the proposed offerings are read by season in the web address, and Confirm sends the activity, its elective set and seen proposed", async () => {
-    expect(byName("confirm_proposed_offering").inputSchema.required).toEqual([
+  it("guessedReadAndLooksRightWithGuessedSeen: the guessed electives are read by season in the web address, and Looks right sends the activity, its elective set and seen guessed", async () => {
+    expect(byName("elective_looks_right").inputSchema.required).toEqual([
       "activity",
       "seen"
     ]);
     const read = [];
     await call(
-      "read_proposed_offerings",
+      "read_guessed_electives",
       { season: "Summer 2026" },
       { run: sfAnswering(200, JSON.stringify({ message: "Proposed" }), read) }
     );
     expect(read[0].args[3]).toBe(
-      "/services/apexrest/v1/read_proposed_offerings?season=Summer+2026"
+      "/services/apexrest/v1/read_guessed_electives?season=Summer+2026"
     );
     const body = {
       season: "Summer 2026",
       elective_set: "Chugim",
       activity: "Drama",
-      seen: "proposed"
+      seen: "guessed"
     };
     const sent = [];
-    await call("confirm_proposed_offering", body, {
+    await call("elective_looks_right", body, {
       run: sfAnswering(200, JSON.stringify({ message: "Done" }), sent)
     });
-    expect(sent[0].args[3]).toBe(
-      "/services/apexrest/v1/confirm_proposed_offering"
-    );
+    expect(sent[0].args[3]).toBe("/services/apexrest/v1/elective_looks_right");
     expect(JSON.parse(sent[0].stdin)).toEqual(body);
   });
 
   // API-1.53, API-1.54, API-1.55
   it("runsInCoversAndWhoAsLists: the weeks something runs in, who a recurring activity covers and who can do an activity go as lists, so a name with a comma stays one name", async () => {
-    const fields = byName("change_setup_record").inputSchema.properties.fields
-      .description;
+    const fields =
+      byName("change_in_setup").inputSchema.properties.fields.description;
     expect(fields).toMatch(/runs_in: a list of the week names/);
     expect(fields).toMatch(/covers: a list of the division and group names/);
     expect(
-      byName("add_setup_record").inputSchema.properties.fields.description
+      byName("add_to_setup").inputSchema.properties.fields.description
     ).not.toMatch(/runs_in/);
     expect(
-      byName("change_activity_rules").inputSchema.properties.fields.description
+      byName("change_activity_details").inputSchema.properties.fields
+        .description
     ).toMatch(/who_can_do_it \(a list of division and group names/);
     const asked = {
       season: "Summer 2026",
@@ -4650,10 +4715,10 @@ describe("Shoresh for AI tools and the command line", () => {
       seen: { runs_in: ["Week 1", "Week 2"], covers: ["Seniors"] }
     };
     const sent = [];
-    await call("change_setup_record", asked, {
+    await call("change_in_setup", asked, {
       run: sfAnswering(200, JSON.stringify({ message: "Changed" }), sent)
     });
-    expect(sent[0].args[3]).toBe("/services/apexrest/v1/change_setup_record");
+    expect(sent[0].args[3]).toBe("/services/apexrest/v1/change_in_setup");
     expect(JSON.parse(sent[0].stdin)).toEqual(asked);
   });
 
@@ -4665,8 +4730,8 @@ describe("Shoresh for AI tools and the command line", () => {
       "take_out_cell",
       "copy_cells",
       "read_week_checks",
-      "accept_finding",
-      "undo_last_agent_change",
+      "accept_line",
+      "undo_last_change",
       "save_version",
       "restore_version",
       "delete_version",
@@ -4769,18 +4834,16 @@ describe("Shoresh for AI tools and the command line", () => {
     // A long answer cut short loses cells, never the problems or seen.
     expect(got.text).not.toContain("\n");
     expect(got.text.indexOf('"checks"')).toBeLessThan(
-      got.text.indexOf('"records"')
+      got.text.indexOf('"rows"')
     );
-    expect(got.text.indexOf('"seen"')).toBeLessThan(
-      got.text.indexOf('"records"')
-    );
+    expect(got.text.indexOf('"seen"')).toBeLessThan(got.text.indexOf('"rows"'));
     const answer = JSON.parse(got.text);
     const rows = (a) =>
-      a.records.map((r) =>
+      a.rows.map((r) =>
         Object.fromEntries(r.map((value, i) => [a.columns[i], value]))
       );
     expect(answer.schedule).toBe("Generated Schedule");
-    expect(answer.records).toHaveLength(16);
+    expect(answer.rows).toHaveLength(16);
     expect(rows(answer).slice(4, 8)).toEqual([
       {
         date: "2026-06-29",
@@ -4823,18 +4886,18 @@ describe("Shoresh for AI tools and the command line", () => {
         }
       );
     const monday = JSON.parse((await narrowed({ day: "monday" })).text);
-    expect(monday.records).toHaveLength(8);
+    expect(monday.rows).toHaveLength(8);
     expect(rows(monday).every((r) => r.date === "2026-06-29")).toBe(true);
     expect(monday.checks).toEqual(answer.checks);
     const byDate = JSON.parse((await narrowed({ day: "2026-06-30" })).text);
     expect(rows(byDate).every((r) => r.day === "Tuesday")).toBe(true);
     const bunk = JSON.parse((await narrowed({ group: "bunk 2" })).text);
-    expect(bunk.records).toHaveLength(8);
+    expect(bunk.rows).toHaveLength(8);
     expect(rows(bunk).every((r) => r.group === "Bunk 2")).toBe(true);
     const both = JSON.parse(
       (await narrowed({ day: "Monday", group: "Bunk 2" })).text
     );
-    expect(both.records).toHaveLength(4);
+    expect(both.rows).toHaveLength(4);
     expect(await narrowed({ day: "Sunday" })).toMatchObject({
       ok: false,
       text: 'Week 1 has no day "Sunday" in its schedule. The days: Monday, Tuesday.'
@@ -4906,7 +4969,7 @@ describe("Shoresh for AI tools and the command line", () => {
     expect(kinds.days_not_read).toEqual([
       { date: "2026-06-30", day: "Tuesday", problem: "It can't be opened." }
     ]);
-    expect(kinds.records).toHaveLength(8);
+    expect(kinds.rows).toHaveLength(8);
 
     // CORE-1.0: the kinds in the camp's own words, as typed; the standard ones in lower case.
     const custom = (term, singular) => ({
@@ -5051,7 +5114,7 @@ describe("Shoresh for AI tools and the command line", () => {
     const got = await draftAnswer(twoBunkOnes);
     expect(got.ok).toBe(true);
     expect(got.text.indexOf("groups_with_the_same_name")).toBeLessThan(
-      got.text.indexOf('"records"')
+      got.text.indexOf('"rows"')
     );
     const answer = JSON.parse(got.text);
     expect(answer.groups_with_the_same_name).toEqual(["Bunk 1"]);
@@ -5059,7 +5122,7 @@ describe("Shoresh for AI tools and the command line", () => {
     const time = answer.columns.indexOf("time_block");
     const activity = answer.columns.indexOf("activity");
     expect(
-      answer.records
+      answer.rows
         .filter((r) => r[time] === "Period 2")
         .slice(0, 2)
         .map((r) => [r[activity], r[notes]])
@@ -5082,7 +5145,7 @@ describe("Shoresh for AI tools and the command line", () => {
       const answer = JSON.parse(got.text);
       expect(answer.days_not_read.length).toBeGreaterThan(0);
       expect(answer.days_not_read[0].problem).toBe("It can't be opened.");
-      expect(answer.records).toEqual([]);
+      expect(answer.rows).toEqual([]);
       expect(answer.checks).toBeDefined();
     }
   });

@@ -102,31 +102,18 @@ public with sharing class GeneratedEdits {
   }
 
   /**
-   * The draft's revision after the save, given only when the days were at the screen's revision
-   * before it: otherwise someone else saved the week since the screen read it, and a whole-week
-   * save built on the screen's copy must stay a conflict (the screen reads the week again).
+   * The draft's ticket after the save (written: ScheduleDaySaves.write's revisions), given only
+   * when the days were at the screen's revision before it: otherwise someone else saved the week
+   * since the screen read it, and a whole-week save built on the screen's copy must stay a
+   * conflict (the screen reads the week again).
    */
   public static String revisionAfter(
-    Map<Date, ScheduleDays.DayGrid> days,
-    Set<Date> changed,
+    List<ScheduleDays.DayGrid> read,
+    Map<Date, Integer> written,
     String seen
   ) {
-    List<ScheduleDays.DayGrid> ordered = new List<ScheduleDays.DayGrid>();
-    List<ScheduleDays.DayGrid> next = new List<ScheduleDays.DayGrid>();
-    List<Date> dates = new List<Date>(days.keySet());
-    dates.sort();
-    for (Date day : dates) {
-      ScheduleDays.DayGrid read = days.get(day);
-      ordered.add(read);
-      ScheduleDays.DayGrid after = new ScheduleDays.DayGrid();
-      after.day = day;
-      after.revision = changed.contains(day)
-        ? read.revision + 1
-        : read.revision;
-      next.add(after);
-    }
-    return GeneratedDrafts.revisionOf(ordered).equals(seen ?? '')
-      ? GeneratedDrafts.revisionOf(next)
+    return WeekTickets.seenNullAsEmpty(WeekTickets.stamp(read), seen)
+      ? WeekTickets.afterWrite(read, written)
       : null;
   }
 }

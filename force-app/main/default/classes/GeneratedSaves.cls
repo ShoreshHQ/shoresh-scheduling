@@ -95,8 +95,15 @@ public with sharing class GeneratedSaves {
         EngineNotes__c = notes
       );
       Database.insert(draft, AccessLevel.USER_MODE);
-      ScheduleDaySaves.write(draft.Id, daySaves(blank, grids, false));
-      GeneratedWeek.Result result = saved(draft.Id, blank, null);
+      Map<Date, Integer> written = ScheduleDaySaves.write(
+        draft.Id,
+        daySaves(blank, grids, false)
+      );
+      GeneratedWeek.Result result = saved(
+        draft.Id,
+        WeekTickets.afterWrite(blank, written),
+        null
+      );
       result.published = publishedBeside(blank, grids);
       result.engineNotes = notes;
       return result;
@@ -109,7 +116,9 @@ public with sharing class GeneratedSaves {
   /** A later save replaces the draft's days, if no one has saved them since they were read. */
   private GeneratedWeek.Result again(Schedule__c draft) {
     List<ScheduleDays.DayGrid> days = ScheduleDays.read(draft.Id);
-    if (!GeneratedDrafts.revisionOf(days).equals(request.revision ?? '')) {
+    if (
+      !WeekTickets.seenNullAsEmpty(WeekTickets.stamp(days), request.revision)
+    ) {
       return conflict(ScheduleDaySaves.CHANGED_SINCE);
     }
     GeneratedFrames.checkReadable(days);
@@ -139,8 +148,15 @@ public with sharing class GeneratedSaves {
         ),
         AccessLevel.USER_MODE
       );
-      ScheduleDaySaves.write(draft.Id, daySaves(days, grids, true));
-      GeneratedWeek.Result result = saved(draft.Id, days, versionId);
+      Map<Date, Integer> written = ScheduleDaySaves.write(
+        draft.Id,
+        daySaves(days, grids, true)
+      );
+      GeneratedWeek.Result result = saved(
+        draft.Id,
+        WeekTickets.afterWrite(days, written),
+        versionId
+      );
       result.locks = GeneratedLockCells.lockedIn(days, grids);
       result.published = publishedBeside(days, grids);
       result.engineNotes = notes;
@@ -196,24 +212,17 @@ public with sharing class GeneratedSaves {
   }
 
   /**
-   * What the save leaves: each day one revision on from what was read under the lock (or 1 for a
-   * new day), as ScheduleDaySaves writes it, so nothing is read again.
+   * What the save leaves: its revision is the week's ticket after the write (WeekTickets.afterWrite
+   * on what ScheduleDaySaves.write returned), so nothing is read again.
    */
   private static GeneratedWeek.Result saved(
     Id draftId,
-    List<ScheduleDays.DayGrid> days,
+    String revision,
     Id versionId
   ) {
-    List<ScheduleDays.DayGrid> now = new List<ScheduleDays.DayGrid>();
-    for (ScheduleDays.DayGrid day : days) {
-      ScheduleDays.DayGrid next = new ScheduleDays.DayGrid();
-      next.day = day.day;
-      next.revision = day.revision == null ? 1 : day.revision + 1;
-      now.add(next);
-    }
     GeneratedWeek.Result result = new GeneratedWeek.Result();
     result.scheduleId = draftId;
-    result.revision = GeneratedDrafts.revisionOf(now);
+    result.revision = revision;
     result.versionId = versionId;
     return result;
   }

@@ -1,7 +1,7 @@
 /**
  * The weeks a setup record runs in (its "Runs in" ticks, API-1.53) and who a recurring activity
  * covers (API-1.54), as Camp Setup's tables have them, read and changed through
- * read_setup_record / change_setup_record. Each is a list of names, said in the table's order;
+ * read_from_setup / change_in_setup. Each is a list of names, said in the table's order;
  * a change carries the list the AI read (seen), compared under a lock on the row, and goes in the
  * table's own row save as its week ticks and who it covers.
  */
@@ -44,7 +44,7 @@ public with sharing class AgentRunsIn {
     return result;
   }
 
-  /** What the lists hold now, by plain name, as read_setup_record says them. */
+  /** What the lists hold now, by plain name, as read_from_setup says them. */
   public static Map<String, String> now(AgentSetupRecords.Found found) {
     Map<String, String> result = new Map<String, String>();
     for (String key : namesOf(found.term)) {
@@ -111,7 +111,7 @@ public with sharing class AgentRunsIn {
       throw new ShoreshException(
         'Say what each field held when you read it (seen: ' +
           String.join(missing, ', ') +
-          '), as read_setup_record gives it, so a change someone made since isn\'t overwritten.'
+          '), as read_from_setup gives it, so a change someone made since isn\'t overwritten.'
       );
     }
   }

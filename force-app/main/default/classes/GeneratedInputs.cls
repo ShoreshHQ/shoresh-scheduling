@@ -22,7 +22,7 @@ public with sharing class GeneratedInputs {
     // The Generated draft, or null when the week has not been generated yet.
     @AuraEnabled
     public Id scheduleId;
-    // What the draft's days were saved at (GeneratedDrafts.revisionOf); sent back with a save.
+    // What the draft's days were saved at (WeekTickets.stamp); sent back with a save.
     // Empty when there is no draft.
     @AuraEnabled
     public String revision = '';
@@ -115,7 +115,7 @@ public with sharing class GeneratedInputs {
     } else {
       days = found.daysById.get(draft.Id);
       inputs.scheduleId = draft.Id;
-      inputs.revision = GeneratedDrafts.revisionOf(days);
+      inputs.revision = WeekTickets.stamp(days);
       inputs.option = draft.EngineOption__c == null
         ? null
         : draft.EngineOption__c.intValue();

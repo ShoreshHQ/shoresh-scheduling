@@ -1,5 +1,5 @@
 /**
- * change_schedule_cell, move_cell, take_out_cell, copy_cells, switch_to_rain_plans and
+ * change_schedule_cell, move_cell, take_out_cell, copy_cells, rainy_day and
  * place_special_event (API-1.11, API-1.38 to API-1.40, API-1.45, API-1.65, API-1.75): an edit of one or several
  * cells of a Generated Schedule or Manual Build week, worked out here exactly as the screen's grid works it out. The week is
  * read as Generated Schedule reads it (GET /v1/week_checks, the counter's own read), opened as the
@@ -7,7 +7,7 @@
  * editor's own module (c/shoreshWeekEditor handEdits.js, shipped beside this file): the same
  * moves, swaps, pastes, refusals and words. Its runs then go to the screen's own save
  * (POST /v1/schedule_cell, /v1/move_cell, /v1/take_out_cell, /v1/copy_cells or
- * /v1/switch_to_rain_plans), and, as the screen's history does, its runs back are held for Undo
+ * /v1/rainy_day), and, as the screen's history does, its runs back are held for Undo
  * for the rest of the conversation (undo.js, API-1.14). Only finding the cells by their names is
  * done here.
  */
@@ -287,7 +287,7 @@ function clearStep(capability, ctx, m, input, weekName) {
 }
 
 /**
- * switch_to_rain_plans as the screen's Edit > Rainy day… does (shoreshWeekEditor rainyTool and
+ * rainy_day as the screen's Edit > Rainy day… does (shoreshWeekEditor rainyTool and
  * runRainyDay): the day's outdoor activities switched to their rain plans by the editor's own tool,
  * locked cells (Generated) left as they are. With the marks it leaves on the day ("Rain plan full",
  * switched), and the day's marks as read (seen).
@@ -504,7 +504,7 @@ function stepOf(capability, ctx, m, input, weekName) {
   if (capability.name === "place_special_event") {
     return placeEvent(ctx, m, input, weekName);
   }
-  if (capability.name === "switch_to_rain_plans") {
+  if (capability.name === "rainy_day") {
     return rainyDay(ctx, m, input, weekName);
   }
   if (capability.name === "clear_day" || capability.name === "clear_week") {
@@ -794,7 +794,7 @@ function draftOf(m, body, input) {
       );
     }
   }
-  const records = [];
+  const rows = [];
   const specialDays = [];
   const unread = [];
   const sameNamed = new Set();
@@ -840,7 +840,7 @@ function draftOf(m, body, input) {
               ]
             : [])
         ];
-        records.push([
+        rows.push([
           date,
           dayName,
           group.name,
@@ -859,7 +859,7 @@ function draftOf(m, body, input) {
     ...(unread.length ? { days_not_read: unread } : {}),
     ...(sameNamed.size ? { groups_with_the_same_name: [...sameNamed] } : {}),
     columns: DRAFT_COLUMNS,
-    records
+    rows
   };
 }
 

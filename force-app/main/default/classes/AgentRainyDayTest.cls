@@ -1,8 +1,8 @@
 /**
  * A rainy day through an agent or the command line (docs/protocol/api.md API-1.65):
- * /v1/switch_to_rain_plans takes the runs and marks the week editor's own rainy day works out (the
+ * /v1/rainy_day takes the runs and marks the week editor's own rainy day works out (the
  * connector runs it) and saves them as the screen's own save, with the week kept first as the
- * screen keeps it ("Before rainy Monday", Auto-saved, API-1.148), and undo_last_agent_change
+ * screen keeps it ("Before rainy Monday", Auto-saved, API-1.148), and undo_last_change
  * switches the day back with the runs and marks the connector holds; refused
  * with nothing changed when the day's cells or marks changed since the agent read them. Synthetic
  * camp (SetTimeTestData), Manual Build: Soccer (outdoors, Gym games its rain plan) in Group A's

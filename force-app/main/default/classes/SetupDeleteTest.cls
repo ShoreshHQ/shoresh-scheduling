@@ -363,7 +363,7 @@ private class SetupDeleteTest {
   }
 
   // API-1.105: something gone since the screen showed it is refused; only a screen is told to
-  // reload, an AI (read_setup_delete, delete_setup_record) hears the problem alone.
+  // reload, an AI (read_delete_question, delete_from_setup) hears the problem alone.
   @IsTest
   static void somethingGoneIsRefusedWithoutThePageToAnAi() {
     Camp__c camp = ShoreshTestData.camp('Camp Willow');

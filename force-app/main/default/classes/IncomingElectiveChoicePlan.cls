@@ -52,7 +52,7 @@ public with sharing class IncomingElectiveChoicePlan {
       if (batch.open(i)) {
         this.i = i;
         record = records[i];
-        run = runs.run(record.elective, record.week);
+        run = runs.run(record.elective_set, record.week);
         planOne();
       }
     }
@@ -68,7 +68,7 @@ public with sharing class IncomingElectiveChoicePlan {
     if (!seen.add(run.Id + '|' + camperId)) {
       batch.problem(
         i,
-        'This camper is in the batch more than once for this elective. Only the first was used.'
+        'This camper is in the batch more than once for this elective set. Only the first was used.'
       );
       return;
     }
@@ -84,7 +84,7 @@ public with sharing class IncomingElectiveChoicePlan {
       return aboutCamper;
     }
     if (run == null) {
-      return runs.noRun(batch, record.elective, record.week);
+      return runs.noRun(batch, record.elective_set, record.week);
     }
     // ELECT-2.5: a saved version is never the week's schedule, as on the screen.
     if (runs.onVersion(run)) {
@@ -113,8 +113,8 @@ public with sharing class IncomingElectiveChoicePlan {
     if (IncomingCamperPlan.isFuture(record.changed_at)) {
       return IncomingCamperPlan.FUTURE;
     }
-    if (String.isBlank(record.elective) || String.isBlank(record.week)) {
-      return 'Say which elective (elective) and which week (week).';
+    if (String.isBlank(record.elective_set) || String.isBlank(record.week)) {
+      return 'Say which elective set (elective_set) and which week (week).';
     }
     if (campers.doubt(i)) {
       return IncomingCampers.DOUBT;
@@ -124,7 +124,7 @@ public with sharing class IncomingElectiveChoicePlan {
 
   private void readOffered(List<IncomingCamperElectiveChoice.Record> records) {
     for (IncomingCamperElectiveChoice.Record each : records) {
-      ElectiveRun__c named = runs.run(each.elective, each.week);
+      ElectiveRun__c named = runs.run(each.elective_set, each.week);
       if (named != null) {
         offered.put(named.ElectiveSet__c, new Map<String, Id>());
       }

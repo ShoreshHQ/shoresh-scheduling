@@ -70,7 +70,7 @@ global with sharing class AgentRestoreVersion implements AgentWeeks.Action {
       return ManualBuildController.restoreVersion(
             week.draft.Id,
             version.id,
-            ScheduleDays.stamp(ScheduleDays.read(week.draft.Id))
+            WeekTickets.stamp(ScheduleDays.read(week.draft.Id))
           )
           .changedSince != true;
     }
@@ -84,7 +84,7 @@ global with sharing class AgentRestoreVersion implements AgentWeeks.Action {
     return GeneratedScheduleController.restoreVersion(
       week.draft.Id,
       version.id,
-      ScheduleDays.stamp(ScheduleDays.read(week.draft.Id))
+      WeekTickets.stamp(ScheduleDays.read(week.draft.Id))
     );
   }
 }

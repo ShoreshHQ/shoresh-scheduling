@@ -2,7 +2,7 @@
  * Edits of several cells through an agent or the command line (docs/protocol/api.md API-1.38 to
  * API-1.40, API-1.148): /v1/move_cell, /v1/take_out_cell and /v1/copy_cells take the runs the
  * week editor's own module works out (the connector runs it) and makes them the screen's hand
- * edit, keeping no version, as the screen keeps none; undo_last_agent_change takes it back with
+ * edit, keeping no version, as the screen keeps none; undo_last_change takes it back with
  * the runs back the connector holds, on GeneratedTestData's camp (Gym games in every Period 2;
  * Group A's Monday Lunch Open).
  */
@@ -56,7 +56,7 @@ private class AgentCellsTest {
   /** Sends body to the web address; answers [status, sentence]. */
   private static List<Object> send(String address, Map<String, Object> body) {
     // The week as read now, unless the test says what the connector read (revision).
-    if (address != 'undo_last_agent_change' && !body.containsKey('revision')) {
+    if (address != 'undo_last_change' && !body.containsKey('revision')) {
       body.put('revision', GeneratedTestData.weekNow());
     }
     RestContext.request = new RestRequest();
@@ -108,7 +108,7 @@ private class AgentCellsTest {
       );
       Integer kept = GeneratedTestData.versions();
       List<Object> undone = send(
-        'undo_last_agent_change',
+        'undo_last_change',
         week(
           new Map<String, Object>{
             'held' => AgentUndoTestCalls.held(
