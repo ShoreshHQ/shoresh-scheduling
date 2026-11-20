@@ -184,7 +184,9 @@ export default class ShoreshVersions extends LightningElement {
           ? `Delete ${version.name}? Press again to delete.`
           : `Delete ${version.name}`,
         actionName: `${this.actionLabel} ${version.name}`,
-        renameName: `Rename ${version.name}`
+        renameName: `Rename ${version.name}`,
+        // The box opens empty, so its label says which version it renames.
+        newNameLabel: `New name for ${version.name}`
       };
     });
   }
