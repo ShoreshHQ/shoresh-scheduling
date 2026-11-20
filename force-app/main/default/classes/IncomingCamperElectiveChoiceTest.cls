@@ -294,7 +294,7 @@ private class IncomingCamperElectiveChoiceTest {
     camp.camper('Maya Cohen', 'SYN-1');
     Database.delete(camp.run, AccessLevel.SYSTEM_MODE);
     Map<String, Object> unknown = record('Swim', null);
-    unknown.put('elective', 'Bechirot');
+    unknown.put('elective_set', 'Bechirot');
     System.runAs(camp.sender('Send_Elective_Choices')) {
       Map<String, Object> answer = send(
         new List<Map<String, Object>>{ record('Archery', 'Swim'), unknown }
@@ -304,7 +304,7 @@ private class IncomingCamperElectiveChoiceTest {
         IncomingTestData.said(answer, 1)
       );
       Assert.areEqual(
-        'problem: There is no elective "Bechirot" in "Week 1" in this season.',
+        'problem: There is no elective set "Bechirot" in "Week 1" in this season.',
         IncomingTestData.said(answer, 2)
       );
     }

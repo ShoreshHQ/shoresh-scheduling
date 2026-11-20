@@ -155,7 +155,6 @@ function headingLines(p) {
   ];
 }
 
-/** One list's table as the screen lays it out, in lines. */
 /**
  * The engine's camelCase words an AI reads and sends in plain words instead: leaveOut as
  * leave_out, a layout (allCamp, byGroup, byActivity) as all_camp, by_group, by_activity.
@@ -170,6 +169,7 @@ function engineWord(m, value) {
   return [m.LEAVE_OUT, ...m.LAYOUTS].find((w) => snake(w) === value) ?? value;
 }
 
+/** One list's table as the screen lays it out, in lines. */
 function tableLines(p, setup, m, leaveOut) {
   const table = m.importTable(p, { setup, showSame: false, leaveOut });
   const lines = [];
