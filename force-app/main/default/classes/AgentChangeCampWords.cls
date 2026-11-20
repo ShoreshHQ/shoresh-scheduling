@@ -7,7 +7,7 @@
  * AI read, capitals and all, with the camp's words locked; otherwise refused (409), nothing saved.
  */
 @RestResource(urlMapping='/v1/change_camp_words')
-global with sharing class AgentChangeCampWords implements AgentWeeks.Action {
+global with sharing class AgentChangeCampWords implements AgentRequest.Change {
   private static final Set<String> FIELDS = new Set<String>{
     'season',
     'words',
@@ -17,11 +17,14 @@ global with sharing class AgentChangeCampWords implements AgentWeeks.Action {
 
   @HttpPost
   global static void post() {
-    AgentWeeks.answer(new AgentChangeCampWords());
+    AgentRequest.answer(new AgentChangeCampWords());
   }
 
-  public String run() {
-    Map<String, Object> body = AgentFields.body(FIELDS);
+  public Set<String> fields() {
+    return FIELDS;
+  }
+
+  public String run(Map<String, Object> body) {
     Season__c season = seasonOf(AgentFields.text(body, 'season'));
     Map<String, Object> words = AgentSetupFields.given(body.get('words'));
     if (words.isEmpty()) {

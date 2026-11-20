@@ -26,7 +26,7 @@ private class AgentSetupTest {
     RestContext.response = new RestResponse();
     AgentAskFirstTestCalls.answer(
       action == 'rename'
-        ? (AgentWeeks.Action) new AgentRenameSetup()
+        ? (AgentRequest.Change) new AgentRenameSetup()
         : new AgentDeleteSetup()
     );
     Map<String, Object> answer = (Map<String, Object>) JSON.deserializeUntyped(
@@ -224,7 +224,7 @@ private class AgentSetupTest {
     RestContext.request.httpMethod = 'POST';
     RestContext.request.requestBody = Blob.valueOf(JSON.serialize(body));
     RestContext.response = new RestResponse();
-    AgentWeeks.answer(new AgentDeleteSetup());
+    AgentRequest.answer(new AgentDeleteSetup());
     return new List<Object>{
       RestContext.response.statusCode,
       ((Map<String, Object>) JSON.deserializeUntyped(

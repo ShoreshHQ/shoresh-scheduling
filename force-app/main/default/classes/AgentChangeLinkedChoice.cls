@@ -7,7 +7,7 @@
  * change says only what it changes, so ticking twice is the same as once.
  */
 @RestResource(urlMapping='/v1/change_linked_choice')
-global with sharing class AgentChangeLinkedChoice implements AgentWeeks.Action {
+global with sharing class AgentChangeLinkedChoice implements AgentRequest.Change {
   private static final Set<String> FIELDS = new Set<String>{
     'season',
     'elective_set',
@@ -23,11 +23,14 @@ global with sharing class AgentChangeLinkedChoice implements AgentWeeks.Action {
 
   @HttpPost
   global static void post() {
-    AgentWeeks.answer(new AgentChangeLinkedChoice());
+    AgentRequest.answer(new AgentChangeLinkedChoice());
   }
 
-  public String run() {
-    Map<String, Object> body = AgentFields.body(FIELDS);
+  public Set<String> fields() {
+    return FIELDS;
+  }
+
+  public String run(Map<String, Object> body) {
     AgentLinkedChoiceRefs refs = new AgentLinkedChoiceRefs(body);
     LinkedChoice__c choice = refs.choiceOf(body);
     LinkedChoiceSaves.Edit edit = editOf(body, refs, choice);

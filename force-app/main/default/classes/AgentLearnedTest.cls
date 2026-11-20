@@ -36,7 +36,7 @@ private class AgentLearnedTest {
   }
 
   private static List<Object> post(
-    AgentWeeks.Action action,
+    AgentRequest.Change action,
     Map<String, Object> body
   ) {
     body.put('season', SEASON);

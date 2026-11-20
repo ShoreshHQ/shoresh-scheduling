@@ -6,7 +6,7 @@
  * holds only while both weeks are as that preview read them.
  */
 @RestResource(urlMapping='/v1/apply_to_other_weeks')
-global with sharing class AgentApplyToOtherWeeks implements AgentWeeks.Action, AgentAskFirst.Preview {
+global with sharing class AgentApplyToOtherWeeks implements AgentRequest.Change, AgentAskFirst.Preview {
   private static final Set<String> FIELDS = new Set<String>{
     'season',
     'week',
@@ -20,12 +20,15 @@ global with sharing class AgentApplyToOtherWeeks implements AgentWeeks.Action, A
 
   @HttpPost
   global static void post() {
-    AgentWeeks.answer(new AgentApplyToOtherWeeks());
+    AgentRequest.answer(new AgentApplyToOtherWeeks());
+  }
+
+  public Set<String> fields() {
+    return FIELDS;
   }
 
   /** What it would do; null, so nothing is asked, when no cell would change (API-1.106). */
-  public String preview() {
-    Map<String, Object> body = AgentFields.body(FIELDS);
+  public String preview(Map<String, Object> body) {
     // Found, not locked: WeekApply takes the program's lock, then the target's, as the screen
     // does, so an AI and a screen applying opposite ways never wait on each other.
     source = AgentSchedules.placeOfEither(body);
@@ -59,7 +62,7 @@ global with sharing class AgentApplyToOtherWeeks implements AgentWeeks.Action, A
       publishedWords();
   }
 
-  public String run() {
+  public String run(Map<String, Object> body) {
     WeekApply.Outcome done = WeekApply.apply(
       source.draft.Id,
       previewed.weekId,

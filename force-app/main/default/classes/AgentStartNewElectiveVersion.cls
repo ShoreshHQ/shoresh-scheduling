@@ -8,7 +8,7 @@
  * otherwise refused (409), nothing started.
  */
 @RestResource(urlMapping='/v1/change_seats')
-global with sharing class AgentStartNewElectiveVersion implements AgentWeeks.Action {
+global with sharing class AgentStartNewElectiveVersion implements AgentRequest.Change {
   private static final Set<String> FIELDS = new Set<String>{
     'season',
     'week',
@@ -18,11 +18,14 @@ global with sharing class AgentStartNewElectiveVersion implements AgentWeeks.Act
 
   @HttpPost
   global static void post() {
-    AgentWeeks.answer(new AgentStartNewElectiveVersion());
+    AgentRequest.answer(new AgentStartNewElectiveVersion());
   }
 
-  public String run() {
-    Map<String, Object> body = AgentFields.body(FIELDS);
+  public Set<String> fields() {
+    return FIELDS;
+  }
+
+  public String run(Map<String, Object> body) {
     AgentElectives.Run run = AgentElectives.committedOrFinal(body);
     Decimal seen = AgentElectives.seenOf(body, run);
     if (!run.isFinal) {

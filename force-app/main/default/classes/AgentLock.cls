@@ -9,7 +9,7 @@
  * in its words. Unlock is AgentUnlock, the same action the other way.
  */
 @RestResource(urlMapping='/v1/lock_cells')
-global with sharing class AgentLock implements AgentWeeks.Action {
+global with sharing class AgentLock implements AgentRequest.Change {
   private static final Set<String> FIELDS = new Set<String>{
     'season',
     'week',
@@ -34,11 +34,14 @@ global with sharing class AgentLock implements AgentWeeks.Action {
 
   @HttpPost
   global static void post() {
-    AgentWeeks.answer(new AgentLock());
+    AgentRequest.answer(new AgentLock());
   }
 
-  public String run() {
-    Map<String, Object> body = AgentFields.body(FIELDS);
+  public Set<String> fields() {
+    return FIELDS;
+  }
+
+  public String run(Map<String, Object> body) {
     AgentWeeks.Week week = AgentSchedules.eitherOf(body);
     AgentSchedules.refuseLocks(week);
     String seen = seenOf(body);

@@ -6,7 +6,7 @@
  */
 @IsTest
 public class AgentElectivesTestData {
-  private static final Map<String, AgentWeeks.Action> POSTS = new Map<String, AgentWeeks.Action>{
+  private static final Map<String, AgentRequest.Change> POSTS = new Map<String, AgentRequest.Change>{
     'assign_elective_seats' => new AgentAssignElectiveSeats(),
     'move_elective_seat' => new AgentMoveElectiveSeat(),
     'lock_elective_seat' => new AgentLockElectiveSeat(),

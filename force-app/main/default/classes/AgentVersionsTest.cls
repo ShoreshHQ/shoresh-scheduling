@@ -53,7 +53,7 @@ private class AgentVersionsTest {
     RestContext.request.requestBody = Blob.valueOf(JSON.serialize(body));
     RestContext.response = new RestResponse();
     AgentAskFirstTestCalls.answer(
-      new Map<String, AgentWeeks.Action>{
+      new Map<String, AgentRequest.Change>{
           'save' => new AgentSaveVersion(),
           'restore' => new AgentRestoreVersion(),
           'rename' => new AgentRenameVersion(),
@@ -183,7 +183,7 @@ private class AgentVersionsTest {
       RestContext.request.httpMethod = 'POST';
       RestContext.request.requestBody = Blob.valueOf(JSON.serialize(asked));
       RestContext.response = new RestResponse();
-      AgentWeeks.answer(new AgentDeleteVersion());
+      AgentRequest.answer(new AgentDeleteVersion());
       Test.stopTest();
       Assert.isNotNull(confirm);
       Assert.areEqual(409, RestContext.response.statusCode);

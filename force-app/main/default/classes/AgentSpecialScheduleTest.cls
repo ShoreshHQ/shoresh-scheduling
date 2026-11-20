@@ -13,7 +13,7 @@ private class AgentSpecialScheduleTest {
 
   /** One request to a door; answers [status, sentence]. */
   private static List<Object> ask(
-    AgentWeeks.Action door,
+    AgentRequest.Change door,
     String method,
     Map<String, Object> body
   ) {

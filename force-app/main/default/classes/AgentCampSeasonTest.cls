@@ -6,7 +6,7 @@
 @IsTest
 private class AgentCampSeasonTest {
   private static List<Object> sent(
-    AgentWeeks.Action action,
+    AgentRequest.Change action,
     Map<String, Object> body
   ) {
     RestContext.request = new RestRequest();
@@ -183,12 +183,8 @@ private class AgentCampSeasonTest {
       ShoreshTestData.fullSeason(camp.Id);
       Season__c season = [SELECT Id, Name FROM Season__c];
       Test.startTest();
-      RestContext.request = new RestRequest();
-      RestContext.request.httpMethod = 'POST';
-      RestContext.request.requestBody = Blob.valueOf(
-        JSON.serialize(new Map<String, Object>{ 'season' => season.Name })
-      );
-      String asked = new AgentDeleteSeason().preview();
+      String asked = new AgentDeleteSeason()
+        .preview(new Map<String, Object>{ 'season' => season.Name });
       Test.stopTest();
       SetupDelete.Preview screen = SetupDelete.preview(season.Id);
       Assert.areEqual('Delete ' + season.Name + '?', screen.label);
@@ -348,7 +344,7 @@ private class AgentCampSeasonTest {
       RestContext.request.httpMethod = 'POST';
       RestContext.request.requestBody = Blob.valueOf(JSON.serialize(body));
       RestContext.response = new RestResponse();
-      AgentWeeks.answer(new AgentDeleteSeason());
+      AgentRequest.answer(new AgentDeleteSeason());
       Integer queries = Limits.getQueries();
       Test.stopTest();
       Assert.areEqual(
@@ -389,7 +385,7 @@ private class AgentCampSeasonTest {
       RestContext.request.httpMethod = 'POST';
       RestContext.request.requestBody = Blob.valueOf(JSON.serialize(body));
       RestContext.response = new RestResponse();
-      AgentWeeks.answer(new AgentDeleteSeason());
+      AgentRequest.answer(new AgentDeleteSeason());
       Test.stopTest();
       Assert.areEqual(409, RestContext.response.statusCode);
       Assert.areEqual(1, [SELECT COUNT() FROM Season__c]);

@@ -19,7 +19,7 @@
  * its page's Undo (AgentUndoSpecial).
  */
 @RestResource(urlMapping='/v1/undo_last_change')
-global with sharing class AgentUndo implements AgentWeeks.Action, AgentAskFirst.Preview {
+global with sharing class AgentUndo implements AgentRequest.Change, AgentAskFirst.Preview {
   public static final String EDIT = 'edit';
   public static final String BUILD = 'build';
   private static final Set<String> FIELDS = new Set<String>{
@@ -34,12 +34,15 @@ global with sharing class AgentUndo implements AgentWeeks.Action, AgentAskFirst.
 
   @HttpPost
   global static void post() {
-    AgentWeeks.answer(new AgentUndo());
+    AgentRequest.answer(new AgentUndo());
+  }
+
+  public Set<String> fields() {
+    return FIELDS;
   }
 
   /** What it takes back (API-1.106); null when there is nothing it can, so it is refused at once. */
-  public String preview() {
-    Map<String, Object> body = AgentFields.body(FIELDS);
+  public String preview(Map<String, Object> body) {
     if (AgentUndoSpecial.isAsked(body)) {
       return AgentUndoSpecial.preview(body);
     }
@@ -66,8 +69,7 @@ global with sharing class AgentUndo implements AgentWeeks.Action, AgentAskFirst.
           '", and the week as it is now is kept in Versions as "Before Undo".');
   }
 
-  public String run() {
-    Map<String, Object> body = AgentFields.body(FIELDS);
+  public String run(Map<String, Object> body) {
     if (AgentUndoSpecial.isAsked(body)) {
       return AgentUndoSpecial.run(body);
     }

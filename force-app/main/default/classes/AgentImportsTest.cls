@@ -283,7 +283,7 @@ private class AgentImportsTest {
       RestContext.response = new RestResponse();
       Test.startTest();
       // Asked first, not yet undone.
-      AgentWeeks.answer(new AgentUndoImport());
+      AgentRequest.answer(new AgentUndoImport());
       String undo = RestContext.response.responseBody.toString();
       List<Object> listed = ask(
         new AgentReadLastImports(),

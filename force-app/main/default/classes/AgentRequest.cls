@@ -1,8 +1,9 @@
 /**
- * One AI request, start to end (docs/protocol/api.md API-1.9, API-1.105, API-1.108, API-1.152):
- * a read (a GET) declares the fields its web address takes and answers JSON; this takes its
- * fields, refuses one it doesn't take, says the season it used, and shapes a refusal. User mode
- * throughout: each read runs as the person, with exactly their access.
+ * One AI request, start to end (docs/protocol/api.md API-1.9, API-1.11, API-1.105, API-1.106,
+ * API-1.108, API-1.152): a read (a GET) or a change (a POST) declares the fields it takes; this
+ * takes them from the web address or the body, refuses one it doesn't take, lifts out a change's
+ * confirm (AgentAskFirst), says the season it used, and shapes a refusal the same way for both.
+ * User mode throughout: each request runs as the person, with exactly their access.
  */
 public with sharing class AgentRequest {
   /**
@@ -16,6 +17,52 @@ public with sharing class AgentRequest {
 
   /** A read whose answer is one plain sentence, answered as {"message": sentence}. */
   public interface SentenceRead extends Read {
+  }
+
+  /**
+   * One change through an agent (a POST): the fields its body takes, by their plain names, and
+   * its answer when done, one plain sentence. It never sees confirm: the runner lifts it out.
+   */
+  public interface Change {
+    Set<String> fields();
+    String run(Map<String, Object> body);
+  }
+
+  /**
+   * Runs one change and answers {"message": sentence}: 200 when done, or its refusal (refused),
+   * with nothing changed. Every change takes the right to change schedules (AgentAccess), refused
+   * in the same words for every one.
+   */
+  public static void answer(Change change) {
+    RestResponse response = RestContext.response;
+    response.addHeader('Content-Type', 'application/json');
+    Savepoint before = Database.setSavepoint();
+    String message;
+    AgentUndoHeld.forget();
+    AgentRefusal.forAgent = true;
+    try {
+      AgentAccess.require();
+      Map<String, Object> body = AgentFields.sent();
+      String confirm = change instanceof AgentAskFirst.Preview
+        ? AgentAskFirst.taken(body)
+        : null;
+      AgentFields.requireKnown(body.keySet(), change.fields());
+      message = AgentAskFirst.run(change, body, confirm);
+      response.statusCode = 200;
+    } catch (Exception e) {
+      Database.rollback(before);
+      message = refused(e, response);
+    } finally {
+      AgentRefusal.forAgent = false;
+    }
+    response.responseBody = Blob.valueOf(
+      JSON.serialize(
+        AgentUndoHeld.answered(
+          OutgoingRows.answered(message),
+          response.statusCode
+        )
+      )
+    );
   }
 
   /**

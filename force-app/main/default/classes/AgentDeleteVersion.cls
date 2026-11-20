@@ -6,7 +6,7 @@
  * imported week as it came in, and a week not built yet has no delete, as on the panel.
  */
 @RestResource(urlMapping='/v1/delete_version')
-global with sharing class AgentDeleteVersion implements AgentWeeks.Action, AgentAskFirst.Preview {
+global with sharing class AgentDeleteVersion implements AgentRequest.Change, AgentAskFirst.Preview {
   private static final Set<String> FIELDS = new Set<String>{
     'season',
     'week',
@@ -18,16 +18,17 @@ global with sharing class AgentDeleteVersion implements AgentWeeks.Action, Agent
 
   @HttpPost
   global static void post() {
-    AgentWeeks.answer(new AgentDeleteVersion());
+    AgentRequest.answer(new AgentDeleteVersion());
+  }
+
+  public Set<String> fields() {
+    return FIELDS;
   }
 
   /** What the delete takes away (API-1.106). */
-  public String preview() {
-    AgentWeeks.Week week = AgentSchedules.eitherOf(AgentFields.body(FIELDS));
-    ScheduleViews.VersionRow version = AgentVersions.named(
-      week,
-      AgentFields.body(FIELDS)
-    );
+  public String preview(Map<String, Object> body) {
+    AgentWeeks.Week week = AgentSchedules.eitherOf(body);
+    ScheduleViews.VersionRow version = AgentVersions.named(week, body);
     // The very version shown: a later one of the same name is another delete.
     AgentAskFirst.stateIs(version.id + ' ' + AgentVersions.savedOf(version));
     return 'This deletes the saved version "' +
@@ -41,8 +42,7 @@ global with sharing class AgentDeleteVersion implements AgentWeeks.Action, Agent
       ') for good.';
   }
 
-  public String run() {
-    Map<String, Object> body = AgentFields.body(FIELDS);
+  public String run(Map<String, Object> body) {
     AgentWeeks.Week week = AgentSchedules.eitherOf(body);
     ScheduleViews.VersionRow version = AgentVersions.named(week, body);
     try {

@@ -8,7 +8,7 @@
  * in the screen's words, with what it says was not placed or left out.
  */
 @RestResource(urlMapping='/v1/start_manual_week')
-global with sharing class AgentStartWeek implements AgentWeeks.Action {
+global with sharing class AgentStartWeek implements AgentRequest.Change {
   private static final Set<String> FIELDS = new Set<String>{
     'season',
     'week',
@@ -19,11 +19,14 @@ global with sharing class AgentStartWeek implements AgentWeeks.Action {
 
   @HttpPost
   global static void post() {
-    AgentWeeks.answer(new AgentStartWeek());
+    AgentRequest.answer(new AgentStartWeek());
   }
 
-  public String run() {
-    Map<String, Object> body = AgentFields.body(FIELDS);
+  public Set<String> fields() {
+    return FIELDS;
+  }
+
+  public String run(Map<String, Object> body) {
     AgentWeeks.Week week = AgentWeeks.placeOf(body);
     if (ManualDrafts.find(week.program.Id, week.weekId) != null) {
       throw new ShoreshException(

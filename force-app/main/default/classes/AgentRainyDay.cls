@@ -14,7 +14,7 @@
  * (AgentUndo, API-1.14).
  */
 @RestResource(urlMapping='/v1/rainy_day')
-global with sharing class AgentRainyDay implements AgentWeeks.Action {
+global with sharing class AgentRainyDay implements AgentRequest.Change {
   private static final Set<String> FIELDS = new Set<String>{
     'season',
     'week',
@@ -30,11 +30,14 @@ global with sharing class AgentRainyDay implements AgentWeeks.Action {
 
   @HttpPost
   global static void post() {
-    AgentWeeks.answer(new AgentRainyDay());
+    AgentRequest.answer(new AgentRainyDay());
   }
 
-  public String run() {
-    Map<String, Object> body = AgentFields.body(FIELDS);
+  public Set<String> fields() {
+    return FIELDS;
+  }
+
+  public String run(Map<String, Object> body) {
     AgentWeeks.Week week = AgentSchedules.eitherOf(body);
     String change = AgentFields.text(body, 'change');
     SlotEdits.Edit edit = editOf(body, change);

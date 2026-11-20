@@ -6,7 +6,7 @@
  * what goes with it, and refuses what the screen refuses, with nothing deleted.
  */
 @RestResource(urlMapping='/v1/delete_linked_choice')
-global with sharing class AgentDeleteLinkedChoice implements AgentWeeks.Action, AgentAskFirst.Preview {
+global with sharing class AgentDeleteLinkedChoice implements AgentRequest.Change, AgentAskFirst.Preview {
   private static final Set<String> FIELDS = new Set<String>{
     'season',
     'elective_set',
@@ -16,23 +16,26 @@ global with sharing class AgentDeleteLinkedChoice implements AgentWeeks.Action, 
 
   @HttpPost
   global static void post() {
-    AgentWeeks.answer(new AgentDeleteLinkedChoice());
+    AgentRequest.answer(new AgentDeleteLinkedChoice());
+  }
+
+  public Set<String> fields() {
+    return FIELDS;
   }
 
   /** The screen's own question before its Delete (API-1.106). */
-  public String preview() {
-    AgentSetupRecords.Found found = found();
+  public String preview(Map<String, Object> body) {
+    AgentSetupRecords.Found found = found(body);
     // The very record shown: one made since under the same name is another delete.
     AgentAskFirst.stateIs(found.id);
     return AgentDeleteSetup.question(found);
   }
 
-  public String run() {
-    return AgentDeleteSetup.removed(found());
+  public String run(Map<String, Object> body) {
+    return AgentDeleteSetup.removed(found(body));
   }
 
-  private static AgentSetupRecords.Found found() {
-    Map<String, Object> body = AgentFields.body(FIELDS);
+  private static AgentSetupRecords.Found found(Map<String, Object> body) {
     LinkedChoice__c choice = new AgentLinkedChoiceRefs(body).choiceOf(body);
     AgentSetupRecords.Found found = new AgentSetupRecords.Found();
     found.id = choice.Id;

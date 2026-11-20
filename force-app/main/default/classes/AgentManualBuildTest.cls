@@ -29,7 +29,7 @@ private class AgentManualBuildTest {
     RestContext.request.requestBody = Blob.valueOf(JSON.serialize(body));
     RestContext.response = new RestResponse();
     AgentAskFirstTestCalls.answer(
-      new Map<String, AgentWeeks.Action>{
+      new Map<String, AgentRequest.Change>{
           'cell' => new AgentCells(),
           'undo' => new AgentUndo(),
           'publish' => new AgentPublish(),

@@ -5,14 +5,18 @@
  * screen's own save (SeasonArchive).
  */
 @RestResource(urlMapping='/v1/bring_back_season')
-global with sharing class AgentBringBackSeason implements AgentWeeks.Action {
+global with sharing class AgentBringBackSeason implements AgentRequest.Change {
   @HttpPost
   global static void post() {
-    AgentWeeks.answer(new AgentBringBackSeason());
+    AgentRequest.answer(new AgentBringBackSeason());
   }
 
-  public String run() {
-    Season__c season = AgentArchiveSeason.named('bring back');
+  public Set<String> fields() {
+    return new Set<String>{ 'season' };
+  }
+
+  public String run(Map<String, Object> body) {
+    Season__c season = AgentArchiveSeason.named(body, 'bring back');
     if (!ArchivedSeasons.isArchived(season.Id)) {
       throw new ShoreshException(
         '"' + season.Name + '" isn\'t archived. Nothing was changed.'

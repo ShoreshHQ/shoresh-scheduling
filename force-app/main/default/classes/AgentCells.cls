@@ -16,7 +16,7 @@
  * week's revision after the edit, so the connector can hold its Undo (the runs back, as the
  * editor's history holds them) for the rest of the conversation (AgentUndo, API-1.14).
  */
-public with sharing class AgentCells implements AgentWeeks.Action {
+public with sharing class AgentCells implements AgentRequest.Change {
   private static final Set<String> FIELDS = new Set<String>{
     'season',
     'week',
@@ -28,8 +28,11 @@ public with sharing class AgentCells implements AgentWeeks.Action {
     'revision'
   };
 
-  public String run() {
-    Map<String, Object> body = AgentFields.body(FIELDS);
+  public Set<String> fields() {
+    return FIELDS;
+  }
+
+  public String run(Map<String, Object> body) {
     AgentWeeks.Week week = AgentSchedules.eitherOf(body);
     String change = AgentFields.text(body, 'change');
     List<SlotEdits.Run> runs = runsOf(body.get('runs'));

@@ -8,7 +8,7 @@
  * (409), nothing changed.
  */
 @RestResource(urlMapping='/v1/move_elective_seat')
-global with sharing class AgentMoveElectiveSeat implements AgentWeeks.Action {
+global with sharing class AgentMoveElectiveSeat implements AgentRequest.Change {
   private static final Set<String> FIELDS = new Set<String>{
     'season',
     'week',
@@ -22,11 +22,14 @@ global with sharing class AgentMoveElectiveSeat implements AgentWeeks.Action {
 
   @HttpPost
   global static void post() {
-    AgentWeeks.answer(new AgentMoveElectiveSeat());
+    AgentRequest.answer(new AgentMoveElectiveSeat());
   }
 
-  public String run() {
-    Map<String, Object> body = AgentFields.body(FIELDS);
+  public Set<String> fields() {
+    return FIELDS;
+  }
+
+  public String run(Map<String, Object> body) {
     AgentElectives.Run run = AgentElectives.committed(body);
     Decimal seen = AgentElectives.seenOf(body, run);
     AgentElectives.holdAsSeen(run, seen);

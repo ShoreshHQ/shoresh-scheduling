@@ -1,11 +1,11 @@
 /**
- * The fields a person's own action through an agent or the command line sends (AgentWeeks), read
+ * The fields a person's own action through an agent or the command line sends (AgentRequest), read
  * by their plain names (API-1.5): a field Shoresh doesn't know, or a value that isn't text, is
  * refused in plain words.
  */
 public with sharing class AgentFields {
-  /** The body's fields by their plain names; a field Shoresh doesn't know is refused. */
-  public static Map<String, Object> body(Set<String> fields) {
+  /** The body sent, a JSON object of fields by their plain names; anything else is refused. */
+  public static Map<String, Object> sent() {
     Object parsed;
     try {
       Blob sent = RestContext.request.requestBody;
@@ -16,38 +16,36 @@ public with sharing class AgentFields {
     if (!(parsed instanceof Map<String, Object>)) {
       throw new ShoreshException('Send JSON like {"season": "Summer 2026"}.');
     }
-    Map<String, Object> given = (Map<String, Object>) parsed;
-    for (String name : given.keySet()) {
-      requireKnown(name, fields);
-    }
-    return given;
+    return (Map<String, Object>) parsed;
   }
 
   /** The web address's fields (a read's), as text; a field Shoresh doesn't know is refused. */
   public static Map<String, Object> query(Set<String> fields) {
     Map<String, Object> asked = new Map<String, Object>();
     Map<String, String> params = RestContext.request.params;
+    requireKnown(params.keySet(), fields);
     for (String name : params.keySet()) {
-      requireKnown(name, fields);
       asked.put(name, params.get(name));
     }
     return asked;
   }
 
   /** A field Shoresh doesn't know is refused, naming the ones it does. */
-  private static void requireKnown(String name, Set<String> fields) {
-    if (fields.contains(name)) {
-      return;
+  public static void requireKnown(Set<String> given, Set<String> fields) {
+    for (String name : given) {
+      if (fields.contains(name)) {
+        continue;
+      }
+      List<String> known = new List<String>(fields);
+      known.sort();
+      throw new ShoreshException(
+        'Shoresh doesn\'t know the field "' +
+          name.left(40) +
+          '". The fields are: ' +
+          String.join(known, ', ') +
+          '.'
+      );
     }
-    List<String> known = new List<String>(fields);
-    known.sort();
-    throw new ShoreshException(
-      'Shoresh doesn\'t know the field "' +
-        name.left(40) +
-        '". The fields are: ' +
-        String.join(known, ', ') +
-        '.'
-    );
   }
 
   /** A list field as sent (none when left out); a value that isn't a list is refused. */

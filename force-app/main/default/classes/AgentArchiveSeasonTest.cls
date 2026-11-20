@@ -7,7 +7,7 @@
 @IsTest
 private class AgentArchiveSeasonTest {
   private static List<Object> sent(
-    AgentWeeks.Action action,
+    AgentRequest.Change action,
     Map<String, Object> body
   ) {
     RestContext.request = new RestRequest();

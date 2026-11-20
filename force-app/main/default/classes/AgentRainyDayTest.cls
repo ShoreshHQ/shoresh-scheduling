@@ -99,7 +99,7 @@ private class AgentRainyDayTest {
   }
 
   private static List<Object> send(
-    AgentWeeks.Action door,
+    AgentRequest.Change door,
     Map<String, Object> body
   ) {
     // The week as read now (on Generated Schedule), unless the test says what was read.

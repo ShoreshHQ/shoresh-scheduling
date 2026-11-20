@@ -39,7 +39,7 @@ private class AgentImportsMoreTest {
 
   /** One POST to a door; answers [status, sentence]. */
   private static List<Object> post(
-    AgentWeeks.Action door,
+    AgentRequest.Change door,
     Map<String, Object> body
   ) {
     RestContext.request = new RestRequest();

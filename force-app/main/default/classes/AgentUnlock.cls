@@ -8,6 +8,6 @@
 global with sharing class AgentUnlock {
   @HttpPost
   global static void post() {
-    AgentWeeks.answer(new AgentLock(GeneratedWeek.UNLOCK));
+    AgentRequest.answer(new AgentLock(GeneratedWeek.UNLOCK));
   }
 }

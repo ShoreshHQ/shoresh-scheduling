@@ -11,7 +11,7 @@
  * no undo, and it replaces every seat that isn't locked.
  */
 @RestResource(urlMapping='/v1/assign_elective_seats')
-global with sharing class AgentAssignElectiveSeats implements AgentWeeks.Action, AgentAskFirst.Preview {
+global with sharing class AgentAssignElectiveSeats implements AgentRequest.Change, AgentAskFirst.Preview {
   private static final Set<String> FIELDS = new Set<String>{
     'season',
     'week',
@@ -59,15 +59,19 @@ global with sharing class AgentAssignElectiveSeats implements AgentWeeks.Action,
 
   @HttpPost
   global static void post() {
-    AgentWeeks.answer(new AgentAssignElectiveSeats());
+    AgentRequest.answer(new AgentAssignElectiveSeats());
+  }
+
+  public Set<String> fields() {
+    return FIELDS;
   }
 
   /**
    * What Assign does, said from the run as it is now (API-1.106): only the seats that change, as
    * its save writes only what differs (ElectiveSeatSaves.save).
    */
-  public String preview() {
-    heldAsSeen();
+  public String preview(Map<String, Object> body) {
+    heldAsSeen(body);
     Map<String, Assignment__c> now = new Map<String, Assignment__c>();
     for (Assignment__c seat : [
       SELECT
@@ -199,9 +203,9 @@ global with sharing class AgentAssignElectiveSeats implements AgentWeeks.Action,
     }
   }
 
-  public String run() {
+  public String run(Map<String, Object> body) {
     if (held == null) {
-      heldAsSeen();
+      heldAsSeen(body);
     }
     Map<String, Object> request = new Map<String, Object>{
       'runId' => held.id,
@@ -230,8 +234,8 @@ global with sharing class AgentAssignElectiveSeats implements AgentWeeks.Action,
   }
 
   /** The run asked for, held while still as seen, with the seats sent. */
-  private void heldAsSeen() {
-    body = AgentFields.body(FIELDS);
+  private void heldAsSeen(Map<String, Object> body) {
+    this.body = body;
     held = AgentElectives.committed(body);
     seen = AgentElectives.seenOf(body, held);
     if (!(body.get('seats') instanceof List<Object>)) {

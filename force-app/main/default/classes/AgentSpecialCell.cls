@@ -14,7 +14,7 @@
  * undo_last_change (API-1.14).
  */
 @RestResource(urlMapping='/v1/change_special_schedule_cell')
-global with sharing class AgentSpecialCell implements AgentWeeks.Action {
+global with sharing class AgentSpecialCell implements AgentRequest.Change {
   private static final Set<String> FIELDS = new Set<String>{
     'season',
     'special',
@@ -30,7 +30,11 @@ global with sharing class AgentSpecialCell implements AgentWeeks.Action {
 
   @HttpPost
   global static void post() {
-    AgentWeeks.answer(new AgentSpecialCell());
+    AgentRequest.answer(new AgentSpecialCell());
+  }
+
+  public Set<String> fields() {
+    return FIELDS;
   }
 
   /** The GET: what the page opens (readOf). */
@@ -57,8 +61,7 @@ global with sharing class AgentSpecialCell implements AgentWeeks.Action {
     };
   }
 
-  public String run() {
-    Map<String, Object> body = AgentFields.body(FIELDS);
+  public String run(Map<String, Object> body) {
     AgentSpecials.Found found = AgentSpecials.find(body);
     String change = AgentFields.text(body, 'change');
     SlotEdits.Edit edit = new SlotEdits.Edit();

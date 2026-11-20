@@ -6,7 +6,7 @@
  * kept; the offering's linked choices go with it.
  */
 @RestResource(urlMapping='/v1/delete_elective')
-global with sharing class AgentDeleteOffering implements AgentWeeks.Action, AgentAskFirst.Preview {
+global with sharing class AgentDeleteOffering implements AgentRequest.Change, AgentAskFirst.Preview {
   private static final Set<String> FIELDS = new Set<String>{
     'season',
     'elective_set',
@@ -15,23 +15,26 @@ global with sharing class AgentDeleteOffering implements AgentWeeks.Action, Agen
 
   @HttpPost
   global static void post() {
-    AgentWeeks.answer(new AgentDeleteOffering());
+    AgentRequest.answer(new AgentDeleteOffering());
+  }
+
+  public Set<String> fields() {
+    return FIELDS;
   }
 
   /** The screen's own question before its Delete (API-1.106). */
-  public String preview() {
-    AgentSetupRecords.Found found = found();
+  public String preview(Map<String, Object> body) {
+    AgentSetupRecords.Found found = found(body);
     // The very row shown: one made since for the same activity is another delete.
     AgentAskFirst.stateIs(found.id);
     return AgentDeleteSetup.question(found);
   }
 
-  public String run() {
-    return AgentDeleteSetup.removed(found());
+  public String run(Map<String, Object> body) {
+    return AgentDeleteSetup.removed(found(body));
   }
 
-  private static AgentSetupRecords.Found found() {
-    Map<String, Object> body = AgentFields.body(FIELDS);
+  private static AgentSetupRecords.Found found(Map<String, Object> body) {
     Offering__c offering = new AgentLinkedChoiceRefs(body)
       .offeringOf(AgentFields.text(body, 'activity'));
     AgentSetupRecords.Found found = new AgentSetupRecords.Found();

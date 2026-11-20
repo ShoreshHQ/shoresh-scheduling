@@ -1,15 +1,19 @@
 /** undo_learned_answer: Undo on "What Shoresh has learned", API-1.97 (docs/protocol/api.md). Shared parts: AgentLearned. */
 @RestResource(urlMapping='/v1/undo_learned_answer')
-global with sharing class AgentUndoLearned implements AgentWeeks.Action {
+global with sharing class AgentUndoLearned implements AgentRequest.Change {
   private static final Set<String> FIELDS = new Set<String>{ 'season', 'undo' };
 
   @HttpPost
   global static void post() {
-    AgentWeeks.answer(new AgentUndoLearned());
+    AgentRequest.answer(new AgentUndoLearned());
   }
 
-  public String run() {
-    return undo(AgentFields.body(FIELDS));
+  public Set<String> fields() {
+    return FIELDS;
+  }
+
+  public String run(Map<String, Object> body) {
+    return undo(body);
   }
 
   /**

@@ -9,7 +9,7 @@
  * first what the table asks, and on the yes saves with the same pieces (API-1.147).
  */
 @RestResource(urlMapping='/v1/add_to_setup')
-global with sharing class AgentAddSetup implements AgentWeeks.Action, AgentAskFirst.Preview {
+global with sharing class AgentAddSetup implements AgentRequest.Change, AgentAskFirst.Preview {
   private static final Set<String> FIELDS = new Set<String>{
     'season',
     'kind',
@@ -36,20 +36,24 @@ global with sharing class AgentAddSetup implements AgentWeeks.Action, AgentAskFi
 
   @HttpPost
   global static void post() {
-    AgentWeeks.answer(new AgentAddSetup());
+    AgentRequest.answer(new AgentAddSetup());
+  }
+
+  public Set<String> fields() {
+    return FIELDS;
   }
 
   /** CORE-3.9: the table's question when a fixed activity lands on a recurring one; else none. */
-  public String preview() {
-    ready();
+  public String preview(Map<String, Object> body) {
+    ready(body);
     // The pieces too, unsaid: a recurring activity changed since makes the confirm stale.
     AgentAskFirst.stateIs(ask == null ? null : JSON.serialize(ask.around));
     return ask == null ? null : ask.words();
   }
 
-  public String run() {
+  public String run(Map<String, Object> body) {
     if (record == null) {
-      ready();
+      ready(body);
     }
     if (ask != null) {
       // The yes: the recurring activities keep their other time blocks, as on screen.
@@ -75,8 +79,7 @@ global with sharing class AgentAddSetup implements AgentWeeks.Action, AgentAskFi
   }
 
   /** The new row as the table starts it, with the fields asked; refused as the table refuses. */
-  private void ready() {
-    Map<String, Object> body = AgentFields.body(FIELDS);
+  private void ready(Map<String, Object> body) {
     found = AgentSetupRecords.kindIn(body);
     name = AgentFields.text(body, 'name');
     if (String.isBlank(name)) {

@@ -1,9 +1,8 @@
 /**
  * What the person's own actions through an agent or the command line share (docs/protocol/api.md
  * API-1.11 to API-1.14): the program's Generated Schedule week, found by the names the camp uses
- * and locked as the screen's save locks it; and the answer, one plain sentence, with what the
- * change leaves for its Undo (AgentUndoHeld). A change leaves exactly what the same action on the screen
- * leaves (API-1.148): no version of its own. Runs in user mode, so the person has exactly the access
+ * and locked as the screen's save locks it (the request itself is AgentRequest's). A change
+ * leaves exactly what the same action on the screen leaves (API-1.148): no version of its own. Runs in user mode, so the person has exactly the access
  * they have on Generated Schedule.
  */
 public with sharing class AgentWeeks {
@@ -187,47 +186,5 @@ public with sharing class AgentWeeks {
       IncomingBatch.fold(WeekCalendar.weekdayName(day)) ==
       IncomingBatch.fold(asked) ||
       IncomingBatch.fold(DayWords.say(day)) == IncomingBatch.fold(asked);
-  }
-
-  /**
-   * Runs one action and answers {"message": sentence}: 200 when done, 409 for someone else's
-   * change, 400 for a refusal in Shoresh's words, 500 for anything else (in Shoresh's words too).
-   * Every verb's access is AgentAccess's one policy, refused here in the same words for every verb.
-   */
-  public static void answer(Action action) {
-    RestResponse response = RestContext.response;
-    response.addHeader('Content-Type', 'application/json');
-    Savepoint before = Database.setSavepoint();
-    Integer status;
-    String message;
-    AgentUndoHeld.forget();
-    try {
-      AgentRefusal.forAgent = true;
-      AgentAccess.require();
-      message = AgentAskFirst.run(action);
-      status = 200;
-    } catch (ConflictException e) {
-      Database.rollback(before);
-      status = 409;
-      message = e.getMessage();
-    } catch (Exception e) {
-      Database.rollback(before);
-      Boolean ours = e instanceof ShoreshException;
-      status = ours ? 400 : 500;
-      message = ours ? e.getMessage() : ScreenErrors.words(e);
-    } finally {
-      AgentRefusal.forAgent = false;
-    }
-    response.statusCode = status;
-    response.responseBody = Blob.valueOf(
-      JSON.serialize(
-        AgentUndoHeld.answered(OutgoingRows.answered(message), status)
-      )
-    );
-  }
-
-  /** One action through an agent: its answer when done. */
-  public interface Action {
-    String run();
   }
 }

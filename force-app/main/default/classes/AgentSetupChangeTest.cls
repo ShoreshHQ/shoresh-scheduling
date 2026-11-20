@@ -31,9 +31,9 @@ private class AgentSetupChangeTest {
     if (action == 'read') {
       AgentRequest.answer(new AgentReadSetup());
     } else {
-      AgentWeeks.answer(
+      AgentRequest.answer(
         action == 'change'
-          ? (AgentWeeks.Action) new AgentChangeSetup()
+          ? (AgentRequest.Change) new AgentChangeSetup()
           : new AgentAddSetup()
       );
     }

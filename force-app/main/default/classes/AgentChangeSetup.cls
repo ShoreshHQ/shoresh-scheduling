@@ -11,7 +11,7 @@
  * (API-1.147).
  */
 @RestResource(urlMapping='/v1/change_in_setup')
-global with sharing class AgentChangeSetup implements AgentWeeks.Action, AgentAskFirst.Preview {
+global with sharing class AgentChangeSetup implements AgentRequest.Change, AgentAskFirst.Preview {
   private static final Set<String> FIELDS = new Set<String>{
     'season',
     'kind',
@@ -34,20 +34,23 @@ global with sharing class AgentChangeSetup implements AgentWeeks.Action, AgentAs
 
   @HttpPost
   global static void post() {
-    AgentWeeks.answer(new AgentChangeSetup());
+    AgentRequest.answer(new AgentChangeSetup());
+  }
+
+  public Set<String> fields() {
+    return FIELDS;
   }
 
   /** CORE-3.9: the table's question when a fixed activity lands on a recurring one; else none. */
-  public String preview() {
-    ready();
+  public String preview(Map<String, Object> body) {
+    ready(body);
     // The pieces too, unsaid: a recurring activity changed since makes the confirm stale.
     AgentAskFirst.stateIs(ask == null ? null : JSON.serialize(ask.around));
     return ask == null ? null : ask.words();
   }
 
   /** The row with the fields asked and what was seen; refused as the table refuses. */
-  private void ready() {
-    Map<String, Object> body = AgentFields.body(FIELDS);
+  private void ready(Map<String, Object> body) {
     found = AgentSetupRecords.find(body);
     record = found.id.getSObjectType().newSObject(found.id);
     Map<String, Object> given = AgentSetupFields.given(body.get('fields'));
@@ -63,9 +66,9 @@ global with sharing class AgentChangeSetup implements AgentWeeks.Action, AgentAs
     ask = AgentFixedOver.of(record, put.extras, found);
   }
 
-  public String run() {
+  public String run(Map<String, Object> body) {
     if (record == null) {
-      ready();
+      ready(body);
     }
     if (ask != null) {
       // The yes: the recurring activities keep their other time blocks, as on screen.

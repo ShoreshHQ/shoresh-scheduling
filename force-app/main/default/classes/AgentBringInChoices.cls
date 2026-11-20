@@ -10,7 +10,7 @@
  * taken away (a camper's choices made by hand are kept), so it doesn't ask first.
  */
 @RestResource(urlMapping='/v1/import_choices')
-global with sharing class AgentBringInChoices implements AgentWeeks.Action {
+global with sharing class AgentBringInChoices implements AgentRequest.Change {
   private static final Set<String> FIELDS = new Set<String>{
     'season',
     'request',
@@ -24,11 +24,14 @@ global with sharing class AgentBringInChoices implements AgentWeeks.Action {
 
   @HttpPost
   global static void post() {
-    AgentWeeks.answer(new AgentBringInChoices());
+    AgentRequest.answer(new AgentBringInChoices());
   }
 
-  public String run() {
-    Map<String, Object> body = AgentFields.body(FIELDS);
+  public Set<String> fields() {
+    return FIELDS;
+  }
+
+  public String run(Map<String, Object> body) {
     Season__c season = AgentChangeCampWords.seasonOf(
       AgentFields.text(body, 'season')
     );

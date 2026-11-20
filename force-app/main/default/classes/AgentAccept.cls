@@ -7,7 +7,7 @@
  * comes back when it gets worse, as on screen (CORE-6.8).
  */
 @RestResource(urlMapping='/v1/accept_line')
-global with sharing class AgentAccept implements AgentWeeks.Action {
+global with sharing class AgentAccept implements AgentRequest.Change {
   private static final Set<String> FIELDS = new Set<String>{
     'season',
     'week',
@@ -18,11 +18,14 @@ global with sharing class AgentAccept implements AgentWeeks.Action {
 
   @HttpPost
   global static void post() {
-    AgentWeeks.answer(new AgentAccept());
+    AgentRequest.answer(new AgentAccept());
   }
 
-  public String run() {
-    Map<String, Object> body = AgentFields.body(FIELDS);
+  public Set<String> fields() {
+    return FIELDS;
+  }
+
+  public String run(Map<String, Object> body) {
     AgentWeeks.Week week = AgentSchedules.placeOfEither(body);
     AgentChecks.requireDraft(week);
     try {

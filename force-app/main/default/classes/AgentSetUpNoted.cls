@@ -9,7 +9,7 @@
  * (the week is read again, its history kept: API-1.14).
  */
 @RestResource(urlMapping='/v1/set_it_up')
-global with sharing class AgentSetUpNoted implements AgentWeeks.Action {
+global with sharing class AgentSetUpNoted implements AgentRequest.Change {
   private static final Set<String> FIELDS = new Set<String>{
     'season',
     'week',
@@ -27,11 +27,14 @@ global with sharing class AgentSetUpNoted implements AgentWeeks.Action {
 
   @HttpPost
   global static void post() {
-    AgentWeeks.answer(new AgentSetUpNoted());
+    AgentRequest.answer(new AgentSetUpNoted());
   }
 
-  public String run() {
-    Map<String, Object> body = AgentFields.body(FIELDS);
+  public Set<String> fields() {
+    return FIELDS;
+  }
+
+  public String run(Map<String, Object> body) {
     String kind = KINDS.get(AgentFields.text(body, 'kind').toLowerCase());
     String name = AgentFields.text(body, 'name');
     if (kind == null || String.isBlank(name)) {

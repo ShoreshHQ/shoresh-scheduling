@@ -100,7 +100,7 @@ public class LinkedChoicesMenu {
 
   /** Sends body to the action; answers [status, sentence], through its ask-first when it has one. */
   public static List<Object> sent(
-    AgentWeeks.Action action,
+    AgentRequest.Change action,
     Map<String, Object> body
   ) {
     RestContext.request = new RestRequest();

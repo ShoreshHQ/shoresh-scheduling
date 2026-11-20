@@ -8,7 +8,7 @@
  * Answered and refused in the screen's own words.
  */
 @RestResource(urlMapping='/v1/rename_in_setup')
-global with sharing class AgentRenameSetup implements AgentWeeks.Action {
+global with sharing class AgentRenameSetup implements AgentRequest.Change {
   private static final Set<String> FIELDS = new Set<String>{
     'season',
     'kind',
@@ -19,11 +19,14 @@ global with sharing class AgentRenameSetup implements AgentWeeks.Action {
 
   @HttpPost
   global static void post() {
-    AgentWeeks.answer(new AgentRenameSetup());
+    AgentRequest.answer(new AgentRenameSetup());
   }
 
-  public String run() {
-    Map<String, Object> body = AgentFields.body(FIELDS);
+  public Set<String> fields() {
+    return FIELDS;
+  }
+
+  public String run(Map<String, Object> body) {
     AgentSetupRecords.Found found = AgentSetupRecords.find(body);
     String newName = AgentFields.text(body, 'new_name');
     if (String.isBlank(newName)) {

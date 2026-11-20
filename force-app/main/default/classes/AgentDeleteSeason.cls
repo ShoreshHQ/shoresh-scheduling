@@ -6,18 +6,22 @@
  * the screen refuses, with nothing removed.
  */
 @RestResource(urlMapping='/v1/delete_season')
-global with sharing class AgentDeleteSeason implements AgentWeeks.Action, AgentAskFirst.Preview {
+global with sharing class AgentDeleteSeason implements AgentRequest.Change, AgentAskFirst.Preview {
   private static final Set<String> FIELDS = new Set<String>{ 'season' };
   private AgentSetupRecords.Found found;
 
   @HttpPost
   global static void post() {
-    AgentWeeks.answer(new AgentDeleteSeason());
+    AgentRequest.answer(new AgentDeleteSeason());
+  }
+
+  public Set<String> fields() {
+    return FIELDS;
   }
 
   /** The screen's own question: the season, and each kind it takes with it. */
-  public String preview() {
-    found = named();
+  public String preview(Map<String, Object> body) {
+    found = named(body);
     // The very season shown: one made since under the same name is another delete.
     AgentAskFirst.stateIs(found.id);
     SetupDelete.Preview asked = SetupDelete.preview(found.id);
@@ -34,7 +38,7 @@ global with sharing class AgentDeleteSeason implements AgentWeeks.Action, AgentA
     return asked.message;
   }
 
-  public String run() {
+  public String run(Map<String, Object> body) {
     try {
       SetupDelete.remove(found.id);
     } catch (Exception e) {
@@ -49,8 +53,8 @@ global with sharing class AgentDeleteSeason implements AgentWeeks.Action, AgentA
     );
   }
 
-  private static AgentSetupRecords.Found named() {
-    String name = AgentFields.text(AgentFields.body(FIELDS), 'season');
+  private static AgentSetupRecords.Found named(Map<String, Object> body) {
+    String name = AgentFields.text(body, 'season');
     if (String.isBlank(name)) {
       throw new ShoreshException('Say which season to delete (season).');
     }

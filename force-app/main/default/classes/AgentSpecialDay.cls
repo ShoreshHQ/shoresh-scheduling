@@ -11,7 +11,7 @@
  * agent asks the person first.
  */
 @RestResource(urlMapping='/v1/put_special_day_on_day')
-global with sharing class AgentSpecialDay implements AgentWeeks.Action {
+global with sharing class AgentSpecialDay implements AgentRequest.Change {
   private static final Set<String> FIELDS = new Set<String>{
     'season',
     'special_day',
@@ -48,11 +48,14 @@ global with sharing class AgentSpecialDay implements AgentWeeks.Action {
 
   @HttpPost
   global static void post() {
-    AgentWeeks.answer(new AgentSpecialDay());
+    AgentRequest.answer(new AgentSpecialDay());
   }
 
-  public String run() {
-    Map<String, Object> body = AgentFields.body(FIELDS);
+  public Set<String> fields() {
+    return FIELDS;
+  }
+
+  public String run(Map<String, Object> body) {
     String seen = seenOf(body);
     Season__c season = AgentChangeCampWords.seasonOf(
       AgentFields.text(body, 'season')

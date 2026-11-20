@@ -8,7 +8,7 @@
  * otherwise refused (409), nothing cleared.
  */
 @RestResource(urlMapping='/v1/clear_electives')
-global with sharing class AgentClearElectives implements AgentWeeks.Action, AgentAskFirst.Preview {
+global with sharing class AgentClearElectives implements AgentRequest.Change, AgentAskFirst.Preview {
   private static final Set<String> FIELDS = new Set<String>{
     'season',
     'week',
@@ -22,12 +22,16 @@ global with sharing class AgentClearElectives implements AgentWeeks.Action, Agen
 
   @HttpPost
   global static void post() {
-    AgentWeeks.answer(new AgentClearElectives());
+    AgentRequest.answer(new AgentClearElectives());
+  }
+
+  public Set<String> fields() {
+    return FIELDS;
   }
 
   /** What Clear takes away, for good, as the screen's picture says it (API-1.106). */
-  public String preview() {
-    ElectiveClear.Picture now = heldAsSeen();
+  public String preview(Map<String, Object> body) {
+    ElectiveClear.Picture now = heldAsSeen(body);
     CampLabels words = IncomingSeason.labelsOf(season.Id);
     String electives = words.pluralInSentence('Elective');
     return 'This clears ' +
@@ -36,7 +40,7 @@ global with sharing class AgentClearElectives implements AgentWeeks.Action, Agen
         : 'the ' +
           electives +
           ' of ' +
-          AgentFields.text(AgentFields.body(FIELDS), 'week') +
+          AgentFields.text(body, 'week') +
           ' in "' +
           season.Name +
           '"') +
@@ -48,9 +52,9 @@ global with sharing class AgentClearElectives implements AgentWeeks.Action, Agen
       AgentElectivesToClear.said(now, words);
   }
 
-  public String run() {
+  public String run(Map<String, Object> body) {
     if (season == null) {
-      heldAsSeen();
+      heldAsSeen(body);
     }
     ElectiveClear.Result result;
     try {
@@ -85,8 +89,7 @@ global with sharing class AgentClearElectives implements AgentWeeks.Action, Agen
   }
 
   /** The season and week asked for, held while still as seen; the picture now. */
-  private ElectiveClear.Picture heldAsSeen() {
-    Map<String, Object> body = AgentFields.body(FIELDS);
+  private ElectiveClear.Picture heldAsSeen(Map<String, Object> body) {
     AgentWeeks.requireScheduler();
     season = OutgoingRows.seasonCalled(AgentFields.text(body, 'season'));
     weekId = weekIdOf(season, AgentFields.text(body, 'week'));

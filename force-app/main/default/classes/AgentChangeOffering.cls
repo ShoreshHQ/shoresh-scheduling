@@ -8,7 +8,7 @@
  * meaning (ELECT-4.1).
  */
 @RestResource(urlMapping='/v1/change_elective')
-global with sharing class AgentChangeOffering implements AgentWeeks.Action {
+global with sharing class AgentChangeOffering implements AgentRequest.Change {
   private static final Set<String> FIELDS = new Set<String>{
     'season',
     'elective_set',
@@ -19,11 +19,14 @@ global with sharing class AgentChangeOffering implements AgentWeeks.Action {
 
   @HttpPost
   global static void post() {
-    AgentWeeks.answer(new AgentChangeOffering());
+    AgentRequest.answer(new AgentChangeOffering());
   }
 
-  public String run() {
-    Map<String, Object> body = AgentFields.body(FIELDS);
+  public Set<String> fields() {
+    return FIELDS;
+  }
+
+  public String run(Map<String, Object> body) {
     AgentLinkedChoiceRefs refs = new AgentLinkedChoiceRefs(body);
     Offering__c now = refs.offeringOf(AgentFields.text(body, 'activity'));
     AgentSetupRecords.Found found = foundOf(refs, now);
