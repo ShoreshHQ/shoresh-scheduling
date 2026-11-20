@@ -833,6 +833,28 @@ describe("c-shoresh-manual-build: versions and Start from another week", () => {
       expect(q(element, '[data-id="restore-refused"]')).toBeNull();
     });
 
+    it("WEEK-6.7: setup saved during a Restore that is then refused keeps the refusal's line; its Reload reads the week", async () => {
+      const element = await render(
+        withRevisions(draft(WITH_SWIM, ["1,2,", "1,,"]), "2026-06-29:1")
+      );
+      const sent = pending();
+      restoreVersion.mockReturnValue(sent.promise);
+      const panel = await versionsPanel(element);
+      restoreButton(panel).click();
+      await flush();
+      getDraft.mockClear();
+      element.setup = nsRecord({ ...SETUP });
+      await flush();
+      sent.resolve({ changedSince: true });
+      await flush();
+      expect(getDraft).not.toHaveBeenCalled();
+      const line = q(element, '[data-id="restore-refused"]');
+      expect(line).not.toBeNull();
+      line.querySelector('[data-id="reload"]').click();
+      await flush();
+      expect(getDraft).toHaveBeenCalledTimes(1);
+    });
+
     it("after a delete, focus goes to the next version once the list without it is back", async () => {
       getVersions.mockResolvedValue(TWO);
       const element = await render(draft(WITH_SWIM, ["1,2,", "1,,"]));

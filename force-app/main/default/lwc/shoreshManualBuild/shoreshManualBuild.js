@@ -990,11 +990,12 @@ export default class ShoreshManualBuild extends BuildScreen(LightningElement) {
   }
 
   /**
-   * A read asked for while the list was read, open or updating, or while a publish was on its way
-   * (the season read again, a read dropped for it).
+   * A read asked for while the list was read, open or updating, or while a publish or a versions
+   * action was on its way (the season read again, a read dropped for it). Not while a refused
+   * Restore's line is shown, as on Generated Schedule: its Reload reads the week.
    */
   readAfterSetup() {
-    if (this.readAfterRun && this.refresh()) {
+    if (this.readAfterRun && !this.restoreRefused && this.refresh()) {
       this.readAfterRun = false;
     }
   }
