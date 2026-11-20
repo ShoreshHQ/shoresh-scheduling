@@ -72,6 +72,16 @@ Status: accepted (2026-10-15). Design source: wiki `projects/shoresh-scheduling-
      checking the person can read imports and has edit access to that season (UserRecordAccess,
      read in system mode as `CampLabels` does). Record sharing is checked explicitly, not
      skipped. Every change an import or Undo makes to the camp's setup stays user mode.
+   - **The rest, found by the 2026-11-20 audit** (`docs/security-review/`), each with its reason
+     in the code: the files kept with an import (`ImportLog`, ContentVersion insert and delete);
+     the send history (`SendLog`, Send__c, read-only to everyone, like Import__c); and children
+     deleted with their parent, for the same reason as the season delete above: empty "no
+     division" holders (`NoDivisions`), linked choices and coverage with their elective set,
+     elective or linked choice (`ElectiveSetupTriggers.clear`, `LinkedChoiceTriggers`), a special
+     day's or event's plan parts (`SpecialItemTriggerHandler`), a record's own week exceptions and
+     coverage (`WeekExceptions`), and a week's special dates (`WeekTriggerHandler`). The full list of
+     system-mode reads and writes is the security-review register,
+     `docs/security-review/reviewer-notes.md`.
 7. **Anyone with Shoresh access can change camp labels** (Greg, 2026-10-15). "Shoresh access"
    means the Shoresh Scheduler permission set. Camp records are readable and editable by
    everyone with access (org-wide Read/Write), and camp labels follow their camp. This replaces
