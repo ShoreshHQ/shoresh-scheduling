@@ -33,7 +33,7 @@ global with sharing class AgentForgetPattern implements AgentWeeks.Action, Agent
     List<String> parts = ref.split(':', 3);
     if (parts.size() != 3 || parts[0] != 'pattern') {
       throw new ShoreshException(
-        'Say the pattern as read_learned_answers names it (pattern), like "pattern:numbered:Lunch".' +
+        'Say the pattern exactly as read_learned_answers gave it (pattern).' +
         AgentLearned.NOTHING
       );
     }

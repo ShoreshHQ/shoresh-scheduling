@@ -44,7 +44,7 @@ global with sharing class AgentReadFailedSends implements AgentWeeks.Action {
     }
     return 'Sends from "' +
       season.Name +
-      '" that failed, each the last of its thing to its destination, as Settings shows them (each stays until one goes through; the camp\'s own Flow sends again): ' +
+      '" that failed, each the last of its thing to its destination, as Settings shows them (each stays until one goes through; the camp\'s own Salesforce automation sends again): ' +
       String.join(said, '; ');
   }
 

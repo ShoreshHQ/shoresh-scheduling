@@ -42,11 +42,7 @@ global with sharing class AgentLockElectiveSeat implements AgentWeeks.Action {
       AgentFields.text(body, 'camper'),
       words
     );
-    ElectivePeriod period = AgentMoveElectiveSeat.timeOf(
-      view,
-      AgentFields.text(body, 'day'),
-      AgentFields.text(body, 'time')
-    );
+    ElectivePeriod period = AgentMoveElectiveSeat.timeOf(view, body, words);
     try {
       // The screen's own padlock.
       ElectiveSeatsController.changeSeat(

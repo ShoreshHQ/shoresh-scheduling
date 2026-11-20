@@ -61,7 +61,7 @@ global with sharing class AgentUndoLearned implements AgentWeeks.Action {
     }
     if (!ok) {
       throw new ShoreshException(
-        'Say the undo a change, forget or forget pattern gave (undo), like "forget:a0X...".' +
+        'Say the undo exactly as the change, forget or forget pattern gave it (undo).' +
         AgentLearned.NOTHING
       );
     }

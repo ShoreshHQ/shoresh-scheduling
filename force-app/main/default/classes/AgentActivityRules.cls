@@ -27,19 +27,20 @@ public with sharing class AgentActivityRules {
     return PANEL_RULES.get(key);
   }
 
-  /** Holds the activity until the request ends, so no one changes it between compare and save. */
-  public static void lock(Id activityId) {
+  /**
+   * Holds the activity until the request ends, so no one changes it between compare and save;
+   * refused naming it when it is gone since it was found.
+   */
+  public static void lock(AgentSetupRecords.Found found) {
     List<Activity__c> held = [
       SELECT Id
       FROM Activity__c
-      WHERE Id = :activityId
+      WHERE Id = :found.id
       WITH USER_MODE
       FOR UPDATE
     ];
     if (held.isEmpty()) {
-      throw new ShoreshException(
-        'That was not found, or you do not have access to it.'
-      );
+      throw AgentRunsIn.gone(found);
     }
   }
 

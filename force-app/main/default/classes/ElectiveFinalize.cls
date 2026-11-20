@@ -199,9 +199,12 @@ public with sharing class ElectiveFinalize {
     ElectiveRunState state = ElectiveRunState.held(runId);
     if (!state.isFinal()) {
       throw new ShoreshException(
-        '"' +
-          state.run.Name +
-          '" isn\'t final, so there is nothing to change back. Reload the page.'
+        AgentRefusal.withFix(
+          '"' +
+            state.run.Name +
+            '" isn\'t final, so there is nothing to change back.',
+          'Reload the page.'
+        )
       );
     }
     refuseSecondVersion(state.run);

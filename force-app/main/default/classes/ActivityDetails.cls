@@ -6,8 +6,10 @@
  * left out (null), who can do it stays as it is.
  */
 public with sharing class ActivityDetails {
-  // A rule sent without what was seen in it (word walk W4: the refusal names the field).
+  // A rule sent without what was seen in it (word walk W4: the refusal names the field); the
+  // screen's fix is never said to an AI, which has no page (API-1.105).
   private static final String NOT_SAVED_HERE = ' wasn\'t saved: reload the page and change it again.';
+  private static final String NOT_SAVED = ' wasn\'t saved.';
   private static final String EARLY = 'Early in the week';
   // The only activity fields this save may change.
   private static final Set<Schema.SObjectField> RULE_FIELDS = new Set<Schema.SObjectField>{
@@ -77,11 +79,16 @@ public with sharing class ActivityDetails {
       : ticket.seen.getPopulatedFieldsAsMap().keySet();
     for (String name : changes.getPopulatedFieldsAsMap().keySet()) {
       if (name != 'Id' && !seenFields.contains(name)) {
-        throw new ShoreshException(fieldWords(changes, name) + NOT_SAVED_HERE);
+        throw new ShoreshException(
+          fieldWords(changes, name) +
+          AgentRefusal.say(NOT_SAVED_HERE, NOT_SAVED)
+        );
       }
     }
     if (whoCanDoIt != null && ticket?.seenWho == null) {
-      throw new ShoreshException('Who can do it' + NOT_SAVED_HERE);
+      throw new ShoreshException(
+        'Who can do it' + AgentRefusal.say(NOT_SAVED_HERE, NOT_SAVED)
+      );
     }
   }
 

@@ -45,8 +45,11 @@ public with sharing class ChoicesImportLinked {
         LinkedChoice__c linked = ofSet.get(choice.l);
         if (linked == null) {
           throw new ShoreshException(
-            ChoicesImport.rowWords(sheetCamper) +
-            'a choice names a linked choice that is no longer in this set. Reload the page.'
+            AgentRefusal.withFix(
+              ChoicesImport.rowWords(sheetCamper) +
+              'a choice names a linked choice that is no longer in this set.',
+              'Reload the page.'
+            )
           );
         }
         choice.a = linked.Offering__r.Activity__c;

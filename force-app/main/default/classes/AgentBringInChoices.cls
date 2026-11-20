@@ -34,11 +34,13 @@ global with sharing class AgentBringInChoices implements AgentWeeks.Action {
     );
     Object given = body.get('request');
     if (!(given instanceof Map<String, Object>)) {
-      throw new ShoreshException('Send the request the review gave (request).');
+      throw new ShoreshException(
+        'Send back what the review gave, exactly as it gave it (request).'
+      );
     }
     Map<String, Object> request = (Map<String, Object>) given;
     if (String.valueOf(request.get('seasonId')) != String.valueOf(season.Id)) {
-      throw new ShoreshException('That request is for another season.');
+      throw new ShoreshException('That review is for another season.');
     }
     Boolean save = body.get('save') == true;
     try {

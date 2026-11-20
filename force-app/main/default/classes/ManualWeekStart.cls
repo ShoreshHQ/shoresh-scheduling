@@ -72,7 +72,10 @@ public with sharing class ManualWeekStart {
       SlotEdits.Result saved = SlotSaves.makeWith(draft, copy.edits);
       if (!saved.conflicts.isEmpty()) {
         throw new ShoreshException(
-          'The week could not be copied. Reload the page and try again.'
+          AgentRefusal.withFix(
+            'The week could not be copied.',
+            'Reload the page and try again.'
+          )
         );
       }
     }
