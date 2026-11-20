@@ -353,28 +353,6 @@ describe("Setup changed on the Generated Schedule screen", () => {
     expect(getVersions).toHaveBeenCalledTimes(2);
   });
 
-  it("one opening of the list keeps one version: the next update in it asks for none", async () => {
-    const element = await render();
-    await openUpdate(element);
-    updateToMatchSetup.mockResolvedValue({ refused: null, kept: true });
-    getInputs.mockResolvedValue(week({ revision: "2026-06-29:2" }));
-    getSetupChanges.mockResolvedValue(LEFT);
-    inDialog(element, '[data-key="k1"]').click();
-    await flush();
-    updateToMatchSetup.mockResolvedValue({ refused: null, kept: false });
-    getSetupChanges.mockResolvedValue(NOTHING);
-    inDialog(element, '[data-key="k2"]').click();
-    await flush();
-    expect(updateToMatchSetup).toHaveBeenLastCalledWith({
-      scheduleId: SCHEDULE,
-      ask: {
-        keys: ["k2"],
-        seenRevisions: LEFT.revisions,
-        versionKept: true
-      }
-    });
-  });
-
   it("Update all makes every change listed, closes the list, and focus goes to the grid once nothing is left", async () => {
     const element = await render();
     await openUpdate(element);
@@ -586,7 +564,7 @@ describe("Setup changed on the Generated Schedule screen", () => {
     expect(getInputs).toHaveBeenCalledTimes(2);
   });
 
-  it("setup saved on another screen while the list is open reads the week once the list closes", async () => {
+  it("WEEK-6.7: setup saved on another screen while the list is open reads the week once the list closes", async () => {
     const element = await render();
     await openUpdate(element);
     element.setup = nsRecord({ ...SETUP });

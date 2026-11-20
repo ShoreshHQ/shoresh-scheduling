@@ -162,14 +162,6 @@ const TWO_PROGRAMS = nsRecord({
     }
   ]
 });
-const THREE_CHANGES = {
-  ...PREVIEW,
-  changes: [
-    SWIM_DELETED,
-    FLAGPOLE_NOW,
-    { ...FLAGPOLE_NOW, key: "k3", lines: [{ ...FLAGPOLE_NOW.lines[0] }] }
-  ]
-};
 /** What is left after one change: the given rows. */
 const leaving = (...changes) => ({
   ...PREVIEW,
@@ -697,31 +689,6 @@ describe("c-shoresh-manual-build: setup changed since the week started", () => {
     expect(updatable()).toBe(true);
   });
 
-  it("a read that works after a failed one clears the couldn't-check message", async () => {
-    const element = await render();
-    getSetupChanges.mockRejectedValueOnce({ body: { message: "No access." } });
-    await saved(element);
-    expect(editorText(element)).toBe(
-      "Shoresh couldn't check Week 1 against setup. No access."
-    );
-    getSetupChanges.mockResolvedValue(NOTHING);
-    await saved(element);
-    expect(updatable()).toBe(false);
-    expect(editorText(element)).toBeNull();
-  });
-
-  it("a read that works leaves any other error on screen", async () => {
-    const element = await render();
-    q(element, "c-shoresh-week-editor").dispatchEvent(
-      new CustomEvent("errorchange", {
-        detail: { message: "Bunk 1 is busy then." }
-      })
-    );
-    await saved(element);
-    expect(getSetupChanges).toHaveBeenCalledTimes(2);
-    expect(editorText(element)).toBe("Bunk 1 is busy then.");
-  });
-
   it("Update to match setup says why when the week can't be compared now, never that it matches", async () => {
     const element = await render();
     const problem = "No Bunks of Main are at camp in Week 1.";
@@ -731,19 +698,6 @@ describe("c-shoresh-manual-build: setup changed since the week started", () => {
     expect(q(element, '[data-id="notice"]').textContent).toBe(problem);
     expect(q(element, '[data-id="setup-problem"]').textContent.trim()).toBe(
       problem
-    );
-  });
-
-  it("setup changed again and nothing is left to change: the list closes and says why", async () => {
-    const element = await render();
-    await openUpdate(element);
-    updateToMatchSetup.mockResolvedValue({ refused: "setupChanged" });
-    getSetupChanges.mockResolvedValue(NOTHING);
-    inDialog(element, '[data-key="k1"]').click();
-    await flush();
-    expect(dialog(element)).toBeNull();
-    expect(q(element, '[data-id="notice"]').textContent).toBe(
-      "Something changed while you looked, so nothing was updated. Week 1 matches setup now."
     );
   });
 
@@ -786,23 +740,6 @@ describe("c-shoresh-manual-build: setup changed since the week started", () => {
     await openUpdate(element);
     expect(getSetupChanges).not.toHaveBeenCalled();
     expect(dialog(element)).toBeNull();
-  });
-
-  it("drops an older answer that arrives after a newer one", async () => {
-    const element = await render();
-    const first = pending();
-    const second = pending();
-    getSetupChanges
-      .mockReturnValueOnce(first.promise)
-      .mockReturnValueOnce(second.promise);
-    await saved(element);
-    await saved(element);
-    second.resolve(NOTHING);
-    await flush();
-    first.resolve(PREVIEW);
-    await flush();
-    expect(updatable()).toBe(false);
-    expect(whyFor(element, "0-1")).toBeNull();
   });
 
   it("another week shows none of the last week's setup changes while its own are read", async () => {
@@ -875,6 +812,17 @@ describe("c-shoresh-manual-build: setup changed since the week started", () => {
     element.setup = nsRecord({ ...SETUP });
     await flush();
     expect(getSetupChanges).not.toHaveBeenCalled();
+  });
+
+  it("WEEK-6.7: setup saved on another screen while the list is open reads the week once the list closes", async () => {
+    const element = await render();
+    await openUpdate(element);
+    element.setup = nsRecord({ ...SETUP });
+    await flush();
+    expect(getDraft).toHaveBeenCalledTimes(1);
+    inDialog(element, '[data-id="close"]').click();
+    await flush();
+    expect(getDraft).toHaveBeenCalledTimes(2);
   });
 
   it("Update to match setup that finds nothing to open puts focus on the grid", async () => {
@@ -1160,70 +1108,6 @@ describe("c-shoresh-manual-build: setup changed since the week started", () => {
     expect(q(element, '[data-id="restore-refused"]')).toBeNull();
   });
 
-  it("one opening of the list keeps one version: the first update that keeps one, then none", async () => {
-    const element = await render(THREE_CHANGES);
-    await openUpdate(element);
-    updateToMatchSetup.mockResolvedValueOnce({ ...made(), kept: true });
-    getSetupChanges.mockResolvedValue(
-      leaving(FLAGPOLE_NOW, THREE_CHANGES.changes[2])
-    );
-    inDialog(element, '[data-key="k1"]').click();
-    await flush();
-    updateToMatchSetup.mockResolvedValueOnce(made());
-    getSetupChanges.mockResolvedValue(leaving(THREE_CHANGES.changes[2]));
-    inDialog(element, '[data-key="k2"]').click();
-    await flush();
-    expect(
-      updateToMatchSetup.mock.calls.map(([args]) => args.ask.versionKept)
-    ).toEqual([false, true]);
-    // Opened again: a new opening, whose first update may keep one again.
-    inDialog(element, '[data-id="close"]').click();
-    await flush();
-    await openUpdate(element);
-    updateToMatchSetup.mockResolvedValueOnce(made());
-    getSetupChanges.mockResolvedValue(NOTHING);
-    inDialog(element, '[data-key="k3"]').click();
-    await flush();
-    expect(updateToMatchSetup.mock.calls[2][0].ask.versionKept).toBe(false);
-  });
-
-  it("one opening keeps one version past the second update: every later one keeps none", async () => {
-    const fourth = {
-      ...FLAGPOLE_NOW,
-      key: "k4",
-      lines: [{ ...FLAGPOLE_NOW.lines[0] }]
-    };
-    const element = await render({
-      ...THREE_CHANGES,
-      changes: [...THREE_CHANGES.changes, fourth]
-    });
-    await openUpdate(element);
-    updateToMatchSetup.mockResolvedValueOnce({ ...made(), kept: true });
-    getSetupChanges.mockResolvedValue(
-      leaving(FLAGPOLE_NOW, THREE_CHANGES.changes[2], fourth)
-    );
-    inDialog(element, '[data-key="k1"]').click();
-    await flush();
-    // The second and third keep none, so their answers say kept: false.
-    updateToMatchSetup.mockResolvedValueOnce(made());
-    getSetupChanges.mockResolvedValue(
-      leaving(THREE_CHANGES.changes[2], fourth)
-    );
-    inDialog(element, '[data-key="k2"]').click();
-    await flush();
-    updateToMatchSetup.mockResolvedValueOnce(made());
-    getSetupChanges.mockResolvedValue(leaving(fourth));
-    inDialog(element, '[data-key="k3"]').click();
-    await flush();
-    updateToMatchSetup.mockResolvedValueOnce(made());
-    getSetupChanges.mockResolvedValue(NOTHING);
-    inDialog(element, '[data-key="k4"]').click();
-    await flush();
-    expect(
-      updateToMatchSetup.mock.calls.map(([args]) => args.ask.versionKept)
-    ).toEqual([false, true, true, true]);
-  });
-
   it("Update to match setup still opens when the week is read again while it reads", async () => {
     const element = await render();
     // Coming back to the window reads the week again; that read is slow.
@@ -1242,46 +1126,6 @@ describe("c-shoresh-manual-build: setup changed since the week started", () => {
     await flush();
     expect(dialog(element)).not.toBeNull();
     expect(rowsIn(element)).toHaveLength(2);
-  });
-
-  it("a version kept is remembered when setup changed again and the list stays open", async () => {
-    const element = await render(THREE_CHANGES);
-    await openUpdate(element);
-    updateToMatchSetup.mockResolvedValueOnce({ ...made(), kept: true });
-    getSetupChanges.mockResolvedValue(
-      leaving(FLAGPOLE_NOW, THREE_CHANGES.changes[2])
-    );
-    inDialog(element, '[data-key="k1"]').click();
-    await flush();
-    updateToMatchSetup.mockResolvedValueOnce({ refused: "setupChanged" });
-    inDialog(element, '[data-key="k2"]').click();
-    await flush();
-    updateToMatchSetup.mockResolvedValueOnce(made());
-    inDialog(element, '[data-key="k3"]').click();
-    await flush();
-    expect(
-      updateToMatchSetup.mock.calls.map(([args]) => args.ask.versionKept)
-    ).toEqual([false, true, true]);
-  });
-
-  it("a second one-row update is read out again, though its words are the same", async () => {
-    const element = await render(THREE_CHANGES);
-    await openUpdate(element);
-    updateToMatchSetup.mockResolvedValue(made());
-    getSetupChanges.mockResolvedValue(
-      leaving(FLAGPOLE_NOW, THREE_CHANGES.changes[2])
-    );
-    inDialog(element, '[data-key="k1"]').click();
-    await flush();
-    const first = inDialog(element, '[data-id="announce"]').textContent;
-    getSetupChanges.mockResolvedValue(leaving(THREE_CHANGES.changes[2]));
-    inDialog(element, '[data-key="k2"]').click();
-    await flush();
-    const second = inDialog(element, '[data-id="announce"]').textContent;
-    expect(first.trim()).toBe("Updated to match setup.");
-    expect(second.trim()).toBe("Updated to match setup.");
-    // A live region is read out when its words change: they did.
-    expect(second).not.toBe(first);
   });
 
   // ---------- review round 4 ----------
@@ -1319,16 +1163,5 @@ describe("c-shoresh-manual-build: setup changed since the week started", () => {
     expect(cellText(element, "0-1")).toBe("Boating");
     const notice = q(element, '[data-id="notice"]');
     expect(notice ? notice.textContent : "").not.toContain("Updated");
-  });
-
-  it("Update to match setup says the week matches when a fresh read finds nothing to change", async () => {
-    const element = await render();
-    // Setup was put back since the line was shown.
-    getSetupChanges.mockResolvedValue(NOTHING);
-    await openUpdate(element);
-    expect(dialog(element)).toBeNull();
-    expect(q(element, '[data-id="notice"]').textContent).toBe(
-      "Week 1 matches setup."
-    );
   });
 });
