@@ -65,7 +65,7 @@ public with sharing class ElectiveTimes {
         continue;
       }
       for (Integer b = 0; b < grid.blocks.size(); b++) {
-        ScheduleGrid.Item item = GridItems.itemAt(grid, g, b);
+        ScheduleGrid.Item item = ScheduleGridCells.itemAt(grid, g, b);
         if (item != null && item.kind == ELECTIVE && item.id == setId) {
           cells.add(
             String.valueOf(day) + '|' + grid.blocks[b].id + '|' + grp.Id

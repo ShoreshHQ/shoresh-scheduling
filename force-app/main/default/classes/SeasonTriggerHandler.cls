@@ -50,12 +50,8 @@ public with sharing class SeasonTriggerHandler {
         live.add(season);
       }
     }
-    Map<Id, Id> campIdBySeasonId = new Map<Id, Id>();
-    for (Season__c season : live) {
-      campIdBySeasonId.put(season.Id, season.Camp__c);
-    }
     if (!live.isEmpty()) {
-      PublishedHistory.refuseDeletes(live, 'Season', campIdBySeasonId);
+      PublishedHistory.refuseDeletes(live);
     }
 
     Set<Id> deletable = new Set<Id>();

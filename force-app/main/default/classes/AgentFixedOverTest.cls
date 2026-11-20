@@ -4,7 +4,8 @@
  * leaves: the fixed activity saved and the recurring activity kept at its other time blocks. On
  * SetTimeTestData's camp: Period 1 (9:00), Period 2 (10:00), Lunch (12:00); Main runs Monday to
  * Thursday. The screen's side of the same case: shoreshProgram.test.js (CORE-3.9) and
- * SetTimeAroundTest.
+ * SetTimeAroundTest. The question and pieces themselves: the shared examples
+ * (FixedOverExamplesTest), which the screen's fixedOver.js passes too.
  */
 @IsTest
 private class AgentFixedOverTest {
@@ -384,42 +385,6 @@ private class AgentFixedOverTest {
     }
   }
 
-  // API-1.147: a recurring activity every day a Monday-to-Friday program runs is asked about
-  // "on Monday to Friday", as dayList says it.
-  @IsTest
-  static void aWholeWeekOfDaysIsSaidAsARange() {
-    System.runAs(ShoreshTestData.scheduler()) {
-      Map<String, Id> ids = SetTimeTestData.camp();
-      Database.update(
-        new Program__c(Id = ids.get('Main'), Friday__c = true),
-        AccessLevel.SYSTEM_MODE
-      );
-      swimOn(
-        ids,
-        2,
-        new List<Schema.SObjectField>{
-          RecurringActivity__c.Monday__c,
-          RecurringActivity__c.Tuesday__c,
-          RecurringActivity__c.Wednesday__c,
-          RecurringActivity__c.Thursday__c,
-          RecurringActivity__c.Friday__c
-        }
-      );
-      Test.startTest();
-      List<Object> answers = askedThenYes('add', restAt('Period 2'));
-      Test.stopTest();
-      String question = String.valueOf(answers[0]);
-      Assert.isTrue(
-        question.contains(
-          'What is “Swim” at Period 2 on Monday to Friday, where “Rest” is?'
-        ),
-        question
-      );
-      Assert.areEqual(200, answers[1], String.valueOf(answers[2]));
-      Assert.areEqual(new List<String>{ 'Period 1 x1' }, piecesOf('Swim'));
-    }
-  }
-
   // API-1.147: a recurring activity on only some of the program's days is asked about on those.
   @IsTest
   static void aRecurringActivityOnSomeDaysIsAskedAboutOnThoseDays() {
@@ -456,46 +421,6 @@ private class AgentFixedOverTest {
       ];
       Assert.isFalse(copy.Monday__c);
       Assert.isTrue(copy.Tuesday__c && copy.Thursday__c);
-    }
-  }
-
-  // API-1.147: a fixed activity moved, and in this save run only in a week the recurring one is
-  // off, never meets it: nothing is asked and nothing split, as on the screen.
-  @IsTest
-  static void weeksOffOnTheFixedActivityMeanTheyNeverMeet() {
-    System.runAs(ShoreshTestData.scheduler()) {
-      Map<String, Id> ids = SetTimeTestData.camp();
-      // Field day is off Week 2.
-      fieldDay(ids, 3);
-      SetTimeTestData.save(
-        new List<SObject>{ SetTimeTestData.fixed(ids, 'Rest', 'Lunch') },
-        SetTimeTestData.extras(
-          new List<RunsIn.WeekOff>{
-            SetTimeTestData.weekOff(0, null, ids.get('Week 1')),
-            SetTimeTestData.weekOff(0, null, ids.get('Week 3')),
-            SetTimeTestData.weekOff(0, null, ids.get('Week 4')),
-            SetTimeTestData.weekOff(0, null, ids.get('Week 5')),
-            SetTimeTestData.weekOff(0, null, ids.get('Week 6'))
-          },
-          null,
-          null
-        )
-      );
-      Test.startTest();
-      List<Object> moved = post(
-        'change',
-        new Map<String, Object>{
-          'kind' => 'fixed activity',
-          'name' => 'Rest',
-          'fields' => new Map<String, Object>{ 'time_block' => 'Period 2' },
-          'seen' => new Map<String, Object>{ 'time_block' => 'Lunch' }
-        }
-      );
-      Test.stopTest();
-      String said = String.valueOf(moved[1]);
-      Assert.areEqual(200, moved[0], said);
-      Assert.isFalse(said.startsWith(AgentAskFirst.NOT_YET), said);
-      Assert.areEqual(new List<String>{ 'Period 1 x3' }, piecesOf('Field day'));
     }
   }
 }

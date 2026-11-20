@@ -5,50 +5,52 @@
  * set up in ("Lunch is set up here now"). A placement setup still has where it is gets none.
  */
 public with sharing class SetupMatchDots {
-  public List<SetupMatch.Dot> dots = new List<SetupMatch.Dot>();
-  // Why each cell has a dot (SetupMatchCarry's reasons going in; cells: "groupId|blockId").
-  public Map<String, String> whyByCell = new Map<String, String>();
-  // The day is no longer a day of the week.
-  public Boolean dayGoes = false;
-
   private SetupMatchRules rules;
   private SetupMatchNames names;
-  private Date day;
+  // The day is no longer a day of the week.
+  private Boolean dayGoes;
   private SetupMatchCells before;
   private SetupMatchCells after;
   private SetupMatchMoves moves;
+  // Why SetupMatchCarry left a placement out (cells: "groupId|blockId").
+  private Map<String, String> carried;
 
+  /** now: the day setup makes now, or null when it is no longer a day of the week. */
   public SetupMatchDots(
     SetupMatchRules rules,
     SetupMatchNames names,
-    Date day
+    ScheduleGrid now
   ) {
     this.rules = rules;
     this.names = names;
-    this.day = day;
+    dayGoes = now == null;
   }
 
-  /** The dots of the draft's day (was, as before) beside the day now (after). */
-  public void explain(
+  /**
+   * Why each cell of the draft's day (before) has a dot beside the day now (after), given why
+   * SetupMatchCarry left placements out (carried). A cell without a dot isn't in it.
+   */
+  public Map<String, String> explain(
     SetupMatchCells before,
     SetupMatchCells after,
-    ScheduleGrid was
+    Map<String, String> carried
   ) {
     this.before = before;
     this.after = after;
+    this.carried = carried;
     moves = new SetupMatchMoves(before, after);
+    Map<String, String> whyByCell = new Map<String, String>();
     for (String first : before.placements) {
       List<String> placement = before.cellsOf.get(first);
       String why = whyFor(first, placement);
+      if (why == null) {
+        continue;
+      }
       for (String cell : placement) {
-        if (why == null) {
-          whyByCell.remove(cell);
-        } else {
-          whyByCell.put(cell, why);
-          dots.add(new SetupMatch.Dot(keyOf(was, cell), why));
-        }
+        whyByCell.put(cell, why);
       }
     }
+    return whyByCell;
   }
 
   /** Why a placement (or an Open cell) of the draft has a dot, or null. */
@@ -64,9 +66,7 @@ public with sharing class SetupMatchDots {
     if (kept(placement)) {
       return null;
     }
-    return whyByCell.containsKey(first)
-      ? whyByCell.get(first)
-      : left(first, owner);
+    return carried.containsKey(first) ? carried.get(first) : left(first, owner);
   }
 
   /**
@@ -103,16 +103,5 @@ public with sharing class SetupMatchDots {
       }
     }
     return true;
-  }
-
-  /** The screen's key for a draft cell: "date|groupId|blockId", as the grid writes its Ids. */
-  private String keyOf(ScheduleGrid was, String cell) {
-    Integer g = SlotIds.indexOf(was.groupIds(), SetupMatchCells.groupOf(cell));
-    Integer b = SlotIds.indexOf(was.blockIds(), SetupMatchCells.blockOf(cell));
-    return String.valueOf(day) +
-      '|' +
-      was.groups[g].id +
-      '|' +
-      was.blocks[b].id;
   }
 }

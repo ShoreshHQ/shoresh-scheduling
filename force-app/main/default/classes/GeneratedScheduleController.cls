@@ -28,12 +28,12 @@ public with sharing class GeneratedScheduleController {
   /**
    * A hand edit on the Generated draft (Manual Build's slot saves, the same conflicts): every cell
    * an edit fills is locked (decision 2). The engine's notes the request carries are kept when
-   * nobody else saved the week since (GeneratedEngineNotes.saveHandEdits).
+   * nobody else saved the week since (GeneratedHandEdit).
    */
   @AuraEnabled
   public static SlotEdits.Result saveSlots(GeneratedWeek.HandEdits request) {
     try {
-      return GeneratedEngineNotes.saveHandEdits(request);
+      return GeneratedHandEdit.save(request);
     } catch (Exception e) {
       throw ScreenErrors.of(e);
     }

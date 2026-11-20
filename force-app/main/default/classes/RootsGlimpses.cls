@@ -133,7 +133,7 @@ public with sharing class RootsGlimpses {
     Set<String> fixedNames = new Set<String>();
     Integer fixedCells = 0;
     for (Integer g = 0; g < groupCount; g++) {
-      ScheduleGrid.Item item = itemAt(grid, g, b);
+      ScheduleGrid.Item item = ScheduleGridCells.itemAt(grid, g, b);
       RootsTable.Cell cell = new RootsTable.Cell();
       cell.name = item == null ? '' : item.name;
       cell.locked = ScheduleGridLocks.isLocked(grid, g, b);
@@ -147,22 +147,5 @@ public with sharing class RootsGlimpses {
       row.fixed = new List<String>(fixedNames)[0];
     }
     return row;
-  }
-
-  /** The item in a cell, following "carries on" up to where it started; null when empty. */
-  private static ScheduleGrid.Item itemAt(
-    ScheduleGrid grid,
-    Integer g,
-    Integer b
-  ) {
-    Integer at = b;
-    while (at > 0 && grid.rows[g][at] == ScheduleGrid.CARRIES_ON) {
-      at--;
-    }
-    String cell = grid.rows[g][at];
-    if (String.isBlank(cell) || cell == ScheduleGrid.CARRIES_ON) {
-      return null;
-    }
-    return grid.items[Integer.valueOf(cell) - 1];
   }
 }

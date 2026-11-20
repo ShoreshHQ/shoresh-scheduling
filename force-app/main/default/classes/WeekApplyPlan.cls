@@ -44,7 +44,7 @@ public with sharing class WeekApplyPlan {
     }
     prepared.rules = rules.rulesFor(edits);
     // On Generated Schedule what it fills is locked, as a hand edit's is (WEEK-6.2).
-    prepared.lockEdits = !manual;
+    prepared.locks = manual ? null : new GeneratedEdits();
     if (!SlotSaves.makeWith(prepared, edits).conflicts.isEmpty()) {
       throw new ShoreshException(
         AgentRefusal.withFix(
