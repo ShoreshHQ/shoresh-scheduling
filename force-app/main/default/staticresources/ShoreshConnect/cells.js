@@ -155,109 +155,38 @@ function checkWas(ctx, m, slot, was) {
 }
 
 /**
- * What the shared edits work with (handEdits.js ctx): the week as Generated Schedule opens it, or
- * Manual Build's draft as that screen gives it to its week editor (no locks there).
+ * What the shared edits work with (handEdits.js editContextOf, as the week editor builds it): the
+ * week as Generated Schedule opens it, or Manual Build's draft as that screen gives it to its week
+ * editor (no locks there), with what only an AI's tools need beside it.
  */
 function contextOf(m, body) {
   // WEEK-1.5: days are said as this season says them; an AI may still name the weekday.
   m.nameDaysFor(body.setup);
-  if (body.draft) {
-    return manualContextOf(m, body);
-  }
   const t = m.buildTerms(body.labels);
-  const loaded = m.loadedOf(body.inputs || {});
-  const { draft, week: checkedWeek } = m.counterWeek(loaded, {
-    terms: t,
-    setup: body.setup
-  });
-  const week = draft.schedule.days;
-  const locks = m.lockedKeys(loaded.input.locks);
   const setup = body.setup || {};
-  const events = (setup.special && setup.special.specialEvents) || [];
-  const sets = (setup.electives && setup.electives.sets) || [];
-  const isAwayOn = (w, d, g, b) => {
-    const groupId = w[d].groups[g].id;
-    const blockId = w[d].blocks[b].id;
-    return (draft.away || []).some(
-      (entry) => entry.groupId === groupId && entry.blockIds.includes(blockId)
-    );
-  };
-  const find = {
-    activity: (item) =>
-      (draft.activities || []).find((a) => `A:${a.id}` === item),
-    event: (item) =>
-      ((e) => e && { name: e.Name })(events.find((e) => `S:${e.Id}` === item)),
-    elective: (item) =>
-      ((e) => e && { name: e.Name })(sets.find((e) => `E:${e.Id}` === item)),
-    t
-  };
+  let draft = body.draft;
+  let checkedWeek;
+  let locks = null;
+  if (!draft) {
+    const loaded = m.loadedOf(body.inputs || {});
+    ({ draft, week: checkedWeek } = m.counterWeek(loaded, {
+      terms: t,
+      setup: body.setup
+    }));
+    locks = m.lockedKeys(loaded.input.locks);
+  }
   return {
-    week,
-    t,
+    // Generated Schedule gives its editor no planName (only a special day's or event's own
+    // schedule has one).
+    ...m.editContextOf({ draft, t, setup, locks }),
     // The season's setup a rainy day reads (rain.js rainModel), as the screen's editor has it.
     draft,
-    nameOf: (slot, day) => m.nameOfSlot(slot, day, find),
-    // As the screen names a day (shoreshWeekEditor dayNameOf(dateValue, this.planName)): Generated
-    // Schedule gives its editor no planName (only a special day's or event's own schedule has one).
-    dayNameOf: (dateValue) => m.dayNameOf(dateValue),
     weekdayOf: (dateValue) => m.weekdayName(dateValue),
     spokenWeekday: (weekday) => m.spokenWeekday(weekday),
-    isAwayOn,
-    // As the screen asks it: any block of the placement locked locks the cell (LOCK-4.1).
-    isLocked: (slot) => m.isLockedAt(week, locks, slot),
-    liveLocks: locks,
     // The week as its Lock menu weighs it (counter.js checkDays), for the cells a Lock reaches.
     checkedWeek,
-    events,
-    sets,
-    replaced: m.replacedDays(draft),
-    // Generated Schedule's tools never clear: nothing of setup's to put back.
-    setUp: null
-  };
-}
-
-/** Manual Build's week as its week editor holds it (shoreshWeekEditor editCtx, nameOf, isAwayOn). */
-function manualContextOf(m, body) {
-  const t = m.buildTerms(body.labels);
-  const draft = body.draft;
-  const week = draft.schedule.days;
-  const setup = body.setup || {};
-  const events = (setup.special && setup.special.specialEvents) || [];
-  const sets = (setup.electives && setup.electives.sets) || [];
-  const find = {
-    activity: (item) =>
-      (draft.activities || []).find((a) => `A:${a.id}` === item),
-    event: (item) =>
-      ((e) => e && { name: e.Name })(events.find((e) => `S:${e.Id}` === item)),
-    elective: (item) =>
-      ((e) => e && { name: e.Name })(sets.find((e) => `E:${e.Id}` === item)),
-    t
-  };
-  return {
-    week,
-    t,
-    draft,
-    nameOf: (slot, day) => m.nameOfSlot(slot, day, find),
-    dayNameOf: (dateValue) => m.dayNameOf(dateValue),
-    weekdayOf: (dateValue) => m.weekdayName(dateValue),
-    spokenWeekday: (weekday) => m.spokenWeekday(weekday),
-    isAwayOn: (w, d, g, b) => {
-      const groupId = w[d].groups[g].id;
-      const blockId = w[d].blocks[b].id;
-      return (draft.away || []).some(
-        (entry) => entry.groupId === groupId && entry.blockIds.includes(blockId)
-      );
-    },
-    isLocked: () => false,
-    liveLocks: null,
-    events,
-    sets,
-    replaced: m.replacedDays(draft),
-    // Where setup puts each fixed and recurring activity, so a clear puts back one typed over
-    // (shoreshWeekEditor manualChecks setUpOf; LOCK-4.9).
-    setUp: (draft.setUpCells || []).length
-      ? Object.fromEntries(draft.setUpCells.map((c) => [c.key, c.slot]))
-      : null
+    events: (setup.special && setup.special.specialEvents) || [],
+    sets: (setup.electives && setup.electives.sets) || []
   };
 }
 
@@ -684,34 +613,22 @@ function specialContextOf(m, body) {
   const plan = body.plan || {};
   const activities = plan.activities || [];
   const setup = body.setup || {};
-  // A special day's cells take the season's elective sets; an event's don't (the page's
-  // takesElectives, SPECIAL-1.3).
-  const sets =
-    plan.kind === "SpecialEvent"
-      ? []
-      : (setup.electives && setup.electives.sets) || [];
-  const find = {
-    activity: (item) => activities.find((a) => `A:${a.id}` === item),
-    event: () => null,
-    elective: (item) =>
-      ((e) => e && { name: e.Name })(sets.find((e) => `E:${e.Id}` === item)),
-    t
+  const draft = {
+    schedule: { days: (plan.schedule && plan.schedule.days) || [] },
+    activities
   };
   return {
-    week: (plan.schedule && plan.schedule.days) || [],
-    t,
-    draft: { activities },
-    nameOf: (slot, day) => m.nameOfSlot(slot, day, find),
-    dayNameOf: (dateValue) => m.dayNameOf(dateValue, plan.name),
+    ...m.editContextOf({ draft, t, setup, planName: plan.name }),
+    draft,
     weekdayOf: (dateValue) => m.weekdayName(dateValue),
     spokenWeekday: (weekday) => m.spokenWeekday(weekday),
-    isAwayOn: () => false,
-    isLocked: () => false,
-    liveLocks: null,
     events: [],
-    sets,
-    replaced: new Map(),
-    setUp: null,
+    // A special day's cells take the season's elective sets; an event's don't (the page's
+    // takesElectives, SPECIAL-1.3).
+    sets:
+      plan.kind === "SpecialEvent"
+        ? []
+        : (setup.electives && setup.electives.sets) || [],
     // An event's columns are its stations; a special day's, its groups.
     columns: plan.kind === "SpecialEvent" ? "Station" : "Group"
   };

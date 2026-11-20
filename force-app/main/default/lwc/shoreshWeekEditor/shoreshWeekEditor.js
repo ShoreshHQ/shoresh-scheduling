@@ -35,10 +35,11 @@ import {
   canMove,
   clearAllStep,
   copyStep,
+  editContextOf,
+  isAwayIn,
   lockedText,
   lockedWords,
   moveStep,
-  nameOfSlot,
   pasteTool,
   placeOverStep,
   placeStep,
@@ -56,7 +57,7 @@ import { History } from "./history";
 import { intentOf, plan, withSeen } from "./conflicts";
 import { drawerTiles } from "./counts";
 import { dayNameOf, weekMeasure, withPriority } from "./measure";
-import { checkManualDays, setUpOf } from "./manualChecks";
+import { checkManualDays } from "./manualChecks";
 import {
   alreadySkipped,
   foldRun,
@@ -1573,12 +1574,7 @@ export default class ShoreshWeekEditor extends LightningElement {
   }
 
   isAwaySlot(slot) {
-    const day = this.dayOf(slot);
-    const groupId = day.groups[slot.group].id;
-    const blockId = day.blocks[slot.block].id;
-    return ((this.draft && this.draft.away) || []).some(
-      (entry) => entry.groupId === groupId && entry.blockIds.includes(blockId)
-    );
+    return this.isAwayOn(this.schedule.days, slot.day, slot.group, slot.block);
   }
 
   awayIn(slot) {
@@ -1595,19 +1591,16 @@ export default class ShoreshWeekEditor extends LightningElement {
     return this.draft ? "below" : "below below_plain";
   }
 
-  /** What the shared hand edits (handEdits.js) work with: this week and its words. */
+  /** What the shared hand edits (handEdits.js) work with: this week and its words, as an AI's have them. */
   get editCtx() {
-    return {
-      week: this.schedule.days,
+    return editContextOf({
+      draft: this.draft,
       t: this.t,
-      nameOf: (slot, day) => this.nameOf(slot, day),
-      dayNameOf: (dateValue) => this.dayNameOf(dateValue),
-      isAwayOn: (week, d, g, b) => this.isAwayOn(week, d, g, b),
-      isLocked: (slot) => this.isLockedSlot(slot),
-      liveLocks: this.liveLocks,
-      replaced: this.replaced,
-      setUp: setUpOf(this.draft)
-    };
+      setup: this.setup,
+      locks: this.liveLocks,
+      planName: this.planName,
+      replaced: this.replaced
+    });
   }
 
   /**
@@ -1631,12 +1624,7 @@ export default class ShoreshWeekEditor extends LightningElement {
 
   /** What a slot's identity is called: the day's saved name, else the activity's. */
   nameOf(slot, day) {
-    return nameOfSlot(slot, day, {
-      activity: (item) => this.activityFor(item),
-      event: (item) => this.eventFor(item),
-      elective: (item) => this.electiveFor(item),
-      t: this.t
-    });
+    return this.editCtx.nameOf(slot, day);
   }
 
   activityFor(item) {
@@ -2684,12 +2672,7 @@ export default class ShoreshWeekEditor extends LightningElement {
 
   /** Whether a group isn't at camp in a block of a day (indexes) of some week. */
   isAwayOn(week, d, g, b) {
-    const day = week[d];
-    const groupId = day.groups[g].id;
-    const blockId = day.blocks[b].id;
-    return ((this.draft && this.draft.away) || []).some(
-      (entry) => entry.groupId === groupId && entry.blockIds.includes(blockId)
-    );
+    return isAwayIn(this.draft, week, d, g, b);
   }
 
   /** "Cleared Monday", "Copied Monday to Tuesday": a tool's words for Undo and the line. */
