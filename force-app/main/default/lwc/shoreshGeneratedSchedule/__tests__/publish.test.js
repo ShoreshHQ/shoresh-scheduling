@@ -1005,6 +1005,62 @@ describe("Publish on the Generated Schedule screen", () => {
     expect(unpublish).not.toHaveBeenCalled();
   });
 
+  it("a refused publish after a dropped reload reads the week once, not twice", async () => {
+    const element = await render(openWeek());
+    previewPublish.mockResolvedValue(preview());
+    await clickPublish(element);
+    expect(ask(element)).not.toBeNull();
+    // The editor reads the week again (a save that failed) while the question is open.
+    const reload = slow();
+    getInputs.mockClear();
+    getInputs.mockReturnValueOnce(reload.promise);
+    q(element, '[data-id="week-editor"]').dispatchEvent(
+      new CustomEvent("reload")
+    );
+    await flush();
+    expect(getInputs).toHaveBeenCalledTimes(1);
+    publish.mockResolvedValue({ draftChanged: true, publishedChanged: false });
+    getInputs.mockResolvedValue(openWeek());
+    await answer(ask(element), true);
+    expect(notice(element)).toBe(
+      "Someone else changed this week since, so nothing was published."
+    );
+    // The refusal reads the week again; the dropped reload needs no read of its own.
+    await until(() => !publishButton(element).disabled);
+    expect(getInputs).toHaveBeenCalledTimes(2);
+    reload.answer(openWeek({ published: PUBLISHED }));
+    await flush();
+    expect(getInputs).toHaveBeenCalledTimes(2);
+    // The dropped read's answer is not shown.
+    expect(publishedLine(element)).toBeNull();
+  });
+
+  it("a refused unpublish after a dropped reload reads the week once, not twice", async () => {
+    const element = await render(cleanWeek({ published: PUBLISHED }));
+    unpublishButton(element).click();
+    await flush();
+    const reload = slow();
+    getInputs.mockClear();
+    getInputs.mockReturnValueOnce(reload.promise);
+    q(element, '[data-id="week-editor"]').dispatchEvent(
+      new CustomEvent("reload")
+    );
+    await flush();
+    expect(getInputs).toHaveBeenCalledTimes(1);
+    unpublish.mockResolvedValue({ publishedChanged: true });
+    getInputs.mockResolvedValue(cleanWeek());
+    await answer(unpublishAsk(element), true);
+    expect(notice(element)).toBe(
+      "Someone else published or unpublished this week since, so nothing was unpublished."
+    );
+    await until(() => !publishButton(element).disabled);
+    expect(getInputs).toHaveBeenCalledTimes(2);
+    reload.answer(cleanWeek({ published: PUBLISHED }));
+    await flush();
+    expect(getInputs).toHaveBeenCalledTimes(2);
+    expect(publishedLine(element)).toBeNull();
+  });
+
   it("an open Publish box goes when the season read again leaves no week to show", async () => {
     const element = await render(openWeek());
     previewPublish.mockResolvedValue(preview());

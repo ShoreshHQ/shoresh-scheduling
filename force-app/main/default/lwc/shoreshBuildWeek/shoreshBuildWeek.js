@@ -407,8 +407,9 @@ export class BuildWeek {
     adapter.sayDone(`Published ${screen.weekName}.`);
     // A published schedule it replaced is a version now: Versions lists it before Publish is back.
     await screen.loadVersions();
-    // The week's published schedule, on every screen (WEEK-6.7).
-    screen.tellSchedulesChanged(true);
+    // The week's published schedule, on every screen (WEEK-6.7): for the week published, even if
+    // another is shown by now.
+    screen.tellSchedulesChanged(true, week);
   }
 
   /**
@@ -474,8 +475,9 @@ export class BuildWeek {
     adapter.sayDone(`Unpublished ${screen.weekName}.`);
     // The copy is a version now, marked Published: Versions lists it before Unpublish is back.
     await screen.loadVersions();
-    // No published schedule for the week now, on every screen (WEEK-6.7).
-    screen.tellSchedulesChanged(true);
+    // No published schedule for the week now, on every screen (WEEK-6.7): for the week
+    // unpublished, even if another is shown by now.
+    screen.tellSchedulesChanged(true, ask.week);
   }
 
   /**

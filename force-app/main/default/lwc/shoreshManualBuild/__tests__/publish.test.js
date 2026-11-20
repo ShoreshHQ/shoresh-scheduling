@@ -795,6 +795,61 @@ describe("c-shoresh-manual-build: Publish", () => {
     expect(q(element, '[data-id="published"]')).not.toBeNull();
   });
 
+  it("a refused publish after a dropped reload reads the week once, not twice", async () => {
+    const element = await render(
+      finished({ ...PUBLISHED, changedSince: true })
+    );
+    previewPublish.mockResolvedValue({
+      revisions: REV,
+      published: PUBLISHED,
+      changes: ["Bunk 1 · Monday · Period 2: Swim → Crafts"],
+      changeCount: 1
+    });
+    await clickPublish(element);
+    const reload = pending();
+    getDraft.mockReturnValueOnce(reload.promise);
+    q(element, '[data-id="week-editor"]').dispatchEvent(
+      new CustomEvent("reload")
+    );
+    await flush();
+    expect(getDraft).toHaveBeenCalledTimes(2);
+    publish.mockResolvedValue({
+      published: null,
+      draftChanged: true,
+      publishedChanged: false,
+      unchanged: false
+    });
+    getDraft.mockResolvedValue(theirs(PUBLISHED));
+    await answer(element, true);
+    expect(notice(element)).toBe(
+      "Someone else changed this week since, so nothing was published."
+    );
+    // The refusal reads the week again; the dropped reload needs no read of its own.
+    expect(getDraft).toHaveBeenCalledTimes(3);
+    reload.resolve(finished());
+    await flush();
+    expect(getDraft).toHaveBeenCalledTimes(3);
+    expect(cellText(element, "0-1")).toBe("Open");
+  });
+
+  it("an open Publish box goes when the season read again leaves no week to show", async () => {
+    const element = await render(
+      finished({ ...PUBLISHED, changedSince: true })
+    );
+    previewPublish.mockResolvedValue({
+      revisions: REV,
+      published: PUBLISHED,
+      changes: ["Bunk 1 · Monday · Period 2: Swim → Crafts"],
+      changeCount: 1
+    });
+    await clickPublish(element);
+    expect(ask(element)).not.toBeNull();
+    element.setup = nsRecord({ ...SETUP, weeks: [] });
+    await flush();
+    expect(ask(element)).toBeNull();
+    expect(publish).not.toHaveBeenCalled();
+  });
+
   it("focus goes back to Publish when it finishes without asking: published, already published, or failed", async () => {
     const element = await render(finished());
     const publishButton = () => q(element, '[data-id="publish"]');
@@ -1123,6 +1178,39 @@ describe("c-shoresh-manual-build: Unpublish", () => {
     expect(cellName("0-1")).toBe("Open");
     expect(unpublishButton(element)).toBeNull();
     expect(q(element, '[data-id="published"]')).toBeNull();
+  });
+
+  it("a refused unpublish after a dropped reload reads the week once, not twice", async () => {
+    const element = await render(finished(PUBLISHED));
+    await clickUnpublish(element);
+    const reload = pending();
+    getDraft.mockReturnValueOnce(reload.promise);
+    q(element, '[data-id="week-editor"]').dispatchEvent(
+      new CustomEvent("reload")
+    );
+    await flush();
+    expect(getDraft).toHaveBeenCalledTimes(2);
+    unpublish.mockResolvedValue({ ...UNPUBLISHED, publishedChanged: true });
+    getDraft.mockResolvedValue(finished({ ...PUBLISHED, id: "pub2" }));
+    await answerUnpublish(element, true);
+    expect(notice(element)).toBe(
+      "Someone else published or unpublished this week since, so nothing was unpublished."
+    );
+    // The refusal reads the week again; the dropped reload needs no read of its own.
+    expect(getDraft).toHaveBeenCalledTimes(3);
+    reload.resolve(finished(PUBLISHED));
+    await flush();
+    expect(getDraft).toHaveBeenCalledTimes(3);
+  });
+
+  it("an open Unpublish box goes when the season read again leaves no week to show", async () => {
+    const element = await render(finished(PUBLISHED));
+    await clickUnpublish(element);
+    expect(q(element, '[data-id="unpublish-ask"]')).not.toBeNull();
+    element.setup = nsRecord({ ...SETUP, weeks: [] });
+    await flush();
+    expect(q(element, '[data-id="unpublish-ask"]')).toBeNull();
+    expect(unpublish).not.toHaveBeenCalled();
   });
 
   it("the day and week tools wait while an unpublish is on its way, in Group View too", async () => {

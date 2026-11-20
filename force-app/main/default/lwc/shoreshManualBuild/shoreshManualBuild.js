@@ -429,6 +429,8 @@ export default class ShoreshManualBuild extends BuildScreen(LightningElement) {
     if (!this.canChoose) {
       this.show(null, false);
       this.loadedFor = null;
+      // No week shown: a publish question open for the last one goes (nothing was sent).
+      this.buildWeek.forgetPublish();
       return;
     }
     if (key === this.loadedFor && !again) {
