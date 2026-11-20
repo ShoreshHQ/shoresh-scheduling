@@ -198,7 +198,10 @@ public with sharing class SpecialDayPlacing {
     ];
     if (weeks.isEmpty()) {
       throw new ShoreshException(
-        'That was not found, or you don\'t have access to it. Reload the page.'
+        AgentRefusal.withFix(
+          'That was not found, or you don\'t have access to it.',
+          'Reload the page.'
+        )
       );
     }
     DayWords.use(weeks[0].Season__r);

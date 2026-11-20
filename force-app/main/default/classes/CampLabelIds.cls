@@ -20,7 +20,10 @@ public with sharing class CampLabelIds {
     );
     if (!own.keySet().containsAll(sent)) {
       throw new CampLabels.LabelException(
-        'Some of these words were changed somewhere else. Reload the page and try again.'
+        AgentRefusal.withFix(
+          'Some of these words were changed somewhere else.',
+          'Reload the page and try again.'
+        )
       );
     }
   }

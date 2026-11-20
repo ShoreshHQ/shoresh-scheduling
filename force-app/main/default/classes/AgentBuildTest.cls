@@ -444,7 +444,7 @@ private class AgentBuildTest {
       Assert.areEqual(400, noSeats[0]);
       Assert.areEqual('Not finalized. No seats are assigned yet.', noSeats[1]);
       Assert.areEqual(
-        'There is no elective set called "Sports" that this user can see. The elective sets: Chugim.',
+        'There is no elective set called "Sports" that you can see. The elective sets: Chugim.',
         noSuchSet[1]
       );
     }
@@ -502,10 +502,80 @@ private class AgentBuildTest {
       Test.stopTest();
       Assert.areEqual('Not finalized. No Spots are assigned yet.', noSeats[1]);
       Assert.areEqual(
-        'There is no Chug called "Sports" that this user can see. The Chugim: Morning.',
+        'There is no Chug called "Sports" that you can see. The Chugim: Morning.',
         noSuchSet[1]
       );
       Assert.areEqual(1, cold - warm, 'camp words: one query, read once');
+    }
+  }
+
+  // CORE-1.0: the week and program refusals say the camp's own Week and Program words, with its
+  // own plurals.
+  @IsTest
+  static void weekAndProgramRefusalsSayTheCampsOwnWords() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      GeneratedTestData.camp();
+      Id seasonId = GeneratedTestData.ids.get('Season');
+      Id campId = [
+        SELECT Camp__c
+        FROM Season__c
+        WHERE Id = :seasonId
+        WITH SYSTEM_MODE
+      ]
+      .Camp__c;
+      Database.insert(
+        new List<CampLabel__c>{
+          new CampLabel__c(
+            Camp__c = campId,
+            ModelTerm__c = 'Week',
+            Singular__c = 'Shavua',
+            Plural__c = 'Shavuot'
+          ),
+          new CampLabel__c(
+            Camp__c = campId,
+            ModelTerm__c = 'Program',
+            Singular__c = 'Machaneh',
+            Plural__c = 'Machanot'
+          )
+        },
+        AccessLevel.SYSTEM_MODE
+      );
+      Map<String, Object> noSuchWeek = week(
+        new Map<String, Object>{ 'week' => 'Week 9' }
+      );
+      Test.startTest();
+      // Read once a request (CLAUDE.md #60): the week refusal costs the season's, the week's
+      // and the camp's own query, the camp words one more when read cold.
+      CampLabels.forget();
+      Integer before = Limits.getQueries();
+      List<Object> noWeek = send('build_week', noSuchWeek);
+      Integer cold = Limits.getQueries() - before;
+      before = Limits.getQueries();
+      send('build_week', noSuchWeek);
+      Integer warm = Limits.getQueries() - before;
+      ShoreshTestData.program(seasonId, 'Teens');
+      List<Object> noProgram = send(
+        'build_week',
+        week(new Map<String, Object>())
+      );
+      Test.stopTest();
+      String weekSaid = String.valueOf(noWeek[1]);
+      Assert.isTrue(
+        weekSaid.startsWith('There is no Shavua called "Week 9" in '),
+        weekSaid
+      );
+      Assert.isTrue(weekSaid.contains('. Its Shavuot: Week 1'), weekSaid);
+      String programSaid = String.valueOf(noProgram[1]);
+      Assert.isTrue(
+        programSaid.startsWith('Say which Machaneh (program): '),
+        programSaid
+      );
+      Assert.isTrue(
+        programSaid.contains('Main') && programSaid.contains('Teens'),
+        programSaid
+      );
+      Assert.areEqual(1, cold - warm, 'camp words: one query, read once');
+      Assert.areEqual(3, warm, 'season, week and camp: one query each');
     }
   }
 }

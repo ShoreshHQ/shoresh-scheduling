@@ -12,6 +12,8 @@ global with sharing class AgentWeekView {
     RestRequest request = RestContext.request;
     RestResponse response = RestContext.response;
     response.addHeader('Content-Type', 'application/json');
+    // An AI's read: it hears the screen's refusals without their advice (API-1.105).
+    AgentRefusal.forAgent = true;
     try {
       response.statusCode = 200;
       response.responseBody = Blob.valueOf(
@@ -30,6 +32,8 @@ global with sharing class AgentWeekView {
           }
         )
       );
+    } finally {
+      AgentRefusal.forAgent = false;
     }
   }
 

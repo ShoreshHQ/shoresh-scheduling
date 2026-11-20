@@ -42,7 +42,10 @@ public with sharing class SeasonCopier implements SetupWrite.Steps {
     }
     if (found.isEmpty()) {
       throw new CopyException(
-        'That was not found, or you don\'t have access to it. Reload the page.'
+        AgentRefusal.withFix(
+          'That was not found, or you don\'t have access to it.',
+          'Reload the page.'
+        )
       );
     }
     source = found[0];

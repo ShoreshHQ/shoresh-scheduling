@@ -68,6 +68,11 @@ private class AgentReadFailedSendsTest {
       Assert.isFalse(said.contains('s3cret'), said);
       Assert.isFalse(said.contains('hooks.example.test'), said);
       Assert.isTrue(said.contains('see (a web address) now.'), said);
+      // Design guide §2: Salesforce's "Flow" is machinery to a director.
+      Assert.isTrue(
+        said.contains('the camp\'s own Salesforce automation sends again'),
+        said
+      );
       Assert.areEqual(
         'to Formstack: (a web address) answered',
         AgentReadFailedSends.withoutAddresses(

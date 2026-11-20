@@ -193,9 +193,12 @@ public with sharing class ElectiveSeatSaves {
   ) {
     if (held.Offering__c != offeringId) {
       throw new ShoreshException(
-        'A locked ' +
-          state.labels().singularInSentence('Seats') +
-          ' was changed. Reload the page and assign again.'
+        AgentRefusal.withFix(
+          'A locked ' +
+            state.labels().singularInSentence('Seats') +
+            ' was changed.',
+          'Reload the page and assign again.'
+        )
       );
     }
   }

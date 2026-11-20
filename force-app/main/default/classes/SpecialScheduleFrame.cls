@@ -198,7 +198,10 @@ public with sharing class SpecialScheduleFrame {
 
   private static ShoreshException changedSince() {
     return new ShoreshException(
-      'That was changed by someone else since. Reload the page.'
+      AgentRefusal.withFix(
+        'That was changed by someone else since.',
+        'Reload the page.'
+      )
     );
   }
 }

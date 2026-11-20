@@ -32,6 +32,8 @@ global with sharing class AgentSpecialCell implements AgentWeeks.Action {
   global static void get() {
     RestResponse response = RestContext.response;
     response.addHeader('Content-Type', 'application/json');
+    // An AI's read: it hears the screen's refusals without their advice (API-1.105).
+    AgentRefusal.forAgent = true;
     try {
       AgentWeeks.requireScheduler();
       response.responseBody = Blob.valueOf(
@@ -44,11 +46,11 @@ global with sharing class AgentSpecialCell implements AgentWeeks.Action {
       response.statusCode = ours ? 400 : 500;
       response.responseBody = Blob.valueOf(
         JSON.serialize(
-          OutgoingRows.answered(
-            ours ? e.getMessage() : ScreenErrors.loadingWords(e)
-          )
+          OutgoingRows.answered(ours ? e.getMessage() : ScreenErrors.words(e))
         )
       );
+    } finally {
+      AgentRefusal.forAgent = false;
     }
   }
 

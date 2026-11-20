@@ -164,7 +164,7 @@ private class AgentBringInChoicesTest {
       Test.stopTest();
       Assert.areEqual(400, refused[0], String.valueOf(refused[1]));
       Assert.areEqual(
-        'That request is for another season.',
+        'That review is for another season.',
         ((Map<String, Object>) refused[1]).get('message')
       );
     }
