@@ -1,8 +1,8 @@
 /**
  * change_linked_choice: rename a linked choice, say who it applies to and tick or untick its
- * periods and divisions, as the linked choices editor's gestures do, through an agent or the
+ * time blocks and divisions, as the linked choices editor's gestures do, through an agent or the
  * command line (docs/protocol/api.md API-1.133). Web address /v1/change_linked_choice, POST
- * {season, elective_set, activity, name, new_name, applies_to, periods_on, periods_off,
+ * {season, elective_set, activity, name, new_name, applies_to, times_on, times_off,
  * divisions_on, divisions_off}. Saved by the editor's own save (LinkedChoiceSaves), all or none: a
  * change says only what it changes, so ticking twice is the same as once.
  */
@@ -15,8 +15,8 @@ global with sharing class AgentChangeLinkedChoice implements AgentWeeks.Action {
     'name',
     'new_name',
     'applies_to',
-    'periods_on',
-    'periods_off',
+    'times_on',
+    'times_off',
     'divisions_on',
     'divisions_off'
   };
@@ -56,12 +56,12 @@ global with sharing class AgentChangeLinkedChoice implements AgentWeeks.Action {
     Set<String> held = AgentLinkedPeriods.heldBy(choice);
     offered.addAll(held);
     edit.periodsOn = new AgentLinkedPeriods(refs)
-      .of(AgentFields.listOf(body, 'periods_on'), offered);
+      .of(AgentFields.listOf(body, 'times_on'), offered);
     // Unticking what is already off is the same as once: the save leaves it.
     AgentLinkedPeriods unticking = new AgentLinkedPeriods(refs);
     unticking.held = held;
     edit.periodsOff = unticking.of(
-      AgentFields.listOf(body, 'periods_off'),
+      AgentFields.listOf(body, 'times_off'),
       offered
     );
     edit.divisionsOn = new AgentLinkedDivisions(refs)
@@ -84,7 +84,7 @@ global with sharing class AgentChangeLinkedChoice implements AgentWeeks.Action {
       edit.divisionsOff.isEmpty()
     ) {
       throw new ShoreshException(
-        'Say what changes: new_name, applies_to, periods_on, periods_off, divisions_on or divisions_off.'
+        'Say what changes: new_name, applies_to, times_on, times_off, divisions_on or divisions_off.'
       );
     }
     return edit;

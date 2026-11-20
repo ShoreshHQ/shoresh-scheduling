@@ -52,7 +52,10 @@ public with sharing class ChoicesImportChoices {
     );
     if (ofProgram.size() != groupIds.size()) {
       throw new ShoreshException(
-        'A camper\'s group is not in this schedule\'s program. Reload the page.'
+        AgentRefusal.withFix(
+          'A camper\'s group is not in this schedule\'s program.',
+          'Reload the page.'
+        )
       );
     }
     refuseOtherDivisions(ofProgram);
@@ -67,8 +70,11 @@ public with sharing class ChoicesImportChoices {
         ofProgram.get(sheetCamper.groupId).Division__c != sheetCamper.divisionId
       ) {
         throw new ShoreshException(
-          ChoicesImport.rowWords(sheetCamper) +
-          'the group is not in the row\'s division. Reload the page.'
+          AgentRefusal.withFix(
+            ChoicesImport.rowWords(sheetCamper) +
+            'the group is not in the row\'s division.',
+            'Reload the page.'
+          )
         );
       }
     }

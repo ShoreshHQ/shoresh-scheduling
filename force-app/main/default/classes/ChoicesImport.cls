@@ -332,7 +332,10 @@ public with sharing class ChoicesImport {
     ];
     if (seasons.isEmpty()) {
       throw new ShoreshException(
-        'That season is no longer there. Reload the page.'
+        AgentRefusal.withFix(
+          'That season is no longer there.',
+          'Reload the page.'
+        )
       );
     }
     return seasons[0];

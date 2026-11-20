@@ -258,10 +258,10 @@ describe("an AI's change is the screen's, and so is its Undo", () => {
     );
     // What Undo needs stays here; the person's AI hears only the answer.
     expect(done.text).toBe(`${label}.`);
-    const asked = await call("undo_last_agent_change", WEEK, sf);
+    const asked = await call("undo_last_change", WEEK, sf);
     expect(asked.asksFirst).toBe(true);
     expect(sf.seen[2].args[3]).toBe(
-      "/services/apexrest/v1/undo_last_agent_change"
+      "/services/apexrest/v1/undo_last_change"
     );
     const held = sf.seen[2].body.held[SCHEDULE];
     expect(held).toEqual(
@@ -276,10 +276,10 @@ describe("an AI's change is the screen's, and so is its Undo", () => {
         locksAfter: ["", ""]
       })
     ]);
-    await call("undo_last_agent_change", { ...WEEK, confirm: "yes" }, sf);
+    await call("undo_last_change", { ...WEEK, confirm: "yes" }, sf);
     expect(sf.seen[3].body.held[SCHEDULE].seen).toBe("after");
     // Undone: nothing left to take back in that week.
-    await call("undo_last_agent_change", WEEK, sf);
+    await call("undo_last_change", WEEK, sf);
     expect(sf.seen[4].body.held).toEqual({});
   });
 
@@ -308,9 +308,9 @@ describe("an AI's change is the screen's, and so is its Undo", () => {
       { ...cell, time: "Period 1", was: "Swim", activity: "Open" },
       sf
     );
-    await call("undo_last_agent_change", { ...WEEK, confirm: "c" }, sf);
+    await call("undo_last_change", { ...WEEK, confirm: "c" }, sf);
     expect(sf.seen[4].body.held[SCHEDULE].label).toBe(second);
-    await call("undo_last_agent_change", { ...WEEK, confirm: "c" }, sf);
+    await call("undo_last_change", { ...WEEK, confirm: "c" }, sf);
     expect(sf.seen[5].body.held[SCHEDULE]).toEqual(
       expect.objectContaining({ label: first, seen: "r4" })
     );
@@ -338,7 +338,7 @@ describe("an AI's change is the screen's, and so is its Undo", () => {
     ]);
     const done = await call("start_over_week", WEEK, { ...sf, checks });
     expect(done.text).toBe(`${started}. 3 of 4 placed.`);
-    await call("undo_last_agent_change", WEEK, sf);
+    await call("undo_last_change", WEEK, sf);
     expect(sf.seen[2].body.held).toEqual({
       [SCHEDULE]: expect.objectContaining({
         kind: "build",
@@ -363,7 +363,7 @@ describe("an AI's change is the screen's, and so is its Undo", () => {
       )
     ]);
     await call("fill_open_cells", WEEK, { ...fill, checks });
-    const refused = await call("undo_last_agent_change", WEEK, fill);
+    const refused = await call("undo_last_change", WEEK, fill);
     expect(fill.seen[2].body.held[SCHEDULE]).toEqual(
       expect.objectContaining({ kind: "none", label: filled })
     );
@@ -432,7 +432,7 @@ describe("an AI's change is the screen's, and so is its Undo", () => {
       "/services/apexrest/v1/week_checks?season=Summer+2026&week=Week+1&program=Main"
     );
     expect(sf.seen[3].args[3]).toBe("/services/apexrest/v1/lock_cells");
-    await call("undo_last_agent_change", WEEK, sf);
+    await call("undo_last_change", WEEK, sf);
     const held = sf.seen[4].body.held[SCHEDULE];
     // Still the edit, from the week as the Lock left it.
     expect(held).toEqual(
@@ -475,11 +475,11 @@ describe("an AI's change is the screen's, and so is its Undo", () => {
       sf
     );
     await call(
-      "set_up_noted_item",
+      "set_it_up",
       { ...WEEK, kind: "special event", name: "Carnival" },
       sf
     );
-    await call("undo_last_agent_change", WEEK, sf);
+    await call("undo_last_change", WEEK, sf);
     expect(sf.seen[3].body.held[SCHEDULE]).toEqual(
       expect.objectContaining({ kind: "edit", label, seen: "set up" })
     );
@@ -532,7 +532,7 @@ describe("an AI's change is the screen's, and so is its Undo", () => {
     ]);
     await call("start_over_week", WEEK, { ...sf, checks });
     await call("lock_cells", lock, sf);
-    await call("undo_last_agent_change", WEEK, sf);
+    await call("undo_last_change", WEEK, sf);
     expect(sf.seen[4].body.held[SCHEDULE]).toEqual(
       expect.objectContaining({
         kind: "none",
@@ -727,7 +727,7 @@ describe("an AI's change is the screen's, and so is its Undo", () => {
         })
       ]
     });
-    await call("undo_last_agent_change", special, sf);
+    await call("undo_last_change", special, sf);
     expect(sf.seen[2].body).toEqual({
       ...special,
       held: {
@@ -748,7 +748,7 @@ describe("an AI's change is the screen's, and so is its Undo", () => {
       { ...special, action: "add_station", name: "Purple", seen: "4" },
       sf
     );
-    await call("undo_last_agent_change", special, sf);
+    await call("undo_last_change", special, sf);
     expect(sf.seen[4].body.held[ITEM]).toEqual(
       expect.objectContaining({ kind: "none", label: "add station" })
     );
@@ -798,19 +798,19 @@ describe("an AI's change is the screen's, and so is its Undo", () => {
       { ...WEEK, day: "Monday", group: "Bunk 1", seen: "s" },
       sf
     );
-    await call("undo_last_agent_change", WEEK, sf);
+    await call("undo_last_change", WEEK, sf);
     expect(Object.keys(sf.seen[4].body.held)).toEqual([OTHER]);
   });
 
   it("aNewConversationHoldsNothing: and the command line says it can't undo", async () => {
     const sf = sfAnswering([answer({ message: "Nothing to undo." }, 400)]);
-    await call("undo_last_agent_change", WEEK, sf);
+    await call("undo_last_change", WEEK, sf);
     expect(sf.seen[0].body).toEqual({ ...WEEK, held: {} });
 
     let said = "";
     const asked = [];
     const code = await main(
-      ["undo_last_agent_change", "--week", "Week 1"],
+      ["undo_last_change", "--week", "Week 1"],
       {},
       { write: () => {} },
       { write: (text) => (said += text) },
@@ -825,7 +825,7 @@ describe("an AI's change is the screen's, and so is its Undo", () => {
       }
     );
     expect(code).toBe(2);
-    expect(asked).toEqual(["undo_last_agent_change"]);
+    expect(asked).toEqual(["undo_last_change"]);
     expect(said).toContain(NO_UNDO_HERE);
     expect(said).toContain("Season used: Summer 2026.");
   });

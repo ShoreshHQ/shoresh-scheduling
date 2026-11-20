@@ -32,7 +32,7 @@ public with sharing class ScheduleViews {
     public String status;
     @AuraEnabled
     public List<DayView> days = new List<DayView>();
-    // Each day's revision as read (ScheduleDays.stamp): sent back by Restore.
+    // Each day's revision as read (WeekTickets.stamp): sent back by Restore.
     @AuraEnabled
     public String revisions;
     // The special days and events it shows (the Schedules page only, ADR 0014 slice 5): what it
@@ -150,7 +150,7 @@ public with sharing class ScheduleViews {
     view.schedule = row(found[0], found[0].Program__c);
     view.status = found[0].Status__c;
     List<ScheduleDays.DayGrid> days = ScheduleDays.read(scheduleId);
-    view.revisions = ScheduleDays.stamp(days);
+    view.revisions = WeekTickets.stamp(days);
     view.days = dayViews(days, stillThere);
     if (withSpecials) {
       view.specials = ScheduleSpecials.shown(found[0], days);

@@ -1,16 +1,16 @@
 /**
- * change_setup_record: change fields of one of the season's setup records other than its name
+ * change_in_setup: change fields of one of the season's setup records other than its name
  * (times, dates, days, places, limits, a group's division, the weeks it runs in, who a recurring
  * activity covers), as the person, through an agent or the
- * command line (docs/protocol/api.md API-1.49). Web address /v1/change_setup_record, POST {season,
- * kind, name, program, fields, seen}. Found as rename_setup_record finds it; it is the setup
+ * command line (docs/protocol/api.md API-1.49). Web address /v1/change_in_setup, POST {season,
+ * kind, name, program, fields, seen}. Found as rename_in_setup finds it; it is the setup
  * table's own row save (SetupTablesController.saveRow) with what the agent read
- * (read_setup_record) sent as seen, so someone else's change since it read is refused, never
+ * (read_from_setup) sent as seen, so someone else's change since it read is refused, never
  * overwritten. Answered and refused in the save's own words. A fixed activity moved over a
  * recurring one asks first what the table asks, and on the yes saves with the same pieces
  * (API-1.147).
  */
-@RestResource(urlMapping='/v1/change_setup_record')
+@RestResource(urlMapping='/v1/change_in_setup')
 global with sharing class AgentChangeSetup implements AgentWeeks.Action, AgentAskFirst.Preview {
   private static final Set<String> FIELDS = new Set<String>{
     'season',
@@ -156,7 +156,7 @@ global with sharing class AgentChangeSetup implements AgentWeeks.Action, AgentAs
     throw new ShoreshException(
       names.isEmpty()
         ? AgentSetupFields.aOrAn(found.kind) +
-          ' has nothing to set but its name (rename_setup_record renames it).'
+          ' has nothing to set but its name (rename_in_setup renames it).'
         : 'Say what to change (fields). Its fields: ' +
           String.join(names, ', ') +
           '.'

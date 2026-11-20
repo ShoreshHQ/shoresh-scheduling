@@ -153,18 +153,12 @@ public with sharing class GeneratedDrafts {
   private static ShoreshException notHere(Schedule__c draft) {
     CampLabels labels = CampLabels.forCamp(draft.Program__r.Season__r.Camp__c);
     return new ShoreshException(
-      'Only this ' +
-        labels.singularInSentence('Week') +
-        '\'s Generated Schedule can be saved here. Reload the page.'
+      AgentRefusal.withFix(
+        'Only this ' +
+          labels.singularInSentence('Week') +
+          '\'s Generated Schedule can be saved here.',
+        'Reload the page.'
+      )
     );
-  }
-
-  /**
-   * What the draft's days were last saved at, as one piece of text ("2026-06-29:3,..."): the
-   * schedule-level revision check (ADR 0005 §9) compares it whole. Empty when there is no draft.
-   * It is ScheduleDays.stamp, so a publish preview's revisions can be compared with it.
-   */
-  public static String revisionOf(List<ScheduleDays.DayGrid> days) {
-    return ScheduleDays.stamp(days);
   }
 }

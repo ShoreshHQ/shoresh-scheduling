@@ -221,7 +221,7 @@ function importFile(name, api, description, more = {}, required = []) {
         answers: {
           type: "object",
           description:
-            "Your answers, by the id the review gives each: a question's choice, a column's choice, keep or change for a difference, \"leaveOut\" to leave a new row out, back for something deleted before."
+            "Your answers, by the id the review gives each: a question's choice, a column's choice, keep or change for a difference, \"leave_out\" to leave a new row out, back for something deleted before."
         },
         save: {
           type: "boolean",
@@ -240,13 +240,13 @@ function importFile(name, api, description, more = {}, required = []) {
 }
 
 /**
- * bring_in_choices (API-1.117): the Elective seats screen's own Import choices, a file like an
+ * import_choices (API-1.117): the Elective seats screen's own Import choices, a file like an
  * import's, worked out with the screen's own modules (connect/choices.js).
  */
 function bringInChoicesFile() {
   const c = importFile(
-    "bring_in_choices",
-    "bring_in_choices",
+    "import_choices",
+    "import_choices",
     "Import campers' elective choices from a file, as the Elective seats screen's Import choices does: this is how a week's electives start (the first import starts the week's seats), and later sheets import choices again. The file is read with the screen's own code (each camper, their bunk and their choices in order). Send it first without save: the answer is the review (how many campers, new or already here, choices made by hand that are kept, names Shoresh doesn't have yet, each at the answer the screen starts it at) and its seen. Change a new name's answer only when the person wants it otherwise (ask them about anything the file doesn't make plain), then send the same file and answers with save: true and the seen. It is done as you, with your own access, all or none; a camper's choices changed by hand are kept. This is how a person's AI imports campers, their bunks and their choices, from a file or from the person's own words: one camper's new or changed choices go as a sheet of that one camper (csv_text with their camper number when the camp uses them, their name exactly as Shoresh has it, their bunk and their choices in order). Campers not on the sheet keep their choices. A camper is matched by number, or by name when there is none, so if the review counts that camper as new, stop and ask the person: saving would add a second camper.",
     {
       elective_set: {
@@ -264,7 +264,7 @@ function bringInChoicesFile() {
   );
   delete c.importsWithEngine;
   delete c.importsWorkbook;
-  c.bringsInChoices = true;
+  c.importsChoices = true;
   c.inputSchema.properties.answers = {
     type: "object",
     description:
@@ -336,7 +336,7 @@ const ACTIVITY_NAME = {
   description: "The activity's name now, exactly as Shoresh has it."
 };
 
-/** The fields change_setup_record and add_setup_record set (API-1.49, API-1.50). */
+/** The fields change_in_setup and add_to_setup set (API-1.49, API-1.50). */
 const SETUP_FIELDS = {
   type: "object",
   description:
@@ -344,7 +344,7 @@ const SETUP_FIELDS = {
 };
 
 /**
- * The fields change_setup_record sets: those, and the lists of weeks it runs in and who a
+ * The fields change_in_setup sets: those, and the lists of weeks it runs in and who a
  * recurring activity covers (API-1.53, API-1.54).
  */
 const CHANGED_SETUP_FIELDS = {
@@ -353,7 +353,7 @@ const CHANGED_SETUP_FIELDS = {
 };
 
 /**
- * A new setup record (API-1.50): add_setup_record names what to call it, and the program it goes
+ * A new setup record (API-1.50): add_to_setup names what to call it, and the program it goes
  * in, not a record that is there.
  */
 function addedRecord(name, api, description, more) {
@@ -468,7 +468,7 @@ const LINKED_CHOICE = {
       "The activity it is of, like Pottery. Needed when two of the set's have one name."
   }
 };
-const LINKED_PERIODS = (description) => ({
+const LINKED_TIMES = (description) => ({
   type: "array",
   description: `${description} Each one is where read_linked_choices says the set sits.`,
   items: {
@@ -559,7 +559,7 @@ const CAPABILITIES = [
     method: "POST",
     sendsFields: true,
     description:
-      "Add a blank season to a camp, as Camp Setup's New season does: nothing is set up in it yet. A name another season already has is refused. Then fill it with import_last_year, import_worksheet, import_list or add_setup_record. It is made as you, with your own access.",
+      "Add a blank season to a camp, as Camp Setup's New season does: nothing is set up in it yet. A name another season already has is refused. Then fill it with import_last_year, import_worksheet, import_list or add_to_setup. It is made as you, with your own access.",
     inputSchema: {
       type: "object",
       properties: {
@@ -660,13 +660,13 @@ const CAPABILITIES = [
     { showsWeek: true }
   ),
   read(
-    "read_elective_offerings",
-    "elective_offerings",
+    "read_electives_offered",
+    "electives_offered",
     "Read the electives offered in a week, with their seats.",
     "The electives offered, as set up in Shoresh. It holds no findings or problems."
   ),
   read(
-    "read_elective_seats",
+    "read_final_elective_seats",
     "elective_seats",
     "Read which camper has a seat in which elective, for a week whose seats are finalized.",
     "Each camper's seat, as finalized in Shoresh. It holds no findings or problems."
@@ -675,7 +675,7 @@ const CAPABILITIES = [
     ...change(
       "change_schedule_cell",
       "schedule_cell",
-      'Change one cell of a week\'s Generated Schedule (the draft Shoresh builds, not the published week) or Manual Build, as typing in it on the screen does: put an activity there (it goes in for its full length, from the first time block of what the cell is part of, into Open cells after it; the answer says "(2 of 3)" when it runs out of room), an elective set (it holds each time block of what was there), or Open to clear what the cell is part of. A cell of a longer placement is replaced whole, as on the screen. As on the screen, undo_last_agent_change takes it back while this conversation lasts. The draft can differ from the published week that read_group_schedule shows: read it with read_week_draft. If the answer says the cell was changed by someone else (it holds something else now), never send it again over that: tell the person what it holds now and ask what they want.',
+      'Change one cell of a week\'s Generated Schedule (the draft Shoresh builds, not the published week) or Manual Build, as typing in it on the screen does: put an activity there (it goes in for its full length, from the first time block of what the cell is part of, into Open cells after it; the answer says "(2 of 3)" when it runs out of room), an elective set (it holds each time block of what was there), or Open to clear what the cell is part of. A cell of a longer placement is replaced whole, as on the screen. As on the screen, undo_last_change takes it back while this conversation lasts. The draft can differ from the published week that read_group_schedule shows: read it with read_week_draft. If the answer says the cell was changed by someone else (it holds something else now), never send it again over that: tell the person what it holds now and ask what they want.',
       {
         group: {
           type: "string",
@@ -713,7 +713,7 @@ const CAPABILITIES = [
     ...change(
       "move_cell",
       "move_cell",
-      "Move what a cell of a week's Generated Schedule or Manual Build holds to another cell, as dragging it there on the screen does: onto an Open cell it moves (keeping its length; refused where it doesn't fit), onto a filled cell the two swap. Longer activities, electives and events don't swap, and a fixed or recurring activity can be moved by hand. As on the screen, undo_last_agent_change takes it back while this conversation lasts.",
+      "Move what a cell of a week's Generated Schedule or Manual Build holds to another cell, as dragging it there on the screen does: onto an Open cell it moves (keeping its length; refused where it doesn't fit), onto a filled cell the two swap. Longer activities, electives and events don't swap, and a fixed or recurring activity can be moved by hand. As on the screen, undo_last_change takes it back while this conversation lasts.",
       {
         day: CELL.day,
         group: CELL.group,
@@ -734,7 +734,7 @@ const CAPABILITIES = [
     ...change(
       "change_cell_length",
       "move_cell",
-      "Make what a cell of a week's Generated Schedule or Manual Build holds longer or shorter, as dragging its bottom handle on the screen does: it stays where it starts and ends at the time you name, from any cell of it. Longer needs Open cells: anything already there refuses it, and nothing is moved aside. A cell you have locked refuses it, on the placement or in the way; a fixed or recurring activity changes as on the screen, though the draft marks it locked. A special event or elective set has no handle. On Generated Schedule, what is left of an activity is then locked, so changing it again takes unlock_cells first, and cells it frees are Open; a fixed or recurring activity isn't locked, and a cell it frees is locked empty. Manual Build has no locks. As on the screen, undo_last_agent_change takes it back while this conversation lasts.",
+      "Make what a cell of a week's Generated Schedule or Manual Build holds longer or shorter, as dragging its bottom handle on the screen does: it stays where it starts and ends at the time you name, from any cell of it. Longer needs Open cells: anything already there refuses it, and nothing is moved aside. A cell you have locked refuses it, on the placement or in the way; a fixed or recurring activity changes as on the screen, though the draft marks it locked. A special event or elective set has no handle. On Generated Schedule, what is left of an activity is then locked, so changing it again takes unlock_cells first, and cells it frees are Open; a fixed or recurring activity isn't locked, and a cell it frees is locked empty. Manual Build has no locks. As on the screen, undo_last_change takes it back while this conversation lasts.",
       {
         day: CELL.day,
         group: CELL.group,
@@ -757,7 +757,7 @@ const CAPABILITIES = [
     ...change(
       "take_out_cell",
       "take_out_cell",
-      "Take what a cell of a week's Generated Schedule or Manual Build holds out of the week, as dragging it back to the activity list on the screen does: the whole placement goes, every time block it runs, leaving Open. As on the screen, undo_last_agent_change takes it back while this conversation lasts.",
+      "Take what a cell of a week's Generated Schedule or Manual Build holds out of the week, as dragging it back to the activity list on the screen does: the whole placement goes, every time block it runs, leaving Open. As on the screen, undo_last_change takes it back while this conversation lasts.",
       {
         day: CELL.day,
         group: CELL.group,
@@ -775,7 +775,7 @@ const CAPABILITIES = [
     ...change(
       "copy_cells",
       "copy_cells",
-      "Copy cells of a week's Generated Schedule or Manual Build and paste them elsewhere, as Copy and Paste on the screen's Daily View do: the cells are one or more groups side by side (in the order the day shows them) from one time through another on one day, and they are pasted with their top left at another day, group and time. Everything copied goes in whole, an Open cell copied clears what is there, a locked cell is left as it is, and what can't go is left out and said. As on the screen, undo_last_agent_change takes it back while this conversation lasts.",
+      "Copy cells of a week's Generated Schedule or Manual Build and paste them elsewhere, as Copy and Paste on the screen's Daily View do: the cells are one or more groups side by side (in the order the day shows them) from one time through another on one day, and they are pasted with their top left at another day, group and time. Everything copied goes in whole, an Open cell copied clears what is there, a locked cell is left as it is, and what can't go is left out and said. As on the screen, undo_last_change takes it back while this conversation lasts.",
       {
         day: CELL.day,
         groups: {
@@ -811,7 +811,7 @@ const CAPABILITIES = [
     ...change(
       "clear_day",
       "copy_cells",
-      "Clear a day of a week's Manual Build, as Clear day in its Edit menu does: every activity that day is taken out, for every group, or for one group; fixed and recurring activities, special events, elective sets and a group's away times stay. Manual Build only. As on the screen, undo_last_agent_change takes it back while this conversation lasts.",
+      "Clear a day of a week's Manual Build, as Clear day in its Edit menu does: every activity that day is taken out, for every group, or for one group; fixed and recurring activities, special events, elective sets and a group's away times stay. Manual Build only. As on the screen, undo_last_change takes it back while this conversation lasts.",
       {
         day: CELL.day,
         group: {
@@ -831,7 +831,7 @@ const CAPABILITIES = [
     ...change(
       "clear_week",
       "copy_cells",
-      "Clear a week's Manual Build, as Clear week in its Edit menu does: every activity of the week is taken out, for every group; fixed and recurring activities, special events, elective sets and away times stay. Manual Build only. As on the screen, undo_last_agent_change takes it back while this conversation lasts.",
+      "Clear a week's Manual Build, as Clear week in its Edit menu does: every activity of the week is taken out, for every group; fixed and recurring activities, special events, elective sets and away times stay. Manual Build only. As on the screen, undo_last_change takes it back while this conversation lasts.",
       { seen: CELL.seen },
       [],
       ON_EITHER,
@@ -842,9 +842,9 @@ const CAPABILITIES = [
   {
     // API-1.65: worked out here with the week editor's own rainy day, as copy_cells is.
     ...change(
-      "switch_to_rain_plans",
-      "switch_to_rain_plans",
-      'Switch one day of a week\'s Generated Schedule or Manual Build to its rain plans, as Edit > Rainy day… on the screen does: each outdoor activity on that day that has an indoor rain plan switches to it. One with no rain plan, one longer than one time block, and a locked cell stay as they are; one whose rain plan has no room keeps its activity and is marked "Rain plan full: choose another". The answer says how many of each. As on the screen, the week as it was is kept first in Versions as "Before rainy <day>", and undo_last_agent_change switches the day back while this conversation lasts.',
+      "rainy_day",
+      "rainy_day",
+      'Switch one day of a week\'s Generated Schedule or Manual Build to its rain plans, as Edit > Rainy day… on the screen does: each outdoor activity on that day that has an indoor rain plan switches to it. One with no rain plan, one longer than one time block, and a locked cell stay as they are; one whose rain plan has no room keeps its activity and is marked "Rain plan full: choose another". The answer says how many of each. As on the screen, the week as it was is kept first in Versions as "Before rainy <day>", and undo_last_change switches the day back while this conversation lasts.',
       {
         day: {
           ...CELL.day,
@@ -861,8 +861,8 @@ const CAPABILITIES = [
   },
   {
     ...change(
-      "undo_last_agent_change",
-      "undo_last_agent_change",
+      "undo_last_change",
+      "undo_last_change",
       "Undo the last change made through this conversation in a week's Generated Schedule or Manual Build, as the screen's Undo does: a cell change, an edit of several cells, a clear, rain plans or a special event put over cells goes back cell by cell (each Undo takes back the one before, as on the screen), and Rebuild or Start over brings back the week it replaced (keeping the week as it is now in Versions as \"Before Undo\"). As on the screen, there is no Undo for Generate, Try another, bringing back an option, Fill the open cells, Set it up or Update to match setup: the answer names the version to restore, if one was kept. Undo lasts only while this conversation does, as the screen's lasts only while its page is open: in a new conversation there is nothing to undo, and restore_version brings back any version, as a person can. On Generated Schedule it is refused if anyone saved the week since; on Manual Build, as its own Undo, only if a cell it would change back was changed since. A Lock, an Unlock or Set it up doesn't end it, as on the screen: Undo goes on past it to the edit before, and a cell you locked or unlocked since keeps that lock. For a special day's or event's own schedule, send special (and kind) instead of the week: its page's Undo, for a cell changed with change_special_schedule_cell (a change to its time blocks or stations, or an import, has none).",
       {
         special: {
@@ -883,7 +883,7 @@ const CAPABILITIES = [
     ...change(
       "build_week",
       "build_week",
-      'Build a week\'s Generated Schedule, as its Generate button does (or Rebuild, once the week has been built: the week is built fresh, the same as Generate on the option it was built with). Locked cells and hand edits are kept; nothing else carries over. As on the screen, a Rebuild keeps the week as it was in Versions first ("Before Rebuild") and undo_last_agent_change brings it back while this conversation lasts; a first Generate keeps no version and has no Undo. The build runs here, on this computer, with the same engine as the screen, so the same week gives the same schedule.'
+      'Build a week\'s Generated Schedule, as its Generate button does (or Rebuild, once the week has been built: the week is built fresh, the same as Generate on the option it was built with). Locked cells and hand edits are kept; nothing else carries over. As on the screen, a Rebuild keeps the week as it was in Versions first ("Before Rebuild") and undo_last_change brings it back while this conversation lasts; a first Generate keeps no version and has no Undo. The build runs here, on this computer, with the same engine as the screen, so the same week gives the same schedule.'
     ),
     buildsWithEngine: true
   },
@@ -913,11 +913,11 @@ const CAPABILITIES = [
   buildMenuAction(
     "start_over_week",
     "StartOver",
-    'Start a built week over, as Start over in Generated Schedule\'s Build menu does: every activity is cleared and every lock lifted; everything else in a cell stays (fixed and recurring activities, elective sets, special events, things not set up yet), and a day a special day replaces stays as it is. As on the screen, the week as it was is kept in Versions first ("Before Start over"), and undo_last_agent_change brings it back while this conversation lasts.'
+    'Start a built week over, as Start over in Generated Schedule\'s Build menu does: every activity is cleared and every lock lifted; everything else in a cell stays (fixed and recurring activities, elective sets, special events, things not set up yet), and a day a special day replaces stays as it is. As on the screen, the week as it was is kept in Versions first ("Before Start over"), and undo_last_change brings it back while this conversation lasts.'
   ),
   {
-    name: "read_offerings",
-    api: "offerings",
+    name: "read_electives_list",
+    api: "electives_list",
     method: "GET",
     readsOfferings: true,
     description:
@@ -938,13 +938,13 @@ const CAPABILITIES = [
     }
   },
   {
-    name: "change_offering",
-    api: "change_offering",
+    name: "change_elective",
+    api: "change_elective",
     method: "POST",
     sendsFields: true,
     changesOffering: true,
     description:
-      "Change an elective's seats, its No limit tick or its minimum to run, as the cells of its row on the Electives list do, without sending a list file. Read it first with read_offerings and send back seen. Blank or 0 seats are saved: assigning seats then places it with no limit and says so, and the list marks it, which comes back with the answer. Fewer seats than campers already have is saved too: those campers keep their seats until seats are assigned again, and the elective shows as over its seats. It is made as you, with your own access. If someone else changed it since, nothing is changed and Shoresh says so in one sentence: pass that on to the person and don't pick a side.",
+      "Change an elective's seats, its No limit tick or its minimum to run, as the cells of its row on the Electives list do, without sending a list file. Read it first with read_electives_list and send back seen. Blank or 0 seats are saved: assigning seats then places it with no limit and says so, and the list marks it, which comes back with the answer. Fewer seats than campers already have is saved too: those campers keep their seats until seats are assigned again, and the elective shows as over its seats. It is made as you, with your own access. If someone else changed it since, nothing is changed and Shoresh says so in one sentence: pass that on to the person and don't pick a side.",
     inputSchema: {
       type: "object",
       properties: {
@@ -961,7 +961,7 @@ const CAPABILITIES = [
         seen: {
           type: "object",
           description:
-            "What read_offerings said those fields held, under seen, so a change someone made since isn't overwritten."
+            "What read_electives_list said those fields held, under seen, so a change someone made since isn't overwritten."
         }
       },
       required: ["activity", "fields", "seen"],
@@ -969,8 +969,8 @@ const CAPABILITIES = [
     }
   },
   {
-    name: "delete_offering",
-    api: "delete_offering",
+    name: "delete_elective",
+    api: "delete_elective",
     method: "POST",
     sendsFields: true,
     description:
@@ -994,7 +994,7 @@ const CAPABILITIES = [
     method: "GET",
     readsLinkedChoices: true,
     description:
-      "Read an elective set's linked choices as the editor beside the Electives list shows them: each one's name, activity, periods, who it applies to and the divisions it names, with the editor's marks on them (a period also held by another of the same activity, a period the set no longer sits in, two with one name, periods guessed from a file), and where_it_sits: the days and times the set sits on a schedule, with the divisions there, which are the periods it can be given. Report what it says; never add a problem Shoresh didn't list.",
+      "Read an elective set's linked choices as the editor beside the Electives list shows them: each one's name, activity, times, who it applies to and the divisions it names, with the editor's marks on them (a time block also held by another of the same activity, a time block the set no longer sits in, two with one name, time blocks guessed from a file), and where_it_sits: the days and times the set sits on a schedule, with the divisions there, which are the time blocks it can be given. Report what it says; never add a problem Shoresh didn't list.",
     about:
       "This elective set's linked choices, as the editor beside the Electives list shows them now. Its marks are the editor's: anything not listed, Shoresh didn't find.",
     inputSchema: {
@@ -1012,7 +1012,7 @@ const CAPABILITIES = [
   },
   linkedChange(
     "make_linked_choice",
-    "Make a linked choice of an activity an elective set offers, as + Linked choice and the first period picked do in the editor. It needs at least one period, so the set must sit on a schedule. Left out, the name is the editor's own: the activity's for its first, then the activity and the period.",
+    "Make a linked choice of an activity an elective set offers, as + Linked choice and the first time block picked do in the editor. It needs at least one time block, so the set must sit on a schedule. Left out, the name is the editor's own: the activity's for its first, then the activity and the time block.",
     {
       ...LINKED_SET,
       activity: {
@@ -1024,25 +1024,25 @@ const CAPABILITIES = [
         description:
           "What a sheet says to choose it. Leave it out for the editor's own name."
       },
-      periods: LINKED_PERIODS("Its periods."),
+      times: LINKED_TIMES("Its time blocks."),
       applies_to: LINKED_APPLIES_TO,
       divisions: LINKED_DIVISIONS(
         "With Only these or All except: the divisions it names."
       )
     },
-    ["activity", "periods"]
+    ["activity", "times"]
   ),
   linkedChange(
     "change_linked_choice",
-    "Change a linked choice, as the editor's fields do: its name, who it applies to, a period or a division ticked or unticked. A change says only what it changes, so ticking twice is the same as once and two people ticking different periods never undo each other.",
+    "Change a linked choice, as the editor's fields do: its name, who it applies to, a time block or a division ticked or unticked. A change says only what it changes, so ticking twice is the same as once and two people ticking different time blocks never undo each other.",
     {
       ...LINKED_CHOICE,
       new_name: { type: "string", description: "What to call it now." },
       applies_to: LINKED_APPLIES_TO,
-      periods_on: LINKED_PERIODS("Periods to tick."),
-      periods_off: {
-        ...LINKED_PERIODS("Periods to untick."),
-        description: "Periods to untick: ones it has now."
+      times_on: LINKED_TIMES("Time blocks to tick."),
+      times_off: {
+        ...LINKED_TIMES("Time blocks to untick."),
+        description: "Time blocks to untick: ones it has now."
       },
       divisions_on: LINKED_DIVISIONS(
         "Divisions to tick, with Only these or All except."
@@ -1059,7 +1059,7 @@ const CAPABILITIES = [
     method: "POST",
     sendsFields: true,
     description:
-      "Delete a linked choice, as Delete in the editor beside the Electives list does: its periods and divisions go with it, and a sheet that names it then counts as its activity. It is refused while a week's elective seats are part of it.",
+      "Delete a linked choice, as Delete in the editor beside the Electives list does: its time blocks and divisions go with it, and a sheet that names it then counts as its activity. It is refused while a week's elective seats are part of it.",
     inputSchema: {
       type: "object",
       properties: LINKED_CHOICE,
@@ -1073,7 +1073,7 @@ const CAPABILITIES = [
     method: "GET",
     readsDraft: true,
     description:
-      "Read a week's Generated Schedule or Manual Build as that screen shows it now: its draft, which can differ from the published week read_group_schedule reads. checks comes first: the screen's counter in its words for the whole week, as read_week_checks gives it. On Generated Schedule, seen is the week as you read it: hand it back to change cells, lock or unlock. \"records\" has what each group does, day by day and time by time (Open where nothing is placed), each row with the values columns names; its notes, when it has any, say locked where the screen shows a padlock (a fixed or recurring activity always has one, and unlock_cells doesn't lift it), away when the group is away, and special event, elective set, fixed activity or recurring activity, each in the camp's own word for it. special_days lists the days a special day takes over (read their cells with read_special_schedule); days_not_read lists days that couldn't be read. groups_with_the_same_name lists names two groups share: their rows' notes say which of them each row is, and that needs fixing by the camp, so say so. A big camp's whole week is long: ask for one day or one group, and ask for the rest the same way. Report what it says; never add a problem Shoresh didn't list.",
+      "Read a week's Generated Schedule or Manual Build as that screen shows it now: its draft, which can differ from the published week read_group_schedule reads. checks comes first: the screen's counter in its words for the whole week, as read_week_checks gives it. On Generated Schedule, seen is the week as you read it: hand it back to change cells, lock or unlock. \"rows\" has what each group does, day by day and time by time (Open where nothing is placed), each row in the order \"columns\" names; its notes, when it has any, say locked where the screen shows a padlock (a fixed or recurring activity always has one, and unlock_cells doesn't lift it), away when the group is away, and special event, elective set, fixed activity or recurring activity, each in the camp's own word for it. special_days lists the days a special day takes over (read their cells with read_special_schedule); days_not_read lists days that couldn't be read. groups_with_the_same_name lists names two groups share: their rows' notes say which of them each row is, and that needs fixing by the camp, so say so. A big camp's whole week is long: ask for one day or one group, and ask for the rest the same way. Report what it says; never add a problem Shoresh didn't list.",
     about:
       "This week's draft on its screen (Generated Schedule or Manual Build), exactly as the screen shows it now, which can differ from the published week. Its checks are the screen's counter: anything not listed, Shoresh didn't find.",
     inputSchema: {
@@ -1112,18 +1112,18 @@ const CAPABILITIES = [
   },
   {
     ...act(
-      "accept_finding",
-      "accept_finding",
+      "accept_line",
+      "accept_line",
       "Accept one line of a week's checks, as its Accept button on Generated Schedule or Manual Build does, without asking first: the line is kept with the week, so it stays away for anyone who opens the week, and comes back if it gets worse. It is done as you, with your own access. Only a line read_week_checks lists with can_accept true can be accepted; your AI can't undo it (a Rebuild clears every accept).",
       {
         ...EITHER_WEEK,
-        finding: {
+        line: {
           type: "string",
           description:
             "The line to accept, exactly as read_week_checks gives it, like Soccer: 2 of 4."
         }
       },
-      ["finding"]
+      ["line"]
     ),
     checksWithEngine: true
   },
@@ -1177,7 +1177,7 @@ const CAPABILITIES = [
   act(
     "restore_version",
     "restore_version",
-    "Restore one of a week's versions, as the Versions panel's Restore on Generated Schedule or Manual Build does, without asking first: the week as it is now is kept first as a version called Before Restore (restore that to go back), then the version's cells, locks and option become the week's. It is how to take back anything undo_last_agent_change can't: a change from an earlier conversation, or one the screen has no Undo for. It is done as you, with your own access.",
+    "Restore one of a week's versions, as the Versions panel's Restore on Generated Schedule or Manual Build does, without asking first: the week as it is now is kept first as a version called Before Restore (restore that to go back), then the version's cells, locks and option become the week's. It is how to take back anything undo_last_change can't: a change from an earlier conversation, or one the screen has no Undo for. It is done as you, with your own access.",
     { ...VERSION_FIELDS, schedule: EITHER_WEEK.schedule },
     ["version"]
   ),
@@ -1346,8 +1346,8 @@ const CAPABILITIES = [
     ["camper", "day", "time", "locked", "seen"]
   ),
   act(
-    "start_new_elective_version",
-    "start_new_elective_version",
+    "change_seats",
+    "change_seats",
     "Change a week's final elective seats, as the Elective seats screen's Change seats does: a new draft to work on, with the campers' choices, locks and moves made by hand; the final seats stay as they were until the draft is finalized. Read the seats first with read_elective_seats_now (it says when they are finalized) and send its seen. It is done as you, with your own access.",
     { ...ELECTIVE_RUN, seen: ELECTIVE_SEEN },
     ["seen"]
@@ -1395,8 +1395,8 @@ const CAPABILITIES = [
     }
   },
   setup(
-    "rename_setup_record",
-    "rename_setup_record",
+    "rename_in_setup",
+    "rename_in_setup",
     "Rename one thing in a season's setup, as Camp Setup's tables do when a name is changed: a week, program, division, group, time block, location type, location, activity, fixed activity, recurring activity, special day, special event or elective set. It is done as you, with your own access. If someone else changed it since, nothing is saved and Shoresh says so.",
     {
       new_name: {
@@ -1407,16 +1407,16 @@ const CAPABILITIES = [
     ["new_name"]
   ),
   setup(
-    "delete_setup_record",
-    "delete_setup_record",
-    "Delete one thing in a season's setup (the kinds rename_setup_record names), as Camp Setup's Delete does. Ask the person first with Camp Setup's own question, word for word: read it with read_setup_delete right before. What Camp Setup refuses to delete (something still uses it) is refused in its words with nothing deleted: pass that on to the person and don't work around it. The answer says how many schedules it was in; they keep its name. It is done as you, with your own access."
+    "delete_from_setup",
+    "delete_from_setup",
+    "Delete one thing in a season's setup (the kinds rename_in_setup names), as Camp Setup's Delete does. Ask the person first with Camp Setup's own question, word for word: read it with read_delete_question right before. What Camp Setup refuses to delete (something still uses it) is refused in its words with nothing deleted: pass that on to the person and don't work around it. The answer says how many schedules it was in; they keep its name. It is done as you, with your own access."
   ),
   {
     // A read: GET, its fields in the web address (API-1.102).
     ...setup(
-      "read_setup_delete",
-      "delete_setup_record",
-      "Read the question Camp Setup asks before deleting one thing in a season's setup: everything that goes with it (a program's or week's Manual Builds, Generated Schedules and saved versions, the special days a week takes off its days) or how many schedules a bunk or activity is in. Ask the person exactly that before delete_setup_record. What Camp Setup refuses to delete is refused in its words: pass that on and don't delete."
+      "read_delete_question",
+      "delete_from_setup",
+      "Read the question Camp Setup asks before deleting one thing in a season's setup: everything that goes with it (a program's or week's Manual Builds, Generated Schedules and saved versions, the special days a week takes off its days) or how many schedules a bunk or activity is in. Ask the person exactly that before delete_from_setup. What Camp Setup refuses to delete is refused in its words: pass that on and don't delete."
     ),
     method: "GET",
     about:
@@ -1426,9 +1426,9 @@ const CAPABILITIES = [
   {
     // A read: GET, its fields in the web address (API-1.49).
     ...setup(
-      "read_setup_record",
-      "read_setup_record",
-      "Read what one thing in a season's setup holds in the fields change_setup_record changes, as Camp Setup shows them. For an activity that is its location, length (in time blocks), times_per_week_min and times_per_week_max (how often a week), no_weekly_max, priority, outdoor, rain_plan, groups_at_once, no_group_limit and the weeks it runs in (who can do it and notes are read_activity_rules). For a week: start_date, end_date; a program: the days it runs; a group: division, availability, runs_in; a time block: start_time, end_time, part_of_day; a location: location_type, groups_that_fit, notes; a fixed or recurring activity: its time blocks, length, location and days. Values are said as Camp Setup shows them (dates like 2026-07-06, times like 9:00 AM, yes or no, other things in setup by name, none or (blank) when empty; the weeks it runs in and who a recurring activity covers as lists of names). Read it right before changing it, and send those values back unchanged as seen."
+      "read_from_setup",
+      "read_from_setup",
+      "Read what one thing in a season's setup holds in the fields change_in_setup changes, as Camp Setup shows them. For an activity that is its location, length (in time blocks), times_per_week_min and times_per_week_max (how often a week), no_weekly_max, priority, outdoor, rain_plan, groups_at_once, no_group_limit and the weeks it runs in (who can do it and notes are read_activity_details). For a week: start_date, end_date; a program: the days it runs; a group: division, availability, runs_in; a time block: start_time, end_time, part_of_day; a location: location_type, groups_that_fit, notes; a fixed or recurring activity: its time blocks, length, location and days. Values are said as Camp Setup shows them (dates like 2026-07-06, times like 9:00 AM, yes or no, other things in setup by name, none or (blank) when empty; the weeks it runs in and who a recurring activity covers as lists of names). Read it right before changing it, and send those values back unchanged as seen."
     ),
     method: "GET",
     about:
@@ -1436,32 +1436,32 @@ const CAPABILITIES = [
     sendsFields: false
   },
   setup(
-    "change_setup_record",
-    "change_setup_record",
-    "Change fields of one thing in a season's setup other than its name (rename_setup_record renames), as Camp Setup's tables save a row. Read it first with read_setup_record and send what it said as seen. It covers a week's dates, a program's days, a group's division or availability, a time block's times, a location's type or how many groups fit, an activity's location, length, how often, priority, outdoor, rain plan or groups at once, a fixed or recurring activity's time block, length, location or days, the weeks something runs in, who a recurring activity covers, a special day's notes, a special event's location or notes. It is done as you, with your own access. If someone else changed those fields since, nothing is saved and Shoresh says so; what Camp Setup refuses is refused in its words. A fixed activity that would land on a recurring activity is asked about first with Camp Setup's own question (\"What is ... where ... is?\"); on the yes the recurring activity keeps its other time blocks, as on the screen. Anything else is done at once, with no confirm.",
+    "change_in_setup",
+    "change_in_setup",
+    "Change fields of one thing in a season's setup other than its name (rename_in_setup renames), as Camp Setup's tables save a row. Read it first with read_from_setup and send what it said as seen. It covers a week's dates, a program's days, a group's division or availability, a time block's times, a location's type or how many groups fit, an activity's location, length, how often, priority, outdoor, rain plan or groups at once, a fixed or recurring activity's time block, length, location or days, the weeks something runs in, who a recurring activity covers, a special day's notes, a special event's location or notes. It is done as you, with your own access. If someone else changed those fields since, nothing is saved and Shoresh says so; what Camp Setup refuses is refused in its words. A fixed activity that would land on a recurring activity is asked about first with Camp Setup's own question (\"What is ... where ... is?\"); on the yes the recurring activity keeps its other time blocks, as on the screen. Anything else is done at once, with no confirm.",
     {
       fields: CHANGED_SETUP_FIELDS,
       seen: {
         type: "object",
         description:
-          "What each field you change held when you read it with read_setup_record, by the same names, as that read said it. Shoresh compares it with what it holds now: if someone changed it since, nothing is saved and the person should be told."
+          "What each field you change held when you read it with read_from_setup, by the same names, as that read said it. Shoresh compares it with what it holds now: if someone changed it since, nothing is saved and the person should be told."
       }
     },
     ["fields", "seen"]
   ),
   addedRecord(
-    "add_setup_record",
-    "add_setup_record",
+    "add_to_setup",
+    "add_to_setup",
     "Add one thing to a season's setup, as Camp Setup's tables' Add does: a week, program, division, group, time block, location type, location, activity, fixed activity, recurring activity, special day, special event or elective set. It goes last in its table and starts from what that table's new row starts with (a new activity: once a week, one block long, low priority; a new location: one group fits; a new program: the days the other programs run); fields set more. A new week needs start_date and end_date, a time block start_time and end_time, a fixed or recurring activity its time_block, and a group its division (\"none\" for no division). What belongs to a program (divisions, groups, time blocks, fixed and recurring activities) go in the program named, or the season's only one. It is done as you, with your own access; what Camp Setup refuses is refused in its words. A fixed activity that would land on a recurring activity is asked about first with Camp Setup's own question (\"What is ... where ... is?\"); on the yes the recurring activity keeps its other time blocks, as on the screen. Anything else is done at once, with no confirm.",
     { fields: SETUP_FIELDS }
   ),
   {
     // A read: GET, its fields in the web address (API-1.51).
-    name: "read_activity_rules",
-    api: "read_activity_rules",
+    name: "read_activity_details",
+    api: "read_activity_details",
     method: "GET",
     description:
-      "Read only the four rules in an activity's details panel on Camp Setup: who_can_do_it (a list of division and group names, or everyone), same_division_only (yes or no: only groups from the same division at the same time), early_week_count and early_week_by_day (this many early in the week, by that day), and notes. Not its location, length, how often (times a week), priority, outdoor or rain plan: read those with read_setup_record (kind activity) and change them with change_setup_record. Read it right before changing them, and send those values back unchanged as seen.",
+      "Read only the four rules in an activity's details panel on Camp Setup: who_can_do_it (a list of division and group names, or everyone), same_division_only (yes or no: only groups from the same division at the same time), early_week_count and early_week_by_day (this many early in the week, by that day), and notes. Not its location, length, how often (times a week), priority, outdoor or rain plan: read those with read_from_setup (kind activity) and change them with change_in_setup. Read it right before changing them, and send those values back unchanged as seen.",
     about:
       "What the activity's details hold now, as Camp Setup shows them. They hold no findings or problems.",
     inputSchema: {
@@ -1472,12 +1472,12 @@ const CAPABILITIES = [
     }
   },
   {
-    name: "change_activity_rules",
-    api: "change_activity_rules",
+    name: "change_activity_details",
+    api: "change_activity_details",
     method: "POST",
     sendsFields: true,
     description:
-      "Change an activity's details, as its details panel on Camp Setup saves them: who can do it, groups from the same division only, early in the week, and notes. Read them first with read_activity_rules and send what it said as seen. It is done as you, with your own access. If someone else changed those details since, nothing is saved and Shoresh says so; what Camp Setup refuses is refused in its words.",
+      "Change an activity's details, as its details panel on Camp Setup saves them: who can do it, groups from the same division only, early in the week, and notes. Read them first with read_activity_details and send what it said as seen. It is done as you, with your own access. If someone else changed those details since, nothing is saved and Shoresh says so; what Camp Setup refuses is refused in its words.",
     inputSchema: {
       type: "object",
       properties: {
@@ -1491,7 +1491,7 @@ const CAPABILITIES = [
         seen: {
           type: "object",
           description:
-            "What each detail you change held when you read it with read_activity_rules, by the same names, as that read said it. Shoresh compares it with what the activity holds now: if someone changed it since, nothing is saved and the person should be told."
+            "What each detail you change held when you read it with read_activity_details, by the same names, as that read said it. Shoresh compares it with what the activity holds now: if someone changed it since, nothing is saved and the person should be told."
         }
       },
       required: ["name", "fields", "seen"],
@@ -1504,7 +1504,7 @@ const CAPABILITIES = [
     method: "POST",
     sendsFields: true,
     description:
-      "Fill an empty season with weeks covering its dates, on the days its programs run, as Camp Setup's Fill in weeks does. Send the season's start_date and end_date as list_seasons gave them as seen: if someone changed them since, nothing is added and Shoresh says so. A season that already has weeks is refused, as on the screen: tell the person so, and add no week unasked (add_setup_record adds one only when they ask for it by its dates). It is done as you, with your own access.",
+      "Fill an empty season with weeks covering its dates, on the days its programs run, as Camp Setup's Fill in weeks does. Send the season's start_date and end_date as list_seasons gave them as seen: if someone changed them since, nothing is added and Shoresh says so. A season that already has weeks is refused, as on the screen: tell the person so, and add no week unasked (add_to_setup adds one only when they ask for it by its dates). It is done as you, with your own access.",
     inputSchema: {
       type: "object",
       properties: {
@@ -1646,7 +1646,7 @@ const CAPABILITIES = [
     api: "read_setup_guesses",
     method: "GET",
     description:
-      "Read what Camp Setup marks as guessed from a file (an import worked it out rather than read it) and no one has said looks right or changed since: each with its kind, name, field (how_often, who, groups_that_fit, division or periods) and value now. Read it right before confirm_setup_guess and send the value it said as seen.",
+      "Read what Camp Setup marks as guessed from a file (an import worked it out rather than read it) and no one has said looks right or changed since: each with its kind, name, field (how_often, who, groups_that_fit, division or times) and value now. Read it right before mark_looks_right and send the value it said as seen.",
     about:
       "The guesses still marked now, as Camp Setup shows them. They hold no findings or problems.",
     inputSchema: {
@@ -1656,12 +1656,12 @@ const CAPABILITIES = [
     }
   },
   {
-    name: "confirm_setup_guess",
-    api: "confirm_setup_guess",
+    name: "mark_looks_right",
+    api: "mark_looks_right",
     method: "POST",
     sendsFields: true,
     description:
-      "Say a value Camp Setup marks as guessed from a file looks right, as the mark's Looks right does: Camp Setup then no longer marks it. Only when the person agrees the value is right; to change it instead, use change_setup_record. Read it first with read_setup_guesses and send its value as seen. It is done as you, with your own access. If someone changed it or said it looks right since, nothing is changed and Shoresh says so.",
+      "Say a value Camp Setup marks as guessed from a file looks right, as the mark's Looks right does: Camp Setup then no longer marks it. Only when the person agrees the value is right; to change it instead, use change_in_setup. Read it first with read_setup_guesses and send its value as seen. It is done as you, with your own access. If someone changed it or said it looks right since, nothing is changed and Shoresh says so.",
     inputSchema: {
       type: "object",
       properties: {
@@ -1684,7 +1684,7 @@ const CAPABILITIES = [
         },
         field: {
           type: "string",
-          enum: ["how_often", "who", "groups_that_fit", "division", "periods"],
+          enum: ["how_often", "who", "groups_that_fit", "division", "times"],
           description: "The field marked as guessed."
         },
         seen: {
@@ -1699,11 +1699,11 @@ const CAPABILITIES = [
   },
   {
     // A read: GET, its fields in the web address (API-1.100).
-    name: "read_proposed_offerings",
-    api: "read_proposed_offerings",
+    name: "read_guessed_electives",
+    api: "read_guessed_electives",
     method: "GET",
     description:
-      "Read the electives Camp Setup shows as guessed and not yet marked Looks right (an import found them; no camper gets a seat in one until it is): each activity with its elective set. Read it right before confirm_proposed_offering.",
+      "Read the electives Camp Setup shows as guessed and not yet marked Looks right (an import found them; no camper gets a seat in one until it is): each activity with its elective set. Read it right before elective_looks_right.",
     about:
       "The electives still guessed now, as Camp Setup shows them. They hold no findings or problems.",
     inputSchema: {
@@ -1713,12 +1713,12 @@ const CAPABILITIES = [
     }
   },
   {
-    name: "confirm_proposed_offering",
-    api: "confirm_proposed_offering",
+    name: "elective_looks_right",
+    api: "elective_looks_right",
     method: "POST",
     sendsFields: true,
     description:
-      'Say a guessed elective looks right, as Camp Setup\'s Looks right on its row does: it is then offered, and campers can get a seat in it. Only when the person wants it offered; to drop it instead, the person deletes its row on Camp Setup. Read it first with read_proposed_offerings and send seen "proposed". It is done as you, with your own access. If someone said it looks right since, nothing is changed and Shoresh says so.',
+      'Say a guessed elective looks right, as Camp Setup\'s Looks right on its row does: it is then offered, and campers can get a seat in it. Only when the person wants it offered; to drop it instead, the person deletes its row on Camp Setup. Read it first with read_guessed_electives and send seen "guessed". It is done as you, with your own access. If someone said it looks right since, nothing is changed and Shoresh says so.',
     inputSchema: {
       type: "object",
       properties: {
@@ -1734,9 +1734,9 @@ const CAPABILITIES = [
         },
         seen: {
           type: "string",
-          enum: ["proposed"],
+          enum: ["guessed"],
           description:
-            "What read_proposed_offerings said it is: proposed (guessed). If someone said it looks right since, nothing is changed and the person should be told."
+            "What read_guessed_electives said it is: guessed. If someone said it looks right since, nothing is changed and the person should be told."
         }
       },
       required: ["activity", "seen"],
@@ -1873,7 +1873,7 @@ const CAPABILITIES = [
     ...change(
       "place_special_event",
       "place_special_event",
-      "Put a special event over cells of a week's Generated Schedule or Manual Build, as choosing it from the screen's Special events list does: one or more groups side by side (in the order the day shows them) from one time through another on one day, each group's cells holding the event. Whatever was there goes, whole (a fixed or recurring activity too, as a hand edit may); a locked cell refuses it. Read the week first so you know what will be replaced, and say it to the person. As on the screen, undo_last_agent_change takes it back while this conversation lasts.",
+      "Put a special event over cells of a week's Generated Schedule or Manual Build, as choosing it from the screen's Special events list does: one or more groups side by side (in the order the day shows them) from one time through another on one day, each group's cells holding the event. Whatever was there goes, whole (a fixed or recurring activity too, as a hand edit may); a locked cell refuses it. Read the week first so you know what will be replaced, and say it to the person. As on the screen, undo_last_change takes it back while this conversation lasts.",
       {
         event: {
           type: "string",
@@ -1926,7 +1926,7 @@ const CAPABILITIES = [
     // Worked out here with the week editor the page types through (connect/cells.js specialCell).
     typesSpecialCell: true,
     description:
-      "Change one cell of a special day's or special event's own schedule, as typing in it on its page does: put one of the season's activities there, in a special day also one of its elective sets (its seats are then assigned on Elective seats for that week, like any other elective time), or Open to clear it. An event's columns are stations, so it takes no elective set. Read it first with read_special_schedule and send what the cell holds as was. It is done as you, with your own access. If someone else changed that cell since, nothing is changed and Shoresh says so. As typing does, an activity goes in for its full length and a cell of a longer placement is replaced whole. As on its page, undo_last_agent_change (with special) takes it back while this conversation lasts.",
+      "Change one cell of a special day's or special event's own schedule, as typing in it on its page does: put one of the season's activities there, in a special day also one of its elective sets (its seats are then assigned on Elective seats for that week, like any other elective time), or Open to clear it. An event's columns are stations, so it takes no elective set. Read it first with read_special_schedule and send what the cell holds as was. It is done as you, with your own access. If someone else changed that cell since, nothing is changed and Shoresh says so. As typing does, an activity goes in for its full length and a cell of a longer placement is replaced whole. As on its page, undo_last_change (with special) takes it back while this conversation lasts.",
     inputSchema: {
       type: "object",
       properties: {
@@ -2014,9 +2014,9 @@ const CAPABILITIES = [
     }
   },
   change(
-    "set_up_noted_item",
-    "set_up_noted_item",
-    "Set up what a cell notes as \"not set up yet\" after an import, as Set it up on Generated Schedule or Manual Build does: a special event (the season's of that name, made if there is none, and the week's cells naming it hold it), a special day (made if there is none, and put on each weekday the cells had it, unless another special day is there; a trip is set up as a special day), or an elective set (as a special event). As on the screen, no version is kept and it has no Undo of its own (undo_last_agent_change goes on past it to your edits before); a special event or special day it made stays in setup, and a special day it put on a day stays there (take_special_day_off_day takes it off).",
+    "set_it_up",
+    "set_it_up",
+    "Set up what a cell notes as \"not set up yet\" after an import, as Set it up on Generated Schedule or Manual Build does: a special event (the season's of that name, made if there is none, and the week's cells naming it hold it), a special day (made if there is none, and put on each weekday the cells had it, unless another special day is there; a trip is set up as a special day), or an elective set (as a special event). As on the screen, no version is kept and it has no Undo of its own (undo_last_change goes on past it to your edits before); a special event or special day it made stays in setup, and a special day it put on a day stays there (take_special_day_off_day takes it off).",
     {
       kind: {
         type: "string",
@@ -2035,7 +2035,7 @@ const CAPABILITIES = [
   importFile(
     "import_list",
     "import_list",
-    "Import a list into one setup screen's list, as that screen's Import a list does: the file's rows are read, set against what the season has, and reviewed exactly as the screen reviews them, with the same code (which column is which, questions such as whether two similar names are the same thing, each difference from what is set up to Keep or Change, new rows to add or leave out, what is added with the list because rows name it). Send the file first without save: the answer is the review, its questions and its seen. Answer the questions (ask the person about anything the file doesn't make plain), send again until nothing is waiting, then send the same file and answers with save: true and the seen. It is done as you, with your own access, all or none. If someone changed the setup since the review, nothing is saved. undo_import undoes it. This is how a person's AI imports divisions, groups, activities or any other setup list; campers' elective choices and bunks are imported with bring_in_choices.",
+    "Import a list into one setup screen's list, as that screen's Import a list does: the file's rows are read, set against what the season has, and reviewed exactly as the screen reviews them, with the same code (which column is which, questions such as whether two similar names are the same thing, each difference from what is set up to Keep or Change, new rows to add or leave out, what is added with the list because rows name it). Send the file first without save: the answer is the review, its questions and its seen. Answer the questions (ask the person about anything the file doesn't make plain), send again until nothing is waiting, then send the same file and answers with save: true and the seen. It is done as you, with your own access, all or none. If someone changed the setup since the review, nothing is saved. undo_import undoes it. This is how a person's AI imports divisions, groups, activities or any other setup list; campers' elective choices and bunks are imported with import_choices.",
     {
       list: {
         type: "string",
@@ -2089,7 +2089,7 @@ const CAPABILITIES = [
         layouts: {
           type: "object",
           description:
-            'A file\'s layout when the review isn\'t sure of it, by file name: "allCamp" (All camp: a page per day), "byGroup" (By group: a page per group) or "byActivity" (By activity: the groups doing each activity listed in its cell).'
+            'A file\'s layout when the review isn\'t sure of it, by file name: "all_camp" (All camp: a page per day), "by_group" (By group: a page per group) or "by_activity" (By activity: the groups doing each activity listed in its cell).'
         },
         open_questions: {
           type: "boolean",
@@ -2216,7 +2216,7 @@ const CAPABILITIES = [
     api: "read_failed_sends",
     method: "GET",
     description:
-      "Read the sends to a saved destination that failed, as Settings shows them: for each thing sent (like the group schedule for Week 2) to each destination, its last send if that one failed, in Settings' own sentence. A failure stays until a later send of the same thing to the same destination goes through; the camp's own Flow sends, so Settings has no retry or dismiss, and neither does this. Destinations are kept by the camp's Salesforce admin, not on a Shoresh screen.",
+      "Read the sends to a saved destination that failed, as Settings shows them: for each thing sent (like the group schedule for Week 2) to each destination, its last send if that one failed, in Settings' own sentence. A failure stays until a later send of the same thing to the same destination goes through; the camp's own Salesforce automation sends, so Settings has no retry or dismiss, and neither does this. Destinations are kept by the camp's Salesforce admin, not on a Shoresh screen.",
     about:
       "The failed sends Settings shows, in its sentences. It holds no destination's address, key or password.",
     inputSchema: {
@@ -2444,8 +2444,7 @@ const CAPABILITIES = [
         season: SEASON,
         pattern: {
           type: "string",
-          description:
-            'The pattern exactly as read_learned_answers gave it, like "pattern:numbered:Lunch".'
+          description: "The pattern exactly as read_learned_answers gave it."
         },
         seen: {
           type: "string",
@@ -2486,19 +2485,19 @@ const CAPABILITIES = [
  * the confirm their own first answer gives. connect/__tests__/undo.test.js ties this list to the
  * Apex classes that ask first, both ways.
  */
-// undo_last_agent_change names a week, or a special day's or event's own schedule (special).
+// undo_last_change names a week, or a special day's or event's own schedule (special).
 CAPABILITIES.find(
-  (each) => each.name === "undo_last_agent_change"
+  (each) => each.name === "undo_last_change"
 ).inputSchema.required = [];
 
 const ASKS_FIRST = [
-  "delete_setup_record",
+  "delete_from_setup",
   "delete_linked_choice",
-  "delete_offering",
+  "delete_elective",
   "delete_season",
   "delete_version",
   "finalize_electives",
-  "undo_last_agent_change",
+  "undo_last_change",
   "merge_locations",
   "undo_import",
   "forget_learned_answer",
@@ -2509,8 +2508,8 @@ const ASKS_FIRST = [
   "assign_elective_seats",
   "apply_to_other_weeks",
   // Only for a fixed activity over a recurring one (API-1.147), as Camp Setup asks.
-  "add_setup_record",
-  "change_setup_record"
+  "add_to_setup",
+  "change_in_setup"
 ];
 for (const c of CAPABILITIES.filter((each) => ASKS_FIRST.includes(each.name))) {
   c.asksFirst = true;

@@ -44,6 +44,7 @@ const MIRRORED_SCREENS = {
   shoreshWeekEditor: "AgentCell",
   shoreshCampSetup: "AgentSetupNewRow",
   shoreshProgram: "AgentSetupNewRow",
+  shoreshNewRows: "AgentSetupNewRow",
   shoreshErrors: "AgentVersions"
 };
 
@@ -53,6 +54,7 @@ const MIRRORED_SCREENS = {
 const EXAMPLES_READ_BY = {
   ShoreshCellExamples: ["CellExamplesTest"],
   ShoreshFixedOverExamples: ["FixedOverExamplesTest"],
+  ShoreshNewRowExamples: ["NewRowExamplesTest"],
   ShoreshRuleExamples: ["RuleExamplesTest"],
   ShoreshSeatExamples: ["ElectiveSeatExamplesTest"]
 };

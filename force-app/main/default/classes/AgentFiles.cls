@@ -15,6 +15,8 @@ public with sharing class AgentFiles {
   public static void answer(Read read) {
     RestResponse response = RestContext.response;
     response.addHeader('Content-Type', 'application/json');
+    // The screen's own read: an AI hears its refusals without the screen's advice (API-1.105).
+    AgentRefusal.forAgent = true;
     try {
       response.responseBody = Blob.valueOf(read.run(asked(read.fields())));
       response.statusCode = 200;
@@ -24,11 +26,11 @@ public with sharing class AgentFiles {
       response.statusCode = ours ? 400 : 500;
       response.responseBody = Blob.valueOf(
         JSON.serialize(
-          OutgoingRows.answered(
-            ours ? e.getMessage() : ScreenErrors.loadingWords(e)
-          )
+          OutgoingRows.answered(ours ? e.getMessage() : ScreenErrors.words(e))
         )
       );
+    } finally {
+      AgentRefusal.forAgent = false;
     }
   }
 

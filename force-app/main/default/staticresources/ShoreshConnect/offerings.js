@@ -1,6 +1,6 @@
 /**
  * The Electives list's rows, for an AI (API-1.135, API-1.136). The read asks what the list reads
- * (/v1/offerings) and works out here, with the list's own module, what each row holds and marks; a
+ * (/v1/electives_list) and works out here, with the list's own module, what each row holds and marks; a
  * change saves through the row's own save, and ends with what the row would then mark, since blank
  * or 0 seats are saved and said, never refused.
  */
@@ -11,7 +11,7 @@ const fieldsOf = (input) =>
   );
 
 async function readOfferings(capability, input, { read, answer, load }) {
-  const got = await read("offerings", fieldsOf(input));
+  const got = await read("electives_list", fieldsOf(input));
   if (got.status !== 200) return answer(got);
   const body = JSON.parse(got.body);
   const said = (await load()).offeringsForAgent(body, {
@@ -30,7 +30,7 @@ async function readOfferings(capability, input, { read, answer, load }) {
 /** What the row now marks; none if it can't be read just now: what was saved is saved. */
 async function lookAfter(input, { read, load }) {
   try {
-    const got = await read("offerings", fieldsOf(input));
+    const got = await read("electives_list", fieldsOf(input));
     if (got.status !== 200) return null;
     const { offerings } = (await load()).offeringsForAgent(
       JSON.parse(got.body),

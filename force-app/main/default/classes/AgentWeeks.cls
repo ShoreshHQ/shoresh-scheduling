@@ -7,7 +7,7 @@
  * they have on Generated Schedule.
  */
 public with sharing class AgentWeeks {
-  public static final String NO_ACCESS = 'This user can\'t change schedules in Shoresh. A Salesforce admin can give it the "Shoresh Scheduler" permission set.';
+  public static final String NO_ACCESS = 'You can\'t change schedules in Shoresh. A Salesforce admin can give you the "Shoresh Scheduler" permission set.';
 
   /** Someone else's change got in the way: nothing was changed (answered 409). */
   public class ConflictException extends Exception {
@@ -102,10 +102,19 @@ public with sharing class AgentWeeks {
       for (Program__c program : programs) {
         names.add(program.Name);
       }
+      // The camp's Program words (CORE-1.0), read only when refusing.
+      CampLabels words = IncomingSeason.labelsOf(season.Id);
       throw new ShoreshException(
         programs.isEmpty()
-          ? season.Name + ' has no programs yet.'
-          : 'Say which program (program): ' + String.join(names, ', ') + '.'
+          ? season.Name +
+            ' has no ' +
+            words.pluralInSentence('Program') +
+            ' yet.'
+          : 'Say which ' +
+            words.singularInSentence('Program') +
+            ' (program): ' +
+            String.join(names, ', ') +
+            '.'
       );
     }
     return (Program__c) named(programs, name, 'Program');
@@ -134,7 +143,7 @@ public with sharing class AgentWeeks {
         words.singularInSentence(term) +
         ' called "' +
         name.left(80) +
-        '" that this user can see. ' +
+        '" that you can see. ' +
         namesSaid(words.pluralInSentence(term), names)
     );
   }

@@ -39,12 +39,14 @@ const SCREEN_ONLY = [
 // does: a change to one may need the Apex (and its tests) to change too, so it runs everything.
 //   shoreshWeekEditor   AgentCell's locked-cell refusal (refuseLocked)
 //   shoreshCampSetup,   AgentSetupNewRow's new row (the tables' defaults)
-//   shoreshProgram
+//   shoreshProgram,
+//   shoreshNewRows
 //   shoreshErrors       AgentVersions.failed (failed())
 const MIRRORED_SCREENS = [
   "shoreshWeekEditor",
   "shoreshCampSetup",
   "shoreshProgram",
+  "shoreshNewRows",
   "shoreshErrors"
 ];
 const MIRRORED_PATHS = MIRRORED_SCREENS.map(
@@ -56,6 +58,7 @@ const MIRRORED_PATHS = MIRRORED_SCREENS.map(
 const APEX_READ_RESOURCES = [
   "ShoreshCellExamples",
   "ShoreshFixedOverExamples",
+  "ShoreshNewRowExamples",
   "ShoreshRuleExamples",
   "ShoreshSeatExamples"
 ];

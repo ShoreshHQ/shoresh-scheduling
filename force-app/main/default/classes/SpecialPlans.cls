@@ -183,7 +183,10 @@ public with sharing class SpecialPlans {
     }
     if (item.seasonId == null) {
       throw new ShoreshException(
-        'That was not found, or you don\'t have access to it. Reload the page.'
+        AgentRefusal.withFix(
+          'That was not found, or you don\'t have access to it.',
+          'Reload the page.'
+        )
       );
     }
     return item;

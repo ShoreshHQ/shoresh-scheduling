@@ -41,7 +41,7 @@ module.exports = [
         csv_text:
           "Camper,Camper number,Bunk,Choice 1,Choice 2\nAvery Madeup,1,Bunk 1,Swim,Art\nBlake Madeup,2,Bunk 1,Swim,Art\nCasey Madeup,3,Bunk 2,Art,Swim\nDrew Madeup,4,Bunk 2,Nope,Swim\nAvery Madeup,1,Bunk 1,Swim,Art\n,,,,\n"
       };
-      const asked = await call("bring_in_choices", sheet);
+      const asked = await call("import_choices", sheet);
       rec.check(
         "API-1.117",
         "a name not set up is asked about, not guessed",
@@ -49,7 +49,7 @@ module.exports = [
         asked.text
       );
       const answersNow = { Nope: "leave" };
-      const review = await call("bring_in_choices", {
+      const review = await call("import_choices", {
         ...sheet,
         answers: answersNow
       });
@@ -67,7 +67,7 @@ module.exports = [
           /- 4 campers: /.test(review.text),
         review.text
       );
-      const saved = await call("bring_in_choices", {
+      const saved = await call("import_choices", {
         ...sheet,
         answers: answersNow,
         save: true,
@@ -142,7 +142,7 @@ module.exports = [
         "finalize",
         `${finalized.done.kind}: ${finalized.done.text.slice(0, 300)}`
       );
-      const out = await call("read_elective_seats", { season, week: "Week 2" });
+      const out = await call("read_final_elective_seats", { season, week: "Week 2" });
       rec.note("seats going out", out.text.slice(0, 400));
       const clearRead = await call("read_electives_to_clear", { season });
       const cleared = await confirmed("clear_electives", {
@@ -311,7 +311,7 @@ module.exports = [
       await importMaple(season);
       const week = { season, week: "Week 1" };
       await call("build_week", week);
-      const add = await call("add_setup_record", {
+      const add = await call("add_to_setup", {
         season,
         kind: "special day",
         name: "Color war"
@@ -461,7 +461,7 @@ module.exports = [
         seen: "Color war"
       });
       rec.check("SPECIAL", "comes off the day", off.kind === "done", off.text);
-      const event = await call("add_setup_record", {
+      const event = await call("add_to_setup", {
         season,
         kind: "special event",
         name: "Campfire"
@@ -812,7 +812,7 @@ module.exports = [
           !/locked/.test(holds(cleared).notes ?? ""),
         JSON.stringify(holds(cleared))
       );
-      const undo = await confirmed("undo_last_agent_change", week);
+      const undo = await confirmed("undo_last_change", week);
       rec.check(
         "API-1.130",
         "Undo asks first, then brings the week and its lock back",
@@ -835,7 +835,7 @@ module.exports = [
 Division__c d = new Division__c(Name = 'Juniors', Program__c = g.Division__r.Program__c);
 insert d;
 update new Group__c(Id = g.Id, Division__c = d.Id);`);
-      await call("add_setup_record", {
+      await call("add_to_setup", {
         season,
         kind: "elective set",
         name: "Chugim"
@@ -862,7 +862,7 @@ update new Group__c(Id = g.Id, Division__c = d.Id);`);
       const elsewhere = await call("make_linked_choice", {
         ...at,
         activity: "Swim",
-        periods: [{ day: "Tuesday", time: "Period 2" }]
+        times: [{ day: "Tuesday", time: "Period 2" }]
       });
       rec.check(
         "API-1.132",
@@ -873,7 +873,7 @@ update new Group__c(Id = g.Id, Division__c = d.Id);`);
       const made = await call("make_linked_choice", {
         ...at,
         activity: "swim",
-        periods: [two]
+        times: [two]
       });
       rec.check(
         "API-1.132",
@@ -884,7 +884,7 @@ update new Group__c(Id = g.Id, Division__c = d.Id);`);
       const second = await call("make_linked_choice", {
         ...at,
         activity: "Swim",
-        periods: [two]
+        times: [two]
       });
       rec.check(
         "API-1.132",
@@ -897,7 +897,7 @@ update new Group__c(Id = g.Id, Division__c = d.Id);`);
         ...at,
         name: "Swim",
         new_name: "Swim double",
-        periods_on: [three]
+        times_on: [three]
       });
       rec.check(
         "API-1.133",
@@ -908,12 +908,12 @@ update new Group__c(Id = g.Id, Division__c = d.Id);`);
       const shares = await call("change_linked_choice", {
         ...at,
         name: secondName,
-        periods_on: [three]
+        times_on: [three]
       });
       await call("change_linked_choice", {
         ...at,
         name: secondName,
-        periods_on: [three]
+        times_on: [three]
       });
       rec.check(
         "API-1.133",
@@ -928,10 +928,10 @@ update new Group__c(Id = g.Id, Division__c = d.Id);`);
       rec.check(
         "API-1.131",
         "the read marks it on the period, and ticking twice was one tick",
-        shown.periods.length === 2 &&
-          afterTicks.linked_choices.find((c) => c.name === secondName).periods
+        shown.times.length === 2 &&
+          afterTicks.linked_choices.find((c) => c.name === secondName).times
             .length === 2 &&
-          shown.periods.some((p) => /Also in/.test(p.note ?? "")),
+          shown.times.some((p) => /Also in/.test(p.note ?? "")),
         JSON.stringify(shown)
       );
       const division = first.where_it_sits[0].divisions[0];
@@ -1017,7 +1017,7 @@ update new Group__c(Id = g.Id, Division__c = d.Id);`);
     async run(rec) {
       const { season } = makeCamp("S10 Offerings");
       await importMaple(season);
-      await call("add_setup_record", {
+      await call("add_to_setup", {
         season,
         kind: "elective set",
         name: "Chugim"
@@ -1025,10 +1025,10 @@ update new Group__c(Id = g.Id, Division__c = d.Id);`);
       await electiveOnWeek(season, "Week 2", "Chugim", ["Bunk 1", "Bunk 2"]);
       const at = { season, elective_set: "Chugim" };
       const row = async (activity) =>
-        JSON.parse((await call("read_offerings", { ...at, activity })).text)
+        JSON.parse((await call("read_electives_list", { ...at, activity })).text)
           .offerings[0];
       const change = (activity, fields, seen) =>
-        call("change_offering", { ...at, activity, fields, seen });
+        call("change_elective", { ...at, activity, fields, seen });
       let swim = await row("Swim");
       const art = await row("Art");
       rec.check(
@@ -1101,8 +1101,8 @@ update new Group__c(Id = g.Id, Division__c = d.Id);`);
         csv_text:
           "Camper,Camper number,Bunk,Choice 1,Choice 2\nAvery Madeup,1,Bunk 1,Swim,Art\nBlake Madeup,2,Bunk 1,Swim,Art\n"
       };
-      const review = await call("bring_in_choices", sheet);
-      await call("bring_in_choices", {
+      const review = await call("import_choices", sheet);
+      await call("import_choices", {
         ...sheet,
         save: true,
         seen: seenIn(review.text)
@@ -1120,7 +1120,7 @@ update new Group__c(Id = g.Id, Division__c = d.Id);`);
         lower.kind === "done" && /Swim is over its seats/.test(over.text),
         `${lower.text} ${over.text.slice(0, 500)}`
       );
-      const used = await call("delete_offering", { ...at, activity: "Swim" });
+      const used = await call("delete_elective", { ...at, activity: "Swim" });
       rec.check(
         "API-1.137",
         "delete is refused while seats use it",
@@ -1135,7 +1135,7 @@ update new Group__c(Id = g.Id, Division__c = d.Id);`);
       );
       const name = soql(`SELECT Name FROM Activity__c WHERE Id = '${other}'`)[0]
         .Name;
-      const gone = await confirmed("delete_offering", {
+      const gone = await confirmed("delete_elective", {
         ...at,
         activity: name
       });
@@ -1302,7 +1302,7 @@ update new Group__c(Id = g.Id, Division__c = d.Id);`);
           !d.cell(next.day, next.group, next.time_block),
         `${longer.text} ${JSON.stringify(stretched)}`
       );
-      const undo = await confirmed("undo_last_agent_change", week);
+      const undo = await confirmed("undo_last_change", week);
       d = await draft(season);
       rec.check(
         "API-1.138",
@@ -1881,7 +1881,7 @@ update new Group__c(Id = g.Id, Division__c = d.Id);`);
           ),
         oneGroup.text
       );
-      const undo = await confirmed("undo_last_agent_change", { ...manual });
+      const undo = await confirmed("undo_last_change", { ...manual });
       const back = await draft(season, "Week 2", { schedule: "Manual Build" });
       rec.check(
         "API-1.143",
@@ -1914,12 +1914,12 @@ update new Group__c(Id = g.Id, Division__c = d.Id);`);
 
       // An elective on a special day's own schedule: its page offers none (the typed choices are
       // activities), and its file import holds a name as an activity of that name. An AI gets the same.
-      await call("add_setup_record", {
+      await call("add_to_setup", {
         season,
         kind: "elective set",
         name: "Chugim"
       });
-      await call("add_setup_record", {
+      await call("add_to_setup", {
         season,
         kind: "special day",
         name: "Color war"

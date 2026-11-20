@@ -633,7 +633,7 @@ describe("c-shoresh-elective-details", () => {
         .map((l) => l.label)
         .sort();
     const notesOf = (choice) =>
-      choice.periods
+      choice.times
         .map((p) => p.note)
         .filter(Boolean)
         .sort();

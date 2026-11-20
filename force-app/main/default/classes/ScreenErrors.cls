@@ -16,15 +16,18 @@ public with sharing class ScreenErrors {
     StatusCode.INSUFFICIENT_ACCESS_OR_READONLY => 'You don\'t have access to change this. Ask the person who set it up, or a Salesforce admin.',
     StatusCode.INSUFFICIENT_ACCESS_ON_CROSS_REFERENCE_ENTITY => 'You don\'t have access to change this. Ask the person who set it up, or a Salesforce admin.',
     StatusCode.INVALID_FIELD_FOR_INSERT_UPDATE => 'You don\'t have access to change that.',
-    StatusCode.ENTITY_IS_DELETED => 'That was removed. Reload the page.',
+    StatusCode.ENTITY_IS_DELETED => 'That was removed.',
     StatusCode.REQUIRED_FIELD_MISSING => 'Something required is blank. Fill it in and save again.',
     StatusCode.STRING_TOO_LONG => 'Something typed is too long.'
   };
 
-  /** The plain words; a screen also says to change what still uses it (API-1.105: an AI doesn't). */
+  /** The plain words; a screen also says what to do next (API-1.105: an AI doesn't). */
   private static String plain(StatusCode code) {
     if (code == StatusCode.DELETE_FAILED) {
       return AgentRefusal.withFix(PLAIN.get(code), 'Change that first.');
+    }
+    if (code == StatusCode.ENTITY_IS_DELETED) {
+      return AgentRefusal.withFix(PLAIN.get(code), 'Reload the page.');
     }
     return code == StatusCode.STRING_TOO_LONG
       ? AgentRefusal.withFix(PLAIN.get(code), 'Shorten it and save again.')
@@ -36,19 +39,20 @@ public with sharing class ScreenErrors {
     return of(messageFor(e, COULD_NOT_SAVE));
   }
 
-  /** The words of(e) would carry, for a web address's answer (it can't make one). */
+  /**
+   * The words of(e) would carry, for a web address's answer (it can't make one): a read's too,
+   * since an AI or the command line has no page to reload (API-1.105).
+   */
   public static String words(Exception e) {
     return messageFor(e, COULD_NOT_SAVE);
   }
 
-  /** The words ofLoading(e) would carry, for a web address's answer (it can't make one). */
-  public static String loadingWords(Exception e) {
-    return messageFor(e, COULD_NOT_OPEN);
-  }
-
-  /** For a screen that could not load what it shows. */
+  /**
+   * For a screen that could not load what it shows; an AI reading through it has no page to
+   * reload, so it hears "Try again" (API-1.105).
+   */
   public static AuraHandledException ofLoading(Exception e) {
-    return of(messageFor(e, COULD_NOT_OPEN));
+    return of(messageFor(e, AgentRefusal.say(COULD_NOT_OPEN, COULD_NOT_SAVE)));
   }
 
   /**

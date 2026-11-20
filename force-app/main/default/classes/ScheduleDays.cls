@@ -13,18 +13,6 @@ public with sharing class ScheduleDays {
     public List<String> rain = new List<String>();
   }
 
-  /**
-   * Each day's revision, as one line ("2026-06-29:3,2026-06-30:1"): what a screen was showing,
-   * so a change to the whole week (Restore) can tell whether anyone saved a day since.
-   */
-  public static String stamp(List<DayGrid> days) {
-    List<String> parts = new List<String>();
-    for (DayGrid day : days) {
-      parts.add(String.valueOf(day.day) + ':' + day.revision);
-    }
-    return String.join(parts, ',');
-  }
-
   /** The schedule's days, in date order. */
   public static List<DayGrid> read(Id scheduleId) {
     return read(new Set<Id>{ scheduleId }).get(scheduleId);

@@ -1,7 +1,7 @@
 /**
  * An activity's details panel through a person's AI (docs/protocol/api.md API-1.51): who can do
  * it, groups from the same division only, early in the week, and notes, by plain names, said as
- * the panel shows them so the AI can send them back as seen (change_activity_rules).
+ * the panel shows them so the AI can send them back as seen (change_activity_details).
  */
 public with sharing class AgentActivityRules {
   public static final String WHO = 'who_can_do_it';
@@ -27,19 +27,20 @@ public with sharing class AgentActivityRules {
     return PANEL_RULES.get(key);
   }
 
-  /** Holds the activity until the request ends, so no one changes it between compare and save. */
-  public static void lock(Id activityId) {
+  /**
+   * Holds the activity until the request ends, so no one changes it between compare and save;
+   * refused naming it when it is gone since it was found.
+   */
+  public static void lock(AgentSetupRecords.Found found) {
     List<Activity__c> held = [
       SELECT Id
       FROM Activity__c
-      WHERE Id = :activityId
+      WHERE Id = :found.id
       WITH USER_MODE
       FOR UPDATE
     ];
     if (held.isEmpty()) {
-      throw new ShoreshException(
-        'That was not found, or you do not have access to it.'
-      );
+      throw AgentRunsIn.gone(found);
     }
   }
 

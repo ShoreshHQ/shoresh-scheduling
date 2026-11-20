@@ -147,7 +147,7 @@ public with sharing class AgentSetupNames {
           word +
           ' called "' +
           asked.left(80) +
-          '" that this user can see. ' +
+          '" that you can see. ' +
           AgentWeeks.namesSaid(words[1], names)
       );
     }

@@ -34,7 +34,11 @@ public with sharing class IncomingSeason {
     String why = found.isEmpty()
       ? 'There is no season called "' +
         name.left(80) +
-        '" that this user can see.'
+        // A person's AI is "you"; a key or Flow is the connection (API-1.105).
+        AgentRefusal.say(
+          '" that this connection can see.',
+          '" that you can see.'
+        )
       : AgentRefusal.withFix(
           'More than one season is called "' + name.left(80) + '".',
           'Rename one in Shoresh, then send this again.'

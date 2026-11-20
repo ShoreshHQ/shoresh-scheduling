@@ -32,6 +32,41 @@ private class AgentFilesTest {
     return JSON.deserializeUntyped(JSON.serialize(value));
   }
 
+  /** The special schedule file's own read (SpecialScheduleController.openPlan) of one item. */
+  private class PlanRead implements AgentFiles.Read {
+    private Id itemId;
+    PlanRead(Id itemId) {
+      this.itemId = itemId;
+    }
+    public Set<String> fields() {
+      return new Set<String>();
+    }
+    public String run(Map<String, Object> asked) {
+      return JSON.serialize(SpecialScheduleController.openPlan(itemId));
+    }
+  }
+
+  // API-1.105: a file door's refusal is the screen's problem without its "Reload the page".
+  @IsTest
+  static void aFileDoorNeverTellsAnAiToReloadThePage() {
+    Id dayId;
+    System.runAs(ShoreshTestData.scheduler()) {
+      dayId = SpecialScheduleTestData.campWithFieldDay().get('Field Day');
+    }
+    System.runAs(ShoreshTestData.outsider()) {
+      List<Object> answer = read(
+        new PlanRead(dayId),
+        new Map<String, String>()
+      );
+      Assert.areEqual(400, answer[0]);
+      Assert.areEqual(
+        'That was not found, or you don\'t have access to it.',
+        ((Map<String, Object>) answer[1]).get('message')
+      );
+    }
+    Assert.isFalse(AgentRefusal.forAgent, 'Only for the request');
+  }
+
   // API-1.86
   @IsTest
   static void aScheduleFileIsTheScreensOpenOfTheVersionNamedOrTheNewest() {

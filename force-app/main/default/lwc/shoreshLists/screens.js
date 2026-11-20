@@ -15,6 +15,7 @@
 import { CHILDREN, childRows, FIELD } from "c/shoreshSchema";
 import { buildTerms } from "c/shoreshTerms";
 import { spokenWeekday } from "c/shoreshDayNames";
+import { newRow } from "c/shoreshNewRows";
 import { NONE, listName } from "./cells";
 import { whoNames } from "./who";
 import { weeksColumn, weeksText } from "./weeks";
@@ -36,6 +37,10 @@ const SHOWN = buildTerms([]);
 const LOCATION = FIELD.Location;
 const ACTIVITY = FIELD.Activity;
 const WHO = FIELD.ActivityEligibility;
+
+// What a new item starts with when the file has no such column: as one added by hand.
+const NEW_LOCATION = newRow("Location");
+const NEW_ACTIVITY = newRow("Activity");
 
 const PRIORITIES = [
   { value: "High", label: "High" },
@@ -105,7 +110,7 @@ function locationsScreen(t) {
         type: "whole",
         min: 1,
         requiredValue: true,
-        newValue: 1,
+        newValue: NEW_LOCATION[LOCATION.GroupsThatFit],
         fromRecord: (r) => r[LOCATION.GroupsThatFit],
         write: (v) => ({ [LOCATION.GroupsThatFit]: v })
       },
@@ -139,7 +144,7 @@ function activitiesScreen(t) {
         type: "whole",
         min: 1,
         requiredValue: true,
-        newValue: 1,
+        newValue: NEW_ACTIVITY[ACTIVITY.Length],
         fromRecord: (r) => r[ACTIVITY.Length],
         write: (v) => ({ [ACTIVITY.Length]: v })
       },
@@ -162,7 +167,7 @@ function activitiesScreen(t) {
         type: "whole",
         min: 0,
         requiredValue: true,
-        newValue: 1,
+        newValue: NEW_ACTIVITY[ACTIVITY.TimesPerWeekMin],
         fromRecord: (r) => r[ACTIVITY.TimesPerWeekMin],
         write: (v) => ({ [ACTIVITY.TimesPerWeekMin]: v })
       },
@@ -184,7 +189,8 @@ function activitiesScreen(t) {
         // A blank cell clears it on an item set up: no maximum. A new one starts as by hand.
         blankMeans: NONE,
         // A new activity done at least 3 times a week is done at most 3 times, not 1.
-        newValue: (values) => Math.max(1, values.min || 0),
+        newValue: (values) =>
+          Math.max(NEW_ACTIVITY[ACTIVITY.TimesPerWeekMax], values.min || 0),
         fromRecord: (r) => {
           return r[ACTIVITY.NoWeeklyMax] ? NONE : r[ACTIVITY.TimesPerWeekMax];
         },
@@ -201,7 +207,7 @@ function activitiesScreen(t) {
         type: "choice",
         options: PRIORITIES,
         requiredValue: true,
-        newValue: "Low",
+        newValue: NEW_ACTIVITY[ACTIVITY.Priority],
         fromRecord: (r) => r[ACTIVITY.Priority] || "Low",
         write: (v) => ({ [ACTIVITY.Priority]: v })
       },
@@ -242,7 +248,7 @@ function activitiesScreen(t) {
         min: 1,
         // A blank cell clears it on an item set up: no limit. A new one starts as by hand.
         blankMeans: NONE,
-        newValue: 1,
+        newValue: NEW_ACTIVITY[ACTIVITY.GroupsAtOnce],
         fromRecord: (r) => {
           return r[ACTIVITY.NoGroupLimit] ? NONE : r[ACTIVITY.GroupsAtOnce];
         },
