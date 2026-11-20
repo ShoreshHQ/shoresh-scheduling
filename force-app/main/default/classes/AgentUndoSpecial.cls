@@ -19,7 +19,12 @@ public with sharing class AgentUndoSpecial {
     if (AgentUndoHeld.kindOf(held) != AgentUndo.EDIT) {
       return null;
     }
-    AgentAskFirst.stateIs(JSON.serialize(held.get('runs')));
+    // The runs as sent, their fields in name order: the order they come in never changes the ticket.
+    AgentAskFirst.stateIs(
+      AgentRequestInOrder.of(
+        JSON.serialize(new Map<String, Object>{ 'runs' => held.get('runs') })
+      )
+    );
     return 'This undoes "' +
       held.get('label') +
       '" in "' +
