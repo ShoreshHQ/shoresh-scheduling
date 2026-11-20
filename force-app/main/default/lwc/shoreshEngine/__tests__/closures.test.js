@@ -58,25 +58,31 @@ describe("closures and groups away", () => {
   // CLOSE-4.8
   it("a day marked rainy is built as any other day: its rain marks change nothing", () => {
     const spec = {
-      groups: [group("g1")],
+      groups: [group("g1"), group("g2")],
       blocks: [block(0), block(1)],
       activities: [
         activity("swim", { outdoor: true, rainPlan: "arts" }),
         activity("arts")
       ],
-      // Rainy day switched b0's Swim to Arts, which locked the cell (a hand edit).
-      cells: [{ day: 0, group: "g1", block: "b0", act: "arts" }],
+      // Rainy day switched both bunks' b0 Swim to Arts. On Generated Schedule it is saved as a
+      // hand edit, which locks what it changes; g2's lock has since been taken off.
+      cells: [
+        { day: 0, group: "g1", block: "b0", act: "arts" },
+        { day: 0, group: "g2", block: "b0", act: "arts" }
+      ],
       locks: [{ date: dateAt(0), groupId: "g1", blockId: "b0" }]
     };
     const dry = generateWeek(camp(spec));
     const rainy = camp(spec);
-    // The day's mark as the week carries it (RainMarks: group|block|activity|switched).
-    rainy.days[0].rain = ["g1|b0|arts|switched"];
+    // The day's marks as the week carries them (RainMarks: group|block|activity|switched).
+    rainy.days[0].rain = ["g1|b0|arts|switched", "g2|b0|arts|switched"];
     const wet = generateWeek(rainy);
     expect(wet.ok).toBe(true);
     expect(cellsOf(wet.days)).toEqual(cellsOf(dry.days));
-    // The switched cell stays because it is locked; outdoor Swim still lands on the rainy day.
+    // Only the locked switched cell stays; outdoor Swim still lands on the rainy day.
     expect(at(wet, 0, "g1", 0)).toBe("arts");
     expect(at(wet, 0, "g1", 1)).toBe("swim");
+    // Arts takes one group at a time, so the unlocked one can't be kept beside the locked one.
+    expect(at(wet, 0, "g2", 0)).not.toBe("arts");
   });
 });

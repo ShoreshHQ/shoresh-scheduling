@@ -144,6 +144,8 @@ describe("c-shoresh-versions", () => {
     await flush();
     const input = q(element, '[data-id="rename-input"]');
     expect(input.value).toBe("");
+    // Empty, so its label says which version it renames.
+    expect(input.getAttribute("aria-label")).toBe("New name for Before my changes");
     expect(q(element, '[data-id="rename-save"]').disabled).toBe(true);
     // The rename button it was started from is gone: focus goes into the box (the desktop's
     // autoFocus), not the page (real-browser check, 2026-10-20).
