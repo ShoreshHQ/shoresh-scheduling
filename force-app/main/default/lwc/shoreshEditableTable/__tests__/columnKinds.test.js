@@ -35,6 +35,22 @@ describe("text (no type)", () => {
   });
 });
 
+describe("readonly", () => {
+  const col = { fieldName: "R", label: "Rule", type: "readonly" };
+  it("shares the width, is not text, and reads its value as it is", () => {
+    expect(widthOf(col)).toBeNull();
+    expect(isText(col)).toBe(false);
+    expect(fieldsOf(col)).toEqual([col]);
+    expect(valueWords(col, "Every week")).toBe("Every week");
+    expect(valueWords(col, null)).toBe("None");
+  });
+  it("leaves a blank blank in a read-only cell", () => {
+    expect(readWords(col, "")).toBe("");
+    expect(readWords(col, undefined)).toBe("");
+    expect(readWords(col, "Every week")).toBe("Every week");
+  });
+});
+
 describe("number", () => {
   const col = { fieldName: "N", label: "Periods", type: "number", min: 1 };
   it("is 6.5rem and takes its input's text as a number or nothing", () => {
