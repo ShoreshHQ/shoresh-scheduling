@@ -3,13 +3,7 @@ import { BuildScreen } from "c/shoreshBuildScreen";
 import { BuildWeek } from "c/shoreshBuildWeek";
 import setUpItem from "@salesforce/apex/SpecialPlacingController.setUpItem";
 import takeOffDay from "@salesforce/apex/SpecialPlacingController.takeOffDay";
-import saveVersion from "@salesforce/apex/GeneratedScheduleController.saveVersion";
 import keepWeekBeforeRain from "@salesforce/apex/RainyDayController.keepGeneratedWeek";
-import restoreVersion from "@salesforce/apex/GeneratedScheduleController.restoreVersion";
-import undoBuild from "@salesforce/apex/GeneratedUndoController.undoBuild";
-import restoreVersionAsNew from "@salesforce/apex/GeneratedScheduleController.restoreVersionAsNew";
-import deleteVersion from "@salesforce/apex/GeneratedScheduleController.deleteVersion";
-import renameSchedule from "@salesforce/apex/SchedulesController.renameSchedule";
 import { failed } from "c/shoreshErrors";
 import { publishedWord } from "c/shoreshPublish";
 import { notesWithout, whyOf } from "c/shoreshEngine";
@@ -193,8 +187,6 @@ export default class ShoreshGeneratedSchedule extends BuildScreen(
   focusOn = null;
   // The week's versions (SchedulesController.getVersions rows), read with the week.
   versions = [];
-  // Each read of the list moves this on; only the latest one's answer is shown.
-  versionsTicket = 0;
   // A Save version, Restore, rename or delete is on its way.
   versionsWorking = false;
   // Apply to other weeks is open (c-shoresh-apply-weeks).
@@ -364,7 +356,7 @@ export default class ShoreshGeneratedSchedule extends BuildScreen(
   @api
   readVersions(changed) {
     if (this.loaded && this.showsWeekOf(changed)) {
-      this.loadVersions();
+      this.buildWeek.loadVersions();
     }
   }
 
@@ -462,10 +454,9 @@ export default class ShoreshGeneratedSchedule extends BuildScreen(
       this.error = null;
       this.conflict = null;
       this.startedOver = null;
-      this.versions = [];
       this.sayWhenShown = null;
-      // A list still on its way for the last week is not this one's.
-      this.versionsTicket += 1;
+      // The last week's versions go; a list still on its way is not this one's.
+      this.buildWeek.forgetVersions();
       this.restored = null;
       // Another week: a publish question open for the last one goes (nothing was sent).
       this.publishState = null;
@@ -516,7 +507,7 @@ export default class ShoreshGeneratedSchedule extends BuildScreen(
     this.publishState = loaded.published || null;
     // A week not generated yet lists its versions too: any of them can be restored here
     // (Greg's decision 9).
-    this.loadVersions();
+    this.buildWeek.loadVersions();
     if (fresh) {
       this.triedUpTo = loaded.option || 1;
       this.view = "day";
@@ -993,7 +984,7 @@ export default class ShoreshGeneratedSchedule extends BuildScreen(
         }
         // Rebuild, Try another and Start over kept a version first: Versions lists it, here and
         // on every other screen; a first Generate started the week's schedule (WEEK-6.7).
-        this.loadVersions();
+        this.buildWeek.loadVersions();
         this.tellSchedulesChanged(!loaded.scheduleId, week);
         // What still doesn't match setup in the week just built (locks and leftovers stay).
         this.buildWeek.loadSetupChanges();
@@ -1098,7 +1089,7 @@ export default class ShoreshGeneratedSchedule extends BuildScreen(
     if (!started || this.versionsBusy) {
       return;
     }
-    this.restore(started.versionId, `Undone: ${started.label}.`, {
+    this.buildWeek.restore(started.versionId, `Undone: ${started.label}.`, {
       focus: BUILD_MENU,
       name: started.label,
       undo: true
@@ -1458,7 +1449,7 @@ export default class ShoreshGeneratedSchedule extends BuildScreen(
    */
   rainyWith = async (name) => {
     await keepWeekBeforeRain({ scheduleId: this.loaded.scheduleId, name });
-    this.loadVersions();
+    this.buildWeek.loadVersions();
     this.tellSchedulesChanged();
   };
 
@@ -1947,154 +1938,56 @@ export default class ShoreshGeneratedSchedule extends BuildScreen(
     return this.showStart && this.versions.length > 0;
   }
 
-  /**
-   * Runs a versions action, then reads the list again before it is done (so the list never shows
-   * a version just deleted as if it were there); refused ones say why. A read asked for meanwhile
-   * (the season read again) is done after it. Done, the other screens are told (WEEK-6.7);
-   * season: it started the week's schedule.
-   */
-  async versionsAction(what, work, season = false) {
-    this.versionsWorking = true;
-    this.error = null;
-    this.errorFromRead = false;
-    this.focusAfterVersions = null;
-    let done = false;
-    try {
-      await work();
-      done = true;
-      return true;
-    } catch (e) {
-      // What didn't happen, then why (what: words, or a function for words known only later).
-      this.error = failed(typeof what === "function" ? what() : what, e);
-      return false;
-    } finally {
-      await this.loadVersions();
-      if (this.focusAfterVersions) {
-        // Set as the hold ends, so the render that enables its button focuses it.
-        this.focusAfterRender = { selector: this.focusAfterVersions };
-        this.focusAfterVersions = null;
-      }
-      this.versionsWorking = false;
-      const readNow = this.readAfterRun && !this.conflict;
-      this.readAfterRun = false;
-      if (readNow) {
-        this.load(true);
-      }
-      // Saved versions and Manual Build show the same list (WEEK-6.7).
-      if (done) {
-        this.tellSchedulesChanged(season);
-      }
-    }
-  }
-
-  /** Save version: the week as it is now (its locks and option too), kept under a name. */
-  async handleSaveVersion(event) {
+  /** Save version (c/shoreshBuildWeek): the week as it is now (its locks and option too). */
+  handleSaveVersion(event) {
     const { name, onDone } = event.detail;
-    if (this.versionsBusy) {
-      onDone(false);
-      return;
-    }
-    const scheduleId = this.loaded.scheduleId;
-    const saved = await this.versionsAction(`${name} wasn't saved.`, () =>
-      saveVersion({ scheduleId, name })
-    );
-    if (saved) {
-      this.say(`Saved ${name}.`);
-    }
-    onDone(saved);
+    return this.buildWeek.saveVersion(name, onDone);
   }
 
   /**
-   * Restore: the version's cells, locks and option become the week's, after the week as it was
-   * is kept as "Before Restore" (the way back), then the week is read again. Undo starts over, as
-   * on the desktop. Someone else's save since this screen read the week: nothing is restored, and
-   * the box offers Reload, as for any save.
+   * Restore (c/shoreshBuildWeek): the version's cells, locks and option become the week's, after
+   * the week as it was is kept as "Before Restore" (the way back), then the week is read again.
+   * Someone else's save since this screen read the week: nothing is restored, and the line offers
+   * Reload, held as for any save.
    */
-  async handleRestore(event) {
-    const id = event.detail.id;
-    const version = this.versions.find((v) => v.id === id);
-    if (this.versionsBusy) {
-      this.say("One moment: an edit is still saving.");
-      return;
-    }
-    await this.restore(id, `Restored ${version ? version.name : ""}.`, {
-      name: version ? version.name : null
-    });
+  handleRestore(event) {
+    return this.buildWeek.restoreVersion(event.detail.id);
   }
 
   /**
-   * Restores a version (Restore, and Start over's or Rebuild's Undo): said is what the line says once the
-   * week is on screen; focus, where focus goes after (a selector), when the control used is gone.
+   * The week as a Restore left it, read again (the server says only that it was done). False when
+   * it can't be read now: it is read again once the Restore is over, and shown then as the
+   * restored week (its error goes once that read works).
    */
-  async restore(id, said, { focus = null, name = null, undo = false } = {}) {
-    const loaded = this.loaded;
-    // Reads wait while it runs; one for another week (or the screen gone) drops its answer.
-    const ticket = this.loadTicket;
-    let what = undo
-      ? `${name} wasn't undone.`
-      : `${name || "That version"} wasn't restored.`;
-    await this.versionsAction(
-      () => what,
-      async () => {
-        // A week not generated yet: the version becomes its Generated Schedule (decision 9).
-        // Undo keeps the week first as "Before Undo", Restore as "Before Restore" (word walk W6).
-        const back = undo ? undoBuild : restoreVersion;
-        const done = loaded.scheduleId
-          ? await back({
-              scheduleId: loaded.scheduleId,
-              versionId: id,
-              seenRevisions: loaded.revision
-            })
-          : await restoreVersionAsNew({
-              programId: this.programId,
-              weekId: this.weekId,
-              versionId: id
-            });
-        if (ticket !== this.loadTicket) {
-          return;
-        }
-        if (!done) {
-          // Nothing was changed: someone else's newer week is never replaced unseen. The quiet
-          // line Manual Build shows (not an alert), read out once.
-          this.conflict = { message: this.restoreRefusedText, quiet: true };
-          this.announce(this.restoreRefusedText);
-          this.focusAfterRender = { selector: '[data-id="reload"]' };
-          return;
-        }
-        const restored = { id, said };
-        let week;
-        try {
-          week = await loadWeek(this.programId, this.weekId);
-        } catch (e) {
-          // Restored, but the week can't be read now: it is read again once this is over, and
-          // shown then as the restored week (its error goes once that read works).
-          what = `${this.weekName} was restored, but couldn't be shown just now.`;
-          if (ticket === this.loadTicket) {
-            this.readAfterRun = true;
-            this.restoreUnread = restored;
-          }
-          this.errorFromRead = true;
-          throw e;
-        }
-        if (ticket !== this.loadTicket) {
-          return;
-        }
-        // A read asked for meanwhile (the season read again) is still done after this.
-        this.loaded = week;
-        this.useEngineNotes(week.engineNotes);
-        this.publishState = week.published || null;
-        this.showRestored(restored, week);
-        if (!loaded.scheduleId) {
-          // On a week not generated yet the Versions list goes with the start: focus goes to
-          // Rebuild, as after a first Generate.
-          this.focusAfterVersions = BUILD_MENU;
-        } else if (focus) {
-          this.focusAfterVersions = focus;
-        }
-      },
-      // On a week not generated yet the version becomes its schedule: a schedule started.
-      !loaded.scheduleId
-    );
+  async showRestoredWeek(ticket, restored) {
+    const hadSchedule = this.isGenerated;
+    let week;
+    try {
+      week = await loadWeek(this.programId, this.weekId);
+    } catch (e) {
+      if (ticket === this.loadTicket) {
+        this.error = failed(
+          `${this.weekName} was restored, but couldn't be shown just now.`,
+          e
+        );
+        this.errorFromRead = true;
+        this.readAfterRun = true;
+        this.restoreUnread = restored;
+      }
+      return false;
+    }
+    if (ticket !== this.loadTicket) {
+      return false;
+    }
+    // A read asked for meanwhile (the season read again) is still done after this.
+    this.loaded = week;
+    this.useEngineNotes(week.engineNotes);
+    this.publishState = week.published || null;
+    this.showRestored(restored, week);
+    // On a week not generated yet the Versions list goes with the start: focus goes to Rebuild,
+    // as after a first Generate.
+    this.focusAfterVersions = hadSchedule ? restored.focus : BUILD_MENU;
+    return true;
   }
 
   /** The week a Restore made, as read: a whole new week (Undo starts over), on screen now. */
@@ -2113,37 +2006,12 @@ export default class ShoreshGeneratedSchedule extends BuildScreen(
     }
   }
 
-  get restoreRefusedText() {
-    return `Someone else changed this ${this.t.sIn("Week")} since you opened it, so nothing was restored.`;
+  handleDeleteVersion(event) {
+    return this.buildWeek.deleteVersion(event.detail.id);
   }
 
-  async handleDeleteVersion(event) {
-    if (this.versionsBusy) {
-      return;
-    }
-    const id = event.detail.id;
-    const version = this.versions.find((v) => v.id === id);
-    const scheduleId = this.loaded.scheduleId;
-    const done = await this.versionsAction(
-      `${version ? version.name : "That version"} wasn't deleted.`,
-      () => deleteVersion({ scheduleId, versionId: id })
-    );
-    if (done) {
-      this.say(`Deleted ${version ? version.name : ""}.`);
-    }
-  }
-
-  async handleRenameVersion(event) {
+  handleRenameVersion(event) {
     const { id, name, onDone } = event.detail;
-    if (this.versionsBusy) {
-      onDone(false);
-      return;
-    }
-    const version = this.versions.find((v) => v.id === id);
-    const renamed = await this.versionsAction(
-      `${version ? version.name : "That version"} wasn't renamed.`,
-      () => renameSchedule({ scheduleId: id, name })
-    );
-    onDone(renamed);
+    return this.buildWeek.renameVersion(id, name, onDone);
   }
 }

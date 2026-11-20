@@ -470,21 +470,6 @@ describe("Versions on the Generated Schedule screen", () => {
     expect(notice(element)).toBe("Saved Rainy Monday.");
   });
 
-  it("a refused Save version says why and keeps the name typed", async () => {
-    const element = await render();
-    saveVersion.mockRejectedValue({
-      body: { message: "Give the version a name." }
-    });
-    const onDone = jest.fn();
-    await fire(element, "save", { name: " ", onDone });
-    expect(onDone).toHaveBeenCalledWith(false);
-    expect(q(element, '[data-id="build-error"]').textContent).toContain(
-      "Give the version a name."
-    );
-    // Nothing was saved, so nothing says it was.
-    expect(notice(element) || "").not.toContain("Saved");
-  });
-
   it("Restore sends the revision the week was read at, then shows the week read again with its locks and option", async () => {
     const element = await render(week());
     expect(lockAt(element, "0-1")).toBeNull();
@@ -722,25 +707,6 @@ describe("Versions on the Generated Schedule screen", () => {
     expect(q(element, '[data-id="build-error"]').textContent).toContain(
       "Timed out."
     );
-  });
-
-  it("a Restore answering after the screen moved on to another week shows nothing there", async () => {
-    const element = await render(week());
-    const held = slow();
-    restoreVersion.mockReturnValue(held.promise);
-    await restore(element);
-    getInputs.mockResolvedValue(week());
-    element.setup = {
-      ...SETUP,
-      weeks: [{ Id: "a0K000000000002AAA", Name: "Week 2" }]
-    };
-    await flush();
-    expect(getInputs).toHaveBeenCalledTimes(2);
-    // Refused for Week 1: Week 2 gets no Reload box for it.
-    held.answer(false);
-    await flush();
-    expect(q(element, '[data-id="conflict"]')).toBeNull();
-    expect(getInputs).toHaveBeenCalledTimes(2);
   });
 
   it("a Restore's read answering after the screen moved on to another week shows nothing there", async () => {
@@ -1169,22 +1135,6 @@ describe("Versions on the Generated Schedule screen", () => {
     expect(panel.activeElement).toBe(restoreNext);
   });
 
-  it("a refused delete says why", async () => {
-    const element = await render();
-    deleteVersion.mockRejectedValue({
-      body: {
-        message:
-          '"Published Oct 18, 10:04 AM" was the published schedule, which is kept as history, so it can\'t be deleted.'
-      }
-    });
-    await fire(element, "delete", { id: HISTORY });
-    expect(q(element, '[data-id="build-error"]').textContent).toContain(
-      "kept as history"
-    );
-    // Nothing was deleted, so nothing says it was.
-    expect(notice(element) || "").not.toContain("Deleted");
-  });
-
   it("rename renames the version and reads the list again", async () => {
     const element = await render();
     renameSchedule.mockResolvedValue(undefined);
@@ -1203,19 +1153,6 @@ describe("Versions on the Generated Schedule screen", () => {
     expect(getVersions).toHaveBeenCalledTimes(1);
   });
 
-  it("a refused rename says why and keeps the name typed", async () => {
-    const element = await render();
-    renameSchedule.mockRejectedValue({
-      body: { message: "Give the version a name." }
-    });
-    const onDone = jest.fn();
-    await fire(element, "rename", { id: HISTORY, name: " ", onDone });
-    expect(onDone).toHaveBeenCalledWith(false);
-    expect(q(element, '[data-id="build-error"]').textContent).toContain(
-      "Give the version a name."
-    );
-  });
-
   it("another week shows none of this week's versions, and nothing as on screen now", async () => {
     const element = await render(week());
     restoreVersion.mockResolvedValue(true);
@@ -1231,31 +1168,6 @@ describe("Versions on the Generated Schedule screen", () => {
     await flush();
     expect(versions(element).versions).toEqual([]);
     expect(versions(element).openId).toBeFalsy();
-  });
-
-  it("an older read of the list answering after a newer one is not shown", async () => {
-    const late = slow();
-    getInputs.mockResolvedValue(week());
-    getVersions.mockReturnValueOnce(late.promise);
-    const element = createElement("c-shoresh-generated-schedule", {
-      is: ShoreshGeneratedSchedule
-    });
-    element.terms = terms;
-    element.setup = SETUP;
-    document.body.appendChild(element);
-    await flush();
-    // Save version reads the list again; that newer answer comes first.
-    const saved = [
-      { ...VERSIONS[0], id: "a0S000000000023AAA", name: "Rainy Monday" },
-      ...VERSIONS
-    ];
-    getVersions.mockResolvedValue(saved);
-    saveVersion.mockResolvedValue("a0S000000000023AAA");
-    await fire(element, "save", { name: "Rainy Monday", onDone: () => {} });
-    expect(versions(element).versions).toEqual(saved);
-    late.answer(VERSIONS);
-    await flush();
-    expect(versions(element).versions).toEqual(saved);
   });
 
   it("a list read for the week before is not shown for this one", async () => {

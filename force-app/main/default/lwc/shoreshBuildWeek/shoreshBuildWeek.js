@@ -1,32 +1,44 @@
 /**
  * The week on a build screen (Generated Schedule, Manual Build): what acts on "the week as this
- * screen last read it", written once for both. Now: what setup changed since the week was made,
- * "Update to match setup" (ADR 0008 part 6, SetupMatch), and Publish and Unpublish (ADR 0008
- * part 5; ADR 0010 "Publish").
+ * screen last read it", written once for both. What setup changed since the week was made,
+ * "Update to match setup" (ADR 0008 part 6, SetupMatch), Publish and Unpublish (ADR 0008
+ * part 5; ADR 0010 "Publish"), and Versions: the list, Save version, rename, delete and Restore
+ * (ADR 0008 part 4b; ADR 0010 "Versions").
  *
  * Each screen passes an adapter (its weekAdapter.js):
  * - screen: the component. Read: weekName, t, error, weekEditor, setupPreview, setupAsk,
  *   setupWorking, publishDisabled, editBusy, checked, measure, publishState, publishAsk,
- *   unpublishAsk. Set: setupPreview, setupAsk, setupWorking, focusOn, publishing, publishState,
- *   publishAsk, unpublishAsk. Called: say(text), load(true), loadVersions(),
- *   tellSchedulesChanged().
+ *   unpublishAsk, programId, weekId, versions, versionsBusy. Set: setupPreview, setupAsk,
+ *   setupWorking, focusOn, publishing, publishState, publishAsk, unpublishAsk, versions,
+ *   versionsWorking. Called: say(text), announce(text), load(true), tellSchedulesChanged().
  * - scheduleId(): the week's schedule, or null when it has none yet.
  * - revision(): the week's revisions as this screen last read them.
  * - origin: which screen ("Generated", "Manual"), for the publish question.
  * - weekKey(): which week is shown, so an answer for a week no longer shown is dropped.
  * - busy(): Update to match setup waits ("One moment").
  * - reading(): a read of the week is on its way.
- * - previewPublish(args), publish(args), unpublish(args): the screen's controller's.
+ * - previewPublish(args), publish(args), unpublish(args), saveVersion(args),
+ *   deleteVersion(args): the screen's controller's.
+ * - restoreVersion({ scheduleId, versionId, seenRevisions, undo }): restores on the server;
+ *   resolves to { refused } (someone else saved the week since), with what the screen needs to
+ *   show the week restored.
+ * - showRestored(result, ticket, restored): shows the week as the Restore left it, saying
+ *   restored.said (restored: { id, said, focus }); false when it can't now (the screen says
+ *   so, and reads it again once this is over).
+ * - refuseRestore(text): the line with Reload, focus on Reload.
+ * - versionsOver(): a versions action is over, just before Versions are back.
  * - sayDone(text): said after an action that changed the week.
  * - showError(error): the screen's error line (null clears it).
  * - beginUpdate(): a read on its way must not replace the week as this work leaves it (an
- *   update, a publish); returns a ticket, and isCurrent(ticket) says whether the week is still
- *   the one updated.
+ *   update, a publish, a Restore); returns a ticket, and isCurrent(ticket) says whether the
+ *   week is still the one updated.
  * - showUpdated(result, ticket): shows the week as the update left it; false when it can't now.
  * - readAfterWork(): the week is read again once this is over; readIfAsked(): now, if asked.
  */
 import getSetupChanges from "@salesforce/apex/SetupMatchController.getSetupChanges";
 import updateToMatchSetupOnServer from "@salesforce/apex/SetupMatchController.updateToMatchSetup";
+import getVersions from "@salesforce/apex/SchedulesController.getVersions";
+import renameSchedule from "@salesforce/apex/SchedulesController.renameSchedule";
 import { failed } from "c/shoreshErrors";
 import { publishQuestion } from "c/shoreshPublish";
 
@@ -57,6 +69,8 @@ export class BuildWeek {
     this.setupError = null;
     // Counts each time the list's words are to be read out, even the same words again.
     this.setupSaid = 0;
+    // Each read of the Versions list moves this on; only the latest one's answer is shown.
+    this.versionsTicket = 0;
   }
 
   /**
@@ -245,7 +259,7 @@ export class BuildWeek {
       kept = kept || !!result.kept;
       if (result.kept) {
         // Versions lists the week as it was, kept just now, here and elsewhere (WEEK-6.7).
-        screen.loadVersions();
+        this.loadVersions();
         screen.tellSchedulesChanged();
       }
       const done =
@@ -406,7 +420,7 @@ export class BuildWeek {
     }
     adapter.sayDone(`Published ${screen.weekName}.`);
     // A published schedule it replaced is a version now: Versions lists it before Publish is back.
-    await screen.loadVersions();
+    await this.loadVersions();
     // The week's published schedule, on every screen (WEEK-6.7): for the week published, even if
     // another is shown by now.
     screen.tellSchedulesChanged(true, week);
@@ -474,7 +488,7 @@ export class BuildWeek {
     screen.publishState = null;
     adapter.sayDone(`Unpublished ${screen.weekName}.`);
     // The copy is a version now, marked Published: Versions lists it before Unpublish is back.
-    await screen.loadVersions();
+    await this.loadVersions();
     // No published schedule for the week now, on every screen (WEEK-6.7): for the week
     // unpublished, even if another is shown by now.
     screen.tellSchedulesChanged(true, ask.week);
@@ -538,5 +552,184 @@ export class BuildWeek {
     const { screen } = this.adapter;
     screen.say(text);
     screen.load(true);
+  }
+
+  // ---------- Versions (desktop VersionsDropdown, useSnapshots) ----------
+
+  /** The week's versions. An older read answering after a newer one (or another week) is dropped. */
+  async loadVersions() {
+    const { screen } = this.adapter;
+    this.versionsTicket += 1;
+    const ticket = this.versionsTicket;
+    const latest = () => ticket === this.versionsTicket;
+    try {
+      const rows = await getVersions({
+        programId: screen.programId,
+        weekId: screen.weekId
+      });
+      if (latest()) {
+        screen.versions = rows || [];
+      }
+    } catch {
+      // The list shows as empty; the week itself is unaffected.
+      if (latest()) {
+        screen.versions = [];
+      }
+    }
+  }
+
+  /** Another week is shown: the last one's versions go, and a list still on its way is dropped. */
+  forgetVersions() {
+    this.adapter.screen.versions = [];
+    this.versionsTicket += 1;
+  }
+
+  /**
+   * Runs a versions action, then reads the list again before it is done (so the list never shows
+   * a version just deleted as if it were there). One that fails says what didn't happen, then
+   * why, for the week still shown only. A read asked for meanwhile (the season read again) is
+   * done after it. Done, the other screens are told, for the week it was for (WEEK-6.7); season:
+   * it started the week's schedule. True when done and the week is still the one shown.
+   */
+  async versionsAction(what, work, season = false) {
+    const { adapter } = this;
+    const { screen } = adapter;
+    const week = adapter.weekKey();
+    screen.versionsWorking = true;
+    adapter.showError(null);
+    let done = false;
+    try {
+      await work();
+      done = true;
+    } catch (e) {
+      if (week === adapter.weekKey()) {
+        adapter.showError(failed(what, e));
+      }
+    } finally {
+      await this.loadVersions();
+      adapter.versionsOver();
+      screen.versionsWorking = false;
+      adapter.readIfAsked();
+      if (done) {
+        screen.tellSchedulesChanged(season, week);
+      }
+    }
+    return done && week === adapter.weekKey();
+  }
+
+  /** The version's name, or null when the list no longer has it. */
+  versionName(id) {
+    const version = this.adapter.screen.versions.find((v) => v.id === id);
+    return version ? version.name : null;
+  }
+
+  /**
+   * Save version: the week as it is now (on Generated Schedule its locks and option too), kept
+   * under a name. Waits while anything else changes the week (onDone(false): the name stays).
+   */
+  async saveVersion(name, onDone) {
+    const { adapter } = this;
+    const { screen } = adapter;
+    if (screen.versionsBusy) {
+      onDone(false);
+      return;
+    }
+    const scheduleId = adapter.scheduleId();
+    const saved = await this.versionsAction(`${name} wasn't saved.`, () =>
+      adapter.saveVersion({ scheduleId, name })
+    );
+    if (saved) {
+      screen.say(`Saved ${name}.`);
+    }
+    onDone(saved);
+  }
+
+  async renameVersion(id, name, onDone) {
+    if (this.adapter.screen.versionsBusy) {
+      onDone(false);
+      return;
+    }
+    const renamed = await this.versionsAction(
+      `${this.versionName(id) || "That version"} wasn't renamed.`,
+      () => renameSchedule({ scheduleId: id, name })
+    );
+    onDone(renamed);
+  }
+
+  async deleteVersion(id) {
+    const { adapter } = this;
+    const { screen } = adapter;
+    if (screen.versionsBusy) {
+      return;
+    }
+    const name = this.versionName(id);
+    const scheduleId = adapter.scheduleId();
+    const done = await this.versionsAction(
+      `${name || "That version"} wasn't deleted.`,
+      () => adapter.deleteVersion({ scheduleId, versionId: id })
+    );
+    if (done) {
+      screen.say(`Deleted ${name || ""}.`);
+    }
+  }
+
+  /** Restore, from Versions: waits, saying so, while anything else changes the week. */
+  restoreVersion(id) {
+    const { screen } = this.adapter;
+    if (screen.versionsBusy) {
+      screen.say("One moment: an edit is still saving.");
+      return Promise.resolve();
+    }
+    const name = this.versionName(id);
+    return this.restore(id, `Restored ${name || ""}.`, { name });
+  }
+
+  /**
+   * Restores a version (Restore, and on Generated Schedule the Undo of Start over or Rebuild):
+   * the week as it was is kept first ("Before Restore", "Before Undo": the way back), then the
+   * version's cells become the week's and the week is shown as the server left it; Undo starts
+   * over, as on the desktop. said: what the line says once it is shown; focus: where focus goes
+   * after (a selector), when the control used is gone. Someone else's save since this screen
+   * read the week: nothing is restored, and the line says so with Reload. A read already on its
+   * way read the week before this Restore: its answer must not replace the restored week. An
+   * answer for a week no longer shown is dropped.
+   */
+  async restore(id, said, { focus = null, name = null, undo = false } = {}) {
+    const { adapter } = this;
+    const { screen } = adapter;
+    const scheduleId = adapter.scheduleId();
+    const seenRevisions = adapter.revision();
+    const ticket = adapter.beginUpdate();
+    await this.versionsAction(
+      undo
+        ? `${name} wasn't undone.`
+        : `${name || "That version"} wasn't restored.`,
+      async () => {
+        const result = await adapter.restoreVersion({
+          scheduleId,
+          versionId: id,
+          seenRevisions,
+          undo
+        });
+        if (!adapter.isCurrent(ticket)) {
+          return;
+        }
+        if (result.refused) {
+          // Nothing was changed: someone else's newer week is never replaced unseen. Read out
+          // once; the line stays, with Reload.
+          adapter.refuseRestore(this.restoreRefusedText);
+          screen.announce(this.restoreRefusedText);
+          return;
+        }
+        // Restored, though maybe not shown just now: the screen says so, and reads it again.
+        await adapter.showRestored(result, ticket, { id, said, focus });
+      },
+      // A week with no schedule yet: the version becomes its schedule, a schedule started.
+      !scheduleId
+    );
+  }
+
+  get restoreRefusedText() {
+    return `Someone else changed this ${this.adapter.screen.t.sIn("Week")} since you opened it, so nothing was restored.`;
   }
 }

@@ -7,13 +7,9 @@ import takeOffDay from "@salesforce/apex/SpecialPlacingController.takeOffDay";
 import getDraft from "@salesforce/apex/ManualBuildController.getDraft";
 import startBlankWeek from "@salesforce/apex/ManualBuildController.startBlankWeek";
 import saveSlots from "@salesforce/apex/ManualBuildController.saveSlots";
-import saveVersion from "@salesforce/apex/ManualBuildController.saveVersion";
 import keepWeekBeforeRain from "@salesforce/apex/RainyDayController.keepManualWeek";
-import restoreVersion from "@salesforce/apex/ManualBuildController.restoreVersion";
-import deleteVersion from "@salesforce/apex/ManualBuildController.deleteVersion";
 import getWeekSources from "@salesforce/apex/ManualBuildController.getWeekSources";
 import startFromWeek from "@salesforce/apex/ManualBuildController.startFromWeek";
-import renameSchedule from "@salesforce/apex/SchedulesController.renameSchedule";
 import { failed, reasonOf } from "c/shoreshErrors";
 import { dayLabel, days, groups } from "c/shoreshScheduleViews";
 import { publishedWord } from "c/shoreshPublish";
@@ -83,7 +79,6 @@ export default class ShoreshManualBuild extends BuildScreen(LightningElement) {
   checksResetKey = 0;
   // The week's versions (Versions), and what Start from another week can start from.
   versions = [];
-  versionsTicket = 0;
   weekSources = [];
   versionsWorking = false;
   // The version just restored, "on screen now" until the next edit (desktop VersionsDropdown).
@@ -117,8 +112,8 @@ export default class ShoreshManualBuild extends BuildScreen(LightningElement) {
   setupAsk = null;
   setupWorking = false;
   // The season was read again while the update list was read, open or updating, or while a
-  // publish was on its way (or a read was dropped for one): the week is read again once that is
-  // over.
+  // publish or a versions action was on its way (or a read was dropped for one): the week is
+  // read again once that is over.
   readAfterRun = false;
   // The week as this screen last read it, and the flows that act on it.
   buildWeek = new BuildWeek(manualWeekAdapter(this));
@@ -142,18 +137,23 @@ export default class ShoreshManualBuild extends BuildScreen(LightningElement) {
     // Setup saved on another screen of Camp Setup comes back as a new setup for the same week:
     // the week is read again, as on coming back to the window, so its dots and names catch up.
     // While it can't be (an edit saving or answering), its setup changes are still read: nothing
-    // later would catch them up. While the update list is open or working, or a Publish or
-    // Unpublish is on its way, the week is read once that is over (WEEK-6.7). Its Versions list
-    // is read too: a list read disturbs no work. Not when this screen's own save asked for this
-    // season read: it already has its answer.
+    // later would catch them up. While the update list is open or working, or a Publish,
+    // Unpublish or versions action is on its way, the week is read once that is over (WEEK-6.7).
+    // Its Versions list is read too: a list read disturbs no work. Not when this screen's own
+    // save asked for this season read: it already has its answer.
     const own = this.seasonReadIsOwn();
     if (`${this.programId}|${this.weekId}` === this.loadedFor) {
       if (own) {
         return;
       }
       if (!this.refresh() && this.draft) {
-        this.loadVersions();
-        if (this.setupWorking || this.setupAsk || this.publishing) {
+        this.buildWeek.loadVersions();
+        if (
+          this.setupWorking ||
+          this.setupAsk ||
+          this.publishing ||
+          this.versionsWorking
+        ) {
           this.readAfterRun = true;
         } else {
           this.buildWeek.loadSetupChanges();
@@ -374,7 +374,7 @@ export default class ShoreshManualBuild extends BuildScreen(LightningElement) {
   @api
   readVersions(changed) {
     if (this.draft && this.showsWeekOf(changed)) {
-      this.loadVersions();
+      this.buildWeek.loadVersions();
     }
   }
 
@@ -446,9 +446,8 @@ export default class ShoreshManualBuild extends BuildScreen(LightningElement) {
       this.restoredId = null;
       this.restoreRefused = false;
       this.waiting = null;
-      this.versions = [];
-      // A list still on its way for the last week is not this one's.
-      this.versionsTicket += 1;
+      // The last week's versions go; a list still on its way is not this one's.
+      this.buildWeek.forgetVersions();
       // The last week's setup changes go; a read of them still on its way is dropped.
       this.buildWeek.forgetSetup();
       // A publish question open for the last week goes (nothing was sent).
@@ -487,7 +486,7 @@ export default class ShoreshManualBuild extends BuildScreen(LightningElement) {
         }
         this.show(draft, !again);
         if (draft) {
-          this.loadVersions();
+          this.buildWeek.loadVersions();
         } else {
           this.versions = [];
           this.loadWeekSources();
@@ -628,7 +627,7 @@ export default class ShoreshManualBuild extends BuildScreen(LightningElement) {
       }
       this.show(draft, true);
       this.focusGridAfterStart = !!draft;
-      this.loadVersions();
+      this.buildWeek.loadVersions();
       // A schedule started: Bring in choices and Elective seats offer it (WEEK-6.7).
       if (draft) {
         this.tellSchedulesChanged(true);
@@ -748,41 +747,10 @@ export default class ShoreshManualBuild extends BuildScreen(LightningElement) {
   get applySeen() {
     return this.server ? this.server.revisions : null;
   }
-  /**
-   * Runs a versions action, then reads the list again before it is done (so the list never shows
-   * a version just deleted as if it were there); refused ones say what didn't happen, then why.
-   */
-  async versionsAction(what, work) {
-    this.versionsWorking = true;
-    this.error = null;
-    let done = false;
-    try {
-      await work();
-      done = true;
-      return true;
-    } catch (e) {
-      this.error = failed(what, e);
-      return false;
-    } finally {
-      await this.loadVersions();
-      this.versionsWorking = false;
-      // Saved versions and the other schedule show the same list (WEEK-6.7).
-      if (done) {
-        this.tellSchedulesChanged();
-      }
-    }
-  }
-
-  /** Save version: the week as it is now, kept under a name. */
-  async handleSaveVersion(event) {
+  /** Save version (c/shoreshBuildWeek): the week as it is now, kept under a name. */
+  handleSaveVersion(event) {
     const { name, onDone } = event.detail;
-    const saved = await this.versionsAction(`${name} wasn't saved.`, () =>
-      saveVersion({ scheduleId: this.schedule.schedule.id, name })
-    );
-    if (saved) {
-      this.say(`Saved ${name}.`);
-    }
-    onDone(saved);
+    return this.buildWeek.saveVersion(name, onDone);
   }
 
   /**
@@ -791,56 +759,31 @@ export default class ShoreshManualBuild extends BuildScreen(LightningElement) {
    */
   rainyWith = async (name) => {
     await keepWeekBeforeRain({ scheduleId: this.schedule.schedule.id, name });
-    this.loadVersions();
+    this.buildWeek.loadVersions();
     this.tellSchedulesChanged();
   };
 
   /**
-   * Restore: the version is copied into the week being built, after the week as it was is kept
-   * as "Before Restore" (the way back). Undo starts over, as on the desktop.
+   * Restore (c/shoreshBuildWeek): the version is copied into the week being built, after the week
+   * as it was is kept as "Before Restore" (the way back). Undo starts over, as on the desktop.
    */
-  async handleRestore(event) {
-    const id = event.detail.id;
-    const version = this.versions.find((v) => v.id === id);
-    if (this.versionsBusy) {
-      this.say("One moment: an edit is still saving.");
-      return;
-    }
-    // A reload already on its way read the week before this Restore: its answer must not
-    // replace the restored week. A change of week while it runs drops this answer.
-    this.loadTicket += 1;
-    const ticket = this.loadTicket;
-    this.restoreRefused = false;
-    const what = `${version ? version.name : "That version"} wasn't restored.`;
-    await this.versionsAction(what, async () => {
-      const draft = await restoreVersion({
-        scheduleId: this.schedule.schedule.id,
-        versionId: id,
-        seenRevisions: this.server ? this.server.revisions : null
-      });
-      if (ticket !== this.loadTicket) {
-        return;
-      }
-      if (draft.changedSince) {
-        // Nothing was changed: someone else's newer week is never replaced unseen.
-        this.restoreRefused = true;
-        // Its line (with Reload) is on screen, with focus on Reload; said aloud too.
-        this.focusReloadAfterRender = true;
-        this.announce(this.restoreRefusedText);
-        return;
-      }
-      this.checksResetKey += 1;
-      this.draft = draft;
-      this.publishState = draft.published || null;
-      this.weekEditor.restored(draft);
-      this.restoredId = id;
-      this.buildWeek.loadSetupChanges();
-      this.say(`Restored ${version ? version.name : ""}.`);
-    });
+  handleRestore(event) {
+    return this.buildWeek.restoreVersion(event.detail.id);
+  }
+
+  /** The draft as a Restore left it: the counters start over, on screen now, said so. */
+  showRestored(draft, id, said) {
+    this.checksResetKey += 1;
+    this.draft = draft;
+    this.publishState = draft.published || null;
+    this.weekEditor.restored(draft);
+    this.restoredId = id;
+    this.buildWeek.loadSetupChanges();
+    this.say(said);
   }
 
   get restoreRefusedText() {
-    return `Someone else changed this ${this.t.sIn("Week")} since you opened it, so nothing was restored.`;
+    return this.buildWeek.restoreRefusedText;
   }
 
   /** Reload after a refused Restore: shows the week as it is now. */
@@ -849,29 +792,13 @@ export default class ShoreshManualBuild extends BuildScreen(LightningElement) {
     this.load(true);
   }
 
-  async handleDeleteVersion(event) {
-    if (this.versionsBusy) {
-      return;
-    }
-    const id = event.detail.id;
-    const version = this.versions.find((v) => v.id === id);
-    const what = `${version ? version.name : "That version"} wasn't deleted.`;
-    const done = await this.versionsAction(what, () =>
-      deleteVersion({ scheduleId: this.schedule.schedule.id, versionId: id })
-    );
-    if (done) {
-      this.say(`Deleted ${version ? version.name : ""}.`);
-    }
+  handleDeleteVersion(event) {
+    return this.buildWeek.deleteVersion(event.detail.id);
   }
 
-  async handleRenameVersion(event) {
+  handleRenameVersion(event) {
     const { id, name, onDone } = event.detail;
-    const version = this.versions.find((v) => v.id === id);
-    const what = `${version ? version.name : "That version"} wasn't renamed.`;
-    const renamed = await this.versionsAction(what, () =>
-      renameSchedule({ scheduleId: id, name })
-    );
-    onDone(renamed);
+    return this.buildWeek.renameVersion(id, name, onDone);
   }
 
   // ---------- Publish (Greg, Manual Build round 1 #1, round 2 #4; ADR 0008 part 5) ----------
