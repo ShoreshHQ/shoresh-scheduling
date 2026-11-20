@@ -2,25 +2,11 @@
  * CORE-3.9 / API-1.147: the shared fixed-over examples (staticresources/ShoreshFixedOverExamples
  * .json), which the screen's fixedOver.js must also pass (shoreshProgram fixedOverExamples.test.js):
  * AgentFixedOver.of asks the same question and keeps the same pieces (FixedOverExampleCamp). One
- * test each, so each camp gets its own limits; every example in the file has one.
+ * test each, so each camp gets its own limits: everySharedExampleHasItsTest fails unless the
+ * names in the file and the names this class's tests run are the same, each exactly once.
  */
 @IsTest
 private class FixedOverExamplesTest {
-  private static final Set<String> EXAMPLE_TESTS = new Set<String>{
-    'added over one: it keeps its other time blocks',
-    'moved over one',
-    'two recurring together',
-    'every day of a Monday to Friday program is said as a range',
-    'on some days: asked about on those',
-    'a week ticked back on that meets it',
-    'nothing under it',
-    'only where it goes: it can\'t go around, so nothing is asked',
-    'weeks off on the saved fixed activity: they never meet',
-    'weeks ticked off in this save: they never meet',
-    'only on a day the program doesn\'t run',
-    'no group it covers is there then'
-  };
-
   private static List<Object> examples() {
     String ours = ShoreshSchema.namespace();
     StaticResource read = [
@@ -37,23 +23,55 @@ private class FixedOverExamplesTest {
 
   /** The example of that name, as the scheduler: [expected, said]. */
   private static List<String> run(String name) {
-    Assert.isTrue(EXAMPLE_TESTS.contains(name), name);
     Map<String, Object> example;
     for (Object each : examples()) {
       if (((Map<String, Object>) each).get('name') == name) {
         example = (Map<String, Object>) each;
       }
     }
+    Assert.isNotNull(example, 'No example called ' + name);
     return FixedOverExampleCamp.expectedAndSaid(example);
+  }
+
+  /** Each name a test in this class runs, as its source calls run with it. */
+  private static List<String> namesRun() {
+    String ours = ShoreshSchema.namespace();
+    ApexClass source = [
+      SELECT Body
+      FROM ApexClass
+      WHERE Name = 'FixedOverExamplesTest' AND NamespacePrefix = :ours
+      WITH SYSTEM_MODE
+      LIMIT 1
+    ];
+    Matcher call = Pattern.compile(
+        'run\\(\\s*\'((?:[^\'\\\\]|\\\\.)*)\'\\s*\\)'
+      )
+      .matcher(source.Body);
+    List<String> result = new List<String>();
+    while (call.find()) {
+      result.add(call.group(1).replace('\\\'', '\''));
+    }
+    return result;
   }
 
   @IsTest
   static void everySharedExampleHasItsTest() {
-    Set<String> inFile = new Set<String>();
+    List<String> inFile = new List<String>();
     for (Object each : examples()) {
       inFile.add((String) ((Map<String, Object>) each).get('name'));
     }
-    Assert.areEqual(EXAMPLE_TESTS, inFile);
+    List<String> tested = namesRun();
+    Assert.areEqual(
+      inFile.size(),
+      new Set<String>(inFile).size(),
+      'A name twice in the file'
+    );
+    Assert.areEqual(
+      tested.size(),
+      new Set<String>(tested).size(),
+      'An example run by two tests'
+    );
+    Assert.areEqual(new Set<String>(inFile), new Set<String>(tested));
   }
 
   @IsTest
