@@ -104,17 +104,9 @@ public with sharing class PlacedInWeeks {
     } catch (Exception e) {
       return;
     }
-    for (Integer g = 0; g < grid.rows.size(); g++) {
+    for (Integer g = 0; g < grid.groups.size(); g++) {
       Id groupId = asId(grid.groups[g].id);
-      ScheduleGrid.Item carrying;
-      for (String cell : grid.rows[g]) {
-        ScheduleGrid.Item item;
-        if (cell == ScheduleGrid.CARRIES_ON) {
-          item = carrying;
-        } else if (String.isNotBlank(cell)) {
-          item = grid.items[Integer.valueOf(cell) - 1];
-        }
-        carrying = item;
+      for (ScheduleGrid.Item item : ScheduleGridCells.itemsIn(grid, g)) {
         if (item == null) {
           continue;
         }

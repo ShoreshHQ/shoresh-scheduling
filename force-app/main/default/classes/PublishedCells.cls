@@ -52,18 +52,13 @@ public with sharing class PublishedCells {
     Integer g,
     Map<String, Item> result
   ) {
-    List<String> row = grid.rows[g];
-    Item current = null;
-    for (Integer b = 0; b < grid.blocks.size(); b++) {
-      String cell = b < row.size() ? row[b] : '';
-      // '^': the item before carries on (the grid rules refuse ^ after an empty cell).
-      if (cell != ScheduleGrid.CARRIES_ON) {
-        current = String.isBlank(cell)
-          ? null
-          : new Item(grid.items[Integer.valueOf(cell) - 1]);
-      }
-      if (current != null) {
-        result.put(grid.groups[g].id + '|' + grid.blocks[b].id, current);
+    List<ScheduleGrid.Item> held = ScheduleGridCells.itemsIn(grid, g);
+    for (Integer b = 0; b < held.size(); b++) {
+      if (held[b] != null) {
+        result.put(
+          grid.groups[g].id + '|' + grid.blocks[b].id,
+          new Item(held[b])
+        );
       }
     }
   }

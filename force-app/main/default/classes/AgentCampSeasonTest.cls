@@ -240,13 +240,16 @@ private class AgentCampSeasonTest {
         EndDate__c = Date.newInstance(2027, 8, 6)
       );
       Database.insert(season, AccessLevel.USER_MODE);
+      PublishedTestData.schedule(
+        ShoreshTestData.program(season.Id, 'Main').Id,
+        ShoreshTestData.weeks(season.Id, 1)[0].Id
+      );
       Test.startTest();
       // The one season the screens open on is never assumed.
       Assert.areEqual(
         400,
         sent(new AgentDeleteSeason(), new Map<String, Object>())[0]
       );
-      PublishedHistory.finder = new AlwaysPublished();
       List<Object> answer = sent(
         new AgentDeleteSeason(),
         new Map<String, Object>{ 'season' => 'Summer' }
@@ -506,12 +509,6 @@ private class AgentCampSeasonTest {
       Assert.isTrue(
         [SELECT Name FROM Season__c WHERE Id = :season.Id].Name.equals('SUMMER')
       );
-    }
-  }
-
-  private class AlwaysPublished implements PublishedHistory.Finder {
-    public Set<Id> withPublishedHistory(Set<Id> recordIds) {
-      return recordIds;
     }
   }
 }

@@ -131,18 +131,13 @@ public with sharing class GeneratedLockCells {
     ScheduleGrid grid,
     List<Integer> cell
   ) {
-    List<String> row = grid.rows[cell[0]];
+    Integer g = cell[0];
     Integer first = cell[1];
-    while (first > 0 && row[first] == ScheduleGrid.CARRIES_ON) {
+    while (first > 0 && ScheduleGridCells.carriesOn(grid, g, first)) {
       first--;
     }
     List<Integer> result = new List<Integer>{ first };
-    for (
-      Integer b = first + 1;
-      b < row.size() &&
-      row[b] == ScheduleGrid.CARRIES_ON;
-      b++
-    ) {
+    for (Integer b = first + 1; ScheduleGridCells.carriesOn(grid, g, b); b++) {
       result.add(b);
     }
     return result;

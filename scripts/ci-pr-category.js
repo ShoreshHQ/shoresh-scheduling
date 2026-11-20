@@ -57,6 +57,7 @@ const MIRRORED_PATHS = MIRRORED_SCREENS.map(
 // EXAMPLES_READ_BY; a test keeps them so): a change to one runs that Apex test.
 const APEX_READ_RESOURCES = [
   "ShoreshCellExamples",
+  "ShoreshFixedOverExamples",
   "ShoreshNewRowExamples",
   "ShoreshRuleExamples",
   "ShoreshSeatExamples"

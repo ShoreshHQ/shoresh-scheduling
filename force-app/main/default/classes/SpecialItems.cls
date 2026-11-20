@@ -135,26 +135,13 @@ public with sharing class SpecialItems {
       period.startTime = block.startTime;
       period.endTime = block.endTime;
       Set<String> seen = new Set<String>();
-      for (List<String> row : grid.rows) {
-        String name = nameIn(grid, row, b);
-        if (name != null && seen.add(name)) {
-          period.items.add(name);
+      for (Integer g = 0; g < grid.groups.size(); g++) {
+        ScheduleGrid.Item item = ScheduleGridCells.itemAt(grid, g, b);
+        if (item != null && seen.add(item.name)) {
+          period.items.add(item.name);
         }
       }
       brief.periods.add(period);
     }
-  }
-
-  /** What a row holds in a time block: its item, or the item above carrying on into it. */
-  private static String nameIn(ScheduleGrid grid, List<String> row, Integer b) {
-    Integer at = b;
-    while (at > 0 && row[at] == ScheduleGrid.CARRIES_ON) {
-      at--;
-    }
-    String cell = row[at];
-    if (String.isBlank(cell) || cell == ScheduleGrid.CARRIES_ON) {
-      return null;
-    }
-    return grid.items[Integer.valueOf(cell) - 1].name;
   }
 }

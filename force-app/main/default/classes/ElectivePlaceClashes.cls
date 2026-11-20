@@ -48,7 +48,7 @@ public with sharing class ElectivePlaceClashes {
         continue;
       }
       for (Integer g = 0; g < day.grid.groups.size(); g++) {
-        ScheduleGrid.Item item = GridItems.itemAt(day.grid, g, b);
+        ScheduleGrid.Item item = ScheduleGridCells.itemAt(day.grid, g, b);
         if (item != null && GridItems.isId(item.id)) {
           slots.add(slot);
           items.add(item);
