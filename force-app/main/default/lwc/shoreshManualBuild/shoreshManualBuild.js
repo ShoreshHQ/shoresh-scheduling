@@ -13,13 +13,10 @@ import restoreVersion from "@salesforce/apex/ManualBuildController.restoreVersio
 import deleteVersion from "@salesforce/apex/ManualBuildController.deleteVersion";
 import getWeekSources from "@salesforce/apex/ManualBuildController.getWeekSources";
 import startFromWeek from "@salesforce/apex/ManualBuildController.startFromWeek";
-import previewPublish from "@salesforce/apex/ManualBuildController.previewPublish";
-import publish from "@salesforce/apex/ManualBuildController.publish";
-import unpublish from "@salesforce/apex/ManualBuildController.unpublish";
 import renameSchedule from "@salesforce/apex/SchedulesController.renameSchedule";
 import { failed, reasonOf } from "c/shoreshErrors";
 import { dayLabel, days, groups } from "c/shoreshScheduleViews";
-import { publishQuestion, publishedWord } from "c/shoreshPublish";
+import { publishedWord } from "c/shoreshPublish";
 import { manualWeekAdapter } from "./weekAdapter";
 
 /**
@@ -119,8 +116,9 @@ export default class ShoreshManualBuild extends BuildScreen(LightningElement) {
   // made: its Cancel says Close) }. setupWorking: an update is on its way.
   setupAsk = null;
   setupWorking = false;
-  // The season was read again while the update list was read, open or updating: the week is
-  // read again once it closes.
+  // The season was read again while the update list was read, open or updating, or while a
+  // publish was on its way (or a read was dropped for one): the week is read again once that is
+  // over.
   readAfterRun = false;
   // The week as this screen last read it, and the flows that act on it.
   buildWeek = new BuildWeek(manualWeekAdapter(this));
@@ -143,11 +141,11 @@ export default class ShoreshManualBuild extends BuildScreen(LightningElement) {
     }
     // Setup saved on another screen of Camp Setup comes back as a new setup for the same week:
     // the week is read again, as on coming back to the window, so its dots and names catch up.
-    // While it can't be (an edit saving or answering, a Publish), its setup changes are still
-    // read: nothing later would catch them up. While the update list is open or working, the
-    // week is read once it closes (it reads its setup changes itself). Its Versions list is read too: a list read disturbs no work
-    // (WEEK-6.7). Not when this screen's own save asked for this season read: it already has
-    // its answer.
+    // While it can't be (an edit saving or answering), its setup changes are still read: nothing
+    // later would catch them up. While the update list is open or working, or a Publish or
+    // Unpublish is on its way, the week is read once that is over (WEEK-6.7). Its Versions list
+    // is read too: a list read disturbs no work. Not when this screen's own save asked for this
+    // season read: it already has its answer.
     const own = this.seasonReadIsOwn();
     if (`${this.programId}|${this.weekId}` === this.loadedFor) {
       if (own) {
@@ -155,7 +153,7 @@ export default class ShoreshManualBuild extends BuildScreen(LightningElement) {
       }
       if (!this.refresh() && this.draft) {
         this.loadVersions();
-        if (this.setupWorking || this.setupAsk) {
+        if (this.setupWorking || this.setupAsk || this.publishing) {
           this.readAfterRun = true;
         } else {
           this.buildWeek.loadSetupChanges();
@@ -431,6 +429,8 @@ export default class ShoreshManualBuild extends BuildScreen(LightningElement) {
     if (!this.canChoose) {
       this.show(null, false);
       this.loadedFor = null;
+      // No week shown: a publish question open for the last one goes (nothing was sent).
+      this.buildWeek.forgetPublish();
       return;
     }
     if (key === this.loadedFor && !again) {
@@ -451,6 +451,8 @@ export default class ShoreshManualBuild extends BuildScreen(LightningElement) {
       this.versionsTicket += 1;
       // The last week's setup changes go; a read of them still on its way is dropped.
       this.buildWeek.forgetSetup();
+      // A publish question open for the last week goes (nothing was sent).
+      this.buildWeek.forgetPublish();
       // The editor lets go of the old week: its notice, box, Undo and what was picked up.
       if (this.weekEditor) {
         this.weekEditor.clear();
@@ -891,226 +893,21 @@ export default class ShoreshManualBuild extends BuildScreen(LightningElement) {
     return this.publishing || this.versionsBusy || this.reads > 0;
   }
 
-  /**
-   * Publish: the server's preview says what would change; with the week's checks, that decides
-   * whether to ask first (c/shoreshPublish). A week already published as it is needs nothing.
-   */
-  async handlePublish() {
-    if (this.editBusy) {
-      this.say("One moment: an edit is still saving.");
-      return;
-    }
-    // Edits, Restore and the pickers wait while publishing, so the answer is for this week; one
-    // for a week no longer shown is dropped.
-    const week = this.weekKey;
-    this.publishing = true;
-    this.error = null;
-    try {
-      const preview = await previewPublish({
-        scheduleId: this.schedule.schedule.id
-      });
-      if (week !== this.weekKey) {
-        return;
-      }
-      // Someone else saved the week since this screen read it: what would be published isn't
-      // what is shown. Nothing is published; the week is read again for the director to see.
-      if (preview.revisions !== (this.server ? this.server.revisions : null)) {
-        this.refusePublish(this.draftChangedText);
-        return;
-      }
-      const question = publishQuestion({
-        preview,
-        checked: this.checked,
-        counts: null,
-        measure: this.measure,
-        weekName: this.weekName,
-        t: this.t,
-        origin: "Manual"
-      });
-      if (question.kind === "same") {
-        this.publishState = { ...preview.published, changedSince: false };
-        this.say(`${this.weekName} is already published as it is.`);
-      } else if (question.kind === "now") {
-        await this.publishNow(preview, week);
-      } else {
-        this.publishAsk = { ...question, preview, week };
-      }
-    } catch (e) {
-      this.error = failed(`${this.weekName} was not published.`, e);
-    } finally {
-      if (!this.publishAsk) {
-        this.publishing = false;
-        // Publish was disabled while it worked, so focus fell from it: it goes back once Publish
-        // is drawn enabled again (WCAG 2.4.3), unless another week is shown by then.
-        if (week === this.weekKey) {
-          this.focusOn = "publish";
-        }
-      }
-    }
+  /** Publish and Unpublish (c/shoreshBuildWeek): the question first, when there is one. */
+  handlePublish() {
+    return this.buildWeek.publish();
   }
 
-  async handlePublishAnswer(event) {
-    const ask = this.publishAsk;
-    this.publishAsk = null;
-    try {
-      if (event.detail.yes) {
-        // The server refuses it if the week changed since the preview.
-        await this.publishNow(ask.preview, ask.week);
-      }
-    } catch (e) {
-      this.error = failed(`${this.weekName} was not published.`, e);
-    } finally {
-      this.publishing = false;
-      // The question is gone: focus goes back to where it started (WCAG 2.4.3).
-      this.focusOn = "publish";
-    }
+  handlePublishAnswer(event) {
+    return this.buildWeek.answerPublish(event.detail.yes);
   }
 
-  /**
-   * Unpublish (Greg, 2026-10-18): asks first, Cancel focused. The week then has no published
-   * schedule; the one it had is kept in Versions, marked Published, as one replaced is.
-   */
   handleUnpublish() {
-    if (!this.publishState) {
-      return;
-    }
-    this.publishing = true;
-    this.error = null;
-    this.unpublishAsk = {
-      heading: `Unpublish ${this.weekName}?`,
-      lines: [`Nothing will be published for this ${this.t.sIn("Week")}.`],
-      publishedId: this.publishState.id,
-      week: this.weekKey
-    };
+    this.buildWeek.askUnpublish();
   }
 
-  async handleUnpublishAnswer(event) {
-    const ask = this.unpublishAsk;
-    this.unpublishAsk = null;
-    try {
-      if (event.detail.yes) {
-        await this.unpublishNow(ask);
-      }
-    } catch (e) {
-      this.error = failed(`${this.weekName} was not unpublished.`, e);
-    } finally {
-      this.publishing = false;
-      // Back to Unpublish (WCAG 2.4.3), or to Publish once the week has nothing published.
-      if (ask.week === this.weekKey) {
-        this.focusOn = "unpublish";
-      }
-    }
-  }
-
-  /** Refused when the week was published or unpublished since the screen showed it. */
-  async unpublishNow(ask) {
-    const reload = this.dropReload();
-    try {
-      const result = await unpublish({
-        scheduleId: this.schedule.schedule.id,
-        seenPublishedId: ask.publishedId
-      });
-      if (ask.week !== this.weekKey) {
-        // Unpublished, though another week is shown now: the other screens still show it
-        // (WEEK-6.7).
-        if (!result.publishedChanged) {
-          this.tellSchedulesChanged(true, ask.week);
-        }
-        return;
-      }
-      if (result.publishedChanged) {
-        reload.done = true;
-        this.refusePublish(
-          `Someone else published or unpublished this ${this.t.sIn("Week")} since, so nothing was unpublished.`
-        );
-        return;
-      }
-      this.publishState = null;
-      this.say(`Unpublished ${this.weekName}.`);
-      // The copy is a version now: Versions lists it straight away.
-      await this.loadVersions();
-      // No published schedule for the week now, on every screen (WEEK-6.7).
-      this.tellSchedulesChanged(true);
-    } finally {
-      this.readAgain(reload, ask.week);
-    }
-  }
-
-  /**
-   * A reload already on its way read the week before Publish or Unpublish: its answer must not
-   * show the old publish state again. It is dropped, and the week is read again once the answer
-   * is in, so what the reload was for (a failed save, other people's changes) is still shown.
-   */
-  dropReload() {
-    const dropped = this.reads > 0;
-    this.loadTicket += 1;
-    return { dropped, done: false };
-  }
-
-  readAgain(reload, week) {
-    if (reload.dropped && !reload.done && week === this.weekKey) {
-      this.load(true);
-    }
-  }
-
-  /**
-   * Publishes the week the preview showed; a week or publish changed since is refused. The
-   * answer is always shown, unless another week (week, program) is shown by then.
-   */
-  async publishNow(preview, week) {
-    const reload = this.dropReload();
-    try {
-      const result = await publish({
-        scheduleId: this.schedule.schedule.id,
-        seenRevisions: preview.revisions,
-        seenPublishedId: preview.published ? preview.published.id : null
-      });
-      if (week !== this.weekKey) {
-        // Published, though another week is shown now: the other screens still show it
-        // (WEEK-6.7).
-        if (
-          !result.draftChanged &&
-          !result.publishedChanged &&
-          !result.unchanged
-        ) {
-          this.tellSchedulesChanged(true, week);
-        }
-        return;
-      }
-      if (result.draftChanged || result.publishedChanged) {
-        reload.done = true;
-        this.refusePublish(
-          result.draftChanged
-            ? this.draftChangedText
-            : `Someone else published this ${this.t.sIn("Week")} since, so nothing was replaced.`
-        );
-        return;
-      }
-      this.publishState = { ...result.published, changedSince: false };
-      this.say(
-        result.unchanged
-          ? `${this.weekName} is already published as it is.`
-          : `Published ${this.weekName}.`
-      );
-      if (!result.unchanged) {
-        // A published schedule it replaced is a version now: Versions lists it straight away.
-        await this.loadVersions();
-        // The week's published schedule, on every screen (WEEK-6.7).
-        this.tellSchedulesChanged(true);
-      }
-    } finally {
-      this.readAgain(reload, week);
-    }
-  }
-
-  get draftChangedText() {
-    return `Someone else changed this ${this.t.sIn("Week")} since, so nothing was published.`;
-  }
-
-  /** Nothing was published: what changed is shown, and the director looks again. */
-  refusePublish(text) {
-    this.weekEditor.setNotice(text);
-    this.load(true);
+  handleUnpublishAnswer(event) {
+    return this.buildWeek.answerUnpublish(event.detail.yes);
   }
 
   /** "Published from Manual Build " before the date (c/shoreshPublish). */
@@ -1265,7 +1062,10 @@ export default class ShoreshManualBuild extends BuildScreen(LightningElement) {
     }
   }
 
-  /** A read asked for while the list was read, open or updating (the season read again). */
+  /**
+   * A read asked for while the list was read, open or updating, or while a publish was on its way
+   * (the season read again, a read dropped for it).
+   */
   readAfterSetup() {
     if (this.readAfterRun && this.refresh()) {
       this.readAfterRun = false;

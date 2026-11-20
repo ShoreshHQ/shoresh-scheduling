@@ -309,12 +309,6 @@ private class SetupDeleteTest {
     }
   }
 
-  private class EverythingPublished implements PublishedHistory.Finder {
-    public Set<Id> withPublishedHistory(Set<Id> recordIds) {
-      return recordIds;
-    }
-  }
-
   // API-1.141: a season with published history is refused before its question (the screen's
   // preview), in the camp's words, with what to do instead; nothing is asked about or deleted.
   @IsTest
@@ -328,7 +322,7 @@ private class SetupDeleteTest {
         WITH USER_MODE
       ]
       .Name;
-      PublishedHistory.finder = new EverythingPublished();
+      PublishedTestData.schedule(ids.get('Main'), ids.get('Week 1'));
       Test.startTest();
       SetupDelete.Preview preview = SetupDelete.preview(ids.get('Season'));
       Test.stopTest();
@@ -363,7 +357,7 @@ private class SetupDeleteTest {
   }
 
   // API-1.105: something gone since the screen showed it is refused; only a screen is told to
-  // reload, an AI (read_setup_delete, delete_setup_record) hears the problem alone.
+  // reload, an AI (read_delete_question, delete_from_setup) hears the problem alone.
   @IsTest
   static void somethingGoneIsRefusedWithoutThePageToAnAi() {
     Camp__c camp = ShoreshTestData.camp('Camp Willow');

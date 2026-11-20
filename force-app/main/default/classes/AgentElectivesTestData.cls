@@ -10,7 +10,7 @@ public class AgentElectivesTestData {
     'assign_elective_seats' => new AgentAssignElectiveSeats(),
     'move_elective_seat' => new AgentMoveElectiveSeat(),
     'lock_elective_seat' => new AgentLockElectiveSeat(),
-    'start_new_elective_version' => new AgentStartNewElectiveVersion(),
+    'change_seats' => new AgentStartNewElectiveVersion(),
     'clear_electives' => new AgentClearElectives()
   };
 

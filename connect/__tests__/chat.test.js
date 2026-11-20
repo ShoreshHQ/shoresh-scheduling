@@ -68,8 +68,8 @@ describe("Shoresh in an AI chat", () => {
       }
     }
     seen.length = 0;
-    await call("read_elective_offerings", { week: "Week 1" }, { run });
-    expect(seen).toEqual([`${V1}elective_offerings?week=Week+1`]);
+    await call("read_electives_offered", { week: "Week 1" }, { run });
+    expect(seen).toEqual([`${V1}electives_offered?week=Week+1`]);
   });
 
   // API-1.25

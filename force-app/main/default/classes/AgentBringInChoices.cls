@@ -1,15 +1,15 @@
 /**
- * bring_in_choices: the Elective seats screen's own Bring in choices, through an agent or the
+ * import_choices: the Elective seats screen's own Import choices, through an agent or the
  * command line (docs/protocol/api.md API-1.117), so an AI can start a week's electives as a person
- * does. Web address /v1/bring_in_choices. GET ?season= is what the screen reads before a file (the
+ * does. Web address /v1/import_choices. GET ?season= is what the screen reads before a file (the
  * season's setup, its remembered answers, and the screen's own sets and runs, AgentImports); the
  * connector reads the file and works the request out with the screen's own modules
  * (c/shoreshChoicesReader, c/shoreshChoicesImport review.js). POST {season, request} is the
- * screen's own check (ChoicesImportController.checkChoices: what it would bring in, nothing saved);
- * with save: true it is the screen's own Bring in (bringInChoices), all or nothing. Nothing is
+ * screen's own check (ChoicesImportController.checkChoices: what it would import, nothing saved);
+ * with save: true it is the screen's own Import (bringInChoices), all or nothing. Nothing is
  * taken away (a camper's choices made by hand are kept), so it doesn't ask first.
  */
-@RestResource(urlMapping='/v1/bring_in_choices')
+@RestResource(urlMapping='/v1/import_choices')
 global with sharing class AgentBringInChoices implements AgentWeeks.Action {
   private static final Set<String> FIELDS = new Set<String>{
     'season',

@@ -22,8 +22,8 @@ public with sharing class SetupMatchDay {
   private Boolean sameFrame;
   // The cells of each change, by its key.
   private Map<String, List<String>> cellsByKey = new Map<String, List<String>>();
-  // Why each cell of the draft has a dot (cells: "groupId|blockId").
-  private Map<String, String> whyByCell = new Map<String, String>();
+  // Why each cell of the draft has a dot (cells: "groupId|blockId"), as SetupMatchDots gives it.
+  private Map<String, String> whyByCell;
   // The draft's locks (a Generated Schedule's; Manual Build's draft has none).
   private SetupMatchLocks locks;
 
@@ -38,21 +38,42 @@ public with sharing class SetupMatchDay {
     names = new SetupMatchNames(rules, was, target);
     before = new SetupMatchCells(was);
     locks = new SetupMatchLocks(was);
+    // Why each placement left out of the day now can't go (none when the day goes).
+    Map<String, String> carried = new Map<String, String>();
     if (target != null) {
-      SetupMatchCarry carried = new SetupMatchCarry(rules, names, target);
-      carried.carry(before);
-      whyByCell = carried.whyByCell;
-      now = SetupMatchCells.gridOf(target, carried.cells, names);
+      SetupMatchCarry carry = new SetupMatchCarry(rules, names, target);
+      carried = carry.carry(before);
+      now = SetupMatchCells.gridOf(target, carry.cells, names);
     }
     after = new SetupMatchCells(now);
     sameFrame = SetupMatchCells.sameFrame(was, now);
-    SetupMatchDots marks = new SetupMatchDots(rules, names, day);
-    marks.whyByCell = whyByCell;
-    marks.dayGoes = now == null;
-    marks.explain(before, after, was);
-    dots = marks.dots;
+    whyByCell = new SetupMatchDots(rules, names, now)
+      .explain(before, after, carried);
+    dotsOf();
     group();
     return this;
+  }
+
+  /** The screen's dots: each draft cell with a reason, in the order of the day. */
+  private void dotsOf() {
+    for (String first : before.placements) {
+      for (String cell : before.cellsOf.get(first)) {
+        if (whyByCell.containsKey(cell)) {
+          dots.add(new SetupMatch.Dot(keyOf(cell), whyByCell.get(cell)));
+        }
+      }
+    }
+  }
+
+  /** The screen's key for a draft cell: "date|groupId|blockId", as the grid writes its Ids. */
+  private String keyOf(String cell) {
+    Integer g = SlotIds.indexOf(was.groupIds(), SetupMatchCells.groupOf(cell));
+    Integer b = SlotIds.indexOf(was.blockIds(), SetupMatchCells.blockOf(cell));
+    return String.valueOf(day) +
+      '|' +
+      was.groups[g].id +
+      '|' +
+      was.blocks[b].id;
   }
 
   // ---------- changes ----------

@@ -1,6 +1,6 @@
 /**
  * A: many made-up camps set up from nothing: only the camp and season are made directly; the rest
- * comes through Import last year's files or add_setup_record, then is built, read back and judged
+ * comes through Import last year's files or add_to_setup, then is built, read back and judged
  * by what must hold of any week.
  */
 const { call, makeCamp, soql } = require("../lib");
@@ -308,7 +308,7 @@ module.exports = [
     async run(rec) {
       const { season } = makeCamp("A4 Same", { weeks: 1 });
       const add = async (kind, name, program, fields) => {
-        const said = await call("add_setup_record", {
+        const said = await call("add_to_setup", {
           season,
           kind,
           name,
@@ -332,7 +332,7 @@ module.exports = [
       await add("division", "Boys", "Main");
       await add("division", "Girls", "Main");
       await add("group", "Bunk 1", "Main", { division: "Boys" });
-      const twin = await call("add_setup_record", {
+      const twin = await call("add_to_setup", {
         season,
         kind: "group",
         name: "Bunk 1",
@@ -544,7 +544,7 @@ module.exports = [
         lock.kind === "done",
         lock.text
       );
-      await call("add_setup_record", {
+      await call("add_to_setup", {
         season,
         kind: "special day",
         name: "Field day"

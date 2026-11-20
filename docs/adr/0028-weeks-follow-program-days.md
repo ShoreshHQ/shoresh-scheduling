@@ -27,5 +27,5 @@ nothing said why. The desktop has no dated weeks to compare with.
    its schedule unable to be published or restored. A published copy is never republished by
    this; its "changed since" corner compares the draft with it, so moving dates alone does not
    mark it.
-6. **An AI** changing a program's days (change_setup_record) gets the same: the weeks follow, and
+6. **An AI** changing a program's days (change_in_setup) gets the same: the weeks follow, and
    its answer says what moved.

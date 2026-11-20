@@ -1,14 +1,14 @@
 /**
- * delete_setup_record: delete one of the season's setup records (the kinds Camp Setup deletes,
- * as rename_setup_record names them), as the person, through an agent or the command line
- * (docs/protocol/api.md API-1.48, API-1.102). Web address /v1/delete_setup_record: GET
+ * delete_from_setup: delete one of the season's setup records (the kinds Camp Setup deletes,
+ * as rename_in_setup names them), as the person, through an agent or the command line
+ * (docs/protocol/api.md API-1.48, API-1.102). Web address /v1/delete_from_setup: GET
  * ?season=&kind=&name=&program= answers Camp Setup's question before its Delete, word for word,
  * or refuses in its words what it would refuse; POST {season, kind, name, program} is Camp
  * Setup's own Delete. Both are SetupDelete's, as the screen's are: what the screen refuses
  * (something still uses it) is refused with nothing deleted, and how many schedules it was in is
  * said in the answer.
  */
-@RestResource(urlMapping='/v1/delete_setup_record')
+@RestResource(urlMapping='/v1/delete_from_setup')
 global with sharing class AgentDeleteSetup implements AgentWeeks.Action, AgentAskFirst.Preview {
   private static final Set<String> FIELDS = new Set<String>{
     'season',

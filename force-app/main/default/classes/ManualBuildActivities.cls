@@ -107,18 +107,8 @@ public with sharing class ManualBuildActivities {
   }
 
   private static Id create(Id seasonId, String name) {
-    Activity__c activity = new Activity__c(
-      Season__c = seasonId,
-      Name = name,
-      Length__c = 1,
-      TimesPerWeekMin__c = 1,
-      TimesPerWeekMax__c = 1,
-      Priority__c = 'Low',
-      Outdoor__c = false,
-      GroupsAtOnce__c = 1,
-      NoWeeklyMax__c = false,
-      NoGroupLimit__c = false
-    );
+    Activity__c activity = new Activity__c(Season__c = seasonId, Name = name);
+    AgentSetupNewRow.startsWith('Activity', activity);
     UserModeWrites.save(new List<SObject>{ activity });
     return activity.Id;
   }

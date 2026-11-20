@@ -1,6 +1,6 @@
 /**
- * The compact grid format: what it stores, what it refuses, how big a large camp's day is, and
- * how a day too big for one record is split into parts and joined back.
+ * The compact grid format: what it stores, what a cell holds, what it refuses, how big a large
+ * camp's day is, and how a day too big for one record is split into parts and joined back.
  */
 @IsTest
 private class ScheduleGridTest {
@@ -36,6 +36,71 @@ private class ScheduleGridTest {
     Assert.areEqual(text, back.toText(), 'same day, same text');
     Assert.areEqual('Zoo trip', back.items[2].name);
     Assert.areEqual('', back.rows[1][1], 'an empty last cell is kept');
+  }
+
+  @IsTest
+  static void aCellHoldsTheItemStartingThereOrCarryingOnIntoIt() {
+    ScheduleGrid grid = small();
+    Assert.areEqual(
+      'Swim',
+      ScheduleGridCells.itemAt(grid, 0, 0).name,
+      'starts in column 0'
+    );
+    Assert.areEqual(
+      'Swim',
+      ScheduleGridCells.itemAt(grid, 0, 1).name,
+      'carried on from column 0'
+    );
+    Assert.isFalse(ScheduleGridCells.carriesOn(grid, 0, 0));
+    Assert.isTrue(ScheduleGridCells.carriesOn(grid, 0, 1));
+    Assert.areEqual('Flagpole', ScheduleGridCells.itemAt(grid, 1, 0).name);
+    Assert.isNull(ScheduleGridCells.itemAt(grid, 1, 1), 'an empty cell');
+    List<ScheduleGrid.Item> row = ScheduleGridCells.itemsIn(grid, 0);
+    Assert.areEqual(2, row.size(), 'one per time block');
+    Assert.areEqual(grid.items[0], row[0]);
+    Assert.areEqual(grid.items[0], row[1]);
+    row = ScheduleGridCells.itemsIn(grid, 1);
+    Assert.areEqual(grid.items[1], row[0]);
+    Assert.isNull(row[1]);
+  }
+
+  @IsTest
+  static void cellsOutsideTheFormatHoldNothing() {
+    // Grids built in memory before ScheduleGridRules.check: every reader gets the same answer.
+    ScheduleGrid grid = small();
+    grid.rows[1][0] = '^';
+    Assert.isNull(
+      ScheduleGridCells.itemAt(grid, 1, 0),
+      '^ at the row start carries nothing on'
+    );
+    Assert.isNull(ScheduleGridCells.itemsIn(grid, 1)[0]);
+    grid = small();
+    grid.rows[1] = new List<String>{ '2' };
+    Assert.isNull(
+      ScheduleGridCells.itemAt(grid, 1, 1),
+      'past the end of a short row'
+    );
+    Assert.isFalse(ScheduleGridCells.carriesOn(grid, 1, 1));
+    Assert.areEqual(
+      2,
+      ScheduleGridCells.itemsIn(grid, 1).size(),
+      'still one per time block'
+    );
+    Assert.isNull(ScheduleGridCells.itemsIn(grid, 1)[1]);
+    for (String bad : new List<String>{ '0', '4', 'x', '99999999999' }) {
+      grid.rows[1] = new List<String>{ bad, '^' };
+      Assert.isNull(
+        ScheduleGridCells.itemAt(grid, 1, 0),
+        bad + ' names no item'
+      );
+      Assert.isNull(
+        ScheduleGridCells.itemAt(grid, 1, 1),
+        'nor does a block carrying it on'
+      );
+    }
+    Assert.isNull(ScheduleGridCells.itemAt(grid, 5, 0), 'no such group');
+    Assert.isNull(ScheduleGridCells.itemAt(grid, 0, 5), 'no such time block');
+    Assert.isNull(ScheduleGridCells.itemAt(grid, 0, -1), 'no such time block');
   }
 
   @IsTest

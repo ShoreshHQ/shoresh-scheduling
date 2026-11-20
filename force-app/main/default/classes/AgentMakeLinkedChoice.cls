@@ -1,7 +1,7 @@
 /**
- * make_linked_choice: make a linked choice, as "+ Linked choice" and the first period picked do in
+ * make_linked_choice: make a linked choice, as "+ Linked choice" and the first time block picked do in
  * the linked choices editor, through an agent or the command line (docs/protocol/api.md API-1.132).
- * Web address /v1/make_linked_choice, POST {season, elective_set, activity, name, periods,
+ * Web address /v1/make_linked_choice, POST {season, elective_set, activity, name, times,
  * applies_to, divisions}. Saved by the editor's own save (LinkedChoiceSaves). The connector fills
  * in a name left out with the editor's proposal.
  */
@@ -12,7 +12,7 @@ global with sharing class AgentMakeLinkedChoice implements AgentWeeks.Action {
     'elective_set',
     'activity',
     'name',
-    'periods',
+    'times',
     'applies_to',
     'divisions'
   };
@@ -35,10 +35,10 @@ global with sharing class AgentMakeLinkedChoice implements AgentWeeks.Action {
           ' can be made for it. Nothing was changed.'
       );
     }
-    List<Object> periods = AgentFields.listOf(body, 'periods');
+    List<Object> periods = AgentFields.listOf(body, 'times');
     if (periods.isEmpty()) {
       throw new ShoreshException(
-        'Say its periods (periods): a ' + refs.word() + ' starts with one.'
+        'Say its time blocks (times): a ' + refs.word() + ' starts with one.'
       );
     }
     LinkedChoiceSaves.Edit edit = new LinkedChoiceSaves.Edit();

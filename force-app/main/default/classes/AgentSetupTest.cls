@@ -207,7 +207,7 @@ private class AgentSetupTest {
     }
   }
 
-  /** One POST to delete_setup_record exactly as given, no yes added: [status, message]. */
+  /** One POST to delete_from_setup exactly as given, no yes added: [status, message]. */
   private static List<Object> deleteOnce(Map<String, Object> fields) {
     Map<String, Object> body = new Map<String, Object>{
       'season' => [
@@ -220,7 +220,7 @@ private class AgentSetupTest {
     };
     body.putAll(fields);
     RestContext.request = new RestRequest();
-    RestContext.request.requestURI = '/services/apexrest/v1/delete_setup_record';
+    RestContext.request.requestURI = '/services/apexrest/v1/delete_from_setup';
     RestContext.request.httpMethod = 'POST';
     RestContext.request.requestBody = Blob.valueOf(JSON.serialize(body));
     RestContext.response = new RestResponse();
@@ -346,7 +346,7 @@ private class AgentSetupTest {
     }
   }
 
-  /** The AI's question before a delete (GET /v1/delete_setup_record): [status, message]. */
+  /** The AI's question before a delete (GET /v1/delete_from_setup): [status, message]. */
   private static List<Object> askBeforeDelete(String kind, String name) {
     RestContext.request = new RestRequest();
     RestContext.request.httpMethod = 'GET';

@@ -21,7 +21,7 @@ const WEB_CLASS = {
   Send_Elective_Choices: "IncomingCamperElectiveChoice",
   Read_Group_Schedules: "OutgoingGroupSchedule",
   Read_Activity_Schedules: "OutgoingActivitySchedule",
-  Read_Elective_Offerings: "OutgoingElectiveOfferings",
+  Read_Electives_Offered: "OutgoingElectivesOffered",
   Read_Elective_Seats: "OutgoingElectiveSeats"
 };
 
@@ -34,7 +34,7 @@ const PIECES = {
   Send_Elective_Choices: ["Send elective choices", "Preference__c"],
   Read_Group_Schedules: ["Read group schedules", null],
   Read_Activity_Schedules: ["Read activity schedules", null],
-  Read_Elective_Offerings: ["Read elective offerings", null],
+  Read_Electives_Offered: ["Read electives offered", null],
   Read_Elective_Seats: ["Read elective seats", null]
 };
 

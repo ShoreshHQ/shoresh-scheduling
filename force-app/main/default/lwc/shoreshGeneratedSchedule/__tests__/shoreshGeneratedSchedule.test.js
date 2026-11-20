@@ -803,9 +803,9 @@ describe("c-shoresh-generated-schedule", () => {
       '[data-id="under"] + ul .accept'
     );
     const said = screen.under[0];
-    const answer = connector("accept_finding", {
+    const answer = connector("accept_line", {
       week: "Week 1",
-      finding: said
+      line: said
     });
     next.click();
     await flush();
@@ -816,7 +816,7 @@ describe("c-shoresh-generated-schedule", () => {
     );
     const posted = JSON.parse(seen[seen.length - 1].stdin);
     expect(seen[seen.length - 1].args[3]).toBe(
-      `/services/apexrest/${NAMESPACE_PREFIX.replace(/__$/, "/")}v1/accept_finding`
+      `/services/apexrest/${NAMESPACE_PREFIX.replace(/__$/, "/")}v1/accept_line`
     );
     expect(JSON.stringify(posted.line)).toBe(
       keepAccepted.mock.calls[0][0].line

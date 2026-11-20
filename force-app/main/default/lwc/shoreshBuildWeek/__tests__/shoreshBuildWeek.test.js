@@ -5,8 +5,9 @@ import updateToMatchSetup from "@salesforce/apex/SetupMatchController.updateToMa
 import { BuildWeek, CHANGED_SINCE, SETUP_CHANGED } from "c/shoreshBuildWeek";
 import { buildTerms } from "c/shoreshTerms";
 
-// The week on a build screen, through its interface with a fake screen: what setup changed and
-// "Update to match setup", the same on Generated Schedule and Manual Build.
+// The week on a build screen, through its interface with a fake screen: what setup changed,
+// "Update to match setup", and Publish and Unpublish, the same on Generated Schedule and Manual
+// Build.
 
 // The refusal codes as the server sends them: read from the Apex source, so a rename there fails here.
 const SETUP_MATCH = readFileSync(
@@ -76,15 +77,38 @@ function fakeScreen() {
     notices: [],
     weekEditor: { setNotice: (text) => screen.notices.push(text) },
     say: (text) => said.push(text),
+    load: jest.fn(),
     loadVersions: jest.fn(),
-    tellSchedulesChanged: jest.fn()
+    tellSchedulesChanged: jest.fn(),
+    // Publish and Unpublish.
+    publishDisabled: false,
+    editBusy: false,
+    checked: null,
+    measure: null,
+    publishState: null,
+    publishAsk: null,
+    unpublishAsk: null,
+    publishing: false
   };
-  const state = { ticket: 0, week: "p1|w1", scheduleId: "sc1", busy: false };
+  const state = {
+    ticket: 0,
+    week: "p1|w1",
+    scheduleId: "sc1",
+    busy: false,
+    revision: "r1",
+    reading: false
+  };
   const adapter = {
     screen,
     scheduleId: () => state.scheduleId,
+    revision: () => state.revision,
+    origin: "Generated",
     weekKey: () => state.week,
     busy: () => state.busy,
+    reading: () => state.reading,
+    previewPublish: jest.fn(),
+    publish: jest.fn(),
+    unpublish: jest.fn(),
     sayDone: (text) => said.push(`done: ${text}`),
     showError: (error) => {
       screen.error = error;
@@ -434,5 +458,454 @@ describe("c/shoreshBuildWeek: setup changed and Update to match setup", () => {
       await week.updateToMatchSetup(["k1"]);
       expect(updateToMatchSetup).not.toHaveBeenCalled();
     });
+  });
+});
+
+describe("c/shoreshBuildWeek: Publish and Unpublish", () => {
+  afterEach(() => {
+    jest.clearAllMocks();
+  });
+
+  const PUBLISHED = { id: "pub1", origin: "Generated", publishedAt: "t1" };
+  // A week never published, nothing to look at: published at once.
+  const FIRST = {
+    revisions: "r1",
+    published: null,
+    changes: [],
+    changeCount: 0
+  };
+  // Published before, two cells changed since: asked first.
+  const AGAIN = {
+    revisions: "r1",
+    published: PUBLISHED,
+    changes: ["Bunk 1 · Monday · Swim → Crafts"],
+    changeCount: 1
+  };
+  const DONE = {
+    published: { id: "pub2", origin: "Generated" },
+    draftChanged: false,
+    publishedChanged: false,
+    unchanged: false
+  };
+  const REFUSED = { ...DONE, published: null, draftChanged: true };
+
+  /** A screen whose Publish question is open (the week published before, changed since). */
+  async function asked() {
+    const fake = fakeScreen();
+    fake.adapter.previewPublish.mockResolvedValue(AGAIN);
+    await fake.week.publish();
+    return fake;
+  }
+
+  /** A screen whose Unpublish question is open. */
+  function askedUnpublish() {
+    const fake = fakeScreen();
+    fake.screen.publishState = { ...PUBLISHED, changedSince: false };
+    fake.week.askUnpublish();
+    return fake;
+  }
+
+  describe("Publish", () => {
+    it("waits while the screen is busy, saying so when an edit is still saving", async () => {
+      const { week, screen, adapter, said } = fakeScreen();
+      screen.publishDisabled = true;
+      await week.publish();
+      expect(said).toEqual([]);
+      screen.editBusy = true;
+      await week.publish();
+      expect(said).toEqual(["One moment: an edit is still saving."]);
+      expect(adapter.previewPublish).not.toHaveBeenCalled();
+      expect(screen.publishing).toBe(false);
+    });
+
+    it("a week with no schedule yet publishes nothing", async () => {
+      const { week, adapter, state } = fakeScreen();
+      state.scheduleId = null;
+      await week.publish();
+      expect(adapter.previewPublish).not.toHaveBeenCalled();
+    });
+
+    it("a week's first publish with nothing to look at goes at once, is said, and is told to every screen", async () => {
+      const { week, screen, adapter, said } = fakeScreen();
+      screen.error = "Week 1 was not published.";
+      adapter.previewPublish.mockResolvedValue(FIRST);
+      adapter.publish.mockResolvedValue(DONE);
+      await week.publish();
+      expect(adapter.previewPublish).toHaveBeenCalledWith({
+        scheduleId: "sc1"
+      });
+      expect(adapter.publish).toHaveBeenCalledWith({
+        scheduleId: "sc1",
+        seenRevisions: "r1",
+        seenPublishedId: null
+      });
+      expect(screen.error).toBeNull();
+      expect(screen.publishState).toEqual({
+        id: "pub2",
+        origin: "Generated",
+        changedSince: false
+      });
+      expect(said).toEqual(["done: Published Week 1."]);
+      expect(screen.loadVersions).toHaveBeenCalled();
+      expect(screen.tellSchedulesChanged).toHaveBeenCalledWith(true, "p1|w1");
+      expect(screen.publishing).toBe(false);
+      expect(screen.focusOn).toBe("publish");
+      expect(adapter.readIfAsked).toHaveBeenCalled();
+    });
+
+    it("Publish is back only once Versions lists the schedule it replaced", async () => {
+      const { week, screen, adapter } = fakeScreen();
+      const versions = pending();
+      screen.loadVersions.mockReturnValue(versions.promise);
+      adapter.previewPublish.mockResolvedValue(FIRST);
+      adapter.publish.mockResolvedValue(DONE);
+      const publishing = week.publish();
+      await flush();
+      expect(screen.loadVersions).toHaveBeenCalled();
+      expect(screen.publishing).toBe(true);
+      expect(screen.tellSchedulesChanged).not.toHaveBeenCalled();
+      versions.resolve();
+      await publishing;
+      expect(screen.publishing).toBe(false);
+      expect(screen.tellSchedulesChanged).toHaveBeenCalledWith(true, "p1|w1");
+    });
+
+    it("another week shown while Versions is read is told for the week published, and its Publish is left as it is (WEEK-6.7)", async () => {
+      const { week, screen, adapter, state } = fakeScreen();
+      const versions = pending();
+      screen.loadVersions.mockReturnValue(versions.promise);
+      adapter.previewPublish.mockResolvedValue(FIRST);
+      adapter.publish.mockResolvedValue(DONE);
+      const publishing = week.publish();
+      await flush();
+      state.week = "p1|w2";
+      week.forgetPublish();
+      versions.resolve();
+      await publishing;
+      expect(screen.tellSchedulesChanged).toHaveBeenCalledWith(true, "p1|w1");
+      expect(screen.focusOn).toBeNull();
+      expect(adapter.readIfAsked).not.toHaveBeenCalled();
+    });
+
+    it("a week already published as it is publishes nothing and says so", async () => {
+      const { week, screen, adapter, said } = fakeScreen();
+      adapter.previewPublish.mockResolvedValue({
+        ...AGAIN,
+        changes: [],
+        changeCount: 0
+      });
+      await week.publish();
+      expect(adapter.publish).not.toHaveBeenCalled();
+      expect(screen.publishState).toEqual({
+        ...PUBLISHED,
+        changedSince: false
+      });
+      expect(said).toEqual(["Week 1 is already published as it is."]);
+      expect(screen.focusOn).toBe("publish");
+    });
+
+    it("a publish the server finds changed nothing says so, and reads no Versions and tells no one", async () => {
+      const { week, screen, adapter, said } = fakeScreen();
+      adapter.previewPublish.mockResolvedValue(FIRST);
+      adapter.publish.mockResolvedValue({
+        ...DONE,
+        published: PUBLISHED,
+        unchanged: true
+      });
+      await week.publish();
+      expect(said).toEqual(["Week 1 is already published as it is."]);
+      expect(screen.publishState).toEqual({
+        ...PUBLISHED,
+        changedSince: false
+      });
+      expect(screen.loadVersions).not.toHaveBeenCalled();
+      expect(screen.tellSchedulesChanged).not.toHaveBeenCalled();
+    });
+
+    it("a week someone else saved since this screen read it publishes nothing, says so in the camp's words and reads it again", async () => {
+      const { week, screen, adapter, state, said } = fakeScreen();
+      state.revision = "r0";
+      adapter.previewPublish.mockResolvedValue(FIRST);
+      await week.publish();
+      expect(adapter.publish).not.toHaveBeenCalled();
+      expect(said).toEqual([
+        "Someone else changed this Session since, so nothing was published."
+      ]);
+      expect(screen.load).toHaveBeenCalledWith(true);
+      expect(screen.publishing).toBe(false);
+      expect(screen.focusOn).toBe("publish");
+    });
+
+    it("refused by the server: someone else saved, or published, since the preview", async () => {
+      const { week, screen, adapter, said } = fakeScreen();
+      adapter.previewPublish.mockResolvedValue(FIRST);
+      adapter.publish.mockResolvedValue(REFUSED);
+      await week.publish();
+      adapter.publish.mockResolvedValue({
+        ...REFUSED,
+        draftChanged: false,
+        publishedChanged: true
+      });
+      await week.publish();
+      expect(said).toEqual([
+        "Someone else changed this Session since, so nothing was published.",
+        "Someone else published this Session since, so nothing was replaced."
+      ]);
+      expect(screen.load).toHaveBeenCalledTimes(2);
+      expect(screen.publishState).toBeNull();
+      expect(screen.tellSchedulesChanged).not.toHaveBeenCalled();
+    });
+
+    it("asks first when the week was published before, with this screen's heading; nothing is published until Publish", async () => {
+      const { screen, adapter } = await asked();
+      expect(screen.publishAsk).toMatchObject({
+        kind: "ask",
+        heading: "Publish Week 1 again?",
+        confirmLabel: "Publish",
+        week: "p1|w1",
+        scheduleId: "sc1"
+      });
+      expect(screen.publishing).toBe(true);
+      expect(screen.focusOn).toBeNull();
+      expect(adapter.publish).not.toHaveBeenCalled();
+    });
+
+    it("the question names the other screen when its schedule is the one published", async () => {
+      const { week, screen, adapter } = fakeScreen();
+      adapter.previewPublish.mockResolvedValue({
+        ...AGAIN,
+        published: { ...PUBLISHED, origin: "Manual" }
+      });
+      await week.publish();
+      expect(screen.publishAsk.heading).toBe(
+        "Replace Week 1's published schedule (from Manual Build)?"
+      );
+    });
+
+    it("Cancel publishes nothing; Publish sends the published schedule the preview showed", async () => {
+      let fake = await asked();
+      await fake.week.answerPublish(false);
+      expect(fake.adapter.publish).not.toHaveBeenCalled();
+      expect(fake.screen.publishAsk).toBeNull();
+      expect(fake.screen.publishing).toBe(false);
+      expect(fake.screen.focusOn).toBe("publish");
+      fake = await asked();
+      fake.adapter.publish.mockResolvedValue(DONE);
+      await fake.week.answerPublish(true);
+      expect(fake.adapter.publish).toHaveBeenCalledWith({
+        scheduleId: "sc1",
+        seenRevisions: "r1",
+        seenPublishedId: "pub1"
+      });
+      expect(fake.said).toEqual(["done: Published Week 1."]);
+      expect(fake.screen.focusOn).toBe("publish");
+    });
+
+    it("a preview or publish that fails says the week was not published", async () => {
+      let fake = fakeScreen();
+      fake.adapter.previewPublish.mockRejectedValue(new Error("offline"));
+      await fake.week.publish();
+      expect(fake.screen.error).toMatch(/^Week 1 was not published\./);
+      expect(fake.screen.publishing).toBe(false);
+      expect(fake.screen.focusOn).toBe("publish");
+      fake = await asked();
+      fake.adapter.publish.mockRejectedValue(new Error("offline"));
+      await fake.week.answerPublish(true);
+      expect(fake.screen.error).toMatch(/^Week 1 was not published\./);
+      expect(fake.screen.publishing).toBe(false);
+    });
+
+    it("a preview answered once another week is shown asks nothing, says nothing and leaves that week's Publish as it is", async () => {
+      const { week, screen, adapter, state, said } = fakeScreen();
+      const preview = pending();
+      adapter.previewPublish.mockReturnValue(preview.promise);
+      const publishing = week.publish();
+      state.week = "p1|w2";
+      // Showing the other week let go of the publish.
+      week.forgetPublish();
+      preview.resolve({ ...AGAIN, revisions: "r0" });
+      await publishing;
+      expect(screen.publishAsk).toBeNull();
+      expect(said).toEqual([]);
+      expect(screen.load).not.toHaveBeenCalled();
+      expect(screen.focusOn).toBeNull();
+      expect(adapter.readIfAsked).not.toHaveBeenCalled();
+    });
+
+    it("a publish answered once another week is shown is still told, for the week published; a refused one is not (WEEK-6.7)", async () => {
+      let fake = await asked();
+      fake.adapter.publish.mockResolvedValue(DONE);
+      fake.state.week = "p1|w2";
+      fake.screen.publishing = true; // a publish asked from the week shown since
+      await fake.week.answerPublish(true);
+      expect(fake.screen.tellSchedulesChanged).toHaveBeenCalledWith(
+        true,
+        "p1|w1"
+      );
+      expect(fake.said).toEqual([]);
+      expect(fake.screen.publishState).toBeNull();
+      expect(fake.screen.loadVersions).not.toHaveBeenCalled();
+      expect(fake.screen.publishing).toBe(true);
+      expect(fake.screen.focusOn).toBeNull();
+      fake = await asked();
+      fake.adapter.publish.mockResolvedValue(REFUSED);
+      fake.state.week = "p1|w2";
+      await fake.week.answerPublish(true);
+      expect(fake.screen.tellSchedulesChanged).not.toHaveBeenCalled();
+      expect(fake.screen.load).not.toHaveBeenCalled();
+      expect(fake.said).toEqual([]);
+    });
+
+    it("a publish that fails once another week is shown says nothing on that week", async () => {
+      const { week, screen, adapter, state } = await asked();
+      adapter.publish.mockRejectedValue(new Error("offline"));
+      state.week = "p1|w2";
+      await week.answerPublish(true);
+      expect(screen.error).toBeNull();
+    });
+  });
+
+  describe("Unpublish", () => {
+    it("does nothing while nothing is published, or while the screen is busy", () => {
+      const { week, screen } = fakeScreen();
+      week.askUnpublish();
+      expect(screen.unpublishAsk).toBeNull();
+      screen.publishState = { ...PUBLISHED, changedSince: false };
+      screen.publishDisabled = true;
+      week.askUnpublish();
+      expect(screen.unpublishAsk).toBeNull();
+      expect(screen.publishing).toBe(false);
+    });
+
+    it("asks first in the camp's words, and Cancel unpublishes nothing", async () => {
+      const { week, screen, adapter } = askedUnpublish();
+      expect(screen.unpublishAsk).toEqual({
+        heading: "Unpublish Week 1?",
+        lines: ["Nothing will be published for this Session."],
+        publishedId: "pub1",
+        week: "p1|w1",
+        scheduleId: "sc1"
+      });
+      expect(screen.publishing).toBe(true);
+      await week.answerUnpublish(false);
+      expect(adapter.unpublish).not.toHaveBeenCalled();
+      expect(screen.unpublishAsk).toBeNull();
+      expect(screen.publishing).toBe(false);
+      expect(screen.focusOn).toBe("unpublish");
+    });
+
+    it("unpublishes the published schedule shown, says so, and lists it in Versions before Unpublish is back", async () => {
+      const { week, screen, adapter, said } = askedUnpublish();
+      const versions = pending();
+      screen.loadVersions.mockReturnValue(versions.promise);
+      adapter.unpublish.mockResolvedValue({ publishedChanged: false });
+      const unpublishing = week.answerUnpublish(true);
+      await flush();
+      expect(adapter.unpublish).toHaveBeenCalledWith({
+        scheduleId: "sc1",
+        seenPublishedId: "pub1"
+      });
+      expect(screen.publishState).toBeNull();
+      expect(said).toEqual(["done: Unpublished Week 1."]);
+      expect(screen.publishing).toBe(true);
+      versions.resolve();
+      await unpublishing;
+      expect(screen.tellSchedulesChanged).toHaveBeenCalledWith(true, "p1|w1");
+      expect(screen.publishing).toBe(false);
+      expect(screen.focusOn).toBe("unpublish");
+    });
+
+    it("another week shown while Versions is read is told for the week unpublished (WEEK-6.7)", async () => {
+      const { week, screen, adapter, state } = askedUnpublish();
+      const versions = pending();
+      screen.loadVersions.mockReturnValue(versions.promise);
+      adapter.unpublish.mockResolvedValue({ publishedChanged: false });
+      const unpublishing = week.answerUnpublish(true);
+      await flush();
+      state.week = "p1|w2";
+      versions.resolve();
+      await unpublishing;
+      expect(screen.tellSchedulesChanged).toHaveBeenCalledWith(true, "p1|w1");
+      expect(screen.focusOn).toBeNull();
+    });
+
+    it("refused when the week was published or unpublished since: says so and reads it again", async () => {
+      const { week, screen, adapter, said } = askedUnpublish();
+      adapter.unpublish.mockResolvedValue({ publishedChanged: true });
+      await week.answerUnpublish(true);
+      expect(said).toEqual([
+        "Someone else published or unpublished this Session since, so nothing was unpublished."
+      ]);
+      expect(screen.load).toHaveBeenCalledWith(true);
+      expect(screen.publishState).toEqual({
+        ...PUBLISHED,
+        changedSince: false
+      });
+      expect(screen.tellSchedulesChanged).not.toHaveBeenCalled();
+    });
+
+    it("a failure says the week was not unpublished and keeps it as published", async () => {
+      const { week, screen, adapter } = askedUnpublish();
+      adapter.unpublish.mockRejectedValue(new Error("offline"));
+      await week.answerUnpublish(true);
+      expect(screen.error).toMatch(/^Week 1 was not unpublished\./);
+      expect(screen.publishState).not.toBeNull();
+      expect(screen.publishing).toBe(false);
+    });
+
+    it("an unpublish answered once another week is shown is still told, for the week it was for, and nothing is shown (WEEK-6.7)", async () => {
+      const { week, screen, adapter, state, said } = askedUnpublish();
+      adapter.unpublish.mockResolvedValue({ publishedChanged: false });
+      state.week = "p1|w2";
+      screen.publishState = { id: "other", changedSince: false };
+      await week.answerUnpublish(true);
+      expect(screen.tellSchedulesChanged).toHaveBeenCalledWith(true, "p1|w1");
+      expect(screen.publishState).toEqual({ id: "other", changedSince: false });
+      expect(said).toEqual([]);
+      expect(screen.focusOn).toBeNull();
+    });
+
+    it("a failure once another week is shown says nothing on that week", async () => {
+      const { week, screen, adapter, state } = askedUnpublish();
+      adapter.unpublish.mockRejectedValue(new Error("offline"));
+      state.week = "p1|w2";
+      await week.answerUnpublish(true);
+      expect(screen.error).toBeNull();
+    });
+  });
+
+  describe("a read of the week on its way", () => {
+    it("is dropped when a publish or unpublish is sent, and the week is read once it is over", async () => {
+      let fake = await asked();
+      fake.state.reading = true;
+      fake.adapter.publish.mockResolvedValue(DONE);
+      await fake.week.answerPublish(true);
+      expect(fake.state.ticket).toBe(1);
+      expect(fake.adapter.readAfterWork).toHaveBeenCalled();
+      expect(fake.adapter.readIfAsked).toHaveBeenCalled();
+      fake = askedUnpublish();
+      fake.state.reading = true;
+      fake.adapter.unpublish.mockResolvedValue({ publishedChanged: false });
+      await fake.week.answerUnpublish(true);
+      expect(fake.state.ticket).toBe(1);
+      expect(fake.adapter.readAfterWork).toHaveBeenCalled();
+    });
+
+    it("is left alone when there is none", async () => {
+      const { week, adapter, state } = await asked();
+      adapter.publish.mockResolvedValue(DONE);
+      await week.answerPublish(true);
+      expect(state.ticket).toBe(0);
+      expect(adapter.readAfterWork).not.toHaveBeenCalled();
+    });
+  });
+
+  it("another week shown: a publish question open for the last one goes", async () => {
+    const { week, screen } = await asked();
+    screen.unpublishAsk = { heading: "Unpublish Week 1?" };
+    week.forgetPublish();
+    expect(screen.publishAsk).toBeNull();
+    expect(screen.unpublishAsk).toBeNull();
+    expect(screen.publishing).toBe(false);
   });
 });

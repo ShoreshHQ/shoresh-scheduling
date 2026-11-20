@@ -210,9 +210,10 @@ public with sharing class SpecialScheduleImport {
   /** How many cells the import filled (where a name starts). */
   private static Integer placedIn(ScheduleGrid grid) {
     Integer placed = 0;
-    for (List<String> row : grid.rows) {
-      for (String cell : row) {
-        if (cell != '' && cell != ScheduleGrid.CARRIES_ON) {
+    for (Integer g = 0; g < grid.groups.size(); g++) {
+      List<ScheduleGrid.Item> held = ScheduleGridCells.itemsIn(grid, g);
+      for (Integer b = 0; b < held.size(); b++) {
+        if (held[b] != null && !ScheduleGridCells.carriesOn(grid, g, b)) {
           placed++;
         }
       }

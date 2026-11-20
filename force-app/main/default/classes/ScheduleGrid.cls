@@ -27,7 +27,8 @@ public with sharing class ScheduleGrid {
   public List<Block> blocks = new List<Block>();
   public List<GroupRef> groups = new List<GroupRef>();
   public List<Item> items = new List<Item>();
-  // rows[group][block]: '' (nothing), '1'.. (an item), or '^' (carries on from above).
+  // rows[group][block]: '' (nothing), '1'.. (an item), or '^' (carries on from above). Read a
+  // cell through ScheduleGridCells; writers set rows directly.
   public List<List<String>> rows = new List<List<String>>();
   // locks[group][block]: '1' (locked) or ''; empty when nothing is locked (ScheduleGridLocks).
   public List<List<String>> locks = new List<List<String>>();

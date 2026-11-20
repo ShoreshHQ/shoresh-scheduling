@@ -107,7 +107,9 @@ behaviour unchanged):
   activity at its other time blocks, with the same days, location, who it covers and weeks, and
   save the fixed activity in the same save; Cancel MUST save nothing. A recurring activity only
   in the fixed activity's time blocks can't go around it: that save is refused, saying what to
-  change.
+  change. The question and pieces for each case are the shared examples
+  (`staticresources/ShoreshFixedOverExamples.json`), which the screen and the AI (API-1.147) both
+  pass.
 
 ## Layer 4: Limits
 

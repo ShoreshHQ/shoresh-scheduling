@@ -181,7 +181,7 @@ public with sharing class LinkedChoicePlaces {
           ? divisionOf.get(Id.valueOf(groupId))
           : null;
         for (Integer b = 0; b < grid.blocks.size(); b++) {
-          ScheduleGrid.Item item = GridItems.itemAt(grid, g, b);
+          ScheduleGrid.Item item = ScheduleGridCells.itemAt(grid, g, b);
           if (
             item == null ||
             item.kind != ElectiveTimes.ELECTIVE ||

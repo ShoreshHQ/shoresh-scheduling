@@ -259,9 +259,7 @@ private class SchedulePublishTest {
       }
       // Even with the current one unpublished, the week still has published history.
       ManualBuildController.unpublish(draftId, secondId);
-      Set<Id> protectedIds = PublishedHistory.finder.withPublishedHistory(
-        new Set<Id>{ ids.get('Week 1') }
-      );
+      Boolean weekProtected = PublishedHistory.wasPublished(ids.get('Week 1'));
       Test.stopTest();
       Schedule__c first = [
         SELECT Name, PublishedAt__c
@@ -275,7 +273,7 @@ private class SchedulePublishTest {
           '" was the published schedule, which is kept as history, so it can\'t be deleted.',
         message
       );
-      Assert.isTrue(protectedIds.contains(ids.get('Week 1')));
+      Assert.isTrue(weekProtected);
       // PUB-4.3: previews and history read Status and PublishedAt__c, the guard also PublishedBy__c
       // and PublishKey__c. Publish, publish again and unpublish never leave those without these.
       Assert.areEqual(

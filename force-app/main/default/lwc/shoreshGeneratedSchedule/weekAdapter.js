@@ -1,3 +1,7 @@
+import previewPublish from "@salesforce/apex/GeneratedScheduleController.previewPublish";
+import publish from "@salesforce/apex/GeneratedScheduleController.publish";
+import unpublish from "@salesforce/apex/GeneratedScheduleController.unpublish";
+
 /**
  * Generated Schedule's side of c/shoreshBuildWeek: the week is loadWeek's answer (loaded), read
  * again whole after an update.
@@ -6,8 +10,14 @@ export function generatedWeekAdapter(host) {
   return {
     screen: host,
     scheduleId: () => (host.loaded && host.loaded.scheduleId) || null,
+    revision: () => (host.loaded ? host.loaded.revision : null),
+    origin: "Generated",
     weekKey: () => host.loadedFor,
     busy: () => host.actionsDisabled,
+    reading: () => host.reading,
+    previewPublish,
+    publish,
+    unpublish,
     sayDone: (text) => host.sayDone(text),
     // Not a read's error: the next read of the week leaves it.
     showError: (error) => {

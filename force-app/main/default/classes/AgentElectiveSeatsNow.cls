@@ -67,7 +67,7 @@ global with sharing class AgentElectiveSeatsNow {
       (run.isFinal
         ? 'Final; Change ' +
           seatWords +
-          ' (start_new_elective_version) to change them'
+          ' (change_seats) to change them'
         : seatWords +
           (view.assigned ? ' assigned' : ' not assigned yet') +
           ', Draft') +

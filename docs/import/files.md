@@ -65,7 +65,7 @@ Each rule is clue, meaning, example, test.
 4. **Every way a file comes in is held to the same limits, in one place.**
    Clue: a file chosen on Import last year, Import a list (every list, the Electives list among
    them), Bring in choices or a special day's or event's Import; or a file an AI or the command
-   line sends (`import_list`, `import_worksheet`, `import_last_year`, `bring_in_choices`,
+   line sends (`import_list`, `import_worksheet`, `import_last_year`, `import_choices`,
    `import_special_schedule`).
    Meaning: the screens read a chosen file only through `readImportFile`, and the AI's file only
    through `fileOf`, both on the engine's one check. The refusal shows where that screen already

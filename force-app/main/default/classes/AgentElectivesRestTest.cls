@@ -139,7 +139,7 @@ private class AgentElectivesRestTest {
         )
       };
       List<Object> refused = AgentElectivesTestData.send(
-        'start_new_elective_version',
+        'change_seats',
         'POST',
         AgentElectivesTestData.asked(stale)
       );
@@ -147,12 +147,12 @@ private class AgentElectivesRestTest {
         'seen' => AgentElectivesTestData.seen(AgentElectivesTestData.revision())
       };
       List<Object> started = AgentElectivesTestData.send(
-        'start_new_elective_version',
+        'change_seats',
         'POST',
         AgentElectivesTestData.asked(current)
       );
       List<Object> again = AgentElectivesTestData.send(
-        'start_new_elective_version',
+        'change_seats',
         'POST',
         AgentElectivesTestData.asked(current)
       );
