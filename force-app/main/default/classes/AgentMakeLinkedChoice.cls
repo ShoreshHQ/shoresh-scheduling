@@ -6,7 +6,7 @@
  * in a name left out with the editor's proposal.
  */
 @RestResource(urlMapping='/v1/make_linked_choice')
-global with sharing class AgentMakeLinkedChoice implements AgentWeeks.Action {
+global with sharing class AgentMakeLinkedChoice implements AgentRequest.Change {
   private static final Set<String> FIELDS = new Set<String>{
     'season',
     'elective_set',
@@ -19,11 +19,14 @@ global with sharing class AgentMakeLinkedChoice implements AgentWeeks.Action {
 
   @HttpPost
   global static void post() {
-    AgentWeeks.answer(new AgentMakeLinkedChoice());
+    AgentRequest.answer(new AgentMakeLinkedChoice());
   }
 
-  public String run() {
-    Map<String, Object> body = AgentFields.body(FIELDS);
+  public Set<String> fields() {
+    return FIELDS;
+  }
+
+  public String run(Map<String, Object> body) {
     AgentLinkedChoiceRefs refs = new AgentLinkedChoiceRefs(body);
     Offering__c offering = refs.offeringOf(AgentFields.text(body, 'activity'));
     LinkedChoicePlaces.Places places = refs.places();

@@ -745,7 +745,7 @@ private class ElectiveSeatsTest {
         )
       );
       RestContext.response = new RestResponse();
-      AgentWeeks.answer(new AgentDeleteLinkedChoice());
+      AgentRequest.answer(new AgentDeleteLinkedChoice());
       String refused = RestContext.response.responseBody.toString();
       Assert.areEqual(400, RestContext.response.statusCode, refused);
       Assert.isTrue(refused.contains('it has seats in'), refused);

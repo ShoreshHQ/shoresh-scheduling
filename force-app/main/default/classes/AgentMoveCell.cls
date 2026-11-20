@@ -6,6 +6,6 @@
 global with sharing class AgentMoveCell {
   @HttpPost
   global static void post() {
-    AgentWeeks.answer(new AgentCells());
+    AgentRequest.answer(new AgentCells());
   }
 }

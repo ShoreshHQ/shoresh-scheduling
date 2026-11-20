@@ -5,7 +5,7 @@
  * starts one, so the season's own rules refuse what they refuse.
  */
 @RestResource(urlMapping='/v1/create_season')
-global with sharing class AgentCreateSeason implements AgentWeeks.Action {
+global with sharing class AgentCreateSeason implements AgentRequest.Change {
   private static final Set<String> FIELDS = new Set<String>{
     'camp',
     'name',
@@ -15,11 +15,14 @@ global with sharing class AgentCreateSeason implements AgentWeeks.Action {
 
   @HttpPost
   global static void post() {
-    AgentWeeks.answer(new AgentCreateSeason());
+    AgentRequest.answer(new AgentCreateSeason());
   }
 
-  public String run() {
-    Map<String, Object> body = AgentFields.body(FIELDS);
+  public Set<String> fields() {
+    return FIELDS;
+  }
+
+  public String run(Map<String, Object> body) {
     Camp__c camp = campOf(AgentFields.text(body, 'camp'));
     String name = AgentFields.text(body, 'name');
     String first = AgentFields.text(body, 'start_date');

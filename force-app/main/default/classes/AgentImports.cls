@@ -16,7 +16,8 @@ public with sharing class AgentImports {
   public static final String SCREEN_LIST = 'list';
   /** Import choices (API-1.117): it also reads the Elective seats screen's own sets and runs. */
   public static final String CHOICES = 'choices';
-  private static final Set<String> FIELDS = new Set<String>{
+  /** What each door's save takes (POST). */
+  public static final Set<String> FIELDS = new Set<String>{
     'season',
     'seen',
     'plan'
@@ -76,8 +77,8 @@ public with sharing class AgentImports {
   }
 
   /** Import a list's own save (ImportController.saveList), only while the setup is as read. */
-  public static String saveList() {
-    String plan = checkedPlan(SCREEN_LIST);
+  public static String saveList(Map<String, Object> body) {
+    String plan = checkedPlan(body, SCREEN_LIST);
     try {
       return JSON.serialize(ImportController.saveList(plan), true);
     } catch (Exception e) {
@@ -86,8 +87,8 @@ public with sharing class AgentImports {
   }
 
   /** Import worksheet's own save (ImportController.saveWorkbook), only while the setup is as read. */
-  public static String saveWorkbook() {
-    String plan = checkedPlan(SCREEN_LIST);
+  public static String saveWorkbook(Map<String, Object> body) {
+    String plan = checkedPlan(body, SCREEN_LIST);
     try {
       return JSON.serialize(ImportController.saveWorkbook(plan), true);
     } catch (Exception e) {
@@ -96,8 +97,8 @@ public with sharing class AgentImports {
   }
 
   /** Import last year's own save (ImportController.saveSetup), only while the setup is as read. */
-  public static String saveLastYear() {
-    String plan = checkedPlan(LAST_YEAR);
+  public static String saveLastYear(Map<String, Object> body) {
+    String plan = checkedPlan(body, LAST_YEAR);
     try {
       return JSON.serialize(ImportController.saveSetup(plan), true);
     } catch (Exception e) {
@@ -114,8 +115,7 @@ public with sharing class AgentImports {
    * read (seen); refused otherwise. The answer of a save is its result as JSON, which the
    * connector says in the screen's words.
    */
-  private static String checkedPlan(String door) {
-    Map<String, Object> body = AgentFields.body(FIELDS);
+  private static String checkedPlan(Map<String, Object> body, String door) {
     Season__c season = AgentChangeCampWords.seasonOf(
       AgentFields.text(body, 'season')
     );

@@ -8,7 +8,7 @@
  * finalized.", without the screen's advice (API-1.105).
  */
 @RestResource(urlMapping='/v1/finalize_electives')
-global with sharing class AgentFinalize implements AgentWeeks.Action, AgentAskFirst.Preview {
+global with sharing class AgentFinalize implements AgentRequest.Change, AgentAskFirst.Preview {
   private static final Set<String> FIELDS = new Set<String>{
     'season',
     'week',
@@ -17,12 +17,15 @@ global with sharing class AgentFinalize implements AgentWeeks.Action, AgentAskFi
 
   @HttpPost
   global static void post() {
-    AgentWeeks.answer(new AgentFinalize());
+    AgentRequest.answer(new AgentFinalize());
+  }
+
+  public Set<String> fields() {
+    return FIELDS;
   }
 
   /** What finalizing does (API-1.106). */
-  public String preview() {
-    Map<String, Object> body = AgentFields.body(FIELDS);
+  public String preview(Map<String, Object> body) {
     AgentWeeks.requireScheduler();
     Season__c season = OutgoingRows.seasonCalled(
       AgentFields.text(body, 'season')
@@ -50,8 +53,7 @@ global with sharing class AgentFinalize implements AgentWeeks.Action, AgentAskFi
       ' being worked on now become the final ones.';
   }
 
-  public String run() {
-    Map<String, Object> body = AgentFields.body(FIELDS);
+  public String run(Map<String, Object> body) {
     AgentWeeks.requireScheduler();
     Season__c season = OutgoingRows.seasonCalled(
       AgentFields.text(body, 'season')

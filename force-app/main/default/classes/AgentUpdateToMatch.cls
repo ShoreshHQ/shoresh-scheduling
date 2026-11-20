@@ -9,7 +9,7 @@
  * hand, and the screen has no Undo for it: that version is the way back (API-1.14).
  */
 @RestResource(urlMapping='/v1/update_to_match_setup')
-global with sharing class AgentUpdateToMatch implements AgentWeeks.Action {
+global with sharing class AgentUpdateToMatch implements AgentRequest.Change {
   private static final Set<String> FIELDS = new Set<String>{
     'season',
     'week',
@@ -21,11 +21,14 @@ global with sharing class AgentUpdateToMatch implements AgentWeeks.Action {
 
   @HttpPost
   global static void post() {
-    AgentWeeks.answer(new AgentUpdateToMatch());
+    AgentRequest.answer(new AgentUpdateToMatch());
   }
 
-  public String run() {
-    Map<String, Object> body = AgentFields.body(FIELDS);
+  public Set<String> fields() {
+    return FIELDS;
+  }
+
+  public String run(Map<String, Object> body) {
     List<String> keys = keysOf(body.get('changes'));
     String seen = AgentFields.text(body, 'seen');
     if (String.isBlank(seen)) {

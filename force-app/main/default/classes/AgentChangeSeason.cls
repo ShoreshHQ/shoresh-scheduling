@@ -8,7 +8,7 @@
  * (the name with its capitals), with the season locked; otherwise refused (409), nothing saved.
  */
 @RestResource(urlMapping='/v1/change_season')
-global with sharing class AgentChangeSeason implements AgentWeeks.Action {
+global with sharing class AgentChangeSeason implements AgentRequest.Change {
   private static final Set<String> FIELDS = new Set<String>{
     'season',
     'fields',
@@ -27,11 +27,14 @@ global with sharing class AgentChangeSeason implements AgentWeeks.Action {
 
   @HttpPost
   global static void post() {
-    AgentWeeks.answer(new AgentChangeSeason());
+    AgentRequest.answer(new AgentChangeSeason());
   }
 
-  public String run() {
-    Map<String, Object> body = AgentFields.body(FIELDS);
+  public Set<String> fields() {
+    return FIELDS;
+  }
+
+  public String run(Map<String, Object> body) {
     AgentWeeks.requireScheduler();
     Id seasonId = OutgoingRows.seasonCalled(AgentFields.text(body, 'season'))
       .Id;
@@ -52,8 +55,11 @@ global with sharing class AgentChangeSeason implements AgentWeeks.Action {
     for (String key : KEYS) {
       if (given.containsKey(key)) {
         refuseChanged(key, seen, now);
-        put(record, key, text(given.get(key)));
-        said.add(key.replace('_', ' ') + ' ' + text(given.get(key)));
+        String value = given.get(key) == null
+          ? ''
+          : String.valueOf(given.get(key)).normalizeSpace();
+        put(record, key, value);
+        said.add(key.replace('_', ' ') + ' ' + value);
       }
     }
     AgentSeasonDates.together(record, given, now);
@@ -180,9 +186,5 @@ global with sharing class AgentChangeSeason implements AgentWeeks.Action {
       key == 'start_date' ? Season__c.StartDate__c : Season__c.EndDate__c,
       day
     );
-  }
-
-  private static String text(Object value) {
-    return value == null ? '' : String.valueOf(value).normalizeSpace();
   }
 }

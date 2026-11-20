@@ -7,16 +7,20 @@
  * only in Delete's place for one that was (ADR 0029 choice 8). The screen's own save (SeasonArchive).
  */
 @RestResource(urlMapping='/v1/archive_season')
-global with sharing class AgentArchiveSeason implements AgentWeeks.Action {
+global with sharing class AgentArchiveSeason implements AgentRequest.Change {
   private static final Set<String> FIELDS = new Set<String>{ 'season' };
 
   @HttpPost
   global static void post() {
-    AgentWeeks.answer(new AgentArchiveSeason());
+    AgentRequest.answer(new AgentArchiveSeason());
   }
 
-  public String run() {
-    Season__c season = named('archive');
+  public Set<String> fields() {
+    return FIELDS;
+  }
+
+  public String run(Map<String, Object> body) {
+    Season__c season = named(body, 'archive');
     if (ArchivedSeasons.isArchived(season.Id)) {
       throw new ShoreshException(
         '"' + season.Name + '" is already archived. Nothing was changed.'
@@ -46,9 +50,9 @@ global with sharing class AgentArchiveSeason implements AgentWeeks.Action {
       '". Everything in it is kept, read-only, and it is out of the season picker.';
   }
 
-  /** The season the request names; one left out is never assumed. */
-  public static Season__c named(String verb) {
-    String name = AgentFields.text(AgentFields.body(FIELDS), 'season');
+  /** The season the body names; one left out is never assumed. */
+  public static Season__c named(Map<String, Object> body, String verb) {
+    String name = AgentFields.text(body, 'season');
     if (String.isBlank(name)) {
       throw new ShoreshException('Say which season to ' + verb + ' (season).');
     }

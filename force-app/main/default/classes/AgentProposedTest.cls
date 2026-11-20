@@ -24,7 +24,7 @@ private class AgentProposedTest {
     if (door instanceof AgentRequest.Read) {
       AgentRequest.answer((AgentRequest.Read) door);
     } else {
-      AgentWeeks.answer((AgentWeeks.Action) door);
+      AgentRequest.answer((AgentRequest.Change) door);
     }
     Map<String, Object> answer = (Map<String, Object>) JSON.deserializeUntyped(
       RestContext.response.responseBody.toString()

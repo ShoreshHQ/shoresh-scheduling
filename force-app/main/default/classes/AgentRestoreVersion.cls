@@ -7,7 +7,7 @@
  * Schedule, as the panel's Restore does there (restoreVersionAsNew).
  */
 @RestResource(urlMapping='/v1/restore_version')
-global with sharing class AgentRestoreVersion implements AgentWeeks.Action {
+global with sharing class AgentRestoreVersion implements AgentRequest.Change {
   private static final Set<String> FIELDS = new Set<String>{
     'season',
     'week',
@@ -19,11 +19,14 @@ global with sharing class AgentRestoreVersion implements AgentWeeks.Action {
 
   @HttpPost
   global static void post() {
-    AgentWeeks.answer(new AgentRestoreVersion());
+    AgentRequest.answer(new AgentRestoreVersion());
   }
 
-  public String run() {
-    Map<String, Object> body = AgentFields.body(FIELDS);
+  public Set<String> fields() {
+    return FIELDS;
+  }
+
+  public String run(Map<String, Object> body) {
     AgentWeeks.Week week = AgentSchedules.placeOfEither(body);
     ScheduleViews.VersionRow version = AgentVersions.named(week, body);
     AgentScreenVersions.requireDraftToRestore(week);

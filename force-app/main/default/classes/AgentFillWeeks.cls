@@ -6,7 +6,7 @@
  * dates are still what the AI read in list_seasons; otherwise refused (409) with nothing added.
  */
 @RestResource(urlMapping='/v1/fill_in_weeks')
-global with sharing class AgentFillWeeks implements AgentWeeks.Action {
+global with sharing class AgentFillWeeks implements AgentRequest.Change {
   private static final Set<String> FIELDS = new Set<String>{ 'season', 'seen' };
   private static final List<String> DATES = new List<String>{
     'start_date',
@@ -15,11 +15,14 @@ global with sharing class AgentFillWeeks implements AgentWeeks.Action {
 
   @HttpPost
   global static void post() {
-    AgentWeeks.answer(new AgentFillWeeks());
+    AgentRequest.answer(new AgentFillWeeks());
   }
 
-  public String run() {
-    Map<String, Object> body = AgentFields.body(FIELDS);
+  public Set<String> fields() {
+    return FIELDS;
+  }
+
+  public String run(Map<String, Object> body) {
     AgentWeeks.requireScheduler();
     Id seasonId = OutgoingRows.seasonCalled(AgentFields.text(body, 'season'))
       .Id;

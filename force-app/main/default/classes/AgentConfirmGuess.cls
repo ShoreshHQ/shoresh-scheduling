@@ -7,7 +7,7 @@
  * the record locked; otherwise refused (409), nothing changed.
  */
 @RestResource(urlMapping='/v1/mark_looks_right')
-global with sharing class AgentConfirmGuess implements AgentWeeks.Action {
+global with sharing class AgentConfirmGuess implements AgentRequest.Change {
   private static final Set<String> FIELDS = new Set<String>{
     'season',
     'kind',
@@ -33,11 +33,14 @@ global with sharing class AgentConfirmGuess implements AgentWeeks.Action {
 
   @HttpPost
   global static void post() {
-    AgentWeeks.answer(new AgentConfirmGuess());
+    AgentRequest.answer(new AgentConfirmGuess());
   }
 
-  public String run() {
-    Map<String, Object> body = AgentFields.body(FIELDS);
+  public Set<String> fields() {
+    return FIELDS;
+  }
+
+  public String run(Map<String, Object> body) {
     Season__c season = AgentChangeCampWords.seasonOf(
       AgentFields.text(body, 'season')
     );

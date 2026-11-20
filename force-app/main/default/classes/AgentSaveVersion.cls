@@ -6,7 +6,7 @@
  * (GeneratedScheduleController or ManualBuildController saveVersion).
  */
 @RestResource(urlMapping='/v1/save_version')
-global with sharing class AgentSaveVersion implements AgentWeeks.Action {
+global with sharing class AgentSaveVersion implements AgentRequest.Change {
   private static final Set<String> FIELDS = new Set<String>{
     'season',
     'week',
@@ -17,11 +17,14 @@ global with sharing class AgentSaveVersion implements AgentWeeks.Action {
 
   @HttpPost
   global static void post() {
-    AgentWeeks.answer(new AgentSaveVersion());
+    AgentRequest.answer(new AgentSaveVersion());
   }
 
-  public String run() {
-    Map<String, Object> body = AgentFields.body(FIELDS);
+  public Set<String> fields() {
+    return FIELDS;
+  }
+
+  public String run(Map<String, Object> body) {
     AgentWeeks.Week week = AgentSchedules.eitherOf(body);
     String name = AgentFields.text(body, 'name');
     try {

@@ -1,6 +1,6 @@
 /** change_learned_answer: Change on "What Shoresh has learned", API-1.94 (docs/protocol/api.md). Shared parts: AgentLearned. */
 @RestResource(urlMapping='/v1/change_learned_answer')
-global with sharing class AgentChangeLearned implements AgentWeeks.Action {
+global with sharing class AgentChangeLearned implements AgentRequest.Change {
   private static final Set<String> FIELDS = new Set<String>{
     'season',
     'answer_id',
@@ -10,11 +10,15 @@ global with sharing class AgentChangeLearned implements AgentWeeks.Action {
 
   @HttpPost
   global static void post() {
-    AgentWeeks.answer(new AgentChangeLearned());
+    AgentRequest.answer(new AgentChangeLearned());
   }
 
-  public String run() {
-    return change(AgentFields.body(FIELDS));
+  public Set<String> fields() {
+    return FIELDS;
+  }
+
+  public String run(Map<String, Object> body) {
+    return change(body);
   }
 
   /** change_learned_answer: the screen's Change and Save, while the answer is still as seen. */

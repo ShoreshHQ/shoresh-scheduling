@@ -7,7 +7,7 @@
  * compared under the item's lock: saved since is refused (409), nothing changed.
  */
 @RestResource(urlMapping='/v1/change_special_schedule_frame')
-global with sharing class AgentSpecialFrame implements AgentWeeks.Action, AgentAskFirst.Preview {
+global with sharing class AgentSpecialFrame implements AgentRequest.Change, AgentAskFirst.Preview {
   private static final Set<String> FIELDS = new Set<String>{
     'season',
     'special',
@@ -48,12 +48,15 @@ global with sharing class AgentSpecialFrame implements AgentWeeks.Action, AgentA
 
   @HttpPost
   global static void post() {
-    AgentWeeks.answer(new AgentSpecialFrame());
+    AgentRequest.answer(new AgentSpecialFrame());
+  }
+
+  public Set<String> fields() {
+    return FIELDS;
   }
 
   /** What removing or clearing takes away; null for the changes that keep every cell. */
-  public String preview() {
-    Map<String, Object> body = AgentFields.body(FIELDS);
+  public String preview(Map<String, Object> body) {
     String asked = AgentFields.text(body, 'action').toLowerCase();
     if (!TAKES_CELLS.contains(asked)) {
       return null;
@@ -76,8 +79,7 @@ global with sharing class AgentSpecialFrame implements AgentWeeks.Action, AgentA
         '", with what is in its cells. It can\'t be undone here.';
   }
 
-  public String run() {
-    Map<String, Object> body = AgentFields.body(FIELDS);
+  public String run(Map<String, Object> body) {
     String asked = AgentFields.text(body, 'action').toLowerCase();
     if (
       !ACTIONS.containsKey(asked) ||

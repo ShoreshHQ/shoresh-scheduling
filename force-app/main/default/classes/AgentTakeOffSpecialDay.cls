@@ -8,6 +8,6 @@ global with sharing class AgentTakeOffSpecialDay {
   /** Takes the special day off the day, as AgentSpecialDay does. */
   @HttpPost
   global static void post() {
-    AgentWeeks.answer(new AgentSpecialDay(AgentSpecialDay.TAKE_OFF));
+    AgentRequest.answer(new AgentSpecialDay(AgentSpecialDay.TAKE_OFF));
   }
 }

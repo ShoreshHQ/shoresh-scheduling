@@ -16,7 +16,7 @@
  * version the save kept (AgentUndo, API-1.14).
  */
 @RestResource(urlMapping='/v1/build_week')
-global with sharing class AgentBuild implements AgentWeeks.Action {
+global with sharing class AgentBuild implements AgentRequest.Change {
   private static final Set<String> FIELDS = new Set<String>{
     'season',
     'week',
@@ -51,7 +51,11 @@ global with sharing class AgentBuild implements AgentWeeks.Action {
 
   @HttpPost
   global static void post() {
-    AgentWeeks.answer(new AgentBuild());
+    AgentRequest.answer(new AgentBuild());
+  }
+
+  public Set<String> fields() {
+    return FIELDS;
   }
 
   /**
@@ -85,8 +89,7 @@ global with sharing class AgentBuild implements AgentWeeks.Action {
     };
   }
 
-  public String run() {
-    Map<String, Object> body = AgentFields.body(FIELDS);
+  public String run(Map<String, Object> body) {
     AgentWeeks.Week week = AgentWeeks.placeOf(body);
     Boolean first = week.draft == null;
     String action = actionOf(body, first, week.name);

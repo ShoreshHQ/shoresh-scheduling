@@ -9,7 +9,7 @@
  * said in the answer.
  */
 @RestResource(urlMapping='/v1/delete_from_setup')
-global with sharing class AgentDeleteSetup implements AgentWeeks.Action, AgentAskFirst.Preview {
+global with sharing class AgentDeleteSetup implements AgentRequest.Change, AgentAskFirst.Preview {
   private static final Set<String> FIELDS = new Set<String>{
     'season',
     'kind',
@@ -35,23 +35,23 @@ global with sharing class AgentDeleteSetup implements AgentWeeks.Action, AgentAs
 
   @HttpPost
   global static void post() {
-    AgentWeeks.answer(new AgentDeleteSetup());
+    AgentRequest.answer(new AgentDeleteSetup());
+  }
+
+  public Set<String> fields() {
+    return FIELDS;
   }
 
   /** Camp Setup's own question before its Delete (API-1.106). */
-  public String preview() {
-    AgentSetupRecords.Found found = AgentSetupRecords.find(
-      AgentFields.body(FIELDS)
-    );
+  public String preview(Map<String, Object> body) {
+    AgentSetupRecords.Found found = AgentSetupRecords.find(body);
     // The very record shown: one made since under the same name is another delete.
     AgentAskFirst.stateIs(found.id);
     return question(found);
   }
 
-  public String run() {
-    AgentSetupRecords.Found found = AgentSetupRecords.find(
-      AgentFields.body(FIELDS)
-    );
+  public String run(Map<String, Object> body) {
+    AgentSetupRecords.Found found = AgentSetupRecords.find(body);
     return removed(found);
   }
 

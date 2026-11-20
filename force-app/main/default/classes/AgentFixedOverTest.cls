@@ -20,9 +20,9 @@ private class AgentFixedOverTest {
     RestContext.request.httpMethod = 'POST';
     RestContext.request.requestBody = Blob.valueOf(JSON.serialize(body));
     RestContext.response = new RestResponse();
-    AgentWeeks.answer(
+    AgentRequest.answer(
       action == 'change'
-        ? (AgentWeeks.Action) new AgentChangeSetup()
+        ? (AgentRequest.Change) new AgentChangeSetup()
         : new AgentAddSetup()
     );
     Map<String, Object> answer = (Map<String, Object>) JSON.deserializeUntyped(

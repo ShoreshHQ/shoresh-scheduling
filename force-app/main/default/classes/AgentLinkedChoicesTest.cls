@@ -551,12 +551,9 @@ private class AgentLinkedChoicesTest {
         'Delete "Drama"? A sheet that names it then counts as Drama.',
         SetupDelete.preview(choiceId).message
       );
-      RestContext.request = new RestRequest();
-      RestContext.request.httpMethod = 'POST';
-      RestContext.request.requestBody = Blob.valueOf(JSON.serialize(asked));
       Assert.areEqual(
         'Delete "Drama"? A sheet that names it then counts as Drama.',
-        new AgentDeleteLinkedChoice().preview()
+        new AgentDeleteLinkedChoice().preview(asked)
       );
       List<Object> answer = LinkedChoicesMenu.sent(
         new AgentDeleteLinkedChoice(),

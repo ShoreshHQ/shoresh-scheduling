@@ -7,7 +7,7 @@
  * read it (seen), with the run locked; otherwise refused (409), nothing changed.
  */
 @RestResource(urlMapping='/v1/lock_elective_seat')
-global with sharing class AgentLockElectiveSeat implements AgentWeeks.Action {
+global with sharing class AgentLockElectiveSeat implements AgentRequest.Change {
   private static final Set<String> FIELDS = new Set<String>{
     'season',
     'week',
@@ -21,11 +21,14 @@ global with sharing class AgentLockElectiveSeat implements AgentWeeks.Action {
 
   @HttpPost
   global static void post() {
-    AgentWeeks.answer(new AgentLockElectiveSeat());
+    AgentRequest.answer(new AgentLockElectiveSeat());
   }
 
-  public String run() {
-    Map<String, Object> body = AgentFields.body(FIELDS);
+  public Set<String> fields() {
+    return FIELDS;
+  }
+
+  public String run(Map<String, Object> body) {
     if (!(body.get('locked') instanceof Boolean)) {
       throw new ShoreshException(
         'Say whether to lock it (locked: true) or unlock it (locked: false).'

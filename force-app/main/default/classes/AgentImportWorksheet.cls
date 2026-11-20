@@ -6,7 +6,7 @@
  * module, made only while the setup is as read (AgentImports).
  */
 @RestResource(urlMapping='/v1/import_worksheet')
-global with sharing class AgentImportWorksheet implements AgentWeeks.Action {
+global with sharing class AgentImportWorksheet implements AgentRequest.Change {
   @HttpGet
   global static void get() {
     AgentRequest.answer(new AgentImports.Reads(AgentImports.SCREEN_LIST));
@@ -14,10 +14,14 @@ global with sharing class AgentImportWorksheet implements AgentWeeks.Action {
 
   @HttpPost
   global static void post() {
-    AgentWeeks.answer(new AgentImportWorksheet());
+    AgentRequest.answer(new AgentImportWorksheet());
   }
 
-  public String run() {
-    return AgentImports.saveWorkbook();
+  public Set<String> fields() {
+    return AgentImports.FIELDS;
+  }
+
+  public String run(Map<String, Object> body) {
+    return AgentImports.saveWorkbook(body);
   }
 }

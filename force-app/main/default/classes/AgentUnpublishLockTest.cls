@@ -40,8 +40,8 @@ private class AgentUnpublishLockTest {
       // The web address itself, as an AI reaches it.
       AgentUnlock.post();
     } else {
-      AgentWeeks.answer(
-        new Map<String, AgentWeeks.Action>{
+      AgentRequest.answer(
+        new Map<String, AgentRequest.Change>{
             'unpublish' => new AgentUnpublish(),
             'lock' => new AgentLock(),
             'unlock' => new AgentLock(GeneratedWeek.UNLOCK)

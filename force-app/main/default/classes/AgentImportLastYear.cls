@@ -7,7 +7,7 @@
  * schedules and the special days are as read (AgentImports).
  */
 @RestResource(urlMapping='/v1/import_last_year')
-global with sharing class AgentImportLastYear implements AgentWeeks.Action {
+global with sharing class AgentImportLastYear implements AgentRequest.Change {
   @HttpGet
   global static void get() {
     AgentRequest.answer(new LastYearReads());
@@ -26,10 +26,14 @@ global with sharing class AgentImportLastYear implements AgentWeeks.Action {
 
   @HttpPost
   global static void post() {
-    AgentWeeks.answer(new AgentImportLastYear());
+    AgentRequest.answer(new AgentImportLastYear());
   }
 
-  public String run() {
-    return AgentImports.saveLastYear();
+  public Set<String> fields() {
+    return AgentImports.FIELDS;
+  }
+
+  public String run(Map<String, Object> body) {
+    return AgentImports.saveLastYear(body);
   }
 }

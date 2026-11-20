@@ -8,7 +8,7 @@
  * Published. Its answers are the screen's own sentences.
  */
 @RestResource(urlMapping='/v1/unpublish_week')
-global with sharing class AgentUnpublish implements AgentWeeks.Action {
+global with sharing class AgentUnpublish implements AgentRequest.Change {
   private static final Set<String> FIELDS = new Set<String>{
     'season',
     'week',
@@ -18,11 +18,15 @@ global with sharing class AgentUnpublish implements AgentWeeks.Action {
 
   @HttpPost
   global static void post() {
-    AgentWeeks.answer(new AgentUnpublish());
+    AgentRequest.answer(new AgentUnpublish());
   }
 
-  public String run() {
-    AgentWeeks.Week week = AgentSchedules.eitherOf(AgentFields.body(FIELDS));
+  public Set<String> fields() {
+    return FIELDS;
+  }
+
+  public String run(Map<String, Object> body) {
+    AgentWeeks.Week week = AgentSchedules.eitherOf(body);
     String weekWord = AgentSchedules.campWordsOf(week)
       .singularInSentence('Week');
     SchedulePublish.Result result;

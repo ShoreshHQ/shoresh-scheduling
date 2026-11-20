@@ -10,7 +10,7 @@
  * replace_edited is true; without it the answer is the page's question, with nothing saved.
  */
 @RestResource(urlMapping='/v1/import_special_schedule')
-global with sharing class AgentImportSpecialSchedule implements AgentWeeks.Action {
+global with sharing class AgentImportSpecialSchedule implements AgentRequest.Change {
   private static final Set<String> FIELDS = new Set<String>{
     'season',
     'special',
@@ -27,11 +27,14 @@ global with sharing class AgentImportSpecialSchedule implements AgentWeeks.Actio
 
   @HttpPost
   global static void post() {
-    AgentWeeks.answer(new AgentImportSpecialSchedule());
+    AgentRequest.answer(new AgentImportSpecialSchedule());
   }
 
-  public String run() {
-    Map<String, Object> body = AgentFields.body(FIELDS);
+  public Set<String> fields() {
+    return FIELDS;
+  }
+
+  public String run(Map<String, Object> body) {
     AgentSpecials.Found found = AgentSpecials.find(body);
     Integer seen = AgentSpecials.seenOf(body, 'imported');
     SpecialScheduleImport.Imported imported = importedOf(body);

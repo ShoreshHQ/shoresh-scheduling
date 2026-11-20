@@ -5,16 +5,19 @@
  * there are. The screen's own save (SeasonSetupController.saveRecords).
  */
 @RestResource(urlMapping='/v1/create_camp')
-global with sharing class AgentCreateCamp implements AgentWeeks.Action {
+global with sharing class AgentCreateCamp implements AgentRequest.Change {
   private static final Set<String> FIELDS = new Set<String>{ 'name' };
 
   @HttpPost
   global static void post() {
-    AgentWeeks.answer(new AgentCreateCamp());
+    AgentRequest.answer(new AgentCreateCamp());
   }
 
-  public String run() {
-    Map<String, Object> body = AgentFields.body(FIELDS);
+  public Set<String> fields() {
+    return FIELDS;
+  }
+
+  public String run(Map<String, Object> body) {
     String name = AgentFields.text(body, 'name');
     if (String.isBlank(name)) {
       throw new ShoreshException('Say the camp\'s name (name).');

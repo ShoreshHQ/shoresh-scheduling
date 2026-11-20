@@ -14,9 +14,9 @@ public class AgentAskFirstTestCalls {
       AgentRequest.answer((AgentRequest.Read) door);
       return;
     }
-    AgentWeeks.Action action = (AgentWeeks.Action) door;
+    AgentRequest.Change action = (AgentRequest.Change) door;
     Blob sent = RestContext.request.requestBody;
-    AgentWeeks.answer(action);
+    AgentRequest.answer(action);
     String confirm = confirmIn(RestContext.response);
     if (confirm == null) {
       Assert.isFalse(
@@ -32,11 +32,11 @@ public class AgentAskFirstTestCalls {
     body.put(AgentAskFirst.FIELD, confirm);
     RestContext.request.requestBody = Blob.valueOf(JSON.serialize(body));
     RestContext.response = new RestResponse();
-    AgentWeeks.answer(action);
+    AgentRequest.answer(action);
   }
 
   /** A change that asks first, sent as a POST without a confirm: it must ask, not answer done. */
-  private static Boolean mustAsk(AgentWeeks.Action action, Blob sent) {
+  private static Boolean mustAsk(AgentRequest.Change action, Blob sent) {
     return action instanceof AgentAskFirst.Preview &&
       !(action instanceof AgentSpecialFrame) &&
       !(action instanceof AgentAddSetup) &&
@@ -53,14 +53,14 @@ public class AgentAskFirstTestCalls {
    * Test.startTest, so the yes request is counted alone, as it is in its own request for real.
    */
   public static String confirmFor(
-    AgentWeeks.Action action,
+    AgentRequest.Change action,
     Map<String, Object> body
   ) {
     RestContext.request = new RestRequest();
     RestContext.request.httpMethod = 'POST';
     RestContext.request.requestBody = Blob.valueOf(JSON.serialize(body));
     RestContext.response = new RestResponse();
-    AgentWeeks.answer(action);
+    AgentRequest.answer(action);
     return confirmIn(RestContext.response);
   }
 

@@ -200,10 +200,7 @@ private class AgentOfferingsTest {
       Test.startTest();
       String question = 'Take "Drama" off "Chugim"? The activity is kept.';
       Assert.areEqual(question, SetupDelete.preview(menu.dramaId).message);
-      RestContext.request = new RestRequest();
-      RestContext.request.httpMethod = 'POST';
-      RestContext.request.requestBody = Blob.valueOf(JSON.serialize(asked));
-      Assert.areEqual(question, new AgentDeleteOffering().preview());
+      Assert.areEqual(question, new AgentDeleteOffering().preview(asked));
       List<Object> answer = LinkedChoicesMenu.sent(
         new AgentDeleteOffering(),
         asked
@@ -252,7 +249,7 @@ private class AgentOfferingsTest {
         )
       );
       RestContext.response = new RestResponse();
-      AgentWeeks.answer(new AgentDeleteOffering());
+      AgentRequest.answer(new AgentDeleteOffering());
       Test.stopTest();
       String refused = RestContext.response.responseBody.toString();
       Assert.areEqual(400, RestContext.response.statusCode, refused);

@@ -9,7 +9,7 @@
  * INGEST-5.10).
  */
 @RestResource(urlMapping='/v1/copy_season')
-global with sharing class AgentCopySeason implements AgentWeeks.Action, AgentAskFirst.Preview {
+global with sharing class AgentCopySeason implements AgentRequest.Change, AgentAskFirst.Preview {
   private static final Set<String> FIELDS = new Set<String>{
     'season',
     'name',
@@ -24,12 +24,15 @@ global with sharing class AgentCopySeason implements AgentWeeks.Action, AgentAsk
 
   @HttpPost
   global static void post() {
-    AgentWeeks.answer(new AgentCopySeason());
+    AgentRequest.answer(new AgentCopySeason());
+  }
+
+  public Set<String> fields() {
+    return FIELDS;
   }
 
   /** The copy, as the Copy season page shows it before Copy (API-1.106). */
-  public String preview() {
-    Map<String, Object> body = AgentFields.body(FIELDS);
+  public String preview(Map<String, Object> body) {
     Season__c season = AgentChangeCampWords.seasonOf(
       AgentFields.text(body, 'season')
     );
@@ -49,8 +52,7 @@ global with sharing class AgentCopySeason implements AgentWeeks.Action, AgentAsk
       '": name it to work in it.';
   }
 
-  public String run() {
-    Map<String, Object> body = AgentFields.body(FIELDS);
+  public String run(Map<String, Object> body) {
     Season__c season = AgentChangeCampWords.seasonOf(
       AgentFields.text(body, 'season')
     );

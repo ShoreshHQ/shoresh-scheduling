@@ -7,7 +7,7 @@
  * is refused (409) with nothing saved. Who can do it is left as it is unless it is changed.
  */
 @RestResource(urlMapping='/v1/change_activity_details')
-global with sharing class AgentChangeActivityRules implements AgentWeeks.Action {
+global with sharing class AgentChangeActivityRules implements AgentRequest.Change {
   private static final Set<String> FIELDS = new Set<String>{
     'season',
     'name',
@@ -23,11 +23,14 @@ global with sharing class AgentChangeActivityRules implements AgentWeeks.Action 
 
   @HttpPost
   global static void post() {
-    AgentWeeks.answer(new AgentChangeActivityRules());
+    AgentRequest.answer(new AgentChangeActivityRules());
   }
 
-  public String run() {
-    Map<String, Object> body = AgentFields.body(FIELDS);
+  public Set<String> fields() {
+    return FIELDS;
+  }
+
+  public String run(Map<String, Object> body) {
     body.put('kind', 'Activity');
     found = AgentSetupRecords.find(body);
     given = AgentSetupFields.given(body.get('fields'));
@@ -68,7 +71,13 @@ global with sharing class AgentChangeActivityRules implements AgentWeeks.Action 
 
   private void refuseUnknown() {
     List<String> known = AgentActivityRules.names();
-    String asked = given.isEmpty() ? null : unknownIn(known);
+    String asked;
+    for (String key : given.keySet()) {
+      if (!known.contains(key)) {
+        asked = key;
+        break;
+      }
+    }
     if (given.isEmpty() || asked != null) {
       throw new ShoreshException(
         (asked == null
@@ -79,15 +88,6 @@ global with sharing class AgentChangeActivityRules implements AgentWeeks.Action 
           '.'
       );
     }
-  }
-
-  private String unknownIn(List<String> known) {
-    for (String key : given.keySet()) {
-      if (!known.contains(key)) {
-        return key;
-      }
-    }
-    return null;
   }
 
   /** Each changed field needs what was seen in it: Shoresh never reads it in its place. */

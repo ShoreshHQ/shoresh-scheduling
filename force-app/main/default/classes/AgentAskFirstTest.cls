@@ -9,9 +9,11 @@ private class AgentAskFirstTest {
     RestContext.request = new RestRequest();
     RestContext.request.requestURI = '/services/apexrest/v1/delete_version';
     RestContext.request.httpMethod = 'POST';
-    RestContext.request.requestBody = Blob.valueOf(body);
     AgentAskFirst.stateIs(state);
-    return AgentAskFirst.ticketFor('This deletes "First draft".');
+    return AgentAskFirst.ticketFor(
+      'This deletes "First draft".',
+      AgentRequestInOrder.of(body)
+    );
   }
 
   // API-1.106

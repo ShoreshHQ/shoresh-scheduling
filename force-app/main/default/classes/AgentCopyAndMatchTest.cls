@@ -156,7 +156,7 @@ private class AgentCopyAndMatchTest {
         JSON.serialize(copyAsk(season, 'Next summer', seen))
       );
       RestContext.response = new RestResponse();
-      AgentWeeks.answer(new AgentCopySeason());
+      AgentRequest.answer(new AgentCopySeason());
       String question = (String) ((Map<String, Object>) JSON.deserializeUntyped(
           RestContext.response.responseBody.toString()
         ))
@@ -434,7 +434,7 @@ private class AgentCopyAndMatchTest {
         )
       );
       RestContext.response = new RestResponse();
-      AgentWeeks.answer(new AgentCopySeason());
+      AgentRequest.answer(new AgentCopySeason());
       Test.stopTest();
       String said = RestContext.response.responseBody.toString();
       Assert.areEqual(400, RestContext.response.statusCode, said);

@@ -7,7 +7,7 @@
  * (409), nothing changed.
  */
 @RestResource(urlMapping='/v1/elective_looks_right')
-global with sharing class AgentConfirmProposed implements AgentWeeks.Action {
+global with sharing class AgentConfirmProposed implements AgentRequest.Change {
   private static final Set<String> FIELDS = new Set<String>{
     'season',
     'elective_set',
@@ -20,11 +20,14 @@ global with sharing class AgentConfirmProposed implements AgentWeeks.Action {
 
   @HttpPost
   global static void post() {
-    AgentWeeks.answer(new AgentConfirmProposed());
+    AgentRequest.answer(new AgentConfirmProposed());
   }
 
-  public String run() {
-    Map<String, Object> body = AgentFields.body(FIELDS);
+  public Set<String> fields() {
+    return FIELDS;
+  }
+
+  public String run(Map<String, Object> body) {
     Season__c season = AgentChangeCampWords.seasonOf(
       AgentFields.text(body, 'season')
     );

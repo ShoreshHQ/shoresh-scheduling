@@ -9,7 +9,7 @@
  * to the one kept, and the others are deleted.
  */
 @RestResource(urlMapping='/v1/merge_locations')
-global with sharing class AgentMergeLocations implements AgentWeeks.Action, AgentAskFirst.Preview {
+global with sharing class AgentMergeLocations implements AgentRequest.Change, AgentAskFirst.Preview {
   private static final Set<String> FIELDS = new Set<String>{
     'season',
     'name',
@@ -20,7 +20,11 @@ global with sharing class AgentMergeLocations implements AgentWeeks.Action, Agen
 
   @HttpPost
   global static void post() {
-    AgentWeeks.answer(new AgentMergeLocations());
+    AgentRequest.answer(new AgentMergeLocations());
+  }
+
+  public Set<String> fields() {
+    return FIELDS;
   }
 
   /** What a merge would do, worked out as the merge works it out. */
@@ -34,8 +38,8 @@ global with sharing class AgentMergeLocations implements AgentWeeks.Action, Agen
   }
 
   /** The question's own words for the merge (API-1.106). */
-  public String preview() {
-    Plan plan = plan();
+  public String preview(Map<String, Object> body) {
+    Plan plan = plan(body);
     return 'This merges into "' +
       plan.keep.row.Name +
       '" (' +
@@ -49,8 +53,8 @@ global with sharing class AgentMergeLocations implements AgentWeeks.Action, Agen
       ' moves to it. It can\'t be undone here.';
   }
 
-  public String run() {
-    Plan plan = plan();
+  public String run(Map<String, Object> body) {
+    Plan plan = plan(body);
     try {
       // The question's own Merge.
       SetupTablesController.mergeLocations(
@@ -80,8 +84,7 @@ global with sharing class AgentMergeLocations implements AgentWeeks.Action, Agen
   }
 
   /** The places locked and compared with what was seen, and what the merge would do. */
-  private static Plan plan() {
-    Map<String, Object> body = AgentFields.body(FIELDS);
+  private static Plan plan(Map<String, Object> body) {
     Plan result = new Plan();
     result.season = AgentChangeCampWords.seasonOf(
       AgentFields.text(body, 'season')

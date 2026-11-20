@@ -9,7 +9,7 @@
  * the screen's words.
  */
 @RestResource(urlMapping='/v1/undo_import')
-global with sharing class AgentUndoImport implements AgentWeeks.Action, AgentAskFirst.Preview {
+global with sharing class AgentUndoImport implements AgentRequest.Change, AgentAskFirst.Preview {
   private static final Set<String> FIELDS = new Set<String>{
     'season',
     'from',
@@ -22,12 +22,15 @@ global with sharing class AgentUndoImport implements AgentWeeks.Action, AgentAsk
 
   @HttpPost
   global static void post() {
-    AgentWeeks.answer(new AgentUndoImport());
+    AgentRequest.answer(new AgentUndoImport());
+  }
+
+  public Set<String> fields() {
+    return FIELDS;
   }
 
   /** Which import it undoes, and what undoing does, as Roots' Undo last import says (API-1.106). */
-  public String preview() {
-    Map<String, Object> body = AgentFields.body(FIELDS);
+  public String preview(Map<String, Object> body) {
     season = AgentChangeCampWords.seasonOf(AgentFields.text(body, 'season'));
     ImportUndo.lockSeason(season.Id);
     Import__c made = asRead(
@@ -49,10 +52,10 @@ global with sharing class AgentUndoImport implements AgentWeeks.Action, AgentAsk
       '. What it added is removed and what it changed goes back to how it was; anything edited since, or still used by something else, stays.';
   }
 
-  public String run() {
+  public String run(Map<String, Object> body) {
     ImportUndo.Result result;
     try {
-      result = ImportController.undoImport(last ?? lastAsRead());
+      result = ImportController.undoImport(last ?? lastAsRead(body));
     } catch (Exception e) {
       throw new ShoreshException(
         'That import could not be undone. Nothing was changed. ' +
@@ -63,8 +66,7 @@ global with sharing class AgentUndoImport implements AgentWeeks.Action, AgentAsk
   }
 
   /** The import to undo, found and held as the preview finds it. */
-  private Id lastAsRead() {
-    Map<String, Object> body = AgentFields.body(FIELDS);
+  private Id lastAsRead(Map<String, Object> body) {
     season = AgentChangeCampWords.seasonOf(AgentFields.text(body, 'season'));
     String seen = seenOf(body);
     String source = AgentFields.text(body, 'from');

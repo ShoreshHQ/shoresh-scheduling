@@ -20,26 +20,38 @@ public with sharing class AgentAskFirst {
   /** A change that asks first: what it would do, said from the camp as it is now. */
   public interface Preview {
     /** What the change would do, in plain words; null when this call takes nothing away. */
-    String preview();
+    String preview(Map<String, Object> body);
   }
 
-  /** Runs action as the runner does, asking first when it is a Preview. */
-  public static String run(AgentWeeks.Action action) {
-    if (!(action instanceof Preview)) {
-      return action.run();
-    }
-    String given = taken();
-    String words = ((Preview) action).preview();
-    return words == null ? action.run() : asked(action, words, given);
-  }
-
-  /** Done only with the confirm this preview gives; otherwise the preview, or refused. */
-  private static String asked(
-    AgentWeeks.Action action,
-    String words,
+  /**
+   * Runs change on its body as the runner does, asking first when it is a Preview: given is the
+   * confirm the runner took out of the body (taken), or null.
+   */
+  public static String run(
+    AgentRequest.Change change,
+    Map<String, Object> body,
     String given
   ) {
-    String ticket = ticketFor(words);
+    if (!(change instanceof Preview)) {
+      return change.run(body);
+    }
+    // The ticket's request: the body as sent, confirm aside, before the preview reads it.
+    String sent = AgentRequestInOrder.of(JSON.serialize(body));
+    String words = ((Preview) change).preview(body);
+    String asked = words == null
+      ? null
+      : question(words, ticketFor(words, sent), given);
+    if (asked != null) {
+      return asked;
+    }
+    return change.run(body);
+  }
+
+  /**
+   * Null when given is the confirm this preview gives; otherwise the preview to show the person,
+   * or refused when given is another.
+   */
+  private static String question(String words, String ticket, String given) {
     if (String.isBlank(given)) {
       return NOT_YET +
         ' ' +
@@ -57,44 +69,26 @@ public with sharing class AgentAskFirst {
           '".'
       );
     }
-    return action.run();
+    return null;
   }
 
-  /** confirm, taken out of the body so the action reads only its own fields. */
-  private static String taken() {
-    RestRequest request = RestContext.request;
-    Object parsed;
-    try {
-      parsed = request.requestBody == null
-        ? null
-        : JSON.deserializeUntyped(request.requestBody.toString());
-    } catch (JSONException e) {
-      return null; // The action refuses it in its own words.
-    }
-    if (!(parsed instanceof Map<String, Object>)) {
-      return null;
-    }
-    Map<String, Object> body = (Map<String, Object>) parsed;
-    if (!body.containsKey(FIELD)) {
-      return null;
-    }
+  /** confirm, taken out of the body (a Preview's), so the change reads only its own fields. */
+  public static String taken(Map<String, Object> body) {
     Object given = body.remove(FIELD);
-    request.requestBody = Blob.valueOf(JSON.serialize(body));
     return given == null ? null : String.valueOf(given).trim();
   }
 
-  /** The ticket: the same person, address, request and preview always give the same one. */
+  /**
+   * The ticket: the same person, address, request (sent: its fields in order, confirm aside) and
+   * preview always give the same one.
+   */
   @TestVisible
-  private static String ticketFor(String words) {
-    RestRequest request = RestContext.request;
-    String body = request.requestBody == null
-      ? ''
-      : AgentRequestInOrder.of(request.requestBody.toString());
+  private static String ticketFor(String words, String sent) {
     String said = String.join(
       new List<String>{
         UserInfo.getUserId(),
-        request.requestURI,
-        body,
+        RestContext.request.requestURI,
+        sent,
         words,
         state
       },
