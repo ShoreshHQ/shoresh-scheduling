@@ -153,7 +153,7 @@ public with sharing class OutgoingRows {
       names.add(each.Name);
     }
     CampLabels words = IncomingSeason.labelsOf(season.Id);
-    String weeks = words.pluralInSentence('Week');
+    String weekWords = words.pluralInSentence('Week');
     throw new ShoreshException(
       'There is no ' +
         words.singularInSentence('Week') +
@@ -163,8 +163,8 @@ public with sharing class OutgoingRows {
         season.Name +
         '. ' +
         (names.isEmpty()
-          ? 'It has no ' + weeks + ' yet.'
-          : 'Its ' + weeks + ': ' + String.join(names, ', ') + '.')
+          ? 'It has no ' + weekWords + ' yet.'
+          : 'Its ' + weekWords + ': ' + String.join(names, ', ') + '.')
     );
   }
 
