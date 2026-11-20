@@ -137,7 +137,10 @@ export class BuildWeek {
       }
     } finally {
       screen.setupWorking = false;
-      this.afterSetup();
+      // For the week still shown only: focus is not moved for a week no longer there.
+      if (week === this.adapter.weekKey()) {
+        this.afterSetup();
+      }
     }
   }
 

@@ -1,3 +1,5 @@
+import { readFileSync } from "fs";
+import { join } from "path";
 import getSetupChanges from "@salesforce/apex/SetupMatchController.getSetupChanges";
 import updateToMatchSetup from "@salesforce/apex/SetupMatchController.updateToMatchSetup";
 import { BuildWeek, CHANGED_SINCE, SETUP_CHANGED } from "c/shoreshBuildWeek";
@@ -5,6 +7,18 @@ import { buildTerms } from "c/shoreshTerms";
 
 // The week on a build screen, through its interface with a fake screen: what setup changed and
 // "Update to match setup", the same on Generated Schedule and Manual Build.
+
+// The refusal codes as the server sends them: read from the Apex source, so a rename there fails here.
+const SETUP_MATCH = readFileSync(
+  join(__dirname, "..", "..", "..", "classes", "SetupMatch.cls"),
+  "utf8"
+);
+const apexCode = (name) => {
+  const found = new RegExp(`static final String ${name} = '([^']*)';`).exec(
+    SETUP_MATCH
+  );
+  return found ? found[1] : null;
+};
 
 const apex = () => ({ default: jest.fn() });
 jest.mock(
@@ -100,8 +114,8 @@ describe("c/shoreshBuildWeek: setup changed and Update to match setup", () => {
   });
 
   it("names the refusals as SetupMatch.cls sends them", () => {
-    expect(CHANGED_SINCE).toBe("changedSince");
-    expect(SETUP_CHANGED).toBe("setupChanged");
+    expect(CHANGED_SINCE).toBe(apexCode("CHANGED_SINCE"));
+    expect(SETUP_CHANGED).toBe(apexCode("SETUP_CHANGED"));
   });
 
   describe("reading what setup changed", () => {
@@ -223,8 +237,8 @@ describe("c/shoreshBuildWeek: setup changed and Update to match setup", () => {
       expect(said).toEqual(["Week 1's days changed."]);
     });
 
-    it("an answer for a week no longer shown opens nothing", async () => {
-      const { week, screen, state, said } = fakeScreen();
+    it("an answer for a week no longer shown opens nothing and moves no focus", async () => {
+      const { week, screen, adapter, state, said } = fakeScreen();
       const read = pending();
       getSetupChanges.mockReturnValueOnce(read.promise);
       const opening = week.openSetupMatch();
@@ -233,6 +247,9 @@ describe("c/shoreshBuildWeek: setup changed and Update to match setup", () => {
       await opening;
       expect(screen.setupAsk).toBeNull();
       expect(said).toEqual([]);
+      // Focus stays where the director has it: the menu's Update was for the week before.
+      expect(screen.focusOn).toBeNull();
+      expect(adapter.readIfAsked).not.toHaveBeenCalled();
     });
 
     it("a read overtaken by a newer one waits for the newer one's answer", async () => {
