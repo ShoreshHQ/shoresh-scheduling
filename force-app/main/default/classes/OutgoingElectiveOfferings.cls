@@ -96,9 +96,7 @@ global with sharing class OutgoingElectiveOfferings implements OutgoingDoors.Cap
           'elective_set' => offering.ElectiveSet__r.Name,
           'activity' => offering.Activity__r.Name,
           // Blank or 0 seats are no limit (ELECT-4.1): sent blank, as no limit is.
-          'seats' => offering.NoSeatLimit__c || offering.Seats__c == 0
-            ? null
-            : offering.Seats__c,
+          'seats' => ElectiveSeatCounts.limitOf(offering),
           'minimum_to_run' => offering.MinimumToRun__c
         }
       );
