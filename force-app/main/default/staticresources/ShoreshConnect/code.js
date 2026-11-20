@@ -10,7 +10,7 @@
  * run_shoresh_script (script.js, API-1.118 to API-1.122).
  */
 const { CAPABILITIES } = require("./capabilities");
-const { call, toAgent, withSeasonNamed } = require("./client");
+const { call, toAgent } = require("./client");
 
 const ACTIONS = CAPABILITIES;
 
@@ -18,7 +18,7 @@ const functions = Object.fromEntries(
   ACTIONS.map(({ name }) => [
     name,
     async (input = {}, { org, run } = {}) =>
-      toAgent(withSeasonNamed(await call(name, input, { org, run }), input))
+      toAgent(await call(name, input, { org, run }))
   ])
 );
 

@@ -5,26 +5,17 @@
  * value is said as change_activity_details takes it back as seen.
  */
 @RestResource(urlMapping='/v1/read_activity_details')
-global with sharing class AgentReadActivityRules implements AgentWeeks.Action {
-  private static final Set<String> FIELDS = new Set<String>{ 'season', 'name' };
-
+global with sharing class AgentReadActivityRules implements AgentRequest.SentenceRead {
   @HttpGet
   global static void get() {
-    AgentWeeks.answer(new AgentReadActivityRules());
+    AgentRequest.answer(new AgentReadActivityRules());
   }
 
-  public String run() {
-    Map<String, Object> asked = new Map<String, Object>();
-    for (String key : RestContext.request.params.keySet()) {
-      if (!FIELDS.contains(key)) {
-        throw new ShoreshException(
-          'Shoresh doesn\'t know the field "' +
-            key.left(40) +
-            '". The fields are: name, season.'
-        );
-      }
-      asked.put(key, RestContext.request.params.get(key));
-    }
+  public Set<String> fields() {
+    return new Set<String>{ 'season', 'name' };
+  }
+
+  public String run(Map<String, Object> asked) {
     asked.put('kind', 'Activity');
     AgentSetupRecords.Found found = AgentSetupRecords.find(asked);
     Map<String, String> now = AgentActivityRules.now(found.id);

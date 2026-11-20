@@ -6,9 +6,7 @@
  * goes back to merge_locations as seen.
  */
 @RestResource(urlMapping='/v1/read_same_locations')
-global with sharing class AgentSameLocations implements AgentWeeks.Action {
-  private static final Set<String> FIELDS = new Set<String>{ 'season', 'name' };
-
+global with sharing class AgentSameLocations implements AgentRequest.SentenceRead {
   /** One place as the question shows it. */
   public class Place {
     public Location__c row;
@@ -17,21 +15,14 @@ global with sharing class AgentSameLocations implements AgentWeeks.Action {
 
   @HttpGet
   global static void get() {
-    AgentWeeks.answer(new AgentSameLocations());
+    AgentRequest.answer(new AgentSameLocations());
   }
 
-  public String run() {
-    Map<String, Object> asked = new Map<String, Object>();
-    for (String key : RestContext.request.params.keySet()) {
-      if (!FIELDS.contains(key)) {
-        throw new ShoreshException(
-          'Shoresh doesn\'t know the field "' +
-            key.left(40) +
-            '". The fields are: name, season.'
-        );
-      }
-      asked.put(key, RestContext.request.params.get(key));
-    }
+  public Set<String> fields() {
+    return new Set<String>{ 'season', 'name' };
+  }
+
+  public String run(Map<String, Object> asked) {
     AgentWeeks.requireScheduler();
     Season__c season = AgentChangeCampWords.seasonOf(
       AgentFields.text(asked, 'season')

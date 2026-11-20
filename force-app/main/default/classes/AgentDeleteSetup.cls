@@ -19,7 +19,18 @@ global with sharing class AgentDeleteSetup implements AgentWeeks.Action, AgentAs
 
   @HttpGet
   global static void get() {
-    AgentWeeks.answer(new AgentDeleteSetup());
+    AgentRequest.answer(new Question());
+  }
+
+  /** The GET: Camp Setup's question before its Delete, or its refusal. */
+  private with sharing class Question implements AgentRequest.SentenceRead {
+    public Set<String> fields() {
+      return new Set<String>{ 'season', 'kind', 'name', 'program' };
+    }
+
+    public String run(Map<String, Object> asked) {
+      return AgentDeleteSetup.question(AgentSetupRecords.find(asked));
+    }
   }
 
   @HttpPost
@@ -38,9 +49,6 @@ global with sharing class AgentDeleteSetup implements AgentWeeks.Action, AgentAs
   }
 
   public String run() {
-    if (RestContext.request.httpMethod == 'GET') {
-      return question(AgentSetupRecords.find(AgentReadSetup.asked()));
-    }
     AgentSetupRecords.Found found = AgentSetupRecords.find(
       AgentFields.body(FIELDS)
     );

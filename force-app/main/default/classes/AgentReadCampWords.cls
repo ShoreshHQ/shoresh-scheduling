@@ -5,24 +5,19 @@
  * ("Bunk / Bunks"), and why this person can't change them, when they can't.
  */
 @RestResource(urlMapping='/v1/read_camp_words')
-global with sharing class AgentReadCampWords implements AgentWeeks.Action {
+global with sharing class AgentReadCampWords implements AgentRequest.SentenceRead {
   @HttpGet
   global static void get() {
-    AgentWeeks.answer(new AgentReadCampWords());
+    AgentRequest.answer(new AgentReadCampWords());
   }
 
-  public String run() {
-    for (String key : RestContext.request.params.keySet()) {
-      if (key != 'season') {
-        throw new ShoreshException(
-          'Shoresh doesn\'t know the field "' +
-            key.left(40) +
-            '". The fields are: season.'
-        );
-      }
-    }
+  public Set<String> fields() {
+    return new Set<String>{ 'season' };
+  }
+
+  public String run(Map<String, Object> asked) {
     Season__c season = AgentChangeCampWords.seasonOf(
-      RestContext.request.params.get('season')
+      (String) asked.get('season')
     );
     List<String> said = new List<String>();
     for (CampLabels.TermLabel row : CampLabels.forCamp(season.Camp__c).all()) {

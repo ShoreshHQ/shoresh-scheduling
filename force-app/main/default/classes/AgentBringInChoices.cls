@@ -19,7 +19,7 @@ global with sharing class AgentBringInChoices implements AgentWeeks.Action {
 
   @HttpGet
   global static void get() {
-    AgentImports.answerRead(AgentImports.CHOICES);
+    AgentRequest.answer(new AgentImports.Reads(AgentImports.CHOICES));
   }
 
   @HttpPost

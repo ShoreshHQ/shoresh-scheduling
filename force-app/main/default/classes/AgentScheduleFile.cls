@@ -6,10 +6,10 @@
  * season's setup (its activities, places, elective offerings and the camp's words).
  */
 @RestResource(urlMapping='/v1/schedule_file')
-global with sharing class AgentScheduleFile implements AgentFiles.Read {
+global with sharing class AgentScheduleFile implements AgentRequest.Read {
   @HttpGet
   global static void get() {
-    AgentFiles.answer(new AgentScheduleFile());
+    AgentRequest.answer(new AgentScheduleFile());
   }
 
   public Set<String> fields() {

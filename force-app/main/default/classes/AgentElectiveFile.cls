@@ -7,10 +7,10 @@
  * offers Download only on a final run.
  */
 @RestResource(urlMapping='/v1/elective_file')
-global with sharing class AgentElectiveFile implements AgentFiles.Read {
+global with sharing class AgentElectiveFile implements AgentRequest.Read {
   @HttpGet
   global static void get() {
-    AgentFiles.answer(new AgentElectiveFile());
+    AgentRequest.answer(new AgentElectiveFile());
   }
 
   public Set<String> fields() {

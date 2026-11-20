@@ -6,28 +6,21 @@
  * and in the copy, said as copy_season takes them back as seen.
  */
 @RestResource(urlMapping='/v1/read_season_copy')
-global with sharing class AgentReadSeasonCopy implements AgentWeeks.Action {
+global with sharing class AgentReadSeasonCopy implements AgentRequest.SentenceRead {
   @HttpGet
   global static void get() {
-    AgentWeeks.answer(new AgentReadSeasonCopy());
+    AgentRequest.answer(new AgentReadSeasonCopy());
   }
 
-  public String run() {
-    for (String key : RestContext.request.params.keySet()) {
-      if (key != 'season' && key != 'start_date') {
-        throw new ShoreshException(
-          'Shoresh doesn\'t know the field "' +
-            key.left(40) +
-            '". The fields are: season, start_date.'
-        );
-      }
-    }
+  public Set<String> fields() {
+    return new Set<String>{ 'season', 'start_date' };
+  }
+
+  public String run(Map<String, Object> asked) {
     Season__c season = AgentChangeCampWords.seasonOf(
-      RestContext.request.params.get('season')
+      (String) asked.get('season')
     );
-    Date start = AgentCopySeason.dateOf(
-      RestContext.request.params.get('start_date')
-    );
+    Date start = AgentCopySeason.dateOf((String) asked.get('start_date'));
     SeasonCopier.Preview preview;
     try {
       // The Copy season page's own preview.

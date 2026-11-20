@@ -91,7 +91,12 @@ describe("The camp's Salesforce address", () => {
           run: campAnswering(namespace, "1.0.1", seen)
         }
       );
-      expect(done).toEqual({ ok: true, status: 200, text: "Done" });
+      expect(done).toEqual({
+        ok: true,
+        status: 200,
+        season: "Summer 2026",
+        text: "Done"
+      });
       expect(seen[1]).toBe(`${at}publish_week`);
     }
     // The setup's test read too.

@@ -9,10 +9,13 @@
  * accepted with the week (WeekAccepts.accepted, the counter's own).
  */
 @RestResource(urlMapping='/v1/week_checks')
-global with sharing class AgentChecks {
+global with sharing class AgentChecks implements AgentRequest.Read {
+  // What a week never built has none of: its checks, or its draft (AgentReadDraft).
+  private String what;
+
   @HttpGet
   global static void get() {
-    respond('checks');
+    AgentRequest.answer(new AgentChecks('checks'));
   }
 
   /**
@@ -20,47 +23,26 @@ global with sharing class AgentChecks {
    * (AgentReadDraft), so the counter and the draft read read the same week. A week never built
    * has no <what>.
    */
-  public static void respond(String what) {
-    RestResponse response = RestContext.response;
-    response.addHeader('Content-Type', 'application/json');
-    // An AI's read: it hears the screen's refusals without their advice (API-1.105).
-    AgentRefusal.forAgent = true;
-    try {
-      Map<String, Object> asked = new Map<String, Object>();
-      for (
-        String field : new List<String>{
-          'season',
-          'week',
-          'program',
-          AgentSchedules.SCHEDULE
-        }
-      ) {
-        asked.put(field, RestContext.request.params.get(field));
-      }
-      AgentWeeks.Week week = AgentSchedules.placeOfEither(asked);
-      requireDraft(week, what);
-      Map<String, Object> read = readOf(week);
-      read.put(
-        'setup_changes',
-        SetupMatchController.getSetupChanges(week.draft.Id)
-      );
-      read.put('accepted', WeekAccepts.accepted(week.draft.Id));
-      // The week as it is called, for the labels an edit's version and Undo line carry.
-      read.put('week_name', week.name);
-      response.statusCode = 200;
-      response.responseBody = Blob.valueOf(OutgoingRows.said(read));
-    } catch (Exception e) {
-      Boolean ours =
-        e instanceof ShoreshException || e instanceof AuraHandledException;
-      response.statusCode = ours ? 400 : 500;
-      response.responseBody = Blob.valueOf(
-        JSON.serialize(
-          OutgoingRows.answered(ours ? e.getMessage() : ScreenErrors.words(e))
-        )
-      );
-    } finally {
-      AgentRefusal.forAgent = false;
-    }
+  public AgentChecks(String what) {
+    this.what = what;
+  }
+
+  public Set<String> fields() {
+    return new Set<String>{ 'season', 'week', 'program', 'schedule' };
+  }
+
+  public String run(Map<String, Object> asked) {
+    AgentWeeks.Week week = AgentSchedules.placeOfEither(asked);
+    requireDraft(week, what);
+    Map<String, Object> read = readOf(week);
+    read.put(
+      'setup_changes',
+      SetupMatchController.getSetupChanges(week.draft.Id)
+    );
+    read.put('accepted', WeekAccepts.accepted(week.draft.Id));
+    // The week as it is called, for the labels an edit's version and Undo line carry.
+    read.put('week_name', week.name);
+    return JSON.serialize(read, true);
   }
 
   /**

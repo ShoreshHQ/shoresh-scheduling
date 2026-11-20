@@ -10,7 +10,18 @@
 global with sharing class AgentImportLastYear implements AgentWeeks.Action {
   @HttpGet
   global static void get() {
-    AgentImports.answerRead(AgentImports.LAST_YEAR);
+    AgentRequest.answer(new LastYearReads());
+  }
+
+  /** Import last year's read: it may also ask for Roots' questions left (API-1.144). */
+  private with sharing class LastYearReads extends AgentImports.Reads {
+    LastYearReads() {
+      super(AgentImports.LAST_YEAR);
+    }
+
+    public override Set<String> fields() {
+      return new Set<String>{ 'season', 'open_questions' };
+    }
   }
 
   @HttpPost

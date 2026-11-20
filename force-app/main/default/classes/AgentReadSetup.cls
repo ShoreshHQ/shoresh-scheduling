@@ -6,21 +6,18 @@
  * so the agent can send it back as seen.
  */
 @RestResource(urlMapping='/v1/read_from_setup')
-global with sharing class AgentReadSetup implements AgentWeeks.Action {
-  private static final Set<String> FIELDS = new Set<String>{
-    'season',
-    'kind',
-    'name',
-    'program'
-  };
-
+global with sharing class AgentReadSetup implements AgentRequest.SentenceRead {
   @HttpGet
   global static void get() {
-    AgentWeeks.answer(new AgentReadSetup());
+    AgentRequest.answer(new AgentReadSetup());
   }
 
-  public String run() {
-    AgentSetupRecords.Found found = AgentSetupRecords.find(asked());
+  public Set<String> fields() {
+    return new Set<String>{ 'season', 'kind', 'name', 'program' };
+  }
+
+  public String run(Map<String, Object> asked) {
+    AgentSetupRecords.Found found = AgentSetupRecords.find(asked);
 
     List<String> keys = AgentSetupFields.namesOf(found.term);
     Map<String, String> lists = AgentRunsIn.now(found);
@@ -68,22 +65,6 @@ global with sharing class AgentReadSetup implements AgentWeeks.Action {
       '" holds ' +
       String.join(said, '; ') +
       '. Send these back as seen when changing them.';
-  }
-
-  /** The web address's fields; one Shoresh doesn't know is refused, as a body's is. */
-  public static Map<String, Object> asked() {
-    Map<String, Object> result = new Map<String, Object>();
-    for (String key : RestContext.request.params.keySet()) {
-      if (!FIELDS.contains(key)) {
-        throw new ShoreshException(
-          'Shoresh doesn\'t know the field "' +
-            key.left(40) +
-            '". The fields are: kind, name, program, season.'
-        );
-      }
-      result.put(key, RestContext.request.params.get(key));
-    }
-    return result;
   }
 
   /** One value as a change takes it. */

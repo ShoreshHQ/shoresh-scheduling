@@ -12,58 +12,36 @@
  * AgentUndoLearned) share what is here.
  */
 @RestResource(urlMapping='/v1/read_learned_answers')
-global with sharing class AgentLearned {
+global with sharing class AgentLearned implements AgentRequest.Read {
   public static final String NOTHING = ' Nothing was changed.';
   public static final String READ_AGAIN = ' Read them again with read_learned_answers.';
   public static final String PATTERN = 'pattern|';
 
   @HttpGet
   global static void get() {
-    RestResponse response = RestContext.response;
-    response.addHeader('Content-Type', 'application/json');
-    // An AI's read: it hears the screen's refusals without their advice (API-1.105).
-    AgentRefusal.forAgent = true;
-    try {
-      for (String key : RestContext.request.params.keySet()) {
-        if (key != 'season') {
-          throw new ShoreshException(
-            'Shoresh doesn\'t know the field "' +
-              key.left(40) +
-              '". The fields are: season.'
-          );
-        }
-      }
-      Season__c season = AgentChangeCampWords.seasonOf(
-        RestContext.request.params.get('season')
-      );
-      response.statusCode = 200;
-      response.responseBody = Blob.valueOf(
-        JSON.serialize(
-          new Map<String, Object>{
-            'season' => season.Name,
-            'camp' => season.Camp__r.Name,
-            'setup' => SeasonSetupController.getSeasonSetupInCamp(
-              season.Camp__c,
-              season.Id
-            ),
-            'answers' => LearnedController.getLearned(season.Camp__c),
-            'events' => LearnedController.getLearnedHistory(season.Camp__c)
-          },
-          true
-        )
-      );
-    } catch (Exception e) {
-      Boolean ours =
-        e instanceof ShoreshException || e instanceof AuraHandledException;
-      response.statusCode = ours ? 400 : 500;
-      response.responseBody = Blob.valueOf(
-        JSON.serialize(
-          OutgoingRows.answered(ours ? e.getMessage() : ScreenErrors.words(e))
-        )
-      );
-    } finally {
-      AgentRefusal.forAgent = false;
-    }
+    AgentRequest.answer(new AgentLearned());
+  }
+
+  public Set<String> fields() {
+    return new Set<String>{ 'season' };
+  }
+
+  public String run(Map<String, Object> asked) {
+    Season__c season = AgentChangeCampWords.seasonOf(
+      (String) asked.get('season')
+    );
+    return JSON.serialize(
+      new Map<String, Object>{
+        'camp' => season.Camp__r.Name,
+        'setup' => SeasonSetupController.getSeasonSetupInCamp(
+          season.Camp__c,
+          season.Id
+        ),
+        'answers' => LearnedController.getLearned(season.Camp__c),
+        'events' => LearnedController.getLearnedHistory(season.Camp__c)
+      },
+      true
+    );
   }
 
   /** The camp of the season named (none: the season the screens open on). */

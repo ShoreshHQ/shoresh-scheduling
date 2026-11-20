@@ -8,7 +8,7 @@
 private class AgentGuessesTest {
   /** One request to a door; answers [status, sentence]. */
   private static List<Object> ask(
-    AgentWeeks.Action door,
+    Object door,
     String method,
     Map<String, Object> body
   ) {
@@ -22,7 +22,11 @@ private class AgentGuessesTest {
       RestContext.request.requestBody = Blob.valueOf(JSON.serialize(body));
     }
     RestContext.response = new RestResponse();
-    AgentWeeks.answer(door);
+    if (door instanceof AgentRequest.Read) {
+      AgentRequest.answer((AgentRequest.Read) door);
+    } else {
+      AgentWeeks.answer((AgentWeeks.Action) door);
+    }
     Map<String, Object> answer = (Map<String, Object>) JSON.deserializeUntyped(
       RestContext.response.responseBody.toString()
     );

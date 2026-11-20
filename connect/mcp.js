@@ -7,13 +7,7 @@
 const fs = require("fs");
 const path = require("path");
 const { CAPABILITIES } = require("./capabilities");
-const {
-  call,
-  sfInstalled,
-  signIn,
-  toAgent,
-  withSeasonNamed
-} = require("./client");
+const { call, sfInstalled, signIn, toAgent } = require("./client");
 const script = require("./script");
 
 /**
@@ -110,7 +104,7 @@ let signingIn = null;
  */
 async function act(name, input, { org, browserSignIn, host, callFn, sf }) {
   try {
-    return withSeasonNamed(await callFn(name, input, { org }), input);
+    return await callFn(name, input, { org });
   } catch (e) {
     if (!/^Couldn't reach Salesforce/.test(e.message)) throw e;
     if (!(await sf.installed())) throw new Error(NO_SF);

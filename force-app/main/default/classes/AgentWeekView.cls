@@ -6,39 +6,25 @@
  * no one draws their own. User mode: the person's own access.
  */
 @RestResource(urlMapping='/v1/week_view')
-global with sharing class AgentWeekView {
+global with sharing class AgentWeekView implements AgentRequest.Read {
   @HttpGet
   global static void get() {
-    RestRequest request = RestContext.request;
-    RestResponse response = RestContext.response;
-    response.addHeader('Content-Type', 'application/json');
-    // An AI's read: it hears the screen's refusals without their advice (API-1.105).
-    AgentRefusal.forAgent = true;
-    try {
-      response.statusCode = 200;
-      response.responseBody = Blob.valueOf(
-        JSON.serialize(
-          answer(request.params.get('season'), request.params.get('week'))
-        )
-      );
-    } catch (Exception e) {
-      response.statusCode = e instanceof ShoreshException ? 400 : 500;
-      response.responseBody = Blob.valueOf(
-        JSON.serialize(
-          new Map<String, String>{
-            'message' => e instanceof ShoreshException
-              ? e.getMessage()
-              : ScreenErrors.words(e)
-          }
-        )
-      );
-    } finally {
-      AgentRefusal.forAgent = false;
-    }
+    AgentRequest.answer(new AgentWeekView());
+  }
+
+  public Set<String> fields() {
+    return new Set<String>{ 'season', 'week' };
+  }
+
+  public String run(Map<String, Object> asked) {
+    return JSON.serialize(
+      answer((String) asked.get('season'), (String) asked.get('week'))
+    );
   }
 
   /**
-   * { season, week, labels, programs: [ { program, view } ], opens }, published programs in order.
+   * { week, labels, programs: [ { program, view } ], opens }, published programs in order (the
+   * read's answer says its season too, API-1.108).
    * opens (API-1.28): the camp's own Salesforce address of the Schedules screen on this week's
    * published schedule (its first program's), never a sign-in address.
    */
@@ -75,7 +61,6 @@ global with sharing class AgentWeekView {
     }
     Id campId = campOf(season);
     return new Map<String, Object>{
-      'season' => season.Name,
       'week' => week.Name,
       'labels' => CampLabels.forCamp(campId).all(),
       'dayNaming' => DayWords.namingOf(season.Id),

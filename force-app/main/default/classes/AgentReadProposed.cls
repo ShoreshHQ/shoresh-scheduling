@@ -5,24 +5,19 @@
  * said by its elective set and activity, as elective_looks_right takes it.
  */
 @RestResource(urlMapping='/v1/read_guessed_electives')
-global with sharing class AgentReadProposed implements AgentWeeks.Action {
+global with sharing class AgentReadProposed implements AgentRequest.SentenceRead {
   @HttpGet
   global static void get() {
-    AgentWeeks.answer(new AgentReadProposed());
+    AgentRequest.answer(new AgentReadProposed());
   }
 
-  public String run() {
-    for (String key : RestContext.request.params.keySet()) {
-      if (key != 'season') {
-        throw new ShoreshException(
-          'Shoresh doesn\'t know the field "' +
-            key.left(40) +
-            '". The fields are: season.'
-        );
-      }
-    }
+  public Set<String> fields() {
+    return new Set<String>{ 'season' };
+  }
+
+  public String run(Map<String, Object> asked) {
     Season__c season = AgentChangeCampWords.seasonOf(
-      RestContext.request.params.get('season')
+      (String) asked.get('season')
     );
     CampLabels words = CampLabels.forCamp(season.Camp__c);
     List<String> said = new List<String>();

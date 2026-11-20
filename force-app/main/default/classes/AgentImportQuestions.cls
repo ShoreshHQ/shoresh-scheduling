@@ -1,30 +1,9 @@
 /**
- * Roots' import questions left, through an agent (docs/protocol/api.md API-1.144): whether a read
- * of Import last year asks for them (open_questions=true), and the last import's own files.
+ * Roots' import questions left, through an agent (docs/protocol/api.md API-1.144): only a read of
+ * Import last year asks for them (open_questions=true), with the last import's own files.
  */
 public with sharing class AgentImportQuestions {
-  private static final String QUESTIONS_FIELD = 'open_questions';
-
-  /**
-   * Whether the read asks for the questions left open (only Import last year's may), refusing a
-   * field the read doesn't know.
-   */
-  public static Boolean asked(String door) {
-    Map<String, String> params = RestContext.request.params;
-    Boolean open =
-      door == AgentImports.LAST_YEAR &&
-      params.get(QUESTIONS_FIELD) == 'true';
-    for (String key : params.keySet()) {
-      if (key != 'season' && !(open && key == QUESTIONS_FIELD)) {
-        throw new ShoreshException(
-          'Shoresh doesn\'t know the field "' +
-            key.left(40) +
-            '". The fields are: season.'
-        );
-      }
-    }
-    return open;
-  }
+  public static final String FIELD = 'open_questions';
 
   /**
    * The person's last import's files, while it has questions open (ImportLog.openFiles). None

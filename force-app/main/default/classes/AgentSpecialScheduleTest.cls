@@ -157,7 +157,7 @@ private class AgentSpecialScheduleTest {
       Assert.areEqual(200, read[0], String.valueOf(read[1]));
       Map<String, Object> page = (Map<String, Object>) read[1];
       Assert.areEqual(
-        new Set<String>{ 'plan', 'setup', 'labels' },
+        new Set<String>{ 'plan', 'setup', 'labels', 'season' },
         page.keySet()
       );
       Assert.areEqual(

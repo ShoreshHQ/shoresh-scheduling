@@ -363,7 +363,7 @@ private class AgentSetupTest {
     RestContext.request.params.put('kind', kind);
     RestContext.request.params.put('name', name);
     RestContext.response = new RestResponse();
-    AgentAskFirstTestCalls.answer(new AgentDeleteSetup());
+    AgentDeleteSetup.get();
     Map<String, Object> answer = (Map<String, Object>) JSON.deserializeUntyped(
       RestContext.response.responseBody.toString()
     );

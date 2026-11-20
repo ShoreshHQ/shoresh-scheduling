@@ -343,7 +343,43 @@ private class AgentReadTest {
       );
     }
     Assert.areEqual('Week 1', answer.get('week'));
+  }
+
+  // API-1.108: a read's answer says the season it used first, once: a season inside it (a
+  // setup's) is not the answer's, and one the read says itself is kept as it is.
+  @IsTest
+  static void aReadsSeasonIsSaidOnce() {
+    OutgoingRows.usedIs(new Season__c(Name = 'Summer 2026'));
+    Assert.areEqual(
+      '{"season":"Summer 2026","week":"Week 1","setup":{"season":"Other"}}',
+      AgentRequest.said('{"week":"Week 1","setup":{"season":"Other"}}')
+    );
+    Assert.areEqual('{"season":"Summer 2026"}', AgentRequest.said('{}'));
+    Assert.areEqual(
+      '{"week":"Week 1","season":"Own"}',
+      AgentRequest.said('{"week":"Week 1","season":"Own"}')
+    );
+  }
+
+  // API-1.108: the week view's read says the season it used, as every read does.
+  @IsTest
+  static void theWeekViewSaysItsSeason() {
+    IncomingTestData camp = new IncomingTestData();
+    schedule(camp, 'Published', grid(camp));
+    System.runAs(camp.sender('Shoresh_Scheduler')) {
+      RestContext.request = new RestRequest();
+      RestContext.request.httpMethod = 'GET';
+      RestContext.request.params.put('week', 'Week 1');
+      RestContext.response = new RestResponse();
+      AgentWeekView.get();
+    }
+    String body = RestContext.response.responseBody.toString();
+    Assert.areEqual(200, RestContext.response.statusCode, body);
+    Map<String, Object> answer = (Map<String, Object>) JSON.deserializeUntyped(
+      body
+    );
     Assert.areEqual('Summer 2026', answer.get('season'));
+    Assert.areEqual('Week 1', answer.get('week'));
   }
 
   // API-1.28: a schedule read's answer opens the week on the Schedules screen in the camp's own

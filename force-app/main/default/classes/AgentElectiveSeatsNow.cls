@@ -6,41 +6,19 @@
  * then, and each camper's seats, locked or moved by hand, with the run as read (seen).
  */
 @RestResource(urlMapping='/v1/elective_seats_now')
-global with sharing class AgentElectiveSeatsNow {
+global with sharing class AgentElectiveSeatsNow implements AgentRequest.SentenceRead {
   @HttpGet
   global static void get() {
-    RestResponse response = RestContext.response;
-    response.addHeader('Content-Type', 'application/json');
-    // An AI's read: it hears the screen's refusals without their advice (API-1.105).
-    AgentRefusal.forAgent = true;
-    try {
-      Map<String, Object> asked = new Map<String, Object>();
-      for (
-        String field : new List<String>{ 'season', 'week', 'elective_set' }
-      ) {
-        asked.put(field, RestContext.request.params.get(field));
-      }
-      AgentElectives.Run run = AgentElectives.committedOrFinal(asked);
-      response.statusCode = 200;
-      response.responseBody = Blob.valueOf(
-        JSON.serialize(
-          OutgoingRows.answered(
-            said(run, ElectiveSeatsController.openRun(run.id))
-          )
-        )
-      );
-    } catch (Exception e) {
-      Boolean ours =
-        e instanceof ShoreshException || e instanceof AuraHandledException;
-      response.statusCode = ours ? 400 : 500;
-      response.responseBody = Blob.valueOf(
-        JSON.serialize(
-          OutgoingRows.answered(ours ? e.getMessage() : ScreenErrors.words(e))
-        )
-      );
-    } finally {
-      AgentRefusal.forAgent = false;
-    }
+    AgentRequest.answer(new AgentElectiveSeatsNow());
+  }
+
+  public Set<String> fields() {
+    return new Set<String>{ 'season', 'week', 'elective_set' };
+  }
+
+  public String run(Map<String, Object> asked) {
+    AgentElectives.Run run = AgentElectives.committedOrFinal(asked);
+    return said(run, ElectiveSeatsController.openRun(run.id));
   }
 
   /** The run as the screen shows it, in lines. */

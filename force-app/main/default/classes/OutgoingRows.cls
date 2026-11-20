@@ -36,15 +36,6 @@ public with sharing class OutgoingRows {
     return result;
   }
 
-  /** A read's body, saying which season it used when it doesn't already (API-1.108). */
-  public static String said(Map<String, Object> body) {
-    Season__c season = used ?? SeasonAsked.found();
-    if (season != null && !body.containsKey('season')) {
-      body.put('season', season.Name);
-    }
-    return JSON.serialize(body, true);
-  }
-
   private static Season__c seasonNamed(String name) {
     String given = name.normalizeSpace();
     List<Season__c> found = [

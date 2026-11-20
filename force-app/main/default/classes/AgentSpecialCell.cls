@@ -22,36 +22,10 @@ global with sharing class AgentSpecialCell implements AgentWeeks.Action {
     'change',
     'runs'
   };
-  private static final Set<String> READ_FIELDS = new Set<String>{
-    'season',
-    'special',
-    'kind'
-  };
 
   @HttpGet
   global static void get() {
-    RestResponse response = RestContext.response;
-    response.addHeader('Content-Type', 'application/json');
-    // An AI's read: it hears the screen's refusals without their advice (API-1.105).
-    AgentRefusal.forAgent = true;
-    try {
-      AgentWeeks.requireScheduler();
-      response.responseBody = Blob.valueOf(
-        JSON.serialize(readOf(AgentSpecials.find(asked())), true)
-      );
-      response.statusCode = 200;
-    } catch (Exception e) {
-      Boolean ours =
-        e instanceof ShoreshException || e instanceof AuraHandledException;
-      response.statusCode = ours ? 400 : 500;
-      response.responseBody = Blob.valueOf(
-        JSON.serialize(
-          OutgoingRows.answered(ours ? e.getMessage() : ScreenErrors.words(e))
-        )
-      );
-    } finally {
-      AgentRefusal.forAgent = false;
-    }
+    AgentRequest.answer(new WhatThePageOpens());
   }
 
   @HttpPost
@@ -59,20 +33,19 @@ global with sharing class AgentSpecialCell implements AgentWeeks.Action {
     AgentWeeks.answer(new AgentSpecialCell());
   }
 
-  /** The fields the read was asked with; one Shoresh doesn't know is refused. */
-  private static Map<String, Object> asked() {
-    Map<String, Object> result = new Map<String, Object>();
-    for (String key : RestContext.request.params.keySet()) {
-      if (!READ_FIELDS.contains(key)) {
-        throw new ShoreshException(
-          'Shoresh doesn\'t know the field "' +
-            key.left(40) +
-            '". The fields are: kind, season, special.'
-        );
-      }
-      result.put(key, RestContext.request.params.get(key));
+  /** The GET: what the page opens (readOf). */
+  private with sharing class WhatThePageOpens implements AgentRequest.Read {
+    public Set<String> fields() {
+      return new Set<String>{ 'season', 'special', 'kind' };
     }
-    return result;
+
+    public String run(Map<String, Object> asked) {
+      AgentWeeks.requireScheduler();
+      return JSON.serialize(
+        AgentSpecialCell.readOf(AgentSpecials.find(asked)),
+        true
+      );
+    }
   }
 
   /** What the page opens: the plan as its editor holds it, the season's setup and the camp's words. */

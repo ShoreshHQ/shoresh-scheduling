@@ -7,7 +7,7 @@
 private class AgentSetupRestTest {
   /** One request to a door in the season named; answers [status, sentence]. */
   private static List<Object> ask(
-    AgentWeeks.Action door,
+    Object door,
     String method,
     Map<String, Object> body
   ) {

@@ -5,30 +5,17 @@
  * each column's cell (a group, or an event's station), and the plan's revision as seen.
  */
 @RestResource(urlMapping='/v1/read_special_schedule')
-global with sharing class AgentReadSpecialSchedule implements AgentWeeks.Action {
-  private static final Set<String> FIELDS = new Set<String>{
-    'season',
-    'special',
-    'kind'
-  };
-
+global with sharing class AgentReadSpecialSchedule implements AgentRequest.SentenceRead {
   @HttpGet
   global static void get() {
-    AgentWeeks.answer(new AgentReadSpecialSchedule());
+    AgentRequest.answer(new AgentReadSpecialSchedule());
   }
 
-  public String run() {
-    Map<String, Object> asked = new Map<String, Object>();
-    for (String key : RestContext.request.params.keySet()) {
-      if (!FIELDS.contains(key)) {
-        throw new ShoreshException(
-          'Shoresh doesn\'t know the field "' +
-            key.left(40) +
-            '". The fields are: kind, season, special.'
-        );
-      }
-      asked.put(key, RestContext.request.params.get(key));
-    }
+  public Set<String> fields() {
+    return new Set<String>{ 'season', 'special', 'kind' };
+  }
+
+  public String run(Map<String, Object> asked) {
     AgentSpecials.Found found = AgentSpecials.find(asked);
     ScheduleGrid grid = found.grid;
     List<String> columns = new List<String>();
