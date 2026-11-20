@@ -47,7 +47,7 @@ global with sharing class AgentApplyToOtherWeeks implements AgentWeeks.Action, A
       ' (' +
       source.program.Name +
       ', ' +
-      screen() +
+      AgentSchedules.screenOf(source) +
       ') to ' +
       previewed.weekName +
       ': ' +
@@ -95,10 +95,6 @@ global with sharing class AgentApplyToOtherWeeks implements AgentWeeks.Action, A
       publishedWords();
   }
 
-  private String screen() {
-    return source.manual ? ManualDrafts.NAME : GeneratedDrafts.NAME;
-  }
-
   private static String cellWords(Integer count) {
     return count == 1 ? '1 cell changes' : count + ' cells change';
   }
@@ -117,10 +113,13 @@ global with sharing class AgentApplyToOtherWeeks implements AgentWeeks.Action, A
 
   private String whatIsKept() {
     return previewed.startsDraft
-      ? previewed.weekName + ' gets its first ' + screen() + '.'
+      ? previewed.weekName +
+        ' gets its first ' +
+        AgentSchedules.screenOf(source) +
+        '.'
       : previewed.weekName +
         '\'s ' +
-        screen() +
+        AgentSchedules.screenOf(source) +
         ' goes to its Versions first as "' +
         WeekApply.versionName(source.name) +
         '".';

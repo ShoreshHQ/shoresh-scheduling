@@ -37,7 +37,7 @@ global with sharing class AgentDeleteVersion implements AgentWeeks.Action, Agent
       ' (' +
       week.program.Name +
       ', ' +
-      (week.manual ? 'Manual Build' : 'Generated Schedule') +
+      AgentSchedules.screenOf(week) +
       ') for good.';
   }
 
@@ -47,11 +47,7 @@ global with sharing class AgentDeleteVersion implements AgentWeeks.Action, Agent
     ScheduleViews.VersionRow version = AgentVersions.named(week, body);
     try {
       // Each screen's own delete (API-1.41).
-      if (week.manual) {
-        ManualBuildController.deleteVersion(week.draft.Id, version.id);
-      } else {
-        GeneratedScheduleController.deleteVersion(week.draft.Id, version.id);
-      }
+      AgentScreenVersions.deleteVersion(week, version.id);
     } catch (Exception e) {
       throw AgentVersions.failed(version.name + ' wasn\'t deleted.', e);
     }

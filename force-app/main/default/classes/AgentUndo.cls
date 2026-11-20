@@ -96,12 +96,11 @@ global with sharing class AgentUndo implements AgentWeeks.Action, AgentAskFirst.
       new Map<String, Object>{ 'seen' => held.get('seen') },
       'seen'
     );
-    SlotEdits.Result result = week.manual
-      ? ManualBuildController.saveSlots(
-          week.draft.Id,
-          new List<SlotEdits.Edit>{ AgentUndoHeld.editOf(held) }
-        )
-      : AgentCells.handEdit(week, seen, AgentUndoHeld.editOf(held));
+    SlotEdits.Result result = AgentSchedules.saveEdit(
+      week,
+      seen,
+      AgentUndoHeld.editOf(held)
+    );
     if (!result.conflicts.isEmpty()) {
       throw new AgentWeeks.ConflictException(ScheduleDaySaves.CHANGED_SINCE);
     }

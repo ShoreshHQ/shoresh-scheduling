@@ -42,12 +42,7 @@ public with sharing class AgentCells implements AgentWeeks.Action {
     SlotEdits.Edit edit = new SlotEdits.Edit();
     edit.runs = runs;
     // One edit, as the screen sends one step: made whole or not at all.
-    SlotEdits.Result result = week.manual
-      ? ManualBuildController.saveSlots(
-          week.draft.Id,
-          new List<SlotEdits.Edit>{ edit }
-        )
-      : handEdit(week, seen, edit);
+    SlotEdits.Result result = AgentSchedules.saveEdit(week, seen, edit);
     if (!result.conflicts.isEmpty()) {
       throw AgentWeeks.changedSince(change);
     }

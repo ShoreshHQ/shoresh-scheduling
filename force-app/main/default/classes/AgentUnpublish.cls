@@ -23,7 +23,8 @@ global with sharing class AgentUnpublish implements AgentWeeks.Action {
 
   public String run() {
     AgentWeeks.Week week = AgentSchedules.eitherOf(AgentFields.body(FIELDS));
-    String weekWord = AgentVersions.labelsOf(week).singularInSentence('Week');
+    String weekWord = AgentSchedules.campWordsOf(week)
+      .singularInSentence('Week');
     SchedulePublish.Result result;
     try {
       // What the screen shows as published (its Unpublish is only there when there is one).
