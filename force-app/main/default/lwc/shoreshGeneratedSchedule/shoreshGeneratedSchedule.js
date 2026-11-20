@@ -1,5 +1,6 @@
 import { LightningElement, api } from "lwc";
 import { BuildScreen } from "c/shoreshBuildScreen";
+import { BuildWeek } from "c/shoreshBuildWeek";
 import setUpItem from "@salesforce/apex/SpecialPlacingController.setUpItem";
 import takeOffDay from "@salesforce/apex/SpecialPlacingController.takeOffDay";
 import previewPublish from "@salesforce/apex/GeneratedScheduleController.previewPublish";
@@ -17,20 +18,16 @@ import { publishQuestion, publishedWord } from "c/shoreshPublish";
 import { notesWithout, whyOf } from "c/shoreshEngine";
 import {
   ACTION,
-  CHANGED_SINCE,
   CONFLICT,
   LOCK,
   SAVED,
-  SETUP_CHANGED,
   addActivity,
   buildInputOf,
   builtWeekOf,
   loadWeek,
-  readSetupChanges,
   saveEdits,
   saveWeek,
-  setLocks,
-  updateToMatchSetup
+  setLocks
 } from "c/shoreshGeneratedWeek";
 import { dayLabel, days as dayPillsOf, groups } from "c/shoreshScheduleViews";
 import { buildInPieces } from "./pieces";
@@ -39,6 +36,7 @@ import { lockChoices, lockedKeys, lockedText, weekCells } from "./locks";
 import { clearedDays, editedKeys } from "./week";
 import { lockOf } from "./editing";
 import { checkDays, editorDraftOf } from "./counter";
+import { generatedWeekAdapter } from "./weekAdapter";
 
 // What each action is called on its button and while it runs.
 const ACTION_LABEL = {
@@ -217,12 +215,6 @@ export default class ShoreshGeneratedSchedule extends BuildScreen(
   editorHasWeek = false;
   // What setup changed since the week was built (SetupMatch.Preview), for the week shown, or null.
   setupPreview = null;
-  setupTicket = 0;
-  // The newest read of it (a promise), or null.
-  setupRead = null;
-  // The "couldn't check against setup" message while it is shown, so a later read that works
-  // clears it and nothing else.
-  setupError = null;
   // "Update to match setup" is open, or null: { notice, announcement, said (counts each time
   // its words are to be read out, even the same words again), kept (an update in this opening
   // kept the week as it was, so the next keeps none), updated (an update in this opening was
@@ -230,7 +222,8 @@ export default class ShoreshGeneratedSchedule extends BuildScreen(
   // is on its way.
   setupAsk = null;
   setupWorking = false;
-  setupSaid = 0;
+  // The week as this screen last read it, and the flows that act on it.
+  buildWeek = new BuildWeek(generatedWeekAdapter(this));
   // The setup dots as the editor takes them, worked out once per preview.
   setupDotsMemo = { preview: null, dots: null };
 
@@ -485,10 +478,7 @@ export default class ShoreshGeneratedSchedule extends BuildScreen(
       this.unpublishAsk = null;
       this.publishing = false;
       // The last week's setup changes are not this one's; an answer still on its way is dropped.
-      this.setupPreview = null;
-      this.setupError = null;
-      this.setupAsk = null;
-      this.setupTicket += 1;
+      this.buildWeek.forgetSetup();
     }
     this.loading = !this.loaded;
     try {
@@ -551,7 +541,7 @@ export default class ShoreshGeneratedSchedule extends BuildScreen(
       return;
     }
     this.showInEditor(fresh ? "fresh" : "again");
-    this.loadSetupChanges();
+    this.buildWeek.loadSetupChanges();
   }
 
   /** Coming back to the window shows other people's saves, unless something is under way. */
@@ -1013,7 +1003,7 @@ export default class ShoreshGeneratedSchedule extends BuildScreen(
         this.loadVersions();
         this.tellSchedulesChanged(!loaded.scheduleId, week);
         // What still doesn't match setup in the week just built (locks and leftovers stay).
-        this.loadSetupChanges();
+        this.buildWeek.loadSetupChanges();
         // Said when it ends, not only when it starts (the bar's progress changes silently).
         const { filled, total } = this.checked.cells;
         this.announce(
@@ -1619,7 +1609,7 @@ export default class ShoreshGeneratedSchedule extends BuildScreen(
         (preview.awayGroupIds || []).length > 0
       : this.isGenerated;
     if (again) {
-      this.loadSetupChanges();
+      this.buildWeek.loadSetupChanges();
     }
   }
 
@@ -1695,41 +1685,6 @@ export default class ShoreshGeneratedSchedule extends BuildScreen(
 
   // ---------- setup changed since the week was built (as Manual Build: ADR 0008 part 6) ----------
 
-  async readSetupChanges() {
-    this.setupTicket += 1;
-    const ticket = this.setupTicket;
-    const loaded = this.loaded;
-    if (!loaded || !loaded.scheduleId) {
-      this.setupPreview = null;
-      return null;
-    }
-    try {
-      const preview = await readSetupChanges(loaded);
-      if (ticket !== this.setupTicket) {
-        return null;
-      }
-      this.setupPreview = preview;
-      // Checked now: a "couldn't check" from an earlier read goes (any other error stays).
-      if (this.error && this.error === this.setupError) {
-        this.error = null;
-      }
-      this.setupError = null;
-      return preview;
-    } catch (e) {
-      // Said, never hidden: the dots and the box stay as last read rather than vanishing, which
-      // would make the week look as if it matched setup.
-      if (ticket === this.setupTicket) {
-        this.error = failed(
-          `Shoresh couldn't check ${this.weekName} against setup.`,
-          e
-        );
-        this.errorFromRead = false;
-        this.setupError = this.error;
-      }
-      return null;
-    }
-  }
-
   /** Setup changed (the menu's foot says so), or it can't be compared (said under the rail). */
   get showSetupChanged() {
     return (
@@ -1780,155 +1735,17 @@ export default class ShoreshGeneratedSchedule extends BuildScreen(
     }
   }
 
-  /**
-   * "Update to match setup": what it would change is read fresh and shown first; nothing changes
-   * until the director chooses a change, or all of them.
-   */
-  async handleSetupMatch() {
-    if (this.actionsDisabled) {
-      this.say("One moment: an edit is still saving.");
-      return;
-    }
-    const week = this.loadedFor;
-    this.setupWorking = true;
-    try {
-      const preview = await this.newestSetupChanges(
-        this.loadSetupChanges(),
-        week
-      );
-      if (week !== this.loadedFor || !preview) {
-        return;
-      }
-      if (preview.problem) {
-        // Can't be compared now: said, never "matches" (the box says the same).
-        this.say(preview.problem);
-      } else if (preview.changes.length) {
-        // A new opening of the list: its first update that takes a placement keeps a version.
-        this.setupAsk = { notice: null, kept: false, updated: false };
-      } else {
-        this.say(`${this.weekName} matches setup.`);
-      }
-    } finally {
-      this.setupWorking = false;
-      if (!this.setupAsk) {
-        this.focusOn = "update-to-match";
-        this.readAfterSetup();
-      }
-    }
-  }
-
-  /**
-   * A read's answer, or, when a newer read overtook it (the week read again on coming back to the
-   * window), that read's: the one shown. So a click waits for it rather than doing nothing.
-   */
-  async newestSetupChanges(read, week) {
-    const preview = await read;
-    if (!preview && week === this.loadedFor && this.setupRead !== read) {
-      return this.newestSetupChanges(this.setupRead, week);
-    }
-    return preview;
+  /** "Update to match setup" (c/shoreshBuildWeek): the list, read fresh, before anything changes. */
+  handleSetupMatch() {
+    return this.buildWeek.openSetupMatch();
   }
 
   handleSetupClose() {
-    this.setupAsk = null;
-    this.focusOn = "update-to-match";
-    this.readAfterSetup();
+    this.buildWeek.closeSetupMatch();
   }
 
-  /**
-   * Makes the chosen changes, on the week as the list showed it, then reads the week again.
-   * Refused, with nothing changed, when someone saved the week since (it is read again) or setup
-   * changed again (the list shows what it would change now). After one change the list stays open
-   * with what is left.
-   */
-  async handleSetupUpdate(event) {
-    const keys = event.detail.keys;
-    const preview = this.setupPreview;
-    if (!preview || !keys.length || this.setupWorking || !this.setupAsk) {
-      return;
-    }
-    let kept = this.setupAsk.kept;
-    // A read already on its way read the week before this update: its answer must not replace
-    // the updated week. A change of week while it runs drops this answer.
-    this.loadTicket += 1;
-    this.weekTicket += 1;
-    const ticket = this.loadTicket;
-    this.reading = false;
-    this.loading = false;
-    this.setupWorking = true;
-    this.error = null;
-    this.errorFromRead = false;
-    try {
-      const result = await updateToMatchSetup(this.loaded, {
-        keys,
-        seenRevisions: preview.revisions,
-        versionKept: kept
-      });
-      if (ticket !== this.loadTicket) {
-        return;
-      }
-      if (result.refused === CHANGED_SINCE) {
-        this.setupAsk = null;
-        this.weekEditor.setNotice(
-          `Someone else changed this ${this.t.sIn("Week")} since, so nothing was updated.`
-        );
-        this.readAfterRun = true;
-        return;
-      }
-      if (result.refused === SETUP_CHANGED) {
-        const fresh = await this.loadSetupChanges();
-        const again =
-          "Something changed while you looked, so nothing was updated.";
-        // The list shows what it would change now, in place.
-        this.setupAsk =
-          fresh && fresh.changes.length
-            ? this.setupAskWith(again, null, kept, this.setupAsk.updated)
-            : null;
-        if (fresh && !this.setupAsk) {
-          // Nothing left to change (or it can't be compared now): the list closes, and says why.
-          this.say(
-            `${again} ${fresh.problem || `${this.weekName} matches setup now.`}`
-          );
-        }
-        return;
-      }
-      kept = kept || result.kept;
-      if (result.kept) {
-        // Versions lists the week as it was, kept just now, here and elsewhere (WEEK-6.7).
-        this.loadVersions();
-        this.tellSchedulesChanged();
-      }
-      const done =
-        keys.length === 1
-          ? "Updated to match setup."
-          : `Made ${keys.length} changes to match setup.`;
-      if (!(await this.showUpdated(ticket))) {
-        // Updated, but the week can't be read just now: said, and read again once this is over.
-        this.setupAsk = null;
-        this.sayDone(done);
-        return;
-      }
-      const fresh = await this.loadSetupChanges();
-      const all = keys.length === preview.changes.length;
-      // While the list stays open it says so itself: a screen reader in the dialog hears only
-      // the dialog.
-      this.setupAsk =
-        !all && fresh && fresh.changes.length
-          ? this.setupAskWith(null, done, kept, true)
-          : null;
-      if (!this.setupAsk) {
-        this.sayDone(done);
-      }
-    } catch (e) {
-      this.setupAsk = null;
-      this.error = failed(`${this.weekName} was not updated.`, e);
-    } finally {
-      this.setupWorking = false;
-      if (ticket === this.loadTicket && !this.setupAsk) {
-        this.focusOn = "update-to-match";
-        this.readAfterSetup();
-      }
-    }
+  handleSetupUpdate(event) {
+    return this.buildWeek.updateToMatchSetup(event.detail.keys);
   }
 
   /**
@@ -2483,7 +2300,7 @@ export default class ShoreshGeneratedSchedule extends BuildScreen(
     // Undo starts over: its steps were made on the week it replaced. So does a Rebuild's Undo.
     this.startedOver = null;
     this.showInEditor("rebuilt");
-    this.loadSetupChanges();
+    this.buildWeek.loadSetupChanges();
     this.restored = { id, revision: week.revision };
     if (this.editorHasWeek) {
       this.say(said);
