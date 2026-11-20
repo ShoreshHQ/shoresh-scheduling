@@ -73,7 +73,7 @@ public with sharing class SetupMatch {
     public List<Change> changes = new List<Change>();
     @AuraEnabled
     public List<Dot> dots = new List<Dot>();
-    // The week's revisions it was worked out on (ScheduleDays.stamp), sent back by an update.
+    // The week's revisions it was worked out on (WeekTickets.stamp), sent back by an update.
     @AuraEnabled
     public String revisions;
     // Activities closed this week: placing one makes a new difference.
@@ -152,7 +152,9 @@ public with sharing class SetupMatch {
     Schedule__c draft = lockedDraft(draftId);
     List<ScheduleDays.DayGrid> current = ScheduleDays.read(draftId);
     Updated result = new Updated();
-    if (ScheduleDays.stamp(current) != ask.seenRevisions) {
+    if (
+      !WeekTickets.seenNullNever(WeekTickets.stamp(current), ask.seenRevisions)
+    ) {
       result.refused = CHANGED_SINCE;
       return result;
     }
@@ -253,7 +255,7 @@ public with sharing class SetupMatch {
   ) {
     Plan plan = new Plan();
     plan.current = draftDays;
-    plan.preview.revisions = ScheduleDays.stamp(draftDays);
+    plan.preview.revisions = WeekTickets.stamp(draftDays);
     BlankWeek.Week target;
     try {
       target = setup.blankWeek();

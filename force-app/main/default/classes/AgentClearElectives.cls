@@ -28,16 +28,24 @@ global with sharing class AgentClearElectives implements AgentWeeks.Action, Agen
   /** What Clear takes away, for good, as the screen's picture says it (API-1.106). */
   public String preview() {
     ElectiveClear.Picture now = heldAsSeen();
+    CampLabels words = IncomingSeason.labelsOf(season.Id);
+    String electives = words.pluralInSentence('Elective');
     return 'This clears ' +
       (weekId == null
-        ? 'every week\'s electives in "' + season.Name + '"'
-        : 'the electives of ' +
+        ? 'every week\'s ' + electives + ' in "' + season.Name + '"'
+        : 'the ' +
+          electives +
+          ' of ' +
           AgentFields.text(AgentFields.body(FIELDS), 'week') +
           ' in "' +
           season.Name +
           '"') +
-      ', for good: each week\'s seats, draft or final, with their choices go, and every camper no remaining week uses. It can\'t be undone. As it is now:\n' +
-      AgentElectivesToClear.said(now);
+      ', for good: each week\'s ' +
+      words.pluralInSentence('Seats') +
+      ', draft or final, with their choices go, and every ' +
+      words.singularInSentence('Camper') +
+      ' no remaining week uses. It can\'t be undone. As it is now:\n' +
+      AgentElectivesToClear.said(now, words);
   }
 
   public String run() {
@@ -61,13 +69,19 @@ global with sharing class AgentClearElectives implements AgentWeeks.Action, Agen
         'Nothing was cleared. ' + ScreenErrors.words(e)
       );
     }
-    // The screen's own words for it.
-    return 'Cleared these seats' +
+    // The screen's own words for it, in the camp's.
+    CampLabels words = IncomingSeason.labelsOf(season.Id);
+    return 'Cleared these ' +
+      words.pluralInSentence('Seats') +
       (result.campers == 0
         ? '.'
         : ' and ' +
           result.campers +
-          (result.campers == 1 ? ' camper.' : ' campers.'));
+          ' ' +
+          (result.campers == 1
+            ? words.singularInSentence('Camper')
+            : words.pluralInSentence('Camper')) +
+          '.');
   }
 
   /** The season and week asked for, held while still as seen; the picture now. */

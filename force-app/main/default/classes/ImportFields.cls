@@ -133,7 +133,7 @@ public with sharing class ImportFields {
       FixedActivity__c.EarlyBlocks__c,
       FixedActivity__c.SortOrder__c,
       FixedActivity__c.CopiedFrom__c,
-      // Not written, but kept beside a new time block or length so Undo puts it back (ImportUndoLog).
+      // Not written, but kept beside a new time block or length so Undo puts it back (ImportLogValues).
       FixedActivity__c.LastTimeBlock__c
     },
     RecurringActivity__c.SObjectType => new Set<Schema.SObjectField>{

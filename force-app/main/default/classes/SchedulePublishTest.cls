@@ -654,7 +654,7 @@ private class SchedulePublishTest {
       ManualBuildController.restoreVersion(
         draftId,
         publishedId,
-        ScheduleDays.stamp(ScheduleDays.read(draftId))
+        WeekTickets.stamp(ScheduleDays.read(draftId))
       );
       Test.stopTest();
       Assert.areEqual(

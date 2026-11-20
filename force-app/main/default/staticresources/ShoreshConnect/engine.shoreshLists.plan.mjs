@@ -5,6 +5,7 @@
  * an answer, and the save is all or none.
  */
 import { FIELD } from "./engine.shoreshSchema.shoreshSchema.mjs";
+import { newRow } from "./engine.shoreshNewRows.shoreshNewRows.mjs";
 import { eventWords } from "./engine.shoreshLists.specialScreen.mjs";
 import { LEAVE_OUT, WEEKDAYS, clock } from "./engine.shoreshImportEngine.shoreshImportEngine.mjs";
 import { answeredTimes } from "./engine.shoreshLists.adds.mjs";
@@ -369,11 +370,11 @@ export function listPlan(proposal, answers, seasonId, fileName) {
   const addKind = { location: "Location", locationType: "LocationType" };
   ["locationType", "location"].forEach((ref) => {
     ((proposal.alsoAdd || {})[ref] || []).forEach((name) => {
-      const fields = { Name: name };
-      if (ref === "location") {
-        // As a location added by hand starts: one group at a time.
-        fields[FIELD.Location.GroupsThatFit] = 1;
-      }
+      // A location as one added by hand starts.
+      const fields =
+        ref === "location"
+          ? { Name: name, ...newRow("Location") }
+          : { Name: name };
       records.push({
         kind: addKind[ref],
         key: `${addKind[ref]}:${name}`,

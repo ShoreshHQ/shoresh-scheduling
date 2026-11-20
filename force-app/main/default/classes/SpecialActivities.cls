@@ -190,7 +190,10 @@ public with sharing class SpecialActivities {
         .isEmpty()
     ) {
       throw new ShoreshException(
-        'That was not found, or you don\'t have access to it. Reload the page.'
+        AgentRefusal.withFix(
+          'That was not found, or you don\'t have access to it.',
+          'Reload the page.'
+        )
       );
     }
   }

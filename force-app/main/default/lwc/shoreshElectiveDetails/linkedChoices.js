@@ -268,7 +268,7 @@ function choiceForAgent(choice, shown, context) {
   return {
     name: choice.name,
     activity: activityNameOf(setup, choice.offeringId),
-    periods: inWeekOrder(choice.periods, blocks).map((key) => {
+    times: inWeekOrder(choice.periods, blocks).map((key) => {
       const note = periodLook(choice, key, { ...look, shown });
       return { ...periodWords(key, blocks, setup), ...(note ? { note } : {}) };
     }),
@@ -393,7 +393,7 @@ export function notesForAgent(read, { name, activity }) {
   }
   return [
     ...(same[0].notes || []),
-    ...same[0].periods
+    ...same[0].times
       .filter((p) => p.note)
       .map(
         (p) =>

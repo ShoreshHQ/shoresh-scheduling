@@ -134,9 +134,11 @@ public with sharing class ElectiveTimes {
    */
   public ElectivePeriod periodOf(Id groupId, Date onDay, String blockId) {
     List<ElectivePeriod> here = bySlot.get(slotOf(onDay, blockId));
-    if (here == null) {
-      return null;
-    }
+    return here == null ? null : takenBy(here, groupId);
+  }
+
+  /** Of the times at one day and block (division order), the one a bunk takes; no bunk, the first. */
+  public static ElectivePeriod takenBy(List<ElectivePeriod> here, Id groupId) {
     if (groupId == null) {
       return here[0];
     }

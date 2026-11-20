@@ -47,7 +47,10 @@ public with sharing class WeekApplyPlan {
     prepared.lockEdits = !manual;
     if (!SlotSaves.makeWith(prepared, edits).conflicts.isEmpty()) {
       throw new ShoreshException(
-        'The week could not be applied. Reload the page and try again.'
+        AgentRefusal.withFix(
+          'The week could not be applied.',
+          'Reload the page and try again.'
+        )
       );
     }
     // As Restore does: the engine's notes were about the week this replaced.

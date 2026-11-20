@@ -134,5 +134,5 @@ ScheduleDaySaves.write(
   manual.Id,
   new List<ScheduleDaySaves.DaySave>{ new ScheduleDaySaves.DaySave(MONDAY.addDays(7), grid, null) }
 );
-// No run: the e2e starts the week's electives through bring_in_choices, as a person would.
+// No run: the e2e starts the week's electives through import_choices, as a person would.
 System.debug('E2E seeded ' + season.Id);

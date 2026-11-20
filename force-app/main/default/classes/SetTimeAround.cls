@@ -100,9 +100,12 @@ public with sharing class SetTimeAround {
     Integer length = item.Length__c == null ? 1 : item.Length__c.intValue();
     if (item.TimeBlock__c != seen.seenTimeBlock || length != seen.seenLength) {
       throw ScreenErrors.of(
-        '"' +
-          item.Name +
-          '" was changed by someone else since you saw it. Nothing was saved. Reload the page.'
+        AgentRefusal.withFix(
+          '"' +
+            item.Name +
+            '" was changed by someone else since you saw it. Nothing was saved.',
+          'Reload the page.'
+        )
       );
     }
   }
@@ -131,8 +134,11 @@ public with sharing class SetTimeAround {
       if (!copiesOf.containsKey(target)) {
         String name = byTarget.get(target)[0].seenName;
         throw ScreenErrors.of(
-          (String.isBlank(name) ? 'That' : '"' + name + '"') +
-          ' is no longer there. Nothing was saved. Reload the page.'
+          AgentRefusal.withFix(
+            (String.isBlank(name) ? 'That' : '"' + name + '"') +
+            ' is no longer there. Nothing was saved.',
+            'Reload the page.'
+          )
         );
       }
     }

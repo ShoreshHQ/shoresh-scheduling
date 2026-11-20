@@ -117,7 +117,7 @@ public with sharing class IncomingBatch {
   private static void requireAccess(Capability capability) {
     if (!holds(capability.permissionSet())) {
       throw new NoAccessException(
-        'This user can\'t send ' +
+        'This connection can\'t send ' +
           capability.what().toLowerCase() +
           '. A Salesforce admin can give it the "' +
           capability.permissionLabel() +

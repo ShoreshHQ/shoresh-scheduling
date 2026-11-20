@@ -41,7 +41,7 @@ async function draft(season, week = "Week 1", extra = {}, as) {
   const said = await call("read_week_draft", { season, week, ...extra }, as);
   if (said.kind !== "done") throw new Error(`read_week_draft: ${said.text}`);
   const body = JSON.parse(said.text);
-  const rows = body.records.map((r) =>
+  const rows = body.rows.map((r) =>
     Object.fromEntries(body.columns.map((c, i) => [c, r[i]]))
   );
   return {

@@ -1177,23 +1177,9 @@ describe("c-shoresh-program", () => {
       expect(detail.onDone).toHaveBeenCalled();
     });
 
-    it("CORE-3.9 counter-case: one only at Lunch can't go around, so the save goes up and is refused there", async () => {
-      const element = await render(
-        "fixedActivities",
-        entryWith([{ ...fieldDay, TimeBlock__c: "t2", Length__c: 1 }])
-      );
-      const { saves } = await saveLunch(element);
-      expect(ask(element)).toBeNull();
-      expect(saves).toHaveLength(1);
-    });
-
-    it("CORE-3.9 counter-case: no question when they never meet: another week, or a day the program doesn't run", async () => {
-      const offWeek = await render("fixedActivities", entryWith([fieldDay]));
-      offWeek.weekExceptions = nsRecord([
-        { Id: "x2", Week__c: "w1", RecurringActivity__c: "r1" }
-      ]);
-      await flush();
-      expect((await saveLunch(offWeek)).saves).toHaveLength(1);
+    // Not a shared example: the server refuses a recurring activity ticked for a day its program
+    // doesn't run (SetTimeMessages CLOSED_DAY), so only the screen can be handed one.
+    it("CORE-3.9 counter-case: no question for one only on a day the program doesn't run", async () => {
       const friday = await render(
         "fixedActivities",
         entryWith([{ ...fieldDay, Monday__c: false, Friday__c: true }])
@@ -1208,36 +1194,6 @@ describe("c-shoresh-program", () => {
       });
       expect((await saveLunch(noGroups)).saves).toHaveLength(1);
       expect(ask(noGroups)).toBeNull();
-    });
-
-    it("CORE-3.9: a week ticked back on that meets it asks too", async () => {
-      const element = await render("fixedActivities", {
-        ...entryWith([fieldDay]),
-        fixedActivities: [
-          { Id: "f1", Name: "Lunch", TimeBlock__c: "t2", Length__c: 1 }
-        ]
-      });
-      element.weekExceptions = nsRecord([
-        { Id: "x3", Week__c: "w1", FixedActivity__c: "f1" }
-      ]);
-      await flush();
-      const saves = [];
-      element.addEventListener("save", (e) => saves.push(e.detail));
-      element.shadowRoot
-        .querySelector("c-shoresh-editable-table")
-        .dispatchEvent(
-          new CustomEvent("save", {
-            detail: {
-              record: { Id: "f1" },
-              extras: { weeksBackOn: ["x3"] },
-              onFailure: jest.fn(),
-              onDone: jest.fn()
-            }
-          })
-        );
-      await flush();
-      expect(saves).toEqual([]);
-      expect(ask(element)).not.toBeNull();
     });
   });
 });

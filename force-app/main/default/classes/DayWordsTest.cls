@@ -191,11 +191,19 @@ private class DayWordsTest {
       view.times = new List<ElectivePeriod>{ period };
       Assert.areEqual(
         period,
-        AgentMoveElectiveSeat.timeOf(view, 'Day 2', 'Period 3')
+        AgentMoveElectiveSeat.timeOf(
+          view,
+          new Map<String, Object>{ 'day' => 'Day 2', 'time' => 'Period 3' },
+          CampLabels.modelTermsOnly()
+        )
       );
       Assert.areEqual(
         period,
-        AgentMoveElectiveSeat.timeOf(view, 'Tuesday', 'Period 3')
+        AgentMoveElectiveSeat.timeOf(
+          view,
+          new Map<String, Object>{ 'day' => 'Tuesday', 'time' => 'Period 3' },
+          CampLabels.modelTermsOnly()
+        )
       );
       Assert.areEqual('Day 2, Period 3', period.words());
     }

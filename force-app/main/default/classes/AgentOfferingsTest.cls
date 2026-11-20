@@ -13,14 +13,14 @@ private class AgentOfferingsTest {
         new Map<String, Object>{
           'activity' => 'Drama',
           'name' => 'Drama',
-          'periods' => LinkedChoicesMenu.periods('monday', 'Period 1')
+          'times' => LinkedChoicesMenu.periods('monday', 'Period 1')
         }
       )
     );
     Assert.areEqual(200, answer[0], String.valueOf(answer[1]));
   }
 
-  /** What change_offering sends for Drama: fields, and what was read as seen. */
+  /** What change_elective sends for Drama: fields, and what was read as seen. */
   private static Map<String, Object> rowChange(
     LinkedChoicesMenu menu,
     Map<String, Object> fields,

@@ -6,7 +6,7 @@
  */
 @IsTest
 private class AgentElectiveSeatsTest {
-  private static final String OPENS = 'This assigns seats in Chugim in Week 1, in the version being worked on: ';
+  private static final String OPENS = 'This assigns seats in Chugim in Week 1, in the Draft: ';
 
   // API-1.66
   @IsTest

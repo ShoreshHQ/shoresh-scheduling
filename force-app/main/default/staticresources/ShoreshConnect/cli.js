@@ -103,7 +103,7 @@ function parse(argv) {
 const EXIT = { done: 0, couldNotAsk: 1, refused: 2, asksFirst: 3 };
 
 /**
- * undo_last_agent_change (API-1.14) holds Undo for one conversation, as the screen holds it only
+ * undo_last_change (API-1.14) holds Undo for one conversation, as the screen holds it only
  * while its page is open; each command is its own run, so there is never anything to undo.
  */
 const NO_UNDO_HERE =

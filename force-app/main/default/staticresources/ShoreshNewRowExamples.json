@@ -1,0 +1,19 @@
+{
+  "about": "What a new row of each kind starts with (Greg, 2026-10-16), beyond its season and order: the screens (c/shoreshNewRows newRow, used by Camp Setup's Add row and the list import) and the server (AgentSetupNewRow.startsWith, used by an AI tool's new row and Manual Build's new activity). Fields by their local names.",
+  "rows": [
+    { "kind": "Location", "fields": { "GroupsThatFit__c": 1 } },
+    {
+      "kind": "Activity",
+      "fields": {
+        "Length__c": 1,
+        "TimesPerWeekMin__c": 1,
+        "TimesPerWeekMax__c": 1,
+        "Priority__c": "Low",
+        "Outdoor__c": false,
+        "GroupsAtOnce__c": 1,
+        "NoWeeklyMax__c": false,
+        "NoGroupLimit__c": false
+      }
+    }
+  ]
+}

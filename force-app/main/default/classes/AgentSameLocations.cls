@@ -37,13 +37,20 @@ global with sharing class AgentSameLocations implements AgentWeeks.Action {
       AgentFields.text(asked, 'season')
     );
     CampLabels labels = CampLabels.forCamp(season.Camp__c);
-    List<Place> places = matching(season.Id, (String) asked.get('name'));
+    List<Place> places = matching(
+      season.Id,
+      (String) asked.get('name'),
+      labels
+    );
+    String fit = labels.singularInSentence('GroupsThatFit');
     List<String> said = new List<String>();
     for (Place place : places) {
       said.add(
         '"' +
           place.row.Name +
-          '" (groups_that_fit ' +
+          '" (' +
+          fit +
+          ': ' +
           fits(place) +
           ', ' +
           place.activities +
@@ -61,9 +68,13 @@ global with sharing class AgentSameLocations implements AgentWeeks.Action {
       String.join(said, '; ') +
       '. Camp Setup would keep "' +
       keep.row.Name +
-      '" with groups_that_fit ' +
+      '" (' +
+      fit +
+      ': ' +
       fitsByDefault(places) +
-      '. Send their names exactly and groups_that_fit as seen to merge_locations.';
+      '). Send their names exactly and their ' +
+      fit +
+      ' as seen to merge_locations.';
   }
 
   /** The season's places, locked until the request ends: no one's save comes in between. */
@@ -80,12 +91,19 @@ global with sharing class AgentSameLocations implements AgentWeeks.Action {
 
   /**
    * The season's places whose names match the name (capitals and spacing aside, as the question
-   * finds them), in the table's order. Fewer than two is refused: nothing to merge.
+   * finds them), in the table's order. Fewer than two is refused in the camp's words (labels):
+   * nothing to merge.
    */
-  public static List<Place> matching(Id seasonId, String name) {
+  public static List<Place> matching(
+    Id seasonId,
+    String name,
+    CampLabels labels
+  ) {
     String key = LocationMerge.sameNameKey(name);
     if (String.isBlank(key)) {
-      throw new ShoreshException('Say which location (name).');
+      throw new ShoreshException(
+        'Say which ' + labels.singularInSentence('Location') + ' (name).'
+      );
     }
     List<Location__c> rows = [
       SELECT Id, Name, GroupsThatFit__c
@@ -104,7 +122,9 @@ global with sharing class AgentSameLocations implements AgentWeeks.Action {
     }
     if (found.size() < 2) {
       throw new ShoreshException(
-        'Fewer than two locations are called "' +
+        'Fewer than two ' +
+          labels.pluralInSentence('Location') +
+          ' are called "' +
           name.normalizeSpace().left(80) +
           '", capitals and spacing aside, so there is nothing to merge.'
       );

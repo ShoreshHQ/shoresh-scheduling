@@ -9,7 +9,7 @@ private class IncomingCamperElectiveChoiceTest {
       'season' => 'Summer 2026',
       'source_system' => IncomingTestData.SYSTEM_NAME,
       'camper_id' => 'SYN-1',
-      'elective' => 'Chugim',
+      'elective_set' => 'Chugim',
       'week' => 'Week 1',
       'first_choice' => first,
       'second_choice' => second
@@ -86,7 +86,7 @@ private class IncomingCamperElectiveChoiceTest {
       byFlow.season = 'Summer 2026';
       byFlow.source_system = IncomingTestData.SYSTEM_NAME;
       byFlow.camper_id = 'SYN-2';
-      byFlow.elective = 'Chugim';
+      byFlow.elective_set = 'Chugim';
       byFlow.week = 'Week 1';
       byFlow.first_choice = 'Swim';
       byFlow.second_choice = 'Basket weaving';
@@ -294,7 +294,7 @@ private class IncomingCamperElectiveChoiceTest {
     camp.camper('Maya Cohen', 'SYN-1');
     Database.delete(camp.run, AccessLevel.SYSTEM_MODE);
     Map<String, Object> unknown = record('Swim', null);
-    unknown.put('elective', 'Bechirot');
+    unknown.put('elective_set', 'Bechirot');
     System.runAs(camp.sender('Send_Elective_Choices')) {
       Map<String, Object> answer = send(
         new List<Map<String, Object>>{ record('Archery', 'Swim'), unknown }
@@ -304,7 +304,7 @@ private class IncomingCamperElectiveChoiceTest {
         IncomingTestData.said(answer, 1)
       );
       Assert.areEqual(
-        'problem: There is no elective "Bechirot" in "Week 1" in this season.',
+        'problem: There is no elective set "Bechirot" in "Week 1" in this season.',
         IncomingTestData.said(answer, 2)
       );
     }
@@ -393,11 +393,11 @@ private class IncomingCamperElectiveChoiceTest {
       byFlow.season = 'Summer 2026';
       byFlow.source_system = IncomingTestData.SYSTEM_NAME;
       byFlow.camper_id = 'SYN-1';
-      byFlow.elective = 'Chugim';
+      byFlow.elective_set = 'Chugim';
       byFlow.week = 'Week 1';
       byFlow.first_choice = 'Swim';
       Assert.areEqual(
-        'problem: This user can\'t send elective choices. A Salesforce admin can give it the "Send elective choices" permission set.',
+        'problem: This connection can\'t send elective choices. A Salesforce admin can give it the "Send elective choices" permission set.',
         IncomingTestData.said(
           IncomingCamperElectiveChoice.camperElectiveChoice(
             new List<IncomingCamperElectiveChoice.Record>{ byFlow }

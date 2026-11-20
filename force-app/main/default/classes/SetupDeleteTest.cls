@@ -355,4 +355,32 @@ private class SetupDeleteTest {
       }
     }
   }
+
+  // API-1.105: something gone since the screen showed it is refused; only a screen is told to
+  // reload, an AI (read_delete_question, delete_from_setup) hears the problem alone.
+  @IsTest
+  static void somethingGoneIsRefusedWithoutThePageToAnAi() {
+    Camp__c camp = ShoreshTestData.camp('Camp Willow');
+    Season__c season = ShoreshTestData.season(camp.Id, 'Summer 2026');
+    Program__c gone = ShoreshTestData.program(season.Id, 'Main');
+    Database.delete(gone, AccessLevel.SYSTEM_MODE);
+    Assert.areEqual(
+      'That is no longer there. Reload the page.',
+      previewRefusal(gone.Id)
+    );
+    AgentRefusal.forAgent = true;
+    String toAnAi = previewRefusal(gone.Id);
+    AgentRefusal.forAgent = false;
+    Assert.areEqual('That is no longer there.', toAnAi);
+  }
+
+  private static String previewRefusal(Id recordId) {
+    try {
+      SetupDelete.preview(recordId);
+    } catch (Exception e) {
+      return e.getMessage();
+    }
+    Assert.fail('Nothing is asked about something gone');
+    return null;
+  }
 }

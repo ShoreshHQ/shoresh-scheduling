@@ -54,9 +54,12 @@ public with sharing class ElectiveSeatChange {
     return seat != null &&
       seat.Offering__c == request.offeringId
       ? alreadyIn(request.camperId, request.offeringId)
-      : 'That ' +
-        state.labels().singularInSentence('Seats') +
-        ' is no longer there. Reload the page.';
+      : AgentRefusal.withFix(
+          'That ' +
+            state.labels().singularInSentence('Seats') +
+            ' is no longer there.',
+          'Reload the page.'
+        );
   }
 
   /** "Ivy is already in Art then; nothing changed.": a move to the seat a camper holds. */

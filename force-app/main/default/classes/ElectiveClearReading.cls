@@ -28,7 +28,10 @@ public with sharing class ElectiveClearReading {
     ];
     if (seasons.isEmpty()) {
       throw new ShoreshException(
-        'That season is no longer there. Reload the page.'
+        AgentRefusal.withFix(
+          'That season is no longer there.',
+          'Reload the page.'
+        )
       );
     }
     picture.seasonName = seasons[0].Name;

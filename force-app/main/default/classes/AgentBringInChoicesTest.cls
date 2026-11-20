@@ -1,6 +1,6 @@
 /**
- * bring_in_choices through an agent (docs/protocol/api.md API-1.117): what the screen reads, its
- * own check (nothing saved) and its own Bring in, which starts the week's run. As a scheduler with
+ * import_choices through an agent (docs/protocol/api.md API-1.117): what the screen reads, its
+ * own check (nothing saved) and its own Import, which starts the week's run. As a scheduler with
  * only Shoresh Scheduler, records made inside the same runAs. Made-up names only.
  */
 @IsTest
@@ -54,7 +54,7 @@ private class AgentBringInChoicesTest {
     };
   }
 
-  // API-1.117: the screen's reads, its check (nothing saved), then its Bring in, which starts the run.
+  // API-1.117: the screen's reads, its check (nothing saved), then its Import, which starts the run.
   @IsTest
   static void aChoicesFileStartsTheWeeksElectivesAsTheScreenDoes() {
     System.runAs(ShoreshTestData.scheduler()) {
@@ -164,7 +164,7 @@ private class AgentBringInChoicesTest {
       Test.stopTest();
       Assert.areEqual(400, refused[0], String.valueOf(refused[1]));
       Assert.areEqual(
-        'That request is for another season.',
+        'That review is for another season.',
         ((Map<String, Object>) refused[1]).get('message')
       );
     }

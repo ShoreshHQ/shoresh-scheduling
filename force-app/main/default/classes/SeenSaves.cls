@@ -4,7 +4,7 @@
  * hands the ticket back, and SeenSaves holds the thing until the request ends (FOR UPDATE), compares,
  * and says what someone else changed since; the caller refuses in its screen's own words. Users:
  * setup rows (RowSaves), an activity's details (ActivityDetails, for the panel and
- * change_activity_rules), Generated Schedule's locks and the AI's cell changes (GeneratedLocks,
+ * change_activity_details), Generated Schedule's locks and the AI's cell changes (GeneratedLocks,
  * AgentSchedules.holdAsSeen), a special plan (SpecialPlans), an elective run's seats
  * (AgentElectives), the stamps an import, Clear electives and Update to match read
  * (AgentImports, AgentClearElectives, AgentUpdateToMatch), and the values the AI's setup verbs
@@ -80,14 +80,6 @@ public with sharing class SeenSaves {
       }
     }
     return result;
-  }
-
-  /**
-   * Whether the week is still at the revision the person read (the ticket), its draft already
-   * held (GeneratedDrafts.lockedToEdit). No ticket is never as seen.
-   */
-  public static Boolean week(List<ScheduleDays.DayGrid> days, String ticket) {
-    return stamp(GeneratedDrafts.revisionOf(days), ticket);
   }
 
   /**

@@ -1,11 +1,11 @@
 /**
- * elective_offerings: what each elective set offers, going out so a form can collect choices
- * (docs/protocol/api.md; repo ADR 0024 choice 2). Web address /v1/elective_offerings and the
- * Flow action send_elective_offerings: one piece of logic (rows). An offering only proposed is
+ * electives_offered: what each elective set offers, going out so a form can collect choices
+ * (docs/protocol/api.md; repo ADR 0024 choice 2). Web address /v1/electives_offered and the
+ * Flow action send_electives_offered: one piece of logic (rows). An offering only proposed is
  * not offered yet, so it stays inside.
  */
-@RestResource(urlMapping='/v1/elective_offerings')
-global with sharing class OutgoingElectiveOfferings implements OutgoingDoors.Capability {
+@RestResource(urlMapping='/v1/electives_offered')
+global with sharing class OutgoingElectivesOffered implements OutgoingDoors.Capability {
   private static final List<String> FIELDS = new List<String>{
     'elective_set',
     'activity',
@@ -35,7 +35,7 @@ global with sharing class OutgoingElectiveOfferings implements OutgoingDoors.Cap
   }
 
   @InvocableMethod(
-    label='send_elective_offerings'
+    label='send_electives_offered'
     description='Send what each elective set offers, with its seats, to a saved destination.'
     category='Shoresh'
     callout=true
@@ -49,27 +49,27 @@ global with sharing class OutgoingElectiveOfferings implements OutgoingDoors.Cap
       one.asCsv = each.as_csv;
       sends.add(one);
     }
-    return OutgoingDoors.bySend(new OutgoingElectiveOfferings(), sends);
+    return OutgoingDoors.bySend(new OutgoingElectivesOffered(), sends);
   }
 
   @HttpGet
   global static void get() {
-    OutgoingDoors.byWeb(new OutgoingElectiveOfferings());
+    OutgoingDoors.byWeb(new OutgoingElectivesOffered());
   }
 
   // ---------------------------------------------------------------- the capability
 
   public String name() {
-    return 'elective_offerings';
+    return 'electives_offered';
   }
   public String what() {
-    return 'the elective offerings';
+    return 'the electives offered';
   }
   public String permissionSet() {
-    return 'Read_Elective_Offerings';
+    return 'Read_Electives_Offered';
   }
   public String permissionLabel() {
-    return 'Read elective offerings';
+    return 'Read electives offered';
   }
   public List<String> fields() {
     return FIELDS;
@@ -96,9 +96,7 @@ global with sharing class OutgoingElectiveOfferings implements OutgoingDoors.Cap
           'elective_set' => offering.ElectiveSet__r.Name,
           'activity' => offering.Activity__r.Name,
           // Blank or 0 seats are no limit (ELECT-4.1): sent blank, as no limit is.
-          'seats' => offering.NoSeatLimit__c || offering.Seats__c == 0
-            ? null
-            : offering.Seats__c,
+          'seats' => ElectiveSeatCounts.limitOf(offering),
           'minimum_to_run' => offering.MinimumToRun__c
         }
       );
