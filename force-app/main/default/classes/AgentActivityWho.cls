@@ -158,7 +158,7 @@ public with sharing class AgentActivityWho {
         labels.singularInSentence('Group') +
         ' called "' +
         name.left(80) +
-        '" that this user can see. ' +
+        '" that you can see. ' +
         AgentWeeks.namesSaid(
           labels.pluralInSentence('Division') +
             ' and ' +

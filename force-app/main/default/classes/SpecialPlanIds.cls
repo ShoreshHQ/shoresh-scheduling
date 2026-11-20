@@ -21,7 +21,10 @@ public with sharing class SpecialPlanIds {
   ) {
     if (run.blockIds == null || run.blockIds.isEmpty()) {
       throw new ShoreshException(
-        'That change could not be read. Reload the page and try again.'
+        AgentRefusal.withFix(
+          'That change could not be read.',
+          'Reload the page and try again.'
+        )
       );
     }
     if (

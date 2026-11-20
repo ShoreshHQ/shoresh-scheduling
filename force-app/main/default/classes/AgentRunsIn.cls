@@ -77,7 +77,7 @@ public with sharing class AgentRunsIn {
     List<Id> who = asked.containsKey(COVERS)
       ? AgentActivityWho.idsOf(asked.get(COVERS), found)
       : null;
-    lock(found.id);
+    lock(found);
     refuseIfChangedSince(asked.keySet(), seen, found);
     List<String> said = new List<String>();
     if (weeks != null) {
@@ -171,7 +171,8 @@ public with sharing class AgentRunsIn {
   }
 
   /** Holds the row until the request ends, so no one changes it between compare and save. */
-  private static void lock(Id recordId) {
+  private static void lock(AgentSetupRecords.Found found) {
+    Id recordId = found.id;
     List<SObject> held = Database.queryWithBinds(
       'SELECT Id FROM ' +
         ShoreshSchema.queryName(recordId.getSObjectType()) +
@@ -180,10 +181,15 @@ public with sharing class AgentRunsIn {
       AccessLevel.USER_MODE
     );
     if (held.isEmpty()) {
-      throw new ShoreshException(
-        'That was not found, or you do not have access to it.'
-      );
+      throw gone(found);
     }
+  }
+
+  /** '"Swim" is no longer there, or you can't see it.': a row gone since it was found (API-1.105). */
+  public static ShoreshException gone(AgentSetupRecords.Found found) {
+    return new ShoreshException(
+      '"' + found.name + '" is no longer there, or you can\'t see it.'
+    );
   }
 
   /** The divisions' and groups' names a recurring activity covers now. */

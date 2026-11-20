@@ -86,11 +86,14 @@ public with sharing class ChoicesImportPlace {
       // In the camp's words, read only for the refusal.
       CampLabels labels = CampLabels.forCamp(campId);
       throw new ShoreshException(
-        'That ' +
-          labels.singularInSentence('ElectiveSet') +
-          ', ' +
-          labels.singularInSentence('Week') +
-          ' or schedule is no longer there. Reload the page.'
+        AgentRefusal.withFix(
+          'That ' +
+            labels.singularInSentence('ElectiveSet') +
+            ', ' +
+            labels.singularInSentence('Week') +
+            ' or schedule is no longer there.',
+          'Reload the page.'
+        )
       );
     }
     electiveSet = sets[0];

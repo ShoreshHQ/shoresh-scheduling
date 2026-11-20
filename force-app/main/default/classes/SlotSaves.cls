@@ -201,7 +201,10 @@ public with sharing class SlotSaves {
     ScheduleDays.DayGrid read = days.get(day);
     if (read == null) {
       throw new ShoreshException(
-        'That day is not in this schedule. Reload the page.'
+        AgentRefusal.withFix(
+          'That day is not in this schedule.',
+          'Reload the page.'
+        )
       );
     }
     if (read.grid == null) {
@@ -268,7 +271,10 @@ public with sharing class SlotSaves {
       String previous = b == 0 ? SlotIds.OPEN : row[b - 1];
       if (!SlotIds.owner(previous).equals(slot.substring(1))) {
         throw new ShoreshException(
-          'That change could not be read. Reload the page and try again.'
+          AgentRefusal.withFix(
+            'That change could not be read.',
+            'Reload the page and try again.'
+          )
         );
       }
       grid.rows[g][b] = ScheduleGrid.CARRIES_ON;

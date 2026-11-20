@@ -9,6 +9,8 @@ global with sharing class AgentSeasons {
   global static void get() {
     RestResponse response = RestContext.response;
     response.addHeader('Content-Type', 'application/json');
+    // An AI's read: it hears the screen's refusals without their advice (API-1.105).
+    AgentRefusal.forAgent = true;
     try {
       response.statusCode = 200;
       response.responseBody = Blob.valueOf(JSON.serialize(answer()));
@@ -23,6 +25,8 @@ global with sharing class AgentSeasons {
           }
         )
       );
+    } finally {
+      AgentRefusal.forAgent = false;
     }
   }
 

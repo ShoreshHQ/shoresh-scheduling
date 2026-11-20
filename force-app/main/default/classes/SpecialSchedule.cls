@@ -170,7 +170,10 @@ public with sharing class SpecialSchedule {
 
   private static ShoreshException notFound() {
     return new ShoreshException(
-      'That was not found, or you don\'t have access to it. Reload the page.'
+      AgentRefusal.withFix(
+        'That was not found, or you don\'t have access to it.',
+        'Reload the page.'
+      )
     );
   }
 

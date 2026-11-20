@@ -153,9 +153,12 @@ public with sharing class GeneratedDrafts {
   private static ShoreshException notHere(Schedule__c draft) {
     CampLabels labels = CampLabels.forCamp(draft.Program__r.Season__r.Camp__c);
     return new ShoreshException(
-      'Only this ' +
-        labels.singularInSentence('Week') +
-        '\'s Generated Schedule can be saved here. Reload the page.'
+      AgentRefusal.withFix(
+        'Only this ' +
+          labels.singularInSentence('Week') +
+          '\'s Generated Schedule can be saved here.',
+        'Reload the page.'
+      )
     );
   }
 }

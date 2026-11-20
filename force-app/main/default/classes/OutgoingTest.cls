@@ -327,7 +327,7 @@ private class OutgoingTest {
     }
     Assert.areEqual(403, answer.get('status'));
     Assert.areEqual(
-      'This user can\'t read the group schedule. A Salesforce admin can give it the "Read group schedules" permission set.',
+      'This connection can\'t read the group schedule. A Salesforce admin can give it the "Read group schedules" permission set.',
       answer.get('message')
     );
   }
@@ -576,7 +576,7 @@ private class OutgoingTest {
       );
     }
     Assert.areEqual(
-      'Couldn\'t send the group schedule for Week 1 to formstack: This user can\'t send the group schedule. A Salesforce admin can give it the "Read group schedules" permission set.',
+      'Couldn\'t send the group schedule for Week 1 to formstack: This connection can\'t send the group schedule. A Salesforce admin can give it the "Read group schedules" permission set.',
       results[0].message
     );
   }

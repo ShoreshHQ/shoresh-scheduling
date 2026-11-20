@@ -157,7 +157,7 @@ global with sharing class AgentAddSetup implements AgentWeeks.Action, AgentAskFi
           word +
           ' called "' +
           asked.left(80) +
-          '" that this user can see. ') +
+          '" that you can see. ') +
       AgentWeeks.namesSaid(found.labels.pluralInSentence('Program'), names)
     );
   }

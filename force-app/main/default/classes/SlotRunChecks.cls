@@ -28,7 +28,10 @@ public with sharing class SlotRunChecks {
   public static void checkStartsClean(String firstSlot) {
     if (SlotIds.isCarryOn(firstSlot)) {
       throw new ShoreshException(
-        'That change would cut into the cell next to it. Reload the page and try again.'
+        AgentRefusal.withFix(
+          'That change would cut into the cell next to it.',
+          'Reload the page and try again.'
+        )
       );
     }
   }

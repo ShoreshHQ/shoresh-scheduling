@@ -350,7 +350,7 @@ function electives(tmp) {
     );
   assign(
     now(),
-    "This assigns seats in Chugim in Week 2, in the version being worked on: 3 seats placed from the campers' choices. There is no undo.",
+    "This assigns seats in Chugim in Week 2, in the Draft: 3 seats placed from the campers' choices. There is no undo.",
     "every camper seated"
   );
   // Same camp, same choices, Assign again: exactly the same seats (same inputs, same output).
@@ -362,7 +362,7 @@ function electives(tmp) {
   const once = seatLines(step("read_elective_seats_now", at, "done"));
   assign(
     now(),
-    "in the version being worked on: no seat changes; 3 seats stay as they are. There is no undo.",
+    "in the Draft: no seat changes; 3 seats stay as they are. There is no undo.",
     "seated again"
   );
   step("read_elective_seats_now", at, "done", [

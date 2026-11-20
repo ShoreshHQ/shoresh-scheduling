@@ -63,7 +63,10 @@ public with sharing class SlotEdits {
       if (blockIds == null || blockIds.isEmpty()) {
         // Every run names its blocks: one that doesn't wasn't sent by the screen as it is now.
         throw new ShoreshException(
-          'That change could not be read. Reload the page and try again.'
+          AgentRefusal.withFix(
+            'That change could not be read.',
+            'Reload the page and try again.'
+          )
         );
       }
       return blockIds.size() == after.size() &&

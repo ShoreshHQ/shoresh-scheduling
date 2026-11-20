@@ -387,6 +387,20 @@ private class SeasonCopierTest {
           e.getMessage()
         );
       }
+      // API-1.105: an AI (copy_season) has no page to reload; it hears the problem alone.
+      AgentRefusal.forAgent = true;
+      try {
+        new SeasonCopier(original.Id, Date.newInstance(2027, 6, 28))
+          .copy('Summer 2027');
+        Assert.fail('Copy without access is refused');
+      } catch (SeasonCopier.CopyException e) {
+        Assert.areEqual(
+          'That was not found, or you don\'t have access to it.',
+          e.getMessage()
+        );
+      } finally {
+        AgentRefusal.forAgent = false;
+      }
     }
     Assert.areEqual(1, [SELECT COUNT() FROM Season__c WITH SYSTEM_MODE]);
   }

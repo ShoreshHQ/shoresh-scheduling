@@ -11,15 +11,12 @@ public with sharing class ImportUndoRemovals {
     this.result = result;
   }
 
-  public void run(List<Object> removals) {
+  public void run(List<ImportLogEntries.Removed> removals) {
     List<SObject> rows = new List<SObject>();
     List<String> names = new List<String>();
-    for (Object item : removals) {
-      Map<String, Object> entry = (Map<String, Object>) item;
-      Object recordId = entry.get(ImportUndoLog.REMOVED);
-      Schema.SObjectType kind = ImportFields.ofRecord(recordId);
-      rows.add(kind.newSObject((Id) (String) recordId));
-      names.add((String) entry.get('name'));
+    for (ImportLogEntries.Removed entry : removals) {
+      rows.add(entry.row());
+      names.add(entry.name());
     }
     if (rows.isEmpty()) {
       return;

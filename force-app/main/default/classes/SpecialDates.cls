@@ -234,7 +234,10 @@ public with sharing class SpecialDates {
     }
     if (found.isEmpty()) {
       throw new ShoreshException(
-        'That was not found, or you don\'t have access to it. Reload the page.'
+        AgentRefusal.withFix(
+          'That was not found, or you don\'t have access to it.',
+          'Reload the page.'
+        )
       );
     }
     return type == SpecialDay__c.SObjectType

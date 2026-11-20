@@ -44,7 +44,9 @@ global with sharing class AgentCopySeason implements AgentWeeks.Action, AgentAsk
       now.get(WHOLE) +
       '. "' +
       season.Name +
-      '" itself is unchanged. The new season is not where the screens or later requests go unless the person names it.';
+      '" itself is unchanged, and Shoresh doesn\'t switch to "' +
+      name +
+      '": name it to work in it.';
   }
 
   public String run() {

@@ -107,10 +107,13 @@ public with sharing class ElectiveLinkedSeats {
   private ShoreshException refused() {
     CampLabels labels = state.labels();
     return new ShoreshException(
-      labels.withArticle('Seats').capitalize() +
-        ' sent as part of ' +
-        labels.withArticle('LinkedChoice') +
-        ' doesn\'t match it. Reload the page and assign again.'
+      AgentRefusal.withFix(
+        labels.withArticle('Seats').capitalize() +
+          ' sent as part of ' +
+          labels.withArticle('LinkedChoice') +
+          ' doesn\'t match it.',
+        'Reload the page and assign again.'
+      )
     );
   }
 }

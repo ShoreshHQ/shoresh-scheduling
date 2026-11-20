@@ -397,7 +397,7 @@ private class IncomingCamperElectiveChoiceTest {
       byFlow.week = 'Week 1';
       byFlow.first_choice = 'Swim';
       Assert.areEqual(
-        'problem: This user can\'t send elective choices. A Salesforce admin can give it the "Send elective choices" permission set.',
+        'problem: This connection can\'t send elective choices. A Salesforce admin can give it the "Send elective choices" permission set.',
         IncomingTestData.said(
           IncomingCamperElectiveChoice.camperElectiveChoice(
             new List<IncomingCamperElectiveChoice.Record>{ byFlow }
