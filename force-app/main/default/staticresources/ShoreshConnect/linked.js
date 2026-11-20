@@ -27,11 +27,11 @@ async function readLinkedChoices(capability, input, { read, answer, load }) {
   };
 }
 
-/** make_linked_choice's name: what was given, or the editor's proposal for its first period. */
+/** make_linked_choice's name: what was given, or the editor's proposal for its first time block. */
 async function nameOf(input, { read, load }) {
   const got = await read("linked_choices", fieldsOf(input, SET));
   if (got.status !== 200) return { got };
-  const [period] = Array.isArray(input.periods) ? input.periods : [];
+  const [period] = Array.isArray(input.times) ? input.times : [];
   return {
     name: (await load()).proposedForAgent(JSON.parse(got.body), {
       activity: input.activity,

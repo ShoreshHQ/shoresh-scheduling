@@ -20,7 +20,7 @@ global with sharing class IncomingCamperElectiveChoice implements IncomingBatch.
     'source_system',
     'camper_id',
     'camper_name',
-    'elective',
+    'elective_set',
     'week',
     'first_choice',
     'second_choice',
@@ -55,11 +55,11 @@ global with sharing class IncomingCamperElectiveChoice implements IncomingBatch.
     )
     global String camper_name;
     @InvocableVariable(
-      label='elective'
+      label='elective_set'
       description='The elective set\'s name in Shoresh, like Chugim.'
       required=true
     )
-    global String elective;
+    global String elective_set;
     @InvocableVariable(
       label='week'
       description='The week\'s name in Shoresh, like Week 1.'

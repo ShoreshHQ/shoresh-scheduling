@@ -1,11 +1,11 @@
 /**
- * read_setup_record: what one of the season's setup records holds in the fields
- * change_setup_record changes, as the person sees them, through an agent or the command line
- * (docs/protocol/api.md API-1.49). Web address /v1/read_setup_record, GET ?season=&kind=&name=&program=. Found as rename_setup_record finds it; each value is said as a change takes it (a
+ * read_from_setup: what one of the season's setup records holds in the fields
+ * change_in_setup changes, as the person sees them, through an agent or the command line
+ * (docs/protocol/api.md API-1.49). Web address /v1/read_from_setup, GET ?season=&kind=&name=&program=. Found as rename_in_setup finds it; each value is said as a change takes it (a
  * date 2026-07-06, a time 9:00 AM, yes or no, a choice's label, another record's name or none),
  * so the agent can send it back as seen.
  */
-@RestResource(urlMapping='/v1/read_setup_record')
+@RestResource(urlMapping='/v1/read_from_setup')
 global with sharing class AgentReadSetup implements AgentWeeks.Action {
   private static final Set<String> FIELDS = new Set<String>{
     'season',
@@ -114,7 +114,7 @@ global with sharing class AgentReadSetup implements AgentWeeks.Action {
         return entry.getLabel();
       }
     }
-    // Notes on one line: change_setup_record reads seen notes the same way.
+    // Notes on one line: change_in_setup reads seen notes the same way.
     return String.valueOf(value).normalizeSpace();
   }
 

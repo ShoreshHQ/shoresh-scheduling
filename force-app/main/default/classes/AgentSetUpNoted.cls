@@ -1,14 +1,14 @@
 /**
- * set_up_noted_item: "Set it up" on a cell an import noted as not set up yet, on Generated
+ * set_it_up: "Set it up" on a cell an import noted as not set up yet, on Generated
  * Schedule or Manual Build, through an agent or the command line (docs/protocol/api.md API-1.79).
- * Web address /v1/set_up_noted_item, POST {season, week, program, schedule, kind, name}. With the
+ * Web address /v1/set_it_up, POST {season, week, program, schedule, kind, name}. With the
  * week's draft locked, the draft must still have a cell noting that kind and name (what the agent
  * saw), or it is refused (409) with nothing made. Then the screen's own Set it up runs
  * (SpecialPlacingController.setUpItem), and, as on the screen, nothing else: no version is kept,
  * and the screen has no Undo for it, though its Undo goes on past it to the hand edits before
  * (the week is read again, its history kept: API-1.14).
  */
-@RestResource(urlMapping='/v1/set_up_noted_item')
+@RestResource(urlMapping='/v1/set_it_up')
 global with sharing class AgentSetUpNoted implements AgentWeeks.Action {
   private static final Set<String> FIELDS = new Set<String>{
     'season',

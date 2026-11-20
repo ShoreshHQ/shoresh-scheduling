@@ -1,5 +1,5 @@
 /**
- * For tests: undo_last_agent_change as the connector sends it (API-1.14). The connector holds,
+ * For tests: undo_last_change as the connector sends it (API-1.14). The connector holds,
  * for the conversation, what each change's answer left for its Undo (AgentUndoHeld) and, for a
  * hand edit, works the runs back out as the editor's history does (moves.js inverse, locks.js
  * stampLocks: the cells' locks as they are now, then as they were before the edit). These build

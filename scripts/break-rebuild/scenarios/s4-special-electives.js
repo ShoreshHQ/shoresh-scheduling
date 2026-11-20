@@ -26,7 +26,7 @@ module.exports = [
       await importMaple(season);
       // Chugim on Monday's Period 2 of Week 2, with Swim (2 seats) and Art (no limit).
       await electiveOnWeek(season, "Week 2", "Chugim", ["Bunk 1", "Bunk 2"]);
-      const add = await call("add_setup_record", {
+      const add = await call("add_to_setup", {
         season,
         kind: "special day",
         name: "Color war"
@@ -87,8 +87,8 @@ module.exports = [
         csv_text:
           "Camper,Camper number,Bunk,Choice 1,Choice 2\nAvery Madeup,1,Bunk 1,Swim,Art\nBlake Madeup,2,Bunk 1,Swim,Art\nCasey Madeup,3,Bunk 2,Swim,Art\n"
       };
-      const review = await call("bring_in_choices", sheet);
-      const saved = await call("bring_in_choices", {
+      const review = await call("import_choices", sheet);
+      const saved = await call("import_choices", {
         ...sheet,
         save: true,
         seen: seenIn(review.text)
@@ -133,7 +133,7 @@ module.exports = [
         finalized.done.kind === "done",
         finalized.done.text
       );
-      const out = await call("read_elective_seats", {
+      const out = await call("read_final_elective_seats", {
         season,
         week: "Week 2"
       });

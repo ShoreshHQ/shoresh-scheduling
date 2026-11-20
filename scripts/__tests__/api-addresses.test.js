@@ -21,7 +21,7 @@ const INCOMING = {
 const OUTGOING = {
   OutgoingGroupSchedule: "group_schedule",
   OutgoingActivitySchedule: "activity_schedule",
-  OutgoingElectiveOfferings: "elective_offerings",
+  OutgoingElectivesOffered: "electives_offered",
   OutgoingElectiveSeats: "elective_seats"
 };
 

@@ -1,10 +1,10 @@
 /**
- * read_proposed_offerings: the offerings Camp Setup shows as proposed (a dashed edge and a
+ * read_guessed_electives: the electives Camp Setup shows as guessed (a dashed edge and a
  * Confirm at the row's end), not yet confirmed, through an agent or the command line
- * (docs/protocol/api.md API-1.100). Web address /v1/read_proposed_offerings, GET ?season=. Each is
- * said by its elective set and activity, as confirm_proposed_offering takes it.
+ * (docs/protocol/api.md API-1.100). Web address /v1/read_guessed_electives, GET ?season=. Each is
+ * said by its elective set and activity, as elective_looks_right takes it.
  */
-@RestResource(urlMapping='/v1/read_proposed_offerings')
+@RestResource(urlMapping='/v1/read_guessed_electives')
 global with sharing class AgentReadProposed implements AgentWeeks.Action {
   @HttpGet
   global static void get() {
@@ -53,6 +53,6 @@ global with sharing class AgentReadProposed implements AgentWeeks.Action {
       season.Name +
       '" and not marked Looks right yet (Camp Setup shows each with Looks right; no camper gets a seat in it until then): ' +
       String.join(said, '; ') +
-      '. To say one looks right, use confirm_proposed_offering with seen "proposed".';
+      '. To say one looks right, use elective_looks_right with seen "guessed".';
   }
 }

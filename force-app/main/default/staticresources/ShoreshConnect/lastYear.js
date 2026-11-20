@@ -14,15 +14,17 @@ const {
   fromCommandLine,
   asTheScreenReads,
   changedSince,
-  refused
+  refused,
+  aiWord,
+  engineWord
 } = require("./imports");
 
 /** The person's answers over the review's: an empty answer takes one back (an unticked place). */
-function answered(answers, given) {
+function answered(m, answers, given) {
   const out = { ...answers };
   Object.entries(given || {}).forEach(([id, value]) => {
     if (value === "" || value === null || value === undefined) delete out[id];
-    else out[id] = String(value);
+    else out[id] = engineWord(m, String(value));
   });
   return out;
 }
@@ -56,7 +58,7 @@ function reviewOf(m, body, input, files) {
     state.proposal.reading.pages
       .filter((p) => p.file === file)
       .forEach((p) => {
-        layouts[p.key] = layout;
+        layouts[p.key] = engineWord(m, layout);
       });
   });
   flow.layouts = layouts;
@@ -71,14 +73,16 @@ function reviewOf(m, body, input, files) {
   });
   // The person's own answers are theirs, not filled in on their own.
   Object.keys(input.answers || {}).forEach((id) => delete autoApplied[id]);
-  state = m.recomputed(flow, answered(answers, input.answers), autoApplied);
+  state = m.recomputed(flow, answered(m, answers, input.answers), autoApplied);
   return { flow, t, remembered, state };
 }
 
 /** A question, its id and choices, as the screen asks it. */
 function questionLine(m, card, suggestion, remembered, auto) {
   const chosen = card.options.find((o) => o.value === card.answer);
-  const how = card.options.map((o) => `"${o.value}" = ${o.label}`).join(", ");
+  const how = card.options
+    .map((o) => `"${aiWord(m, o.value)}" = ${o.label}`)
+    .join(", ");
   let state = "";
   if (chosen) {
     state = ` Answered: ${chosen.label}${
@@ -89,7 +93,7 @@ function questionLine(m, card, suggestion, remembered, auto) {
           : ""
     }.`;
   } else if (suggestion) {
-    state = ` Suggested: "${suggestion.value}" (${suggestion.text}); still the person's choice.`;
+    state = ` Suggested: "${aiWord(m, suggestion.value)}" (${suggestion.text}); still the person's choice.`;
   }
   const wait = !chosen && m.leaveable(card) ? " It can wait for later." : "";
   return `[id ${JSON.stringify(card.id)}] ${card.title} Answer with ${how}.${state}${wait}`;
@@ -121,7 +125,7 @@ function reviewText(m, body, review, input) {
     parts.push(
       `File ${file}: ${pages.length} ${pages.length === 1 ? "page" : "pages"}, read as ${kinds.map((k) => words[k] || k).join("; ")}${
         unsure
-          ? `. Not sure of its layout: send layouts {${JSON.stringify(file)}: one of ${m.LAYOUTS.map((k) => `"${k}" (${words[k]})`).join(", ")}}`
+          ? `. Not sure of its layout: send layouts {${JSON.stringify(file)}: one of ${m.LAYOUTS.map((k) => `"${aiWord(m, k)}" (${words[k]})`).join(", ")}}`
           : ""
       }.`
     );
@@ -142,7 +146,7 @@ function reviewText(m, body, review, input) {
         .map(
           (line) =>
             // A line with nothing to change (days by number, INGEST-5.11) is only said.
-            `${line.name}${line.options.length ? ` [id ${JSON.stringify(line.id)}: ${line.options.map((o) => `"${o.value}" = ${o.label}${o.value === line.answer ? " (now)" : ""}`).join(", ")}]` : ""}`
+            `${line.name}${line.options.length ? ` [id ${JSON.stringify(line.id)}: ${line.options.map((o) => `"${aiWord(m, o.value)}" = ${o.label}${o.value === line.answer ? " (now)" : ""}`).join(", ")}]` : ""}`
         )
         .join("; ")}`
     );

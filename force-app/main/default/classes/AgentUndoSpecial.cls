@@ -1,5 +1,5 @@
 /**
- * undo_last_agent_change for a special day's or event's own schedule (docs/protocol/api.md
+ * undo_last_change for a special day's or event's own schedule (docs/protocol/api.md
  * API-1.14, API-1.77), asked with special (and kind) instead of a week: its page's Undo. The
  * connector holds a cell's runs back for the conversation, as the page's history does, and sends
  * them as held (by the plan's item); they go back through the page's own save

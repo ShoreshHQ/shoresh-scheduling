@@ -29,7 +29,7 @@ private class AgentLinkedChoicesTest {
         new Map<String, Object>{
           'activity' => 'Drama',
           'name' => 'Drama',
-          'periods' => LinkedChoicesMenu.periods('monday', 'Period 1')
+          'times' => LinkedChoicesMenu.periods('monday', 'Period 1')
         }
       )
     );
@@ -90,7 +90,7 @@ private class AgentLinkedChoicesTest {
           new Map<String, Object>{
             'activity' => 'drama',
             'name' => 'Drama double',
-            'periods' => LinkedChoicesMenu.periods('Monday', 'Period 1'),
+            'times' => LinkedChoicesMenu.periods('Monday', 'Period 1'),
             'applies_to' => 'only these',
             'divisions' => new List<Object>{ 'Juniors' }
           }
@@ -124,7 +124,7 @@ private class AgentLinkedChoicesTest {
       Map<String, Object> notThere = new Map<String, Object>{
         'activity' => 'Drama',
         'name' => 'Drama',
-        'periods' => LinkedChoicesMenu.periods('Friday', 'Period 1')
+        'times' => LinkedChoicesMenu.periods('Friday', 'Period 1')
       };
       List<Object> answer = LinkedChoicesMenu.sent(
         new AgentMakeLinkedChoice(),
@@ -146,7 +146,7 @@ private class AgentLinkedChoicesTest {
       Map<String, Object> notOffered = new Map<String, Object>{
         'activity' => 'Archery',
         'name' => 'Archery',
-        'periods' => LinkedChoicesMenu.periods('Monday', 'Period 1')
+        'times' => LinkedChoicesMenu.periods('Monday', 'Period 1')
       };
       answer = LinkedChoicesMenu.sent(
         new AgentMakeLinkedChoice(),
@@ -174,7 +174,7 @@ private class AgentLinkedChoicesTest {
         Map<String, Object> refused = new Map<String, Object>{
           'activity' => 'Drama',
           'name' => 'Drama',
-          'periods' => LinkedChoicesMenu.periods('Monday', 'Period 1')
+          'times' => LinkedChoicesMenu.periods('Monday', 'Period 1')
         };
         refused.putAll(more);
         answer = LinkedChoicesMenu.sent(
@@ -204,7 +204,7 @@ private class AgentLinkedChoicesTest {
           new Map<String, Object>{
             'activity' => 'Drama',
             'name' => 'Drama',
-            'periods' => LinkedChoicesMenu.periods('Monday', 'Period 1')
+            'times' => LinkedChoicesMenu.periods('Monday', 'Period 1')
           }
         )
       );
@@ -231,8 +231,8 @@ private class AgentLinkedChoicesTest {
             'name' => 'drama',
             'new_name' => 'Drama double',
             'applies_to' => 'All except',
-            'periods_on' => LinkedChoicesMenu.periods('Tuesday', 'Lunch'),
-            'periods_off' => LinkedChoicesMenu.periods('Monday', 'Period 1'),
+            'times_on' => LinkedChoicesMenu.periods('Tuesday', 'Lunch'),
+            'times_off' => LinkedChoicesMenu.periods('Monday', 'Period 1'),
             'divisions_on' => new List<Object>{ 'Juniors' }
           }
         )
@@ -394,7 +394,7 @@ private class AgentLinkedChoicesTest {
         menu.at(
           new Map<String, Object>{
             'name' => 'Drama',
-            'periods_off' => LinkedChoicesMenu.periods('Monday', 'Period 1')
+            'times_off' => LinkedChoicesMenu.periods('Monday', 'Period 1')
           }
         )
       );
@@ -458,7 +458,7 @@ private class AgentLinkedChoicesTest {
             menu.at(
               new Map<String, Object>{
                 'name' => 'Drama',
-                'periods_on' => LinkedChoicesMenu.periods('Tuesday', 'Period 1')
+                'times_on' => LinkedChoicesMenu.periods('Tuesday', 'Period 1')
               }
             )
           )[0]
@@ -473,7 +473,7 @@ private class AgentLinkedChoicesTest {
             menu.at(
               new Map<String, Object>{
                 'name' => 'Drama',
-                'periods_off' => LinkedChoicesMenu.periods('Tuesday', 'Lunch')
+                'times_off' => LinkedChoicesMenu.periods('Tuesday', 'Lunch')
               }
             )
           )[0]
@@ -520,7 +520,7 @@ private class AgentLinkedChoicesTest {
             new Map<String, Object>{
               'activity' => 'Drama',
               'name' => 'Drama',
-              'periods' => LinkedChoicesMenu.periods('Tuesday', 'Period 1')
+              'times' => LinkedChoicesMenu.periods('Tuesday', 'Period 1')
             }
           )
         )[0]

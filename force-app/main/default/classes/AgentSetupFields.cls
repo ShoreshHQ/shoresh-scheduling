@@ -17,7 +17,7 @@ public with sharing class AgentSetupFields {
     'sunday'
   };
 
-  // Each kind's fields by plain name, in the screen's order (its name is rename_setup_record's).
+  // Each kind's fields by plain name, in the screen's order (its name is rename_in_setup's).
   private static final Map<String, Map<String, Schema.SObjectField>> FIELDS = new Map<String, Map<String, Schema.SObjectField>>{
     'Week' => new Map<String, Schema.SObjectField>{
       'start_date' => Week__c.StartDate__c,
@@ -89,7 +89,7 @@ public with sharing class AgentSetupFields {
       'notes' => SpecialEvent__c.Notes__c
     },
     'ElectiveSet' => new Map<String, Schema.SObjectField>(),
-    // Reached only by change_offering, which finds its row by set and activity (API-1.136).
+    // Reached only by change_elective, which finds its row by set and activity (API-1.136).
     'Offering' => new Map<String, Schema.SObjectField>{
       'seats' => Offering__c.Seats__c,
       'no_seat_limit' => Offering__c.NoSeatLimit__c,
@@ -171,7 +171,7 @@ public with sharing class AgentSetupFields {
     List<String> names = namesOf(found.term);
     return names.isEmpty()
       ? aOrAn(found.kind) +
-        ' has nothing to set but its name (rename_setup_record renames it).'
+        ' has nothing to set but its name (rename_in_setup renames it).'
       : aOrAn(found.kind) +
         ' has no field "' +
         key.left(40) +
@@ -228,7 +228,7 @@ public with sharing class AgentSetupFields {
     return (Map<String, Object>) fields;
   }
 
-  /** A value as text; "(blank)", as read_setup_record says an empty one, is empty. */
+  /** A value as text; "(blank)", as read_from_setup says an empty one, is empty. */
   private static String text(Object value) {
     String said = value == null ? '' : String.valueOf(value).normalizeSpace();
     return said == '(blank)' ? '' : said;
@@ -239,7 +239,7 @@ public with sharing class AgentSetupFields {
   }
 
   /**
-   * What the agent saw in the fields it changes (seen: {plain name: value as read_setup_record
+   * What the agent saw in the fields it changes (seen: {plain name: value as read_from_setup
    * gave it}), read as the change is, for the row save to compare with what the record holds
    * now. A changed field the agent didn't say it saw is refused: Shoresh never guesses it.
    */
@@ -262,7 +262,7 @@ public with sharing class AgentSetupFields {
       throw new ShoreshException(
         'Say what each field held when you read it (seen: ' +
           String.join(missing, ', ') +
-          '), as read_setup_record gives it, so a change someone made since isn\'t overwritten.'
+          '), as read_from_setup gives it, so a change someone made since isn\'t overwritten.'
       );
     }
     SObject seen = recordId.getSObjectType().newSObject(recordId);

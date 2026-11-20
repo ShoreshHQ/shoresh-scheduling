@@ -152,7 +152,7 @@ private class SeenSavesTest {
       Id bunk = [SELECT Id FROM Group__c WITH USER_MODE LIMIT 1].Id;
       Test.startTest();
       List<String> refused = new List<String>();
-      // On the screen, then to an AI (change_activity_rules), which has no page (API-1.105).
+      // On the screen, then to an AI (change_activity_details), which has no page (API-1.105).
       for (Integer i = 0; i < 4; i++) {
         AgentRefusal.forAgent = i >= 2;
         try {

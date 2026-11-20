@@ -1,13 +1,13 @@
 /**
- * change_offering: an offering's seats, its No limit tick and its minimum to run, as the cells of
+ * change_elective: an offering's seats, its No limit tick and its minimum to run, as the cells of
  * its row on the Electives list do, through an agent or the command line (docs/protocol/api.md
- * API-1.136). Web address /v1/change_offering, POST {season, elective_set, activity, fields, seen}.
+ * API-1.136). Web address /v1/change_elective, POST {season, elective_set, activity, fields, seen}.
  * It is the setup table's own save of one row (SetupTablesController.saveRow, ADR 0011), so what
  * someone else changed since is a conflict and the object's own rules refuse what they refuse.
  * Seats below those already given are saved and shown as over (ELECT-4.5); blank or 0 keep their
  * meaning (ELECT-4.1).
  */
-@RestResource(urlMapping='/v1/change_offering')
+@RestResource(urlMapping='/v1/change_elective')
 global with sharing class AgentChangeOffering implements AgentWeeks.Action {
   private static final Set<String> FIELDS = new Set<String>{
     'season',
@@ -77,7 +77,7 @@ global with sharing class AgentChangeOffering implements AgentWeeks.Action {
     return found;
   }
 
-  /** What each field held is read_offerings's to say (seen), so one changed since is kept. */
+  /** What each field held is read_electives_list's to say (seen), so one changed since is kept. */
   private static void refuseSeenLeftOut(
     Map<String, Object> body,
     AgentSetupFields.Put put
@@ -91,7 +91,7 @@ global with sharing class AgentChangeOffering implements AgentWeeks.Action {
         throw new ShoreshException(
           'Say what ' +
             key +
-            ' held when you read it (seen), as read_offerings gives it, so a change someone made since isn\'t overwritten.'
+            ' held when you read it (seen), as read_electives_list gives it, so a change someone made since isn\'t overwritten.'
         );
       }
     }

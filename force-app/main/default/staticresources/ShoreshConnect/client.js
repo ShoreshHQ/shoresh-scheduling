@@ -318,7 +318,7 @@ async function callOnce(
       load: () => imports(namespace)
     });
   }
-  if (capability.bringsInChoices) {
+  if (capability.importsChoices) {
     return bringInChoices(capability, input, {
       ...at,
       load: () => choices(namespace)
@@ -621,13 +621,13 @@ async function counterAfter(fields, at, checks) {
 }
 
 /**
- * read_week_checks and accept_finding (API-1.30, API-1.31, API-1.44): reads what Generated
+ * read_week_checks and accept_line (API-1.30, API-1.31, API-1.44): reads what Generated
  * Schedule or Manual Build reads to show its counter (GET /v1/week_checks), works the counter out here with the screen's own
  * modules (shipped beside this file), and answers it in the counter's words (on Generated
  * Schedule with its locked cells and the week as read, seen, which its cell edits, lock_cells and
  * unlock_cells hand back); to accept, finds
  * the line named among those shown and keeps it through the counter's own save
- * (POST /v1/accept_finding).
+ * (POST /v1/accept_line).
  */
 async function weekChecks(capability, input, at, checks, edits) {
   const fields = {};
@@ -667,12 +667,12 @@ async function weekChecks(capability, input, at, checks, edits) {
       .replace(/\s+/g, " ")
       .trim()
       .toLowerCase();
-  const line = shown.find((l) => fold(m.wordsOf(l)) === fold(input.finding));
+  const line = shown.find((l) => fold(m.wordsOf(l)) === fold(input.line));
   if (!line) {
     return {
       ok: false,
       status: 400,
-      text: `There is no line "${String(input.finding || "").slice(0, 120)}" to accept in this week's checks. The lines that can be accepted: ${shown.map(m.wordsOf).join("; ") || "none"}.`
+      text: `There is no line "${String(input.line || "").slice(0, 120)}" to accept in this week's checks. The lines that can be accepted: ${shown.map(m.wordsOf).join("; ") || "none"}.`
     };
   }
   const kept = answer(

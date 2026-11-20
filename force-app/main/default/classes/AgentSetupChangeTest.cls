@@ -43,7 +43,7 @@ private class AgentSetupChangeTest {
     };
   }
 
-  /** Main runs on Saturday too, said to change_setup_record as read. */
+  /** Main runs on Saturday too, said to change_in_setup as read. */
   private static List<Object> saturdayOnMain() {
     return post(
       'change',
