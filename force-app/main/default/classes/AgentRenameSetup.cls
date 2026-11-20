@@ -1,13 +1,13 @@
 /**
- * rename_setup_record: rename one of the season's setup records (a week, program, division,
+ * rename_in_setup: rename one of the season's setup records (a week, program, division,
  * group, time block, location type, location, activity, fixed or recurring activity, special day
  * or event, or elective set), as the person, through an agent or the command line
- * (docs/protocol/api.md API-1.47). Web address /v1/rename_setup_record, POST {season, kind, name,
+ * (docs/protocol/api.md API-1.47). Web address /v1/rename_in_setup, POST {season, kind, name,
  * program, new_name}. It is the setup table's own row save (SetupTablesController.saveRow), the
  * name the person saw sent as seen, so someone else's change since is refused, never overwritten.
  * Answered and refused in the screen's own words.
  */
-@RestResource(urlMapping='/v1/rename_setup_record')
+@RestResource(urlMapping='/v1/rename_in_setup')
 global with sharing class AgentRenameSetup implements AgentWeeks.Action {
   private static final Set<String> FIELDS = new Set<String>{
     'season',

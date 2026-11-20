@@ -156,6 +156,20 @@ function headingLines(p) {
 }
 
 /** One list's table as the screen lays it out, in lines. */
+/**
+ * The engine's camelCase words an AI reads and sends in plain words instead: leaveOut as
+ * leave_out, a layout (allCamp, byGroup, byActivity) as all_camp, by_group, by_activity.
+ */
+const snake = (word) => word.replace(/[A-Z]/g, (c) => `_${c.toLowerCase()}`);
+function aiWord(m, value) {
+  return value === m.LEAVE_OUT || m.LAYOUTS.includes(value)
+    ? snake(value)
+    : value;
+}
+function engineWord(m, value) {
+  return [m.LEAVE_OUT, ...m.LAYOUTS].find((w) => snake(w) === value) ?? value;
+}
+
 function tableLines(p, setup, m, leaveOut) {
   const table = m.importTable(p, { setup, showSame: false, leaveOut });
   const lines = [];
@@ -183,7 +197,7 @@ function tableLines(p, setup, m, leaveOut) {
       const out = row.leaveOut
         ? row.leaveOut.pressed === "true"
           ? ` [left out; to import it, leave ${JSON.stringify(row.leaveOut.key)} out of answers]`
-          : ` [to leave it out, answer ${JSON.stringify(row.leaveOut.key)}: "${m.LEAVE_OUT}"]`
+          : ` [to leave it out, answer ${JSON.stringify(row.leaveOut.key)}: "${aiWord(m, m.LEAVE_OUT)}"]`
         : "";
       return `${row.said}${row.name}${cells.length ? ` (${cells.join(", ")})` : ""}${row.note ? ` · ${row.note}` : ""}${choices.length ? ` · ${choices.join(" · ")}` : ""}${out}`;
     });
@@ -204,21 +218,23 @@ function deletedLines(p, t, m) {
 }
 
 /** The questions, each with its id and choices (and a pattern's suggestion, marked). */
-function questionLines(cards, suggestions, remembered) {
+function questionLines(m, cards, suggestions, remembered) {
   return cards.map((card) => {
     const chosen = card.options.find((o) => o.value === card.answer);
-    let how = card.options.map((o) => `"${o.value}" = ${o.label}`).join(", ");
+    let how = card.options
+      .map((o) => `"${aiWord(m, o.value)}" = ${o.label}`)
+      .join(", ");
     if (card.daysQuestion) {
       how = 'days, like "Monday,Wednesday"';
     } else if (card.timesQuestion) {
       how = 'times, like "09:00-10:00"';
     }
     const answered = card.answer
-      ? ` Answered: "${card.answer}"${chosen ? ` (${chosen.label})` : ""}${remembered[card.id] === card.answer ? ", Answered as before" : ""}.`
+      ? ` Answered: "${aiWord(m, card.answer)}"${chosen ? ` (${chosen.label})` : ""}${remembered[card.id] === card.answer ? ", Answered as before" : ""}.`
       : "";
     const suggested =
       !card.answer && suggestions[card.id]
-        ? ` Suggested: "${suggestions[card.id].value}" (${suggestions[card.id].text}); still the person's choice.`
+        ? ` Suggested: "${aiWord(m, suggestions[card.id].value)}" (${suggestions[card.id].text}); still the person's choice.`
         : "";
     return `[id ${JSON.stringify(card.id)}] ${card.title} Answer with ${how}.${answered}${suggested}`;
   });
@@ -341,12 +357,15 @@ async function importFile(capability, given, { read, send, answer, load }) {
     }
     if (choices) {
       return refused(
-        `${file.name}: that file is camper choices, not electives. Nothing was saved. Import it with bring_in_choices.`
+        `${file.name}: that file is camper choices, not electives. Nothing was saved. Import it with import_choices.`
       );
     }
   }
   const remembered = m.rememberedByKey(body.answers || []);
-  const answers = { ...remembered.answers, ...(input.answers || {}) };
+  const sent = Object.fromEntries(
+    Object.entries(input.answers || {}).map(([id, a]) => [id, engineWord(m, a)])
+  );
+  const answers = { ...remembered.answers, ...sent };
   const proposal = workbook
     ? m.workbookProposal({
         file,
@@ -423,7 +442,7 @@ async function importFile(capability, given, { read, send, answer, load }) {
         parts.push(`Also added with the list: ${also.join("; ")}`);
       parts.push(...deletedLines(proposal, t, m));
     }
-    const asked = questionLines(cards, suggestions, remembered.answers);
+    const asked = questionLines(m, cards, suggestions, remembered.answers);
     if (asked.length) parts.push(`Questions: ${asked.join(" ")}`);
     parts.push(
       waiting.length
@@ -494,5 +513,7 @@ module.exports = {
   fromCommandLine,
   asTheScreenReads,
   changedSince,
-  refused
+  refused,
+  aiWord,
+  engineWord
 };

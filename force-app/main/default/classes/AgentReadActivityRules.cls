@@ -1,10 +1,10 @@
 /**
- * read_activity_rules: what an activity's details panel holds (who can do it, same division only,
+ * read_activity_details: what an activity's details panel holds (who can do it, same division only,
  * early in the week, notes), as the person sees them, through an agent or the command line
- * (docs/protocol/api.md API-1.51). Web address /v1/read_activity_rules, GET ?season=&name=. Each
- * value is said as change_activity_rules takes it back as seen.
+ * (docs/protocol/api.md API-1.51). Web address /v1/read_activity_details, GET ?season=&name=. Each
+ * value is said as change_activity_details takes it back as seen.
  */
-@RestResource(urlMapping='/v1/read_activity_rules')
+@RestResource(urlMapping='/v1/read_activity_details')
 global with sharing class AgentReadActivityRules implements AgentWeeks.Action {
   private static final Set<String> FIELDS = new Set<String>{ 'season', 'name' };
 

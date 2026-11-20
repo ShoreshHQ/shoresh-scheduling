@@ -1,6 +1,6 @@
 /**
  * Every action's web address has its Apex class; no class keeps a version of its own for an AI
- * change (API-1.148); and an action whose description promises undo_last_agent_change is one the
+ * change (API-1.148); and an action whose description promises undo_last_change is one the
  * screen undoes: a hand edit or a build (API-1.14). Reads the Apex source; no Salesforce here.
  */
 const fs = require("fs");
@@ -27,9 +27,9 @@ for (const [name, source] of sources) {
   if (mapping) atAddress.set(mapping[1], name);
 }
 
-// What a description says when undo_last_agent_change is that action's Undo.
+// What a description says when undo_last_change is that action's Undo.
 const PROMISES_UNDO =
-  /undo_last_agent_change (takes it back|switches the day back|brings it back)/i;
+  /undo_last_change (takes it back|switches the day back|brings it back)/i;
 
 describe("actions and their Apex", () => {
   it.each(CAPABILITIES.map((capability) => [capability.name, capability]))(
@@ -60,7 +60,7 @@ describe("actions and their Apex", () => {
         "change_schedule_cell",
         "move_cell",
         "place_special_event",
-        "switch_to_rain_plans",
+        "rainy_day",
         "build_week",
         "start_over_week"
       ])
@@ -84,7 +84,7 @@ describe("actions and their Apex", () => {
       "try_another_option",
       "bring_back_option",
       "fill_open_cells",
-      "set_up_noted_item",
+      "set_it_up",
       "update_to_match_setup"
     ].map((name) => [name])
   )("%s promises no Undo, as the screen offers none", (name) => {
@@ -105,10 +105,10 @@ describe("actions and their Apex", () => {
 
   it.each(
     [
-      "delete_setup_record",
+      "delete_from_setup",
       "delete_version",
       "merge_locations",
-      "undo_last_agent_change",
+      "undo_last_change",
       "undo_import",
       "forget_learned_answer",
       "forget_learned_pattern",
@@ -118,8 +118,8 @@ describe("actions and their Apex", () => {
       "change_special_schedule_frame",
       "assign_elective_seats",
       // API-1.147: only a fixed activity over a recurring one asks.
-      "add_setup_record",
-      "change_setup_record"
+      "add_to_setup",
+      "change_in_setup"
     ].map((name) => [name])
   )("API-1.106: %s asks first, enforced by its Apex", (name) => {
     const capability = CAPABILITIES.find((each) => each.name === name);

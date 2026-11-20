@@ -1,14 +1,14 @@
 /**
- * add_setup_record: add one setup record to the season (a week, program, division, group, time
+ * add_to_setup: add one setup record to the season (a week, program, division, group, time
  * block, location type, location, activity, fixed or recurring activity, special day or event, or
  * elective set), as the person, through an agent or the command line (docs/protocol/api.md
- * API-1.50). Web address /v1/add_setup_record, POST {season, kind, name, program, fields}. It is
+ * API-1.50). Web address /v1/add_to_setup, POST {season, kind, name, program, fields}. It is
  * the setup table's own Add (SetupTablesController.saveRow with a new row): last in its table,
  * starting from what that table's new row starts with, and refused when it lacks what the table
  * requires before Add, or in the save's own words. A fixed activity over a recurring one asks
  * first what the table asks, and on the yes saves with the same pieces (API-1.147).
  */
-@RestResource(urlMapping='/v1/add_setup_record')
+@RestResource(urlMapping='/v1/add_to_setup')
 global with sharing class AgentAddSetup implements AgentWeeks.Action, AgentAskFirst.Preview {
   private static final Set<String> FIELDS = new Set<String>{
     'season',

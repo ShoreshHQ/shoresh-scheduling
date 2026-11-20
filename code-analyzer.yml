@@ -181,7 +181,7 @@ suppressions:
     - rule_selector: "pmd:FieldNamingConventions"
       max_suppressed_violations: 2
       reason: "Flow send fields are the API's plain-English names (API-1.5)."
-  "main/default/classes/OutgoingElectiveOfferings.cls":
+  "main/default/classes/OutgoingElectivesOffered.cls":
     - rule_selector: "pmd:FieldNamingConventions"
       max_suppressed_violations: 2
       reason: "Flow send fields are the API's plain-English names (API-1.5)."

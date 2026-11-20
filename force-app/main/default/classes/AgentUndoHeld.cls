@@ -1,5 +1,5 @@
 /**
- * What a change through an agent or the command line leaves for undo_last_agent_change
+ * What a change through an agent or the command line leaves for undo_last_change
  * (docs/protocol/api.md API-1.14, API-1.148), answered with it and held by the connector for the
  * rest of the conversation, never saved in Salesforce, as the screen holds its Undo only while
  * its page is open: the schedule (a week's draft, or a special day's or event's plan), the

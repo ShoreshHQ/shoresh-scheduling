@@ -1,12 +1,12 @@
 /**
- * confirm_setup_guess: "Looks right" on something the setup screens mark as guessed from a file
+ * mark_looks_right: "Looks right" on something the setup screens mark as guessed from a file
  * (ADR 0006 §21), through an agent or the command line (docs/protocol/api.md API-1.60). Web
- * address /v1/confirm_setup_guess, POST {season, kind, name, program, elective_set, field, seen}.
+ * address /v1/mark_looks_right, POST {season, kind, name, program, elective_set, field, seen}.
  * It is the mark's own Looks right (SetupGuessesController.confirmGuess), done only while the guess
  * is still marked with the value the AI read in read_setup_guesses (seen, capitals and all), with
  * the record locked; otherwise refused (409), nothing changed.
  */
-@RestResource(urlMapping='/v1/confirm_setup_guess')
+@RestResource(urlMapping='/v1/mark_looks_right')
 global with sharing class AgentConfirmGuess implements AgentWeeks.Action {
   private static final Set<String> FIELDS = new Set<String>{
     'season',
@@ -27,7 +27,7 @@ global with sharing class AgentConfirmGuess implements AgentWeeks.Action {
     'who',
     'groups_that_fit',
     'division',
-    'periods'
+    'times'
   };
   private static final String NOTHING = ' Nothing was changed.';
 

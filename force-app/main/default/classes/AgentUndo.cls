@@ -1,7 +1,7 @@
 /**
  * undo: take back the last change made through this conversation to a program's Generated
  * Schedule or Manual Build week, as the screen's Undo takes back what was just done
- * (docs/protocol/api.md API-1.14, API-1.41, API-1.148). Web address /v1/undo_last_agent_change,
+ * (docs/protocol/api.md API-1.14, API-1.41, API-1.148). Web address /v1/undo_last_change,
  * POST {season, week, program, schedule, held}. Salesforce keeps nothing for it: the connector
  * holds, for this conversation only, what each change's answer left for its Undo (AgentUndoHeld),
  * as the screen holds its Undo only while the page is open, and sends it here as held (by the
@@ -18,7 +18,7 @@
  * With special (and kind) instead of a week, it is a special day's or event's own schedule, as
  * its page's Undo (AgentUndoSpecial).
  */
-@RestResource(urlMapping='/v1/undo_last_agent_change')
+@RestResource(urlMapping='/v1/undo_last_change')
 global with sharing class AgentUndo implements AgentWeeks.Action, AgentAskFirst.Preview {
   public static final String EDIT = 'edit';
   public static final String BUILD = 'build';

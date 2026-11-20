@@ -9,7 +9,7 @@ private class IncomingCamperElectiveChoiceTest {
       'season' => 'Summer 2026',
       'source_system' => IncomingTestData.SYSTEM_NAME,
       'camper_id' => 'SYN-1',
-      'elective' => 'Chugim',
+      'elective_set' => 'Chugim',
       'week' => 'Week 1',
       'first_choice' => first,
       'second_choice' => second
@@ -86,7 +86,7 @@ private class IncomingCamperElectiveChoiceTest {
       byFlow.season = 'Summer 2026';
       byFlow.source_system = IncomingTestData.SYSTEM_NAME;
       byFlow.camper_id = 'SYN-2';
-      byFlow.elective = 'Chugim';
+      byFlow.elective_set = 'Chugim';
       byFlow.week = 'Week 1';
       byFlow.first_choice = 'Swim';
       byFlow.second_choice = 'Basket weaving';
@@ -393,7 +393,7 @@ private class IncomingCamperElectiveChoiceTest {
       byFlow.season = 'Summer 2026';
       byFlow.source_system = IncomingTestData.SYSTEM_NAME;
       byFlow.camper_id = 'SYN-1';
-      byFlow.elective = 'Chugim';
+      byFlow.elective_set = 'Chugim';
       byFlow.week = 'Week 1';
       byFlow.first_choice = 'Swim';
       Assert.areEqual(

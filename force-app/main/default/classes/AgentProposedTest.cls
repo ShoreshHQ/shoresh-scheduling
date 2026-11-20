@@ -147,7 +147,7 @@ private class AgentProposedTest {
       List<Object> done = ask(
         new AgentConfirmProposed(),
         'POST',
-        confirm('chugim', 'proposed')
+        confirm('chugim', 'guessed')
       );
       Integer queries = Limits.getQueries() - before;
       Test.stopTest();
@@ -172,13 +172,13 @@ private class AgentProposedTest {
       List<Object> twoSets = ask(
         new AgentConfirmProposed(),
         'POST',
-        confirm(null, 'proposed')
+        confirm(null, 'guessed')
       );
-      ask(new AgentConfirmProposed(), 'POST', confirm('Chugim', 'proposed'));
+      ask(new AgentConfirmProposed(), 'POST', confirm('Chugim', 'guessed'));
       List<Object> again = ask(
         new AgentConfirmProposed(),
         'POST',
-        confirm('Chugim', 'proposed')
+        confirm('Chugim', 'guessed')
       );
       Test.stopTest();
       Assert.areEqual(400, unseen[0], String.valueOf(unseen[1]));
@@ -237,17 +237,17 @@ private class AgentProposedTest {
       List<Object> twoSets = ask(
         new AgentConfirmProposed(),
         'POST',
-        confirm(null, 'proposed')
+        confirm(null, 'guessed')
       );
       List<Object> noSet = ask(
         new AgentConfirmProposed(),
         'POST',
-        confirm('Sports', 'proposed')
+        confirm('Sports', 'guessed')
       );
       List<Object> done = ask(
         new AgentConfirmProposed(),
         'POST',
-        confirm('Chugim', 'proposed')
+        confirm('Chugim', 'guessed')
       );
       Test.stopTest();
       String said = (String) read[1];
@@ -257,7 +257,7 @@ private class AgentProposedTest {
         twoSets[1]
       );
       Assert.areEqual(
-        'No Chug "Sports" offers "Drama". Nothing was changed. read_proposed_offerings says what is guessed.',
+        'No Chug "Sports" offers "Drama". Nothing was changed. read_guessed_electives says what is guessed.',
         noSet[1]
       );
       Assert.areEqual(

@@ -283,7 +283,7 @@ private class AgentBuildTest {
         200,
         send('build_week', menuAgain(GeneratedSaves.START_OVER, 1))[0]
       );
-      List<Object> undone = send('undo_last_agent_change', undoAsked());
+      List<Object> undone = send('undo_last_change', undoAsked());
       Assert.areEqual(200, undone[0], String.valueOf(undone[1]));
       Assert.areEqual('Undone: Started Week 1 over.', undone[1]);
       Assert.areEqual(before, periodTwo(draftId));
@@ -372,7 +372,7 @@ private class AgentBuildTest {
 
       Test.stopTest();
       // The screen has no Undo for Generate: said, and nothing changed.
-      List<Object> undone = send('undo_last_agent_change', undoAsked());
+      List<Object> undone = send('undo_last_change', undoAsked());
       Assert.areEqual(400, undone[0], String.valueOf(undone[1]));
       Assert.areEqual(
         'The screen has no Undo for "Built Week 1", so nothing was undone. It kept no version of Week 1 before it; Versions has the versions there are, and restore_version brings one back.',

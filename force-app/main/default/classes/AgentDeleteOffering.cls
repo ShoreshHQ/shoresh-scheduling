@@ -1,11 +1,11 @@
 /**
- * delete_offering: delete a row of the Electives list, as its Delete does, through an agent or the
- * command line (docs/protocol/api.md API-1.137). Web address /v1/delete_offering, POST {season,
+ * delete_elective: delete a row of the Electives list, as its Delete does, through an agent or the
+ * command line (docs/protocol/api.md API-1.137). Web address /v1/delete_elective, POST {season,
  * elective_set, activity}. It is the setup screens' own delete (SetupDelete): it asks first with
  * the screen's question and refuses what the screen refuses, with nothing deleted. The activity is
  * kept; the offering's linked choices go with it.
  */
-@RestResource(urlMapping='/v1/delete_offering')
+@RestResource(urlMapping='/v1/delete_elective')
 global with sharing class AgentDeleteOffering implements AgentWeeks.Action, AgentAskFirst.Preview {
   private static final Set<String> FIELDS = new Set<String>{
     'season',

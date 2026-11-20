@@ -1,7 +1,7 @@
 /**
- * switch_to_rain_plans: one day of a program's Generated Schedule or Manual Build week switched to
+ * rainy_day: one day of a program's Generated Schedule or Manual Build week switched to
  * its rain plans, as the screen's Edit > Rainy day… does, through an agent or the command line
- * (docs/protocol/api.md API-1.65). Web address /v1/switch_to_rain_plans, POST {season, week,
+ * (docs/protocol/api.md API-1.65). Web address /v1/rainy_day, POST {season, week,
  * program, schedule, change, said, runs, rain, seen, revision}. The switch is worked out where the screen
  * works it out, outside Salesforce: the connector runs the week editor's own rainy day
  * (c/shoreshWeekEditor rain.js) on the week as it read it and sends the runs and marks the screen
@@ -13,7 +13,7 @@
  * switch is one hand edit the connector can undo for the rest of the conversation, its marks too
  * (AgentUndo, API-1.14).
  */
-@RestResource(urlMapping='/v1/switch_to_rain_plans')
+@RestResource(urlMapping='/v1/rainy_day')
 global with sharing class AgentRainyDay implements AgentWeeks.Action {
   private static final Set<String> FIELDS = new Set<String>{
     'season',

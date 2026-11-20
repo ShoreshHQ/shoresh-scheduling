@@ -1,7 +1,7 @@
 /**
  * An activity's details panel through a person's AI (docs/protocol/api.md API-1.51): who can do
  * it, groups from the same division only, early in the week, and notes, by plain names, said as
- * the panel shows them so the AI can send them back as seen (change_activity_rules).
+ * the panel shows them so the AI can send them back as seen (change_activity_details).
  */
 public with sharing class AgentActivityRules {
   public static final String WHO = 'who_can_do_it';
