@@ -36,22 +36,6 @@ public with sharing class OutgoingRows {
     return result;
   }
 
-  /**
-   * A read's answer (a JSON object, as the read serialized it), saying first which season it
-   * used (API-1.108). The read never says it itself.
-   */
-  public static String said(String answer) {
-    Season__c season = used ?? SeasonAsked.found();
-    if (season == null) {
-      return answer;
-    }
-    String rest = answer.substring(1).trim();
-    return '{"season":' +
-      JSON.serialize(season.Name) +
-      (rest == '}' ? '' : ',') +
-      rest;
-  }
-
   private static Season__c seasonNamed(String name) {
     String given = name.normalizeSpace();
     List<Season__c> found = [

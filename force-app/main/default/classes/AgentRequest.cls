@@ -36,7 +36,7 @@ public with sharing class AgentRequest {
         );
       }
       response.responseBody = Blob.valueOf(
-        seasonal ? OutgoingRows.said(answered) : answered
+        seasonal ? said(answered) : answered
       );
       response.statusCode = 200;
     } catch (Exception e) {
@@ -66,5 +66,36 @@ public with sharing class AgentRequest {
       e instanceof ShoreshException || e instanceof AuraHandledException;
     response.statusCode = ours ? 400 : 500;
     return ours ? e.getMessage() : ScreenErrors.words(e);
+  }
+
+  /**
+   * A read's answer (a JSON object, as the read serialized it), saying first which season it
+   * used (API-1.108), unless it already says one itself.
+   */
+  @TestVisible
+  private static String said(String answer) {
+    Season__c season = OutgoingRows.used ?? SeasonAsked.found();
+    if (season == null || saysSeason(answer)) {
+      return answer;
+    }
+    String rest = answer.substring(1).trim();
+    return '{"season":' +
+      JSON.serialize(season.Name) +
+      (rest == '}' ? '' : ',') +
+      rest;
+  }
+
+  /** Whether the answer has a season of its own at its top level (not one inside it). */
+  private static Boolean saysSeason(String answer) {
+    JSONParser parser = JSON.createParser(answer);
+    parser.nextToken();
+    while (parser.nextToken() == JSONToken.FIELD_NAME) {
+      if (parser.getText().equals('season')) {
+        return true;
+      }
+      parser.nextToken();
+      parser.skipChildren();
+    }
+    return false;
   }
 }

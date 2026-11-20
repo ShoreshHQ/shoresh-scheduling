@@ -345,6 +345,22 @@ private class AgentReadTest {
     Assert.areEqual('Week 1', answer.get('week'));
   }
 
+  // API-1.108: a read's answer says the season it used first, once: a season inside it (a
+  // setup's) is not the answer's, and one the read says itself is kept as it is.
+  @IsTest
+  static void aReadsSeasonIsSaidOnce() {
+    OutgoingRows.usedIs(new Season__c(Name = 'Summer 2026'));
+    Assert.areEqual(
+      '{"season":"Summer 2026","week":"Week 1","setup":{"season":"Other"}}',
+      AgentRequest.said('{"week":"Week 1","setup":{"season":"Other"}}')
+    );
+    Assert.areEqual('{"season":"Summer 2026"}', AgentRequest.said('{}'));
+    Assert.areEqual(
+      '{"week":"Week 1","season":"Own"}',
+      AgentRequest.said('{"week":"Week 1","season":"Own"}')
+    );
+  }
+
   // API-1.108: the week view's read says the season it used, as every read does.
   @IsTest
   static void theWeekViewSaysItsSeason() {
