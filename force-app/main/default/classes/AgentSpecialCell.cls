@@ -33,6 +33,10 @@ global with sharing class AgentSpecialCell implements AgentRequest.Change {
     AgentRequest.answer(new AgentSpecialCell());
   }
 
+  public Set<String> fields() {
+    return FIELDS;
+  }
+
   /** The GET: what the page opens (readOf). */
   private with sharing class WhatThePageOpens implements AgentRequest.Read {
     public Set<String> fields() {
