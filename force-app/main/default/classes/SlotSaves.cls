@@ -5,9 +5,9 @@
  * once and nobody's change is overwritten unseen: an edit whose slots someone else changed since
  * comes back as a conflict, for the screen to ask "keep theirs or use yours" (Greg, 2026-10-17).
  *
- * Generated Schedule's hand edits are saved the same way (saveOnGenerated), and each cell an edit
- * fills is locked, so building the week again keeps it (Greg, 2026-10-17: hand edits are locks);
- * a cell an edit leaves Open is unlocked, for the next build to fill.
+ * Generated Schedule's hand edits are saved the same way (GeneratedHandEdit, through saveLocked):
+ * there each run also goes by the draft's locks (RunLocks: GeneratedEdits), so building the week
+ * again keeps what the director did (Greg, 2026-10-17: hand edits are locks).
  *
  * A hand edit is never refused for what the director knows better than setup (Greg, 2026-10-26,
  * engine care Q4): a closed activity or place, a group away or not at camp then, or a fixed or
@@ -32,8 +32,29 @@ public with sharing class SlotSaves {
   private Map<Date, Integer> written = new Map<Date, Integer>();
   // The "Rain plan full" marks an edit made leaves on a day (a rainy day, or its Undo).
   private Map<Date, List<String>> rain = new Map<Date, List<String>>();
-  // Generated Schedule: what an edit fills is locked.
-  private Boolean lockEdits = false;
+  // Generated Schedule: each run goes by the draft's locks (null on Manual Build).
+  private RunLocks locks;
+
+  /** What a run adds on a draft that keeps locks (Generated Schedule: GeneratedEdits); Manual Build has none. */
+  public interface RunLocks {
+    /** Whether the run's cells are locked as the screen saw them; if not, the edit is a conflict. */
+    Boolean asSeen(RunAt made, ScheduleGrid grid);
+    /** The locks after the run's slots are written. */
+    void lock(RunAt made, ScheduleGrid grid);
+  }
+
+  /** A run where it is made: its group and first block positions, and what its group held before it. */
+  public class RunAt {
+    public SlotEdits.Run run;
+    public List<Integer> at;
+    public List<String> was;
+
+    public RunAt(SlotEdits.Run run, List<Integer> at, List<String> was) {
+      this.run = run;
+      this.at = at;
+      this.was = was;
+    }
+  }
 
   /**
    * Makes the edits that still fit, in order; the answer has the schedule as it now is, by
@@ -64,7 +85,7 @@ public with sharing class SlotSaves {
    * days as the start read them (Prepared), and without reading the schedule back (the start reads the
    * whole draft once afterwards anyway). The draft must be one this request inserted or has locked
    * (Apply to other weeks, WeekApply), so nobody else can save it meanwhile. What it fills is
-   * locked only when the draft says so (lockEdits), as a hand edit's is.
+   * locked only when the draft says so (locks), as a hand edit's is.
    */
   public static SlotEdits.Result makeWith(
     Prepared draft,
@@ -72,7 +93,7 @@ public with sharing class SlotSaves {
   ) {
     SlotSaves saves = new SlotSaves();
     saves.rules = draft.rules;
-    saves.lockEdits = draft.lockEdits;
+    saves.locks = draft.locks;
     return saves.saveAll(draft.scheduleId, draft.days, edits);
   }
 
@@ -83,31 +104,32 @@ public with sharing class SlotSaves {
     public SlotRules rules;
     // A Generated draft Apply to other weeks fills: what it fills is locked, as a hand edit's
     // (GeneratedEdits), so the next build keeps the director's own action (WEEK-6.2).
-    public Boolean lockEdits = false;
+    public RunLocks locks;
   }
 
   /**
-   * The same, on a Generated draft (GeneratedEdits): each run is made only if its locks are as
-   * the screen saw them, and what it changes is locked. seen: the revision the screen read the
-   * week at; the answer's revision is given only when nobody else saved the week since.
+   * The same, on a draft the caller has locked (Generated Schedule's hand edit:
+   * GeneratedHandEdit), each run going by locks. The answer leaves the schedule to the caller.
    */
-  public static SlotEdits.Result saveOnGenerated(
-    Id scheduleId,
+  public static Saved saveLocked(
+    Schedule__c draft,
     List<SlotEdits.Edit> edits,
-    String seen
+    RunLocks locks
   ) {
     SlotSaves saves = new SlotSaves();
-    saves.lockEdits = true;
-    Schedule__c draft = GeneratedDrafts.lockedToEdit(scheduleId);
-    SlotEdits.Result result = saves.saveOn(draft, edits);
-    // Shown with "deleted since" as Generated Schedule's own reader works it out.
-    result.schedule = GeneratedInputs.view(draft);
-    result.revision = GeneratedEdits.revisionAfter(
-      saves.asRead,
-      saves.written,
-      seen
-    );
-    return result;
+    saves.locks = locks;
+    Saved saved = new Saved();
+    saved.result = saves.saveOn(draft, edits);
+    saved.read = saves.asRead;
+    saved.written = saves.written;
+    return saved;
+  }
+
+  /** What saveLocked did: its answer, the days as read before it, and each written day's new revision. */
+  public class Saved {
+    public SlotEdits.Result result;
+    public List<ScheduleDays.DayGrid> read;
+    public Map<Date, Integer> written;
   }
 
   private SlotEdits.Result saveOn(
@@ -231,7 +253,8 @@ public with sharing class SlotSaves {
         return false;
       }
     }
-    if (!locksAsSeen(run, grid, new List<Integer>{ g, first })) {
+    RunAt made = new RunAt(run, new List<Integer>{ g, first }, was);
+    if (!locksAsSeen(made, grid)) {
       return false;
     }
     // A run starts where a placement starts: starting inside one would cut off its first part.
@@ -241,19 +264,15 @@ public with sharing class SlotSaves {
       writeSlot(grid, new List<Integer>{ g, first + i }, run.after[i]);
       inRun.add(first + i);
     }
-    if (lockEdits) {
-      new GeneratedEdits(run, was).lock(grid, new List<Integer>{ g, first });
+    if (locks != null) {
+      locks.lock(made, grid);
     }
     return SlotRunChecks.neighboursKept(was, SlotIds.ofRow(grid, g), inRun);
   }
 
-  /** Generated Schedule: the run's locks are as the screen saw them (GeneratedEdits). */
-  private Boolean locksAsSeen(
-    SlotEdits.Run run,
-    ScheduleGrid grid,
-    List<Integer> at
-  ) {
-    return !lockEdits || GeneratedEdits.sawLocks(run, grid, at);
+  /** The run's locks are as the screen saw them, on a draft that keeps locks (RunLocks). */
+  private Boolean locksAsSeen(RunAt made, ScheduleGrid grid) {
+    return locks == null || locks.asSeen(made, grid);
   }
 
   /** One slot (at: group and block positions) given what it should now hold. */

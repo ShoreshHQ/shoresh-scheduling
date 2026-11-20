@@ -702,9 +702,9 @@ taken out; the Apex tests run only in CI.
     activities are never locked (§34).
     Restoring a Generated version keeps that version's own locks, as before (§50).
 33. **Hand edits are locks** (decision 2). A hand edit on the Generated draft is Manual Build's
-    slot save (`GeneratedScheduleController.saveSlots` → `SlotSaves.saveOnGenerated`: the same
+    slot save (`GeneratedScheduleController.saveSlots` → `GeneratedHandEdit` → `SlotSaves`: the same
     runs, the same compare-and-set and _keep theirs or use yours_ conflicts, the same rules),
-    with `GeneratedEdits`:
+    with `GeneratedEdits` (`SlotSaves.RunLocks`):
     - every cell an edit **changes** is locked when it holds something (its whole placement),
       unlocked when left Open, so the next build fills it. An activity made **shorter** by hand
       is locked as it is left (otherwise a build would put it back at full length). Cells a run
@@ -1399,7 +1399,7 @@ id]], floor, cut }`). The words are worked out when shown (`whyOf`, with `words.
    saved without the reasons for how it was built.").
 5. **A hand edit drops the reasons of the cells it changes and keeps that** (`saveSlots` now takes one
    request, `GeneratedWeek.HandEdits`: the edits, the revision and `engineNotes`; Code Analyzer's
-   parameter limit; `GeneratedEngineNotes.saveHandEdits` saves the edits, then the notes): sent only when a kept reason or the floor note goes, and kept only when nobody else saved the
+   parameter limit; `GeneratedHandEdit` saves the edits, then the notes): sent only when a kept reason or the floor note goes, and kept only when nobody else saved the
    week since the screen read it (the answer's revision is given); otherwise the newer notes stay.
    So a cell filled and cleared again by hand says what the week shows after a reload, not the
    build's reason. Any hand edit also drops the floor note (its filled counts are the build's and
@@ -1411,7 +1411,7 @@ id]], floor, cut }`). The words are worked out when shown (`whyOf`, with `words.
 
 Checked by `c/shoreshEngine` `notes.test.js`; `c/shoreshGeneratedSchedule` "the engine's reasons
 and notes are kept with the week…", "the engine's reasons kept with the week show after a
-reload…"; `GeneratedEngineNotesTest`.
+reload…"; `GeneratedEngineNotesTest`; a hand edit's notes (5): `GeneratedHandEditTest`.
 
 ## Choices (hand edits are reminders; Start over checked, 2026-10-26)
 
