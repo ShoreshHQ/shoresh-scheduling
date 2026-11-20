@@ -1,13 +1,14 @@
 # Security review audit (2026-11-20)
 
-A full audit of `force-app` and the downloadable connector (`ShoreshConnect`, built from
+Shoresh's own audit of `force-app` and the downloadable connector (`ShoreshConnect`, built from
 `connect/`) against Salesforce's AppExchange security review checklist, done before submitting.
-Read with [reviewer-notes.md](reviewer-notes.md): the false-positive notes and the register of
-every system-mode read and write, written for the reviewer.
+It is internal: it records findings, open items and what was not checked. What goes to the
+reviewer is [reviewer-notes.md](reviewer-notes.md): the false-positive notes and the register of
+system-mode reads and writes.
 
-Code on `main` at e4b489ee (through #445). Done by reading and searching the code, plus the
-Code Analyzer reports CI makes on every change. Nothing here was tried against a live installed
-package; that waits for the first package version.
+Code on `main` at e4b489ee (through #445). Done by reading and searching the code, independently
+reviewed, plus Code Analyzer scans. Nothing here was tried against an installed package; that
+waits for the first package version.
 
 ## What Salesforce asks for
 
@@ -27,29 +28,64 @@ From the partner security review docs (checked 2026-11-20; sources in the wiki's
 
 ## Results
 
-| Area                                               | Result                                                                                                                                                                                                                                                                                                  |
-| -------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Code Analyzer (AppExchange + Recommended:Security) | **0 findings** on `main` (CI run 44808539035, Code Analyzer 5.16.0). 40 suppressions, each one file, one rule, a limit and a reason, in `code-analyzer.yml`; explained in the reviewer notes.                                                                                                           |
-| Sharing                                            | All 461 non-test classes are `with sharing`; none `without sharing`. 4 inner classes are `inherited sharing`, called only from their `with sharing` outer class. 35 triggers, each only hands off to a `with sharing` handler.                                                                          |
-| CRUD/FLS                                           | 641 static queries: 531 `WITH USER_MODE`, 111 `WITH SYSTEM_MODE`, none without a mode. No plain DML anywhere: every write is `Database.*` with an access level (108 user mode, 16 system mode). Every system-mode use is listed with its reason in the reviewer notes. One finding (A-1, below).        |
-| Permission sets                                    | 11 sets, no system permissions (no Modify All Data, View All Data, API Enabled). View All / Modify All only on Shoresh's own Season object in Shoresh Scheduler, on purpose. Every class a screen calls is in Shoresh Scheduler; each connection set opens only its own class.                          |
-| SOQL injection                                     | 16 dynamic queries. Every object and field name comes from Salesforce's own describe or a fixed allow-list; every value is a bind variable. No user text is ever put into a query.                                                                                                                      |
-| XSS and browser code                               | No Aura, no Visualforce. No `lwc:dom="manual"`, `innerHTML`, `eval` or string timers. No link built from camp data. Static resources are loaded only from the package. CSV and Excel exports guard against spreadsheet formulas.                                                                        |
-| Third-party code                                   | SheetJS Community Edition 0.20.3 (past CVE-2023-30533 and CVE-2024-22363), byte-identical to the lock-file-pinned copy from SheetJS's own CDN. Salesforce's LWC engine (MIT) inside the connector's two pages. Fonts Inter and JetBrains Mono (SIL OFL 1.1).                                            |
-| Secrets                                            | None in the code or connector. `gitleaks` over the whole git history (1,364 commits): no leaks. No Remote Site Settings, CSP Trusted Sites, Named or External Credentials, or connected apps shipped. Debug logging carries only error codes and messages.                                              |
-| Callouts                                           | One, `OutgoingDoors.post`, always `callout:<Named Credential>` the camp made; the name is checked so it can't carry a path or reach another package's credential. The send history keeps no payload, headers or credentials.                                                                            |
-| Web addresses (`@RestResource`, 99)                | Salesforce sign-in only (no guest access). Class access, then the capability's permission set checked in code, then user mode for every read and save. Unknown fields refused; incoming batches capped at 200 records. One finding (F1, below).                                                         |
-| Flow actions (`send_*`)                            | Callable only by a holder of the matching Read permission set or Shoresh Scheduler; data read in user mode; plain error sentences.                                                                                                                                                                      |
-| Connector download                                 | Comes from the camp's own org, with the person's own Salesforce sign-in kept by Salesforce's CLI. Shoresh never sees, prints or stores a token. Starts `sf` without a shell; accepts only `*.salesforce.com` sign-in hosts; uses only Node's built-ins; refuses to run when older than the camp's copy. |
+**Code Analyzer.** CI runs the required selection on every change. On `main` (CI run
+44808539035, Code Analyzer 5.16.0): 0 findings, with 40 suppressions in `code-analyzer.yml`, each
+one file or folder, one rule, a limit and a reason. CI's scan leaves out `staticresources/`
+(`code-analyzer.yml`), so the static resources were scanned separately with the same selection
+(2026-11-20): 2 findings, both `@lwc/lwc/no-inner-html` inside SheetJS's own minified code
+(`SheetJS.js` and the connector's copy, `engine.SheetJS.cjs`); retire-js found no
+known-vulnerable library. Both are explained in the reviewer notes.
 
-## Findings and fixes
+**Sharing.** All 461 non-test classes are `with sharing`, except 4 inner classes that are
+`inherited sharing` and are called only from their `with sharing` outer class; none is
+`without sharing`. The 30 triggers only hand off to `with sharing` classes.
 
-| #   | Finding                                                                                                                                                                                                                                                                                                                                                                                                               | Severity      | Fix                                                                                      |
-| --- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------- | ---------------------------------------------------------------------------------------- |
-| F1  | Four catch blocks on the outside-system web addresses (`OutgoingDoors`, `IncomingDoors`, `IncomingSave`) called `ScreenErrors.of(e)`, which throws on a web request by design. An unexpected error there escaped as Salesforce's raw `APEX_ERROR` (exception name; a stack trace in an unpackaged org) instead of Shoresh's plain answer, and one refused record rejected a whole incoming batch sent by web address. | Low to medium | Own PR: `ScreenErrors.words(e)` at those call sites, with tests acting as a web request. |
-| A-1 | `/v1/seasons` (`list_seasons`) returned camp name, dates, short-week and archived values read in system mode, while its comment said user mode. No exposure today (only Shoresh Scheduler reaches it, and it can read those fields), but it is the pattern reviewers flag.                                                                                                                                            | Low           | Own PR: those fields read in user mode.                                                  |
-| A-2 | ADR 0001 point 6 listed two system-mode writes; there are nine, each with its reason in the code.                                                                                                                                                                                                                                                                                                                     | Low (docs)    | This PR: ADR 0001 point 6 lists them all; the reviewer notes hold the full register.     |
-| A-3 | 36 system-mode reads in 16 files (save-time checks) have their reason only in ADR 0001 point 6, not beside the code.                                                                                                                                                                                                                                                                                                  | Low (docs)    | The reviewer notes list each file with its reason.                                       |
+**CRUD/FLS.** 641 static queries: 530 `WITH USER_MODE`, 111 `WITH SYSTEM_MODE`, none without a
+mode. No plain DML: the 108 writes are all `Database.*` with an access level (94 user mode, 14
+system mode); `Database.emptyRecycleBin`, which takes no access level, follows a user-mode delete.
+Every system-mode use is in the reviewer notes' register, with its reason.
+
+**Permission sets.** 11 sets, no system permissions. View All / Modify All only on Shoresh's own
+Season object, in Shoresh Scheduler, on purpose. Every class the screens call is in Shoresh
+Scheduler; each connection set opens only its own class, read or create and edit, never delete.
+
+**SOQL injection.** 15 dynamic queries in 13 classes. Every object and field name comes from
+Salesforce's own describe or a fixed allow-list; every value is a bind variable.
+
+**XSS and browser code.** No Aura, no Visualforce. No `lwc:dom="manual"`, `innerHTML`, `eval` or
+string timers in Shoresh's components or the connector's pages. No link built from camp data.
+Static resources load only from the package. CSV and Excel exports guard against formulas.
+
+**Third-party code.** SheetJS Community Edition 0.20.3 (past CVE-2023-30533 and CVE-2024-22363),
+byte-identical to the lock-file-pinned copy from SheetJS's own CDN. Salesforce's LWC engine (MIT)
+inside the connector's two pages. Fonts Inter and JetBrains Mono (SIL OFL 1.1).
+
+**Secrets.** None in the code or connector. `gitleaks` over every branch's history (1,366 commits
+with changes): no leaks. No Remote Site Settings, CSP Trusted Sites, Named or External
+Credentials, or connected apps shipped. Debug logging carries only error codes and messages.
+
+**Callouts.** One, `OutgoingDoors.post`, always `callout:<Named Credential>` the camp made; the
+name is checked so it can't carry a path or reach another package's credential. The send history
+keeps no payload, headers or credentials.
+
+**Web addresses (99 `@RestResource` classes) and Flow actions (`send_*`).** Salesforce sign-in
+only, no guest access. Class access, then the capability's permission set checked in code, then
+user mode for every read and save. Unknown fields refused; incoming batches capped at 200 records.
+
+**Connector.** Comes from the camp's own org, with the person's own Salesforce sign-in kept by
+Salesforce's CLI. Shoresh never sees, prints or stores a token. Starts `sf` without a shell;
+accepts only `*.salesforce.com` sign-in hosts; uses only Node's built-ins; refuses to run when
+older than the camp's copy.
+
+## Findings
+
+| #   | Finding                                                                                                                                                                                                                                                                                                                                                                                                               | Severity      | State                                                                                                                                          |
+| --- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| F1  | Four catch blocks on the outside-system web addresses (`OutgoingDoors`, `IncomingDoors`, `IncomingSave`) called `ScreenErrors.of(e)`, which throws on a web request by design. An unexpected error there escaped as Salesforce's raw `APEX_ERROR` (exception name; a stack trace in an unpackaged org) instead of Shoresh's plain answer, and one refused record rejected a whole incoming batch sent by web address. | Low to medium | Fixed in its own PR, with tests.                                                                                                               |
+| A-1 | `/v1/seasons` (`list_seasons`) returned camp name, dates, short-week and archived values read in system mode (`OutgoingRows.seasonsSeen`), while its comment said user mode. No exposure today: only Shoresh Scheduler reaches it, and it can read those fields.                                                                                                                                                      | Low           | Fixed in its own PR, with tests.                                                                                                               |
+| A-2 | ADR 0001 point 6 listed two system-mode writes; there are nine.                                                                                                                                                                                                                                                                                                                                                       | Low (docs)    | Fixed here: ADR 0001 lists them all.                                                                                                           |
+| A-3 | The save-time checks' system-mode reads have their reason only in ADR 0001 point 6, not beside the code; `CampLabelSaves` and `CampClock` have none either.                                                                                                                                                                                                                                                           | Low (docs)    | The register lists each with its reason.                                                                                                       |
+| A-4 | A save-time check reads in system mode, and some refusals name a value read that way (for example a location's "groups that fit"). Someone whose admin hid that field could see its value in a refusal. Only reachable if an admin removes Shoresh's own fields from someone who has Shoresh Scheduler.                                                                                                               | Low           | **Open: fix before submitting** (show only values read in user mode). Reviewers flag field values reaching a person past field-level security. |
 
 ## For the submission, not defects
 
@@ -62,15 +98,15 @@ From the partner security review docs (checked 2026-11-20; sources in the wiki's
   is registered, the copied prompt's lookup can also require the package's namespace.
 - **Code comments credit the desktop app's repository** (`github.com/gfeitel1-maker/Scheduling-Project-`),
   inside the connector too. Attribution only.
-- **Checkmarx:** the partner portal also runs its own source scan for some submissions; it can
-  only be run once the partner account exists.
+- **Checkmarx:** Salesforce's own source scan, run from the partner portal; it needs the partner
+  account.
 
 ## Not checked
 
 - An installed, namespaced package: field-level security, the Named Credential resolution from a
   namespaced package, and Lightning Web Security behaviour. Waits for the first package version.
-- Each of the ~90 save-time system-mode reads traced to the exact words a person sees (about 15
-  spot-checked).
-- Live calls to the web addresses, attempts to break out of the connector's code mode, and
-  SheetJS advisories published after June 2026.
-- Graph Engine (Salesforce's data-flow scan, still a developer preview, recommended not required).
+- Every save-time system-mode read traced to the exact words a person sees (about 15
+  spot-checked; see A-4).
+- Live calls to the web addresses, and attempts to break out of the connector's code mode.
+- Graph Engine (Salesforce's data-flow scan, a developer preview, recommended but not part of the
+  required selection).
