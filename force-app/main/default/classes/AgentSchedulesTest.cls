@@ -139,69 +139,84 @@ private class AgentSchedulesTest {
     }
   }
 
-  // API-1.43
-  @IsTest
-  static void deleteVersionIsEachScreensOwnDelete() {
+  /**
+   * Week 1 of Main with only one screen's schedule, kept as the version "Before trip" (a week with
+   * both and two versions is more setup than one test's queries allow); answers the version.
+   */
+  private static Id oneScheduleWithVersion(Boolean manual) {
+    GeneratedTestData.camp();
+    if (manual) {
+      manualId = ManualDrafts.start(
+          GeneratedTestData.ids.get('Main'),
+          GeneratedTestData.ids.get('Week 1')
+        )
+        .draftId;
+      return ManualBuildController.saveVersion(manualId, 'Before trip');
+    }
+    generatedId = GeneratedTestData.generated();
+    return GeneratedScheduleController.saveVersion(generatedId, 'Before trip');
+  }
+
+  private static String originOf(Boolean manual) {
+    return manual ? ManualDrafts.MANUAL : GeneratedDrafts.GENERATED;
+  }
+
+  /** The screen's own delete of "Before trip"; answers how many are left. */
+  private static Integer leftAfterDelete(Boolean manual) {
     System.runAs(ShoreshTestData.scheduler()) {
-      bothSchedules();
-      Id manualVersion = ManualBuildController.saveVersion(
-        manualId,
-        'Before trip'
-      );
-      Id generatedVersion = GeneratedScheduleController.saveVersion(
-        generatedId,
-        'After trip'
-      );
+      Id versionId = oneScheduleWithVersion(manual);
       Test.startTest();
-      AgentScreenVersions.deleteVersion(weekOn(true, manualId), manualVersion);
       AgentScreenVersions.deleteVersion(
-        weekOn(false, generatedId),
-        generatedVersion
+        weekOn(manual, manual ? manualId : generatedId),
+        versionId
       );
       Test.stopTest();
-      Assert.areEqual(0, versionsCalled('Before trip', ManualDrafts.MANUAL));
-      Assert.areEqual(
-        0,
-        versionsCalled('After trip', GeneratedDrafts.GENERATED)
-      );
     }
+    return versionsCalled('Before trip', originOf(manual));
+  }
+
+  /**
+   * The screen's own Restore of "Before trip"; answers how many "Before Restore" versions it kept
+   * first, as each screen's own Restore keeps one (none when it wasn't restored).
+   */
+  private static Integer keptByRestore(Boolean manual) {
+    Boolean restored;
+    System.runAs(ShoreshTestData.scheduler()) {
+      Id versionId = oneScheduleWithVersion(manual);
+      Test.startTest();
+      restored = AgentScreenVersions.restoreVersion(
+        weekOn(manual, manual ? manualId : generatedId),
+        versionId
+      );
+      Test.stopTest();
+    }
+    return restored
+      ? versionsCalled(ManualVersions.BEFORE_RESTORE, originOf(manual))
+      : 0;
   }
 
   // API-1.43
   @IsTest
-  static void restoreVersionIsEachScreensOwnRestore() {
-    System.runAs(ShoreshTestData.scheduler()) {
-      bothSchedules();
-      Id manualVersion = ManualBuildController.saveVersion(
-        manualId,
-        'Before trip'
-      );
-      Id generatedVersion = GeneratedScheduleController.saveVersion(
-        generatedId,
-        'After trip'
-      );
-      Test.startTest();
-      Boolean manual = AgentScreenVersions.restoreVersion(
-        weekOn(true, manualId),
-        manualVersion
-      );
-      Boolean generated = AgentScreenVersions.restoreVersion(
-        weekOn(false, generatedId),
-        generatedVersion
-      );
-      Test.stopTest();
-      Assert.isTrue(manual);
-      Assert.isTrue(generated);
-      // Each screen's own Restore keeps its week first as "Before Restore".
-      Assert.areEqual(
-        1,
-        versionsCalled(ManualVersions.BEFORE_RESTORE, ManualDrafts.MANUAL)
-      );
-      Assert.areEqual(
-        1,
-        versionsCalled(ManualVersions.BEFORE_RESTORE, GeneratedDrafts.GENERATED)
-      );
-    }
+  static void deleteVersionIsManualBuildsOwnDelete() {
+    Assert.areEqual(0, leftAfterDelete(true));
+  }
+
+  // API-1.43
+  @IsTest
+  static void deleteVersionIsGeneratedSchedulesOwnDelete() {
+    Assert.areEqual(0, leftAfterDelete(false));
+  }
+
+  // API-1.43
+  @IsTest
+  static void restoreVersionIsManualBuildsOwnRestore() {
+    Assert.areEqual(1, keptByRestore(true));
+  }
+
+  // API-1.43
+  @IsTest
+  static void restoreVersionIsGeneratedSchedulesOwnRestore() {
+    Assert.areEqual(1, keptByRestore(false));
   }
 
   // API-1.34, API-1.41: on a week not built yet, Generated Schedule's Restore makes the version its
