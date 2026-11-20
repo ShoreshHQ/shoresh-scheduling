@@ -44,6 +44,7 @@ const MIRRORED_SCREENS = {
   shoreshWeekEditor: "AgentCell",
   shoreshCampSetup: "AgentSetupNewRow",
   shoreshProgram: "AgentSetupNewRow",
+  shoreshNewRows: "AgentSetupNewRow",
   shoreshErrors: "AgentVersions"
 };
 
@@ -52,6 +53,7 @@ const MIRRORED_SCREENS = {
 // every class that queries a static resource by name).
 const EXAMPLES_READ_BY = {
   ShoreshCellExamples: ["CellExamplesTest"],
+  ShoreshNewRowExamples: ["NewRowExamplesTest"],
   ShoreshRuleExamples: ["RuleExamplesTest"],
   ShoreshSeatExamples: ["ElectiveSeatExamplesTest"]
 };
