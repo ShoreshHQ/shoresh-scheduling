@@ -1411,7 +1411,7 @@ id]], floor, cut }`). The words are worked out when shown (`whyOf`, with `words.
 
 Checked by `c/shoreshEngine` `notes.test.js`; `c/shoreshGeneratedSchedule` "the engine's reasons
 and notes are kept with the week…", "the engine's reasons kept with the week show after a
-reload…"; `GeneratedEngineNotesTest`.
+reload…"; `GeneratedEngineNotesTest`; a hand edit's notes (5): `GeneratedHandEditTest`.
 
 ## Choices (hand edits are reminders; Start over checked, 2026-10-26)
 

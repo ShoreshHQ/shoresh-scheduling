@@ -171,27 +171,38 @@ private class GeneratedEngineNotesTest {
 
   @IsTest
   static void aHandEditDropsItsCellsReasonAndTheFloorNote() {
-    String notes =
-      '{"v":1,"open":[["2026-06-29","g1","t1","full"],["2026-06-29","g2","t1","full"]],' +
-      '"blank":[],"floor":{"kind":"frame"},"cut":0}';
+    // Id-shaped, as the cells' group and time block Ids are compared as Ids (SlotIds.indexOf).
+    String prefix = Schema.SObjectType.Schedule__c.getKeyPrefix();
+    String g1 = prefix + '000000000001';
+    String g2 = prefix + '000000000002';
+    String t1 = prefix + '000000000003';
+    List<Object> kept = new List<Object>{
+      new List<Object>{ '2026-06-29', g2, t1, 'full' }
+    };
+    List<Object> open = new List<Object>{
+      new List<Object>{ '2026-06-29', g1, t1, 'full' },
+      kept[0]
+    };
+    String notes = JSON.serialize(
+      new Map<String, Object>{
+        'v' => 1,
+        'open' => open,
+        'blank' => new List<Object>(),
+        'floor' => new Map<String, Object>{ 'kind' => 'frame' },
+        'cut' => 0
+      }
+    );
+    List<String> cell = new List<String>{ '2026-06-29', g1, t1 };
     Map<String, Object> left = (Map<String, Object>) JSON.deserializeUntyped(
-      GeneratedEngineNotes.withoutCell(
-        notes,
-        new List<String>{ '2026-06-29', 'g1', 't1' }
-      )
+      GeneratedEngineNotes.withoutCell(notes, cell)
     );
     Assert.areEqual(
-      JSON.deserializeUntyped('[["2026-06-29","g2","t1","full"]]'),
+      JSON.deserializeUntyped(JSON.serialize(kept)),
       left.get('open')
     );
     Assert.isNull(left.get('floor'));
     // Notes it can't keep, none.
-    Assert.isNull(
-      GeneratedEngineNotes.withoutCell(
-        'not json',
-        new List<String>{ '2026-06-29', 'g1', 't1' }
-      )
-    );
+    Assert.isNull(GeneratedEngineNotes.withoutCell('not json', cell));
   }
 
   @IsTest
