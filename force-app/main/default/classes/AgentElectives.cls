@@ -88,7 +88,7 @@ public with sharing class AgentElectives {
             run.labels().pluralInSentence('Seats') +
             ' can\'t change. Change ' +
             run.labels().pluralInSentence('Seats') +
-            ' (start_new_elective_version) is the director\'s choice.'
+            ' (change_seats) is the director\'s choice.'
           : 'No campers\' choices for ' + place + ' yet.'
       );
     }

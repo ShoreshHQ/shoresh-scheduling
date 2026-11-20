@@ -9,7 +9,7 @@ private class IncomingCamperElectiveChoiceTest {
       'season' => 'Summer 2026',
       'source_system' => IncomingTestData.SYSTEM_NAME,
       'camper_id' => 'SYN-1',
-      'elective' => 'Chugim',
+      'elective_set' => 'Chugim',
       'week' => 'Week 1',
       'first_choice' => first,
       'second_choice' => second
@@ -86,7 +86,7 @@ private class IncomingCamperElectiveChoiceTest {
       byFlow.season = 'Summer 2026';
       byFlow.source_system = IncomingTestData.SYSTEM_NAME;
       byFlow.camper_id = 'SYN-2';
-      byFlow.elective = 'Chugim';
+      byFlow.elective_set = 'Chugim';
       byFlow.week = 'Week 1';
       byFlow.first_choice = 'Swim';
       byFlow.second_choice = 'Basket weaving';
@@ -155,6 +155,71 @@ private class IncomingCamperElectiveChoiceTest {
           'Maya Cohen\'s choices for Chugim · Week 1 were changed in Shoresh'
         )
     );
+  }
+
+  // ELECT-2.6, API-4.1: choices a person changed, with nothing marking them so, are kept alike by
+  // an outside system and by a choices sheet; each keeps what it brought beside them.
+  @IsTest
+  static void aHandChangedCamperIsKeptAlikeByAnOutsideSystemAndAChoicesSheet() {
+    IncomingTestData camp = new IncomingTestData().withElectives();
+    Camper__c maya = camp.camper('Maya Cohen', 'SYN-1');
+    System.runAs(camp.sender('Send_Elective_Choices')) {
+      send(new List<Map<String, Object>>{ record('Archery', 'Swim') });
+    }
+    Preference__c had = saved(maya.Id);
+    String byHand = had.ImportedChoices__c.replace('"r":1', '"r":3');
+    Database.update(
+      new Preference__c(Id = had.Id, Choices__c = byHand),
+      AccessLevel.SYSTEM_MODE
+    );
+
+    System.runAs(camp.sender('Send_Elective_Choices')) {
+      Assert.areEqual(
+        'saved: A person changed these choices in Shoresh, so theirs are kept. These are kept beside them for a person to look at.',
+        IncomingTestData.said(
+          send(new List<Map<String, Object>>{ record('Swim', 'Archery') }),
+          1
+        )
+      );
+    }
+    Assert.areEqual(byHand, saved(maya.Id).Choices__c, 'Kept by the system');
+
+    ChoicesImport.Request sheet = new ChoicesImport.Request();
+    sheet.seasonId = camp.season.Id;
+    sheet.electiveSetId = camp.run.ElectiveSet__c;
+    sheet.weekId = camp.ids.get('Week 1');
+    sheet.scheduleId = camp.run.Schedule__c;
+    sheet.runRevision = [
+      SELECT Revision__c
+      FROM ElectiveRun__c
+      WHERE Id = :camp.run.Id
+      WITH SYSTEM_MODE
+    ]
+    .Revision__c;
+    ChoicesImport.SheetCamper row = new ChoicesImport.SheetCamper();
+    row.row = 2;
+    row.name = 'Maya Cohen';
+    ChoicesImport.SheetChoice swim = new ChoicesImport.SheetChoice();
+    swim.n = 'Swim';
+    swim.a = camp.ids.get('Swim');
+    swim.r = 1;
+    swim.k = 'ranked';
+    row.choices.add(swim);
+    sheet.campers.add(row);
+    System.runAs(camp.sender('Shoresh_Scheduler')) {
+      ChoicesImport.Check check = ChoicesImportController.checkChoices(
+        JSON.serialize(sheet)
+      );
+      Assert.areEqual(new List<Integer>{ 0 }, check.handChanged);
+      Assert.areEqual(
+        1,
+        ChoicesImportController.bringInChoices(JSON.serialize(sheet)).handKept
+      );
+    }
+    Preference__c after = saved(maya.Id);
+    Assert.areEqual(byHand, after.Choices__c, 'Kept by the sheet');
+    Assert.areEqual('Swim', firstChoice(after.ImportedChoices__c));
+    Assert.areEqual(1, CamperChoices.read(after.ImportedChoices__c).size());
   }
 
   // API-2.5: choices older than the last taken for that camper are ignored, and said.
@@ -229,7 +294,7 @@ private class IncomingCamperElectiveChoiceTest {
     camp.camper('Maya Cohen', 'SYN-1');
     Database.delete(camp.run, AccessLevel.SYSTEM_MODE);
     Map<String, Object> unknown = record('Swim', null);
-    unknown.put('elective', 'Bechirot');
+    unknown.put('elective_set', 'Bechirot');
     System.runAs(camp.sender('Send_Elective_Choices')) {
       Map<String, Object> answer = send(
         new List<Map<String, Object>>{ record('Archery', 'Swim'), unknown }
@@ -239,7 +304,7 @@ private class IncomingCamperElectiveChoiceTest {
         IncomingTestData.said(answer, 1)
       );
       Assert.areEqual(
-        'problem: There is no elective "Bechirot" in "Week 1" in this season.',
+        'problem: There is no elective set "Bechirot" in "Week 1" in this season.',
         IncomingTestData.said(answer, 2)
       );
     }
@@ -328,11 +393,11 @@ private class IncomingCamperElectiveChoiceTest {
       byFlow.season = 'Summer 2026';
       byFlow.source_system = IncomingTestData.SYSTEM_NAME;
       byFlow.camper_id = 'SYN-1';
-      byFlow.elective = 'Chugim';
+      byFlow.elective_set = 'Chugim';
       byFlow.week = 'Week 1';
       byFlow.first_choice = 'Swim';
       Assert.areEqual(
-        'problem: This user can\'t send elective choices. A Salesforce admin can give it the "Send elective choices" permission set.',
+        'problem: This connection can\'t send elective choices. A Salesforce admin can give it the "Send elective choices" permission set.',
         IncomingTestData.said(
           IncomingCamperElectiveChoice.camperElectiveChoice(
             new List<IncomingCamperElectiveChoice.Record>{ byFlow }

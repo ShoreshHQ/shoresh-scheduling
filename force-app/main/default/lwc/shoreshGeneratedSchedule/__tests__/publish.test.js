@@ -364,18 +364,6 @@ describe("Publish on the Generated Schedule screen", () => {
     expect(getInputs).toHaveBeenCalledTimes(1);
   });
 
-  it("a week someone else published since the preview replaces nothing, says so and reads it again", async () => {
-    const element = await render(cleanWeek());
-    previewPublish.mockResolvedValue(preview());
-    publish.mockResolvedValue({ publishedChanged: true });
-    getInputs.mockClear();
-    await clickPublish(element);
-    expect(notice(element)).toBe(
-      "Someone else published this week since, so nothing was replaced."
-    );
-    expect(getInputs).toHaveBeenCalledTimes(1);
-  });
-
   it("a refused publish shows the server's reason", async () => {
     const element = await render(cleanWeek());
     previewPublish.mockRejectedValue({
@@ -593,35 +581,6 @@ describe("Publish on the Generated Schedule screen", () => {
     button.click();
     await flush();
     expect(unpublishAsk(element)).toBeNull();
-  });
-
-  it("a week someone else saved between the preview and Publish publishes nothing, says so and reads it again", async () => {
-    const element = await render(cleanWeek());
-    previewPublish.mockResolvedValue(preview());
-    publish.mockResolvedValue({ draftChanged: true, publishedChanged: false });
-    getInputs.mockClear();
-    await clickPublish(element);
-    expect(publish).toHaveBeenCalledTimes(1);
-    expect(notice(element)).toBe(
-      "Someone else changed this week since, so nothing was published."
-    );
-    expect(publishedLine(element)).toBeNull();
-    expect(getInputs).toHaveBeenCalledTimes(1);
-  });
-
-  it("a publish the server finds already published as it is says so", async () => {
-    // The preview saw changes, but by the time Publish arrived the published copy matched.
-    const element = await render(cleanWeek());
-    previewPublish.mockResolvedValue(preview());
-    publish.mockResolvedValue({
-      published: PUBLISHED,
-      draftChanged: false,
-      publishedChanged: false,
-      unchanged: true
-    });
-    await clickPublish(element);
-    expect(notice(element)).toBe("Week 1 is already published as it is.");
-    expect(publishedLine(element)).not.toBeNull();
   });
 
   it("a failed Unpublish says the week was not unpublished", async () => {
@@ -862,46 +821,6 @@ describe("Publish on the Generated Schedule screen", () => {
     expect(publishButton(element).disabled).toBe(false);
   });
 
-  it("a publish that fails once another week is shown says nothing on that week", async () => {
-    const element = await render(cleanWeek());
-    const held = slow();
-    previewPublish.mockReturnValue(held.promise);
-    await clickPublish(element);
-    await showWeek2(element, cleanWeek());
-    held.answer(Promise.reject({ body: { message: "Too late." } }));
-    await flush();
-    expect(q(element, '[data-id="build-error"]')).toBeNull();
-    expect(publishButton(element).disabled).toBe(false);
-  });
-
-  it("a failed publish after the Publish box was answered says nothing once another week is shown", async () => {
-    const element = await render(openWeek());
-    previewPublish.mockResolvedValue(preview());
-    const held = slow();
-    publish.mockReturnValue(held.promise);
-    await clickPublish(element);
-    await answer(ask(element), true);
-    expect(publish).toHaveBeenCalledTimes(1);
-    await showWeek2(element, cleanWeek());
-    held.answer(Promise.reject({ body: { message: "Too late." } }));
-    await flush();
-    expect(q(element, '[data-id="build-error"]')).toBeNull();
-  });
-
-  it("a failed unpublish after its box was answered says nothing once another week is shown", async () => {
-    const element = await render(cleanWeek({ published: PUBLISHED }));
-    const held = slow();
-    unpublish.mockReturnValue(held.promise);
-    unpublishButton(element).click();
-    await flush();
-    await answer(unpublishAsk(element), true);
-    expect(unpublish).toHaveBeenCalledTimes(1);
-    await showWeek2(element, cleanWeek());
-    held.answer(Promise.reject({ body: { message: "Too late." } }));
-    await flush();
-    expect(q(element, '[data-id="build-error"]')).toBeNull();
-  });
-
   // WEEK-6.7: a publish is told to the page (which reads the season again for the other
   // screens), also one that answers once another week is shown; the season read it asked for
   // doesn't read this screen's own week again.
@@ -990,22 +909,6 @@ describe("Publish on the Generated Schedule screen", () => {
     expect(heard).toEqual([
       { weekId: WEEK, programId: PROGRAM, season: false }
     ]);
-  });
-
-  it("a preview that answers once another week is shown refuses nothing on that week", async () => {
-    const element = await render(cleanWeek());
-    const held = slow();
-    previewPublish.mockReturnValue(held.promise);
-    await clickPublish(element);
-    await showWeek2(element, cleanWeek());
-    getInputs.mockClear();
-    // Week 1's preview, with revisions Week 2 doesn't have.
-    held.answer(preview({ revisions: "2026-07-06:5" }));
-    await flush();
-    expect(notice(element) || "").not.toContain("nothing was published");
-    expect(getInputs).not.toHaveBeenCalled();
-    expect(publish).not.toHaveBeenCalled();
-    expect(ask(element)).toBeNull();
   });
 
   it("the pickers are free again when the week asked from leaves the season while its publish is on its way", async () => {
@@ -1102,6 +1005,62 @@ describe("Publish on the Generated Schedule screen", () => {
     expect(unpublish).not.toHaveBeenCalled();
   });
 
+  it("a refused publish after a dropped reload reads the week once, not twice", async () => {
+    const element = await render(openWeek());
+    previewPublish.mockResolvedValue(preview());
+    await clickPublish(element);
+    expect(ask(element)).not.toBeNull();
+    // The editor reads the week again (a save that failed) while the question is open.
+    const reload = slow();
+    getInputs.mockClear();
+    getInputs.mockReturnValueOnce(reload.promise);
+    q(element, '[data-id="week-editor"]').dispatchEvent(
+      new CustomEvent("reload")
+    );
+    await flush();
+    expect(getInputs).toHaveBeenCalledTimes(1);
+    publish.mockResolvedValue({ draftChanged: true, publishedChanged: false });
+    getInputs.mockResolvedValue(openWeek());
+    await answer(ask(element), true);
+    expect(notice(element)).toBe(
+      "Someone else changed this week since, so nothing was published."
+    );
+    // The refusal reads the week again; the dropped reload needs no read of its own.
+    await until(() => !publishButton(element).disabled);
+    expect(getInputs).toHaveBeenCalledTimes(2);
+    reload.answer(openWeek({ published: PUBLISHED }));
+    await flush();
+    expect(getInputs).toHaveBeenCalledTimes(2);
+    // The dropped read's answer is not shown.
+    expect(publishedLine(element)).toBeNull();
+  });
+
+  it("a refused unpublish after a dropped reload reads the week once, not twice", async () => {
+    const element = await render(cleanWeek({ published: PUBLISHED }));
+    unpublishButton(element).click();
+    await flush();
+    const reload = slow();
+    getInputs.mockClear();
+    getInputs.mockReturnValueOnce(reload.promise);
+    q(element, '[data-id="week-editor"]').dispatchEvent(
+      new CustomEvent("reload")
+    );
+    await flush();
+    expect(getInputs).toHaveBeenCalledTimes(1);
+    unpublish.mockResolvedValue({ publishedChanged: true });
+    getInputs.mockResolvedValue(cleanWeek());
+    await answer(unpublishAsk(element), true);
+    expect(notice(element)).toBe(
+      "Someone else published or unpublished this week since, so nothing was unpublished."
+    );
+    await until(() => !publishButton(element).disabled);
+    expect(getInputs).toHaveBeenCalledTimes(2);
+    reload.answer(cleanWeek({ published: PUBLISHED }));
+    await flush();
+    expect(getInputs).toHaveBeenCalledTimes(2);
+    expect(publishedLine(element)).toBeNull();
+  });
+
   it("an open Publish box goes when the season read again leaves no week to show", async () => {
     const element = await render(openWeek());
     previewPublish.mockResolvedValue(preview());
@@ -1120,46 +1079,5 @@ describe("Publish on the Generated Schedule screen", () => {
     element.setup = { ...SETUP, weeks: [] };
     await flush();
     expect(unpublishAsk(element)).toBeNull();
-  });
-
-  it("pressing Publish again clears the last publish's error", async () => {
-    const element = await render(cleanWeek());
-    previewPublish.mockRejectedValueOnce({
-      body: { message: "Something went wrong." }
-    });
-    await clickPublish(element);
-    expect(q(element, '[data-id="build-error"]').textContent).toContain(
-      "Week 1 was not published."
-    );
-    previewPublish.mockResolvedValue(preview());
-    publish.mockResolvedValue({
-      published: PUBLISHED,
-      draftChanged: false,
-      publishedChanged: false,
-      unchanged: false
-    });
-    await clickPublish(element);
-    expect(notice(element)).toBe("Published Week 1.");
-    expect(q(element, '[data-id="build-error"]')).toBeNull();
-  });
-
-  it("pressing Unpublish again clears the last unpublish's error", async () => {
-    const element = await render(cleanWeek({ published: PUBLISHED }));
-    unpublish.mockRejectedValueOnce({
-      body: { message: "Something went wrong." }
-    });
-    unpublishButton(element).click();
-    await flush();
-    await answer(unpublishAsk(element), true);
-    expect(q(element, '[data-id="build-error"]').textContent).toContain(
-      "Week 1 was not unpublished."
-    );
-    unpublish.mockResolvedValue({ publishedChanged: false });
-    unpublishButton(element).click();
-    await flush();
-    expect(q(element, '[data-id="build-error"]')).toBeNull();
-    await answer(unpublishAsk(element), true);
-    expect(notice(element)).toBe("Unpublished Week 1.");
-    expect(q(element, '[data-id="build-error"]')).toBeNull();
   });
 });

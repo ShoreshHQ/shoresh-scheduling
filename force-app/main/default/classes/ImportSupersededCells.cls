@@ -109,11 +109,13 @@ public with sharing class ImportSupersededCells {
   }
 
   /** Undo: puts each day back as it was, unless it was changed since (then kept, named). */
-  public static void putBack(List<Object> entries, ImportUndo.Result result) {
-    Map<Id, Map<String, Object>> byDay = new Map<Id, Map<String, Object>>();
-    for (Object item : entries) {
-      Map<String, Object> entry = (Map<String, Object>) item;
-      byDay.put((Id) (String) entry.get(ImportUndoLog.CELLS_OUT), entry);
+  public static void putBack(
+    List<ImportLogEntries.CellsOut> entries,
+    ImportUndo.Result result
+  ) {
+    Map<Id, ImportLogEntries.CellsOut> byDay = new Map<Id, ImportLogEntries.CellsOut>();
+    for (ImportLogEntries.CellsOut entry : entries) {
+      byDay.put(entry.dayId(), entry);
     }
     if (byDay.isEmpty()) {
       return;
@@ -126,14 +128,12 @@ public with sharing class ImportSupersededCells {
       WHERE Id IN :ids
       WITH USER_MODE
     ]) {
-      Map<String, Object> entry = byDay.get(day.Id);
-      if (day.Grid__c != (String) entry.get('after')) {
-        result.keptEdited.add((String) entry.get('name'));
+      ImportLogEntries.CellsOut entry = byDay.get(day.Id);
+      if (day.Grid__c != entry.after()) {
+        result.keptEdited.add(entry.name());
         continue;
       }
-      rows.add(
-        new ScheduleDay__c(Id = day.Id, Grid__c = (String) entry.get('before'))
-      );
+      rows.add(new ScheduleDay__c(Id = day.Id, Grid__c = entry.before()));
     }
     ImportedWeekGuard.allow();
     try {

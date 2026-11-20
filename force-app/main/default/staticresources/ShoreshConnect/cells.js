@@ -1,5 +1,5 @@
 /**
- * change_schedule_cell, move_cell, take_out_cell, copy_cells, switch_to_rain_plans and
+ * change_schedule_cell, move_cell, take_out_cell, copy_cells, rainy_day and
  * place_special_event (API-1.11, API-1.38 to API-1.40, API-1.45, API-1.65, API-1.75): an edit of one or several
  * cells of a Generated Schedule or Manual Build week, worked out here exactly as the screen's grid works it out. The week is
  * read as Generated Schedule reads it (GET /v1/week_checks, the counter's own read), opened as the
@@ -7,7 +7,7 @@
  * editor's own module (c/shoreshWeekEditor handEdits.js, shipped beside this file): the same
  * moves, swaps, pastes, refusals and words. Its runs then go to the screen's own save
  * (POST /v1/schedule_cell, /v1/move_cell, /v1/take_out_cell, /v1/copy_cells or
- * /v1/switch_to_rain_plans), and, as the screen's history does, its runs back are held for Undo
+ * /v1/rainy_day), and, as the screen's history does, its runs back are held for Undo
  * for the rest of the conversation (undo.js, API-1.14). Only finding the cells by their names is
  * done here.
  */
@@ -35,10 +35,21 @@ function namesSaid(things, names) {
     : `There are no ${things} yet.`;
 }
 
-/** The one that reads as asked, or a refusal naming what there is (never guessed). */
+/**
+ * What a list holds in the camp's words, one and many, as a sentence says them ("Edah", "Edot":
+ * CORE-1.0, never the word with "s" added).
+ */
+function wordsOf(t, term) {
+  return { one: t.sIn(term), many: t.pIn(term) };
+}
+
+/**
+ * The one that reads as asked, or a refusal naming what there is (never guessed); what: the
+ * list's words (wordsOf).
+ */
 function onlyOne(list, asked, nameOf, what, where) {
   if (!String(asked || "").trim()) {
-    throw new Refused(`Say which ${what}.`);
+    throw new Refused(`Say which ${what.one}.`);
   }
   const found = list.filter((x) =>
     nameOf(x).some((n) => fold(n) === fold(asked))
@@ -48,12 +59,12 @@ function onlyOne(list, asked, nameOf, what, where) {
   }
   if (found.length > 1) {
     throw new Refused(
-      `Two ${what}s are called "${String(asked).slice(0, 80)}"${where}. Nothing was changed.`
+      `Two ${what.many} are called "${String(asked).slice(0, 80)}"${where}. Nothing was changed.`
     );
   }
   throw new Refused(
-    `There is no ${what} called "${String(asked).slice(0, 80)}"${where}. ${namesSaid(
-      `${what}s`,
+    `There is no ${what.one} called "${String(asked).slice(0, 80)}"${where}. ${namesSaid(
+      what.many,
       list.map((x) => nameOf(x)[0])
     )}`
   );
@@ -99,7 +110,7 @@ function groupIn(ctx, d, asked) {
     ctx.week[d].groups,
     asked,
     (g) => [g.name],
-    "group",
+    wordsOf(ctx.t, "Group"),
     " on that day"
   );
 }
@@ -107,15 +118,16 @@ function groupIn(ctx, d, asked) {
 /** The time block by its name ("Period 2") or its start ("09:00"). */
 function blockIn(ctx, d, asked) {
   const blocks = ctx.week[d].blocks;
+  const what = wordsOf(ctx.t, "TimeBlock");
   const byName = blocks.filter((b) => fold(b.name) === fold(asked));
   if (byName.length) {
-    return onlyOne(blocks, asked, (b) => [b.name], "time", " on that day");
+    return onlyOne(blocks, asked, (b) => [b.name], what, " on that day");
   }
   return onlyOne(
     blocks,
     asked,
     (b) => [b.name, String(b.startTime || "").slice(0, 5)],
-    "time",
+    what,
     " on that day"
   );
 }
@@ -143,109 +155,38 @@ function checkWas(ctx, m, slot, was) {
 }
 
 /**
- * What the shared edits work with (handEdits.js ctx): the week as Generated Schedule opens it, or
- * Manual Build's draft as that screen gives it to its week editor (no locks there).
+ * What the shared edits work with (handEdits.js editContextOf, as the week editor builds it): the
+ * week as Generated Schedule opens it, or Manual Build's draft as that screen gives it to its week
+ * editor (no locks there), with what only an AI's tools need beside it.
  */
 function contextOf(m, body) {
   // WEEK-1.5: days are said as this season says them; an AI may still name the weekday.
   m.nameDaysFor(body.setup);
-  if (body.draft) {
-    return manualContextOf(m, body);
-  }
   const t = m.buildTerms(body.labels);
-  const loaded = m.loadedOf(body.inputs || {});
-  const { draft, week: checkedWeek } = m.counterWeek(loaded, {
-    terms: t,
-    setup: body.setup
-  });
-  const week = draft.schedule.days;
-  const locks = m.lockedKeys(loaded.input.locks);
   const setup = body.setup || {};
-  const events = (setup.special && setup.special.specialEvents) || [];
-  const sets = (setup.electives && setup.electives.sets) || [];
-  const isAwayOn = (w, d, g, b) => {
-    const groupId = w[d].groups[g].id;
-    const blockId = w[d].blocks[b].id;
-    return (draft.away || []).some(
-      (entry) => entry.groupId === groupId && entry.blockIds.includes(blockId)
-    );
-  };
-  const find = {
-    activity: (item) =>
-      (draft.activities || []).find((a) => `A:${a.id}` === item),
-    event: (item) =>
-      ((e) => e && { name: e.Name })(events.find((e) => `S:${e.Id}` === item)),
-    elective: (item) =>
-      ((e) => e && { name: e.Name })(sets.find((e) => `E:${e.Id}` === item)),
-    t
-  };
+  let draft = body.draft;
+  let checkedWeek;
+  let locks = null;
+  if (!draft) {
+    const loaded = m.loadedOf(body.inputs || {});
+    ({ draft, week: checkedWeek } = m.counterWeek(loaded, {
+      terms: t,
+      setup: body.setup
+    }));
+    locks = m.lockedKeys(loaded.input.locks);
+  }
   return {
-    week,
-    t,
+    // Generated Schedule gives its editor no planName (only a special day's or event's own
+    // schedule has one).
+    ...m.editContextOf({ draft, t, setup, locks }),
     // The season's setup a rainy day reads (rain.js rainModel), as the screen's editor has it.
     draft,
-    nameOf: (slot, day) => m.nameOfSlot(slot, day, find),
-    // As the screen names a day (shoreshWeekEditor dayNameOf(dateValue, this.planName)): Generated
-    // Schedule gives its editor no planName (only a special day's or event's own schedule has one).
-    dayNameOf: (dateValue) => m.dayNameOf(dateValue),
     weekdayOf: (dateValue) => m.weekdayName(dateValue),
     spokenWeekday: (weekday) => m.spokenWeekday(weekday),
-    isAwayOn,
-    // As the screen asks it: any block of the placement locked locks the cell (LOCK-4.1).
-    isLocked: (slot) => m.isLockedAt(week, locks, slot),
-    liveLocks: locks,
     // The week as its Lock menu weighs it (counter.js checkDays), for the cells a Lock reaches.
     checkedWeek,
-    events,
-    sets,
-    replaced: m.replacedDays(draft),
-    // Generated Schedule's tools never clear: nothing of setup's to put back.
-    setUp: null
-  };
-}
-
-/** Manual Build's week as its week editor holds it (shoreshWeekEditor editCtx, nameOf, isAwayOn). */
-function manualContextOf(m, body) {
-  const t = m.buildTerms(body.labels);
-  const draft = body.draft;
-  const week = draft.schedule.days;
-  const setup = body.setup || {};
-  const events = (setup.special && setup.special.specialEvents) || [];
-  const sets = (setup.electives && setup.electives.sets) || [];
-  const find = {
-    activity: (item) =>
-      (draft.activities || []).find((a) => `A:${a.id}` === item),
-    event: (item) =>
-      ((e) => e && { name: e.Name })(events.find((e) => `S:${e.Id}` === item)),
-    elective: (item) =>
-      ((e) => e && { name: e.Name })(sets.find((e) => `E:${e.Id}` === item)),
-    t
-  };
-  return {
-    week,
-    t,
-    draft,
-    nameOf: (slot, day) => m.nameOfSlot(slot, day, find),
-    dayNameOf: (dateValue) => m.dayNameOf(dateValue),
-    weekdayOf: (dateValue) => m.weekdayName(dateValue),
-    spokenWeekday: (weekday) => m.spokenWeekday(weekday),
-    isAwayOn: (w, d, g, b) => {
-      const groupId = w[d].groups[g].id;
-      const blockId = w[d].blocks[b].id;
-      return (draft.away || []).some(
-        (entry) => entry.groupId === groupId && entry.blockIds.includes(blockId)
-      );
-    },
-    isLocked: () => false,
-    liveLocks: null,
-    events,
-    sets,
-    replaced: m.replacedDays(draft),
-    // Where setup puts each fixed and recurring activity, so a clear puts back one typed over
-    // (shoreshWeekEditor manualChecks setUpOf; LOCK-4.9).
-    setUp: (draft.setUpCells || []).length
-      ? Object.fromEntries(draft.setUpCells.map((c) => [c.key, c.slot]))
-      : null
+    events: (setup.special && setup.special.specialEvents) || [],
+    sets: (setup.electives && setup.electives.sets) || []
   };
 }
 
@@ -346,7 +287,7 @@ function clearStep(capability, ctx, m, input, weekName) {
 }
 
 /**
- * switch_to_rain_plans as the screen's Edit > Rainy day… does (shoreshWeekEditor rainyTool and
+ * rainy_day as the screen's Edit > Rainy day… does (shoreshWeekEditor rainyTool and
  * runRainyDay): the day's outdoor activities switched to their rain plans by the editor's own tool,
  * locked cells (Generated) left as they are. With the marks it leaves on the day ("Rain plan full",
  * switched), and the day's marks as read (seen).
@@ -390,14 +331,16 @@ function placeEvent(ctx, m, input, weekName) {
     ctx.events,
     input.event,
     (x) => [x.Name],
-    "special event",
+    wordsOf(ctx.t, "SpecialEvent"),
     " in this season"
   );
   const event = ctx.events[e];
   const d = dayIn(ctx, m, input.day, weekName);
   const asked = Array.isArray(input.groups) ? input.groups : [input.groups];
   if (!asked.length) {
-    throw new Refused("Say which groups (groups), like Bunk 3.");
+    throw new Refused(
+      `Say which ${ctx.t.pIn("Group")} (groups), like ${ctx.t.s("Group")} 3.`
+    );
   }
   const groups = [...new Set(asked.map((g) => groupIn(ctx, d, g)))].sort(
     (a, b) => a - b
@@ -405,7 +348,7 @@ function placeEvent(ctx, m, input, weekName) {
   groups.forEach((g, i) => {
     if (i > 0 && g !== groups[i - 1] + 1) {
       throw new Refused(
-        `Choose groups side by side, as the day shows them: ${ctx.week[d].groups.map((x) => x.name).join(", ")}.`
+        `Choose ${ctx.t.pIn("Group")} side by side, as the day shows them: ${ctx.week[d].groups.map((x) => x.name).join(", ")}.`
       );
     }
   });
@@ -441,15 +384,16 @@ function placeEvent(ctx, m, input, weekName) {
  * (as the week editor lists them, with their lengths) or elective sets; a name both have, or
  * neither, is refused, never guessed.
  */
-function typedOf(ctx, asked) {
+function typedOf(ctx, m, asked) {
   const activities = (ctx.draft.activities || []).filter(
     (a) => fold(a.name) === fold(asked)
   );
   const sets = ctx.sets.filter((e) => fold(e.Name) === fold(asked));
   const said = String(asked).slice(0, 80);
+  const { t } = ctx;
   if (activities.length && sets.length) {
     throw new Refused(
-      `"${said}" is both an activity and an elective set in this season, so Shoresh can't tell which you mean.`
+      `"${said}" is both ${m.article(t.sIn("Activity"))} and ${m.article(t.sIn("ElectiveSet"))} in this season, so Shoresh can't tell which you mean.`
     );
   }
   if (activities.length) {
@@ -460,8 +404,8 @@ function typedOf(ctx, asked) {
   }
   const byName = (a, b) => a.localeCompare(b);
   throw new Refused(
-    `There is no activity or elective set called "${said}" in this season. ${namesSaid(
-      "activities and elective sets",
+    `There is no ${t.sIn("Activity")} or ${t.sIn("ElectiveSet")} called "${said}" in this season. ${namesSaid(
+      `${t.pIn("Activity")} and ${t.pIn("ElectiveSet")}`,
       [
         ...(ctx.draft.activities || []).map((a) => a.name).sort(byName),
         ...ctx.sets.map((e) => e.Name).sort(byName)
@@ -489,7 +433,7 @@ function typedIn(ctx, m, input, slot) {
   const now = ctx.nameOf(m.placement(day, slot.group, slot.block).slot, day);
   const asked = String(input.activity || "").trim();
   if (asked && fold(asked) !== "open") {
-    const typed = typedOf(ctx, asked);
+    const typed = typedOf(ctx, m, asked);
     if (typed.set) {
       const rows = m.rowsCovered(ctx.week, [{ slot }]);
       const result = m.placeOverStep(ctx, rows, `E:${typed.set.Id}`, true);
@@ -560,7 +504,7 @@ function stepOf(capability, ctx, m, input, weekName) {
   if (capability.name === "place_special_event") {
     return placeEvent(ctx, m, input, weekName);
   }
-  if (capability.name === "switch_to_rain_plans") {
+  if (capability.name === "rainy_day") {
     return rainyDay(ctx, m, input, weekName);
   }
   if (capability.name === "clear_day" || capability.name === "clear_week") {
@@ -669,34 +613,24 @@ function specialContextOf(m, body) {
   const plan = body.plan || {};
   const activities = plan.activities || [];
   const setup = body.setup || {};
-  // A special day's cells take the season's elective sets; an event's don't (the page's
-  // takesElectives, SPECIAL-1.3).
-  const sets =
-    plan.kind === "SpecialEvent"
-      ? []
-      : (setup.electives && setup.electives.sets) || [];
-  const find = {
-    activity: (item) => activities.find((a) => `A:${a.id}` === item),
-    event: () => null,
-    elective: (item) =>
-      ((e) => e && { name: e.Name })(sets.find((e) => `E:${e.Id}` === item)),
-    t
+  const draft = {
+    schedule: { days: (plan.schedule && plan.schedule.days) || [] },
+    activities
   };
   return {
-    week: (plan.schedule && plan.schedule.days) || [],
-    t,
-    draft: { activities },
-    nameOf: (slot, day) => m.nameOfSlot(slot, day, find),
-    dayNameOf: (dateValue) => m.dayNameOf(dateValue, plan.name),
+    ...m.editContextOf({ draft, t, setup, planName: plan.name }),
+    draft,
     weekdayOf: (dateValue) => m.weekdayName(dateValue),
     spokenWeekday: (weekday) => m.spokenWeekday(weekday),
-    isAwayOn: () => false,
-    isLocked: () => false,
-    liveLocks: null,
     events: [],
-    sets,
-    replaced: new Map(),
-    setUp: null
+    // A special day's cells take the season's elective sets; an event's don't (the page's
+    // takesElectives, SPECIAL-1.3).
+    sets:
+      plan.kind === "SpecialEvent"
+        ? []
+        : (setup.electives && setup.electives.sets) || [],
+    // An event's columns are its stations; a special day's, its groups.
+    columns: plan.kind === "SpecialEvent" ? "Station" : "Group"
   };
 }
 
@@ -732,7 +666,7 @@ async function specialCell(
         ctx.week[0].groups,
         input.column,
         (g) => [g.name],
-        "column",
+        wordsOf(ctx.t, ctx.columns),
         " in this schedule"
       ),
       block: blockIn(ctx, 0, input.time)
@@ -841,7 +775,7 @@ function draftOf(m, body, input) {
           day.groups,
           input.group,
           (g) => [g.name],
-          "group",
+          wordsOf(ctx.t, "Group"),
           " on that day"
         );
       }
@@ -856,11 +790,11 @@ function draftOf(m, body, input) {
       !groups.some((name) => fold(name) === fold(input.group))
     ) {
       throw new Refused(
-        `There is no group called "${String(input.group).slice(0, 80)}" on ${input.week}. ${namesSaid("groups", groups)}`
+        `There is no ${ctx.t.sIn("Group")} called "${String(input.group).slice(0, 80)}" on ${input.week}. ${namesSaid(ctx.t.pIn("Group"), groups)}`
       );
     }
   }
-  const records = [];
+  const rows = [];
   const specialDays = [];
   const unread = [];
   const sameNamed = new Set();
@@ -906,7 +840,7 @@ function draftOf(m, body, input) {
               ]
             : [])
         ];
-        records.push([
+        rows.push([
           date,
           dayName,
           group.name,
@@ -925,7 +859,7 @@ function draftOf(m, body, input) {
     ...(unread.length ? { days_not_read: unread } : {}),
     ...(sameNamed.size ? { groups_with_the_same_name: [...sameNamed] } : {}),
     columns: DRAFT_COLUMNS,
-    records
+    rows
   };
 }
 

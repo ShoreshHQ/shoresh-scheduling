@@ -31,18 +31,17 @@ global with sharing class AgentMoveElectiveSeat implements AgentWeeks.Action {
     Decimal seen = AgentElectives.seenOf(body, run);
     AgentElectives.holdAsSeen(run, seen);
     ElectiveSeats.RunView view = ElectiveSeatsController.openRun(run.id);
+    CampLabels campWords = run.labels();
     ElectiveSeats.CamperInfo camper = camperOf(
       view,
-      AgentFields.text(body, 'camper')
+      AgentFields.text(body, 'camper'),
+      campWords
     );
-    ElectivePeriod period = timeOf(
-      view,
-      AgentFields.text(body, 'day'),
-      AgentFields.text(body, 'time')
-    );
+    ElectivePeriod period = timeOf(view, body, campWords);
     ElectiveSeats.OfferingInfo offering = offeringOf(
       view,
-      AgentFields.text(body, 'elective')
+      AgentFields.text(body, 'elective'),
+      campWords
     );
     Map<String, Object> request = new Map<String, Object>{
       'runId' => run.id,
@@ -84,10 +83,14 @@ global with sharing class AgentMoveElectiveSeat implements AgentWeeks.Action {
       (unset == null ? '' : ' ' + unset);
   }
 
-  /** The camper by name or number, as read_elective_seats_now says them; never guessed. */
+  /**
+   * The camper by name or number, as read_elective_seats_now says them; never guessed. Refused in
+   * the camp's words (words, CORE-1.0).
+   */
   public static ElectiveSeats.CamperInfo camperOf(
     ElectiveSeats.RunView view,
-    String asked
+    String asked,
+    CampLabels words
   ) {
     List<ElectiveSeats.CamperInfo> found = new List<ElectiveSeats.CamperInfo>();
     for (ElectiveSeats.CamperInfo each : view.campers) {
@@ -105,21 +108,32 @@ global with sharing class AgentMoveElectiveSeat implements AgentWeeks.Action {
     }
     throw new ShoreshException(
       found.isEmpty()
-        ? 'There is no camper called "' +
+        ? 'There is no ' +
+          words.singularInSentence('Camper') +
+          ' called "' +
           asked.left(80) +
-          '" in these seats. Read them with read_elective_seats_now.'
-        : 'Two campers are called "' +
+          '" in these ' +
+          words.pluralInSentence('Seats') +
+          '. Read them with read_elective_seats_now.'
+        : 'Two ' +
+          words.pluralInSentence('Camper') +
+          ' are called "' +
           asked.left(80) +
           '". Say which by number, like #12.'
     );
   }
 
-  /** The time by its day (Monday, or 2026-06-29) and time block's name. */
+  /**
+   * The time asked by its day (Monday, or 2026-06-29) and time block's name (day, time); refused
+   * in the camp's Elective word (words, CORE-1.0).
+   */
   public static ElectivePeriod timeOf(
     ElectiveSeats.RunView view,
-    String day,
-    String block
+    Map<String, Object> body,
+    CampLabels words
   ) {
+    String day = AgentFields.text(body, 'day');
+    String block = AgentFields.text(body, 'time');
     List<String> said = new List<String>();
     for (ElectivePeriod each : view.times) {
       String weekday = WeekCalendar.weekdayName(each.day);
@@ -134,7 +148,9 @@ global with sharing class AgentMoveElectiveSeat implements AgentWeeks.Action {
       said.add(each.words());
     }
     throw new ShoreshException(
-      'There is no elective time on ' +
+      'There is no ' +
+        words.singularInSentence('Elective') +
+        ' time on ' +
         day.left(40) +
         ' at ' +
         block.left(40) +
@@ -145,19 +161,28 @@ global with sharing class AgentMoveElectiveSeat implements AgentWeeks.Action {
 
   private static ElectiveSeats.OfferingInfo offeringOf(
     ElectiveSeats.RunView view,
-    String asked
+    String asked,
+    CampLabels words
   ) {
     List<String> names = new List<String>();
     for (ElectiveSeats.OfferingInfo each : view.offerings) {
       names.add(each.name);
     }
-    Integer at = AgentFields.onlyOne(names, asked, 'elective');
+    Integer at = AgentFields.onlyOne(
+      names,
+      asked,
+      words.withArticle('Elective')
+    );
     if (at < 0) {
       throw new ShoreshException(
-        'There is no elective called "' +
+        'There is no ' +
+          words.singularInSentence('Elective') +
+          ' called "' +
           asked.left(80) +
-          '" in these seats. ' +
-          AgentWeeks.namesSaid('electives', names)
+          '" in these ' +
+          words.pluralInSentence('Seats') +
+          '. ' +
+          AgentWeeks.namesSaid(words.pluralInSentence('Elective'), names)
       );
     }
     return view.offerings[at];

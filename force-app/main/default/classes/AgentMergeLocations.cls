@@ -38,7 +38,9 @@ global with sharing class AgentMergeLocations implements AgentWeeks.Action, Agen
     Plan plan = plan();
     return 'This merges into "' +
       plan.keep.row.Name +
-      '" (groups_that_fit ' +
+      '" (' +
+      fitSaid(plan) +
+      ': ' +
       plan.fits.intValue() +
       '): ' +
       String.join(plan.gone, ', ') +
@@ -66,7 +68,9 @@ global with sharing class AgentMergeLocations implements AgentWeeks.Action, Agen
     }
     return 'Merged into "' +
       plan.keep.row.Name +
-      '" (groups_that_fit ' +
+      '" (' +
+      fitSaid(plan) +
+      ': ' +
       plan.fits.intValue() +
       '): ' +
       String.join(plan.gone, ', ') +
@@ -92,13 +96,15 @@ global with sharing class AgentMergeLocations implements AgentWeeks.Action, Agen
     }
     // Locked: no one's save can come between the compare and the merge.
     AgentSameLocations.lock(result.season.Id);
+    CampLabels labels = CampLabels.forCamp(result.season.Camp__c);
     List<AgentSameLocations.Place> now = AgentSameLocations.matching(
       result.season.Id,
-      AgentFields.text(body, 'name')
+      AgentFields.text(body, 'name'),
+      labels
     );
     refuseChanged(now, seen, places);
     result.keep = kept(now, body.get('keep'));
-    result.fits = fitsAsked(body.get('groups_that_fit'), now);
+    result.fits = fitsAsked(body.get('groups_that_fit'), now, labels);
     for (AgentSameLocations.Place place : now) {
       if (place !== result.keep) {
         result.others.add(place.row.Id);
@@ -107,6 +113,12 @@ global with sharing class AgentMergeLocations implements AgentWeeks.Action, Agen
       }
     }
     return result;
+  }
+
+  /** "groups that fit", or the camp's "Edot that fit" (CORE-1.34). */
+  private static String fitSaid(Plan plan) {
+    return CampLabels.forCamp(plan.season.Camp__c)
+      .singularInSentence('GroupsThatFit');
   }
 
   /** " (3 activities)" in the camp's words, or "" when nothing is there. */
@@ -215,7 +227,8 @@ global with sharing class AgentMergeLocations implements AgentWeeks.Action, Agen
   /** Groups that fit: a whole number, 1 or more, as the question's box takes it. */
   private static Decimal fitsAsked(
     Object asked,
-    List<AgentSameLocations.Place> now
+    List<AgentSameLocations.Place> now,
+    CampLabels labels
   ) {
     String text = asked == null ? '' : String.valueOf(asked).trim();
     if (String.isBlank(text)) {
@@ -223,7 +236,9 @@ global with sharing class AgentMergeLocations implements AgentWeeks.Action, Agen
     }
     if (!text.isNumeric() || text.length() > 6 || Integer.valueOf(text) < 1) {
       throw new ShoreshException(
-        'Nothing was merged. Give groups_that_fit as a whole number, 1 or more.'
+        'Nothing was merged. Give the ' +
+          labels.singularInSentence('GroupsThatFit') +
+          ' (groups_that_fit) as a whole number, 1 or more.'
       );
     }
     return Decimal.valueOf(text);

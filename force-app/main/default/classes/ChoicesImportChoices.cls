@@ -2,7 +2,7 @@
  * A choices sheet's choices (ChoicesImport; repo ADR 0017 choices 14 to 16): every choice
  * checked, and one Preference__c
  * per camper per run. What the sheet says is always kept as imported; the choices used are the
- * sheet's unless they were changed by hand, which are kept. In user mode.
+ * sheet's unless they were changed by hand, which are kept (CamperChoices.mergeIn). In user mode.
  */
 public with sharing class ChoicesImportChoices {
   private static final Set<String> KINDS = new Set<String>{
@@ -52,7 +52,10 @@ public with sharing class ChoicesImportChoices {
     );
     if (ofProgram.size() != groupIds.size()) {
       throw new ShoreshException(
-        'A camper\'s group is not in this schedule\'s program. Reload the page.'
+        AgentRefusal.withFix(
+          'A camper\'s group is not in this schedule\'s program.',
+          'Reload the page.'
+        )
       );
     }
     refuseOtherDivisions(ofProgram);
@@ -67,8 +70,11 @@ public with sharing class ChoicesImportChoices {
         ofProgram.get(sheetCamper.groupId).Division__c != sheetCamper.divisionId
       ) {
         throw new ShoreshException(
-          ChoicesImport.rowWords(sheetCamper) +
-          'the group is not in the row\'s division. Reload the page.'
+          AgentRefusal.withFix(
+            ChoicesImport.rowWords(sheetCamper) +
+            'the group is not in the row\'s division.',
+            'Reload the page.'
+          )
         );
       }
     }
@@ -93,7 +99,13 @@ public with sharing class ChoicesImportChoices {
       return;
     }
     for (Preference__c had : [
-      SELECT Id, Camper__c, Group__c, Choices__c, ManualChange__c
+      SELECT
+        Id,
+        Camper__c,
+        Group__c,
+        Choices__c,
+        ImportedChoices__c,
+        ManualChange__c
       FROM Preference__c
       WHERE ElectiveRun__c = :place.run.Id
       WITH USER_MODE
@@ -130,33 +142,25 @@ public with sharing class ChoicesImportChoices {
     for (Integer i = 0; i < request.campers.size(); i++) {
       ChoicesImport.SheetCamper sheetCamper = request.campers[i];
       Id camperId = campers.at(i).Id;
-      String imported = JSON.serialize(sheetCamper.choices, true);
       Preference__c had = savedByCamper.get(camperId);
-      if (had == null) {
-        rows.add(
-          new Preference__c(
-            ElectiveRun__c = place.run.Id,
-            Camper__c = camperId,
-            Group__c = sheetCamper.groupId,
-            Choices__c = imported,
-            ImportedChoices__c = imported
-          )
-        );
-        continue;
-      }
-      Preference__c change = new Preference__c(
-        Id = had.Id,
-        ImportedChoices__c = imported,
-        Group__c = sheetCamper.groupId == null
-          ? had.Group__c
-          : sheetCamper.groupId
+      CamperChoices.Merged merged = CamperChoices.mergeIn(
+        had,
+        sheetCamper.choices
       );
-      if (had.ManualChange__c) {
-        handKept++;
+      Preference__c row = merged.row;
+      if (had == null) {
+        row.ElectiveRun__c = place.run.Id;
+        row.Camper__c = camperId;
+        row.Group__c = sheetCamper.groupId;
       } else {
-        change.Choices__c = imported;
+        row.Group__c = sheetCamper.groupId == null
+          ? had.Group__c
+          : sheetCamper.groupId;
       }
-      rows.add(change);
+      if (merged.outcome == CamperChoices.Outcome.KEPT) {
+        handKept++;
+      }
+      rows.add(row);
     }
     // The sheet is the outside source of each camper's bunk (API-4.2).
     OutsideOwned.bringingIn = true;
@@ -166,45 +170,5 @@ public with sharing class ChoicesImportChoices {
       OutsideOwned.bringingIn = false;
     }
     return handKept;
-  }
-
-  // ---------------------------------------------------------------- comparing
-
-  /** Choices compared by what they are, not how they were written down. */
-  public static String signature(String stored) {
-    if (String.isBlank(stored)) {
-      return signature(new List<ChoicesImport.SheetChoice>());
-    }
-    try {
-      return signature(
-        (List<ChoicesImport.SheetChoice>) JSON.deserialize(
-          stored,
-          List<ChoicesImport.SheetChoice>.class
-        )
-      );
-    } catch (JSONException e) {
-      // Stored some other way: compared as text, so any difference shows.
-      return stored;
-    }
-  }
-
-  public static String signature(List<ChoicesImport.SheetChoice> choices) {
-    List<String> parts = new List<String>();
-    for (ChoicesImport.SheetChoice choice : choices) {
-      parts.add(
-        String.join(
-          new List<String>{
-            ChoicesImportLinked.keyOf(choice),
-            String.valueOf(choice.r),
-            String.valueOf(choice.k),
-            ChoicesImport.fold(choice.d),
-            ChoicesImport.fold(choice.p)
-          },
-          '|'
-        )
-      );
-    }
-    parts.sort();
-    return String.join(parts, ';');
   }
 }

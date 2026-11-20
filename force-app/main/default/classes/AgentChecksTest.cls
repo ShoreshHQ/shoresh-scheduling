@@ -1,6 +1,6 @@
 /**
  * A week's checks through an agent or the command line (docs/protocol/api.md API-1.30, API-1.31):
- * /v1/week_checks answers what Generated Schedule's counter reads, and /v1/accept_finding keeps an
+ * /v1/week_checks answers what Generated Schedule's counter reads, and /v1/accept_line keeps an
  * Accept through the counter's own save (WeekAccepts), on GeneratedTestData's camp. The checks
  * themselves are worked out outside Salesforce by the screen's own modules (their tests: Jest
  * shoreshGeneratedSchedule).
@@ -38,7 +38,7 @@ private class AgentChecksTest {
     };
   }
 
-  /** POST /v1/accept_finding with this line; answers [status, sentence]. */
+  /** POST /v1/accept_line with this line; answers [status, sentence]. */
   private static List<Object> accept(Object line) {
     RestContext.request = new RestRequest();
     RestContext.request.httpMethod = 'POST';

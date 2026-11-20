@@ -201,13 +201,13 @@ public with sharing class IncomingRuns {
   /**
    * Why choices sent to this elective set and week can't be kept: none of that name, or (API-6.4)
    * the season has both but nothing was brought in there yet, so the step a person takes first
-   * (the first run is the Elective seats screen's own Bring in choices).
+   * (the first run is the Elective seats screen's own Import choices).
    */
   public String noRun(IncomingBatch batch, String electiveSet, String week) {
     String setName = electiveSet.left(80);
     String weekName = week.left(80);
     if (!notStarted(batch.season.Id, electiveSet, week)) {
-      return 'There is no elective "' +
+      return 'There is no elective set "' +
         setName +
         '" in "' +
         weekName +

@@ -515,7 +515,7 @@ module.exports = [
       rec.note("by-activity review", by.text.slice(0, 800));
 
       // Special schedule.
-      await call("add_setup_record", {
+      await call("add_to_setup", {
         season,
         kind: "special day",
         name: "Lake day"
@@ -595,7 +595,7 @@ module.exports = [
         bring_in_camper_elective_choices: {
           camper_id: "BR-1",
           camper_name: "Avery Madeup",
-          elective: "Chugim",
+          elective_set: "Chugim",
           week: "Week 1",
           first_choice: "Swim",
           second_choice: "Art"
@@ -695,7 +695,7 @@ module.exports = [
         count("Camper__c", inSeason)
       );
       // Against a person's edit: the outside system's value doesn't overwrite it (API-4.1).
-      const kayakRead = await call("read_setup_record", {
+      const kayakRead = await call("read_from_setup", {
         season,
         kind: "activity",
         name: "Kayak"
@@ -706,7 +706,7 @@ module.exports = [
         kayakRead.kind === "done",
         kayakRead.text
       );
-      const renamed = await call("rename_setup_record", {
+      const renamed = await call("rename_in_setup", {
         season,
         kind: "activity",
         name: "Kayak",
@@ -821,13 +821,13 @@ module.exports = [
           file_name: entry.file,
           ...content
         };
-        const asked = await call("bring_in_choices", at);
+        const asked = await call("import_choices", at);
         const unknown =
           /doesn't have yet: (.*)\.\n/.exec(asked.text)?.[1] ?? "";
         const answers = Object.fromEntries(
           [...unknown.matchAll(/"([^"]+)"/g)].map((m) => [m[1], "add"])
         );
-        const said = await call("bring_in_choices", { ...at, answers });
+        const said = await call("import_choices", { ...at, answers });
         const expectCampers = entry.campers?.length ?? null;
         rec.check(
           "API-1.117",

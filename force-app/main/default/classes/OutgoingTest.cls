@@ -327,7 +327,7 @@ private class OutgoingTest {
     }
     Assert.areEqual(403, answer.get('status'));
     Assert.areEqual(
-      'This user can\'t read the group schedule. A Salesforce admin can give it the "Read group schedules" permission set.',
+      'This connection can\'t read the group schedule. A Salesforce admin can give it the "Read group schedules" permission set.',
       answer.get('message')
     );
   }
@@ -458,9 +458,9 @@ private class OutgoingTest {
       ),
       AccessLevel.SYSTEM_MODE
     );
-    OutgoingElectiveOfferings capability = new OutgoingElectiveOfferings();
+    OutgoingElectivesOffered capability = new OutgoingElectivesOffered();
     Map<String, Object> answer;
-    System.runAs(camp.sender('Read_Elective_Offerings')) {
+    System.runAs(camp.sender('Read_Electives_Offered')) {
       answer = get(
         capability,
         new Map<String, String>{ 'season' => 'Summer 2026' }
@@ -491,9 +491,9 @@ private class OutgoingTest {
       ),
       AccessLevel.SYSTEM_MODE
     );
-    OutgoingElectiveOfferings capability = new OutgoingElectiveOfferings();
+    OutgoingElectivesOffered capability = new OutgoingElectivesOffered();
     Map<String, Object> answer;
-    System.runAs(camp.sender('Read_Elective_Offerings')) {
+    System.runAs(camp.sender('Read_Electives_Offered')) {
       answer = get(
         capability,
         new Map<String, String>{ 'season' => 'Summer 2026' }
@@ -576,7 +576,7 @@ private class OutgoingTest {
       );
     }
     Assert.areEqual(
-      'Couldn\'t send the group schedule for Week 1 to formstack: This user can\'t send the group schedule. A Salesforce admin can give it the "Read group schedules" permission set.',
+      'Couldn\'t send the group schedule for Week 1 to formstack: This connection can\'t send the group schedule. A Salesforce admin can give it the "Read group schedules" permission set.',
       results[0].message
     );
   }
@@ -664,7 +664,7 @@ private class OutgoingTest {
       camp,
       new List<String>{
         'Read_Activity_Schedules',
-        'Read_Elective_Offerings',
+        'Read_Electives_Offered',
         'Read_Elective_Seats'
       }
     );
@@ -679,7 +679,7 @@ private class OutgoingTest {
         records(webAnswer(new OutgoingActivitySchedule(), false)),
         records(formstack.received[0].getBody())
       );
-      String file = webAnswer(new OutgoingElectiveOfferings(), true);
+      String file = webAnswer(new OutgoingElectivesOffered(), true);
       Assert.areEqual(file, formstack.received[1].getBody());
       Assert.isTrue(file.startsWith('elective_set,activity,seats'), file);
       Assert.areEqual(
@@ -698,12 +698,12 @@ private class OutgoingTest {
     OutgoingActivitySchedule.send(
       new List<OutgoingActivitySchedule.Request>{ activity }
     );
-    OutgoingElectiveOfferings.Request offerings = new OutgoingElectiveOfferings.Request();
+    OutgoingElectivesOffered.Request offerings = new OutgoingElectivesOffered.Request();
     offerings.to_system = 'formstack';
     offerings.season = 'Summer 2026';
     offerings.as_csv = true;
-    OutgoingElectiveOfferings.send(
-      new List<OutgoingElectiveOfferings.Request>{ offerings }
+    OutgoingElectivesOffered.send(
+      new List<OutgoingElectivesOffered.Request>{ offerings }
     );
     OutgoingElectiveSeats.Request seats = new OutgoingElectiveSeats.Request();
     seats.to_system = 'formstack';
@@ -729,8 +729,8 @@ private class OutgoingTest {
     RestContext.response = new RestResponse();
     if (capability instanceof OutgoingActivitySchedule) {
       OutgoingActivitySchedule.get();
-    } else if (capability instanceof OutgoingElectiveOfferings) {
-      OutgoingElectiveOfferings.get();
+    } else if (capability instanceof OutgoingElectivesOffered) {
+      OutgoingElectivesOffered.get();
     } else {
       OutgoingElectiveSeats.get();
     }
@@ -750,7 +750,7 @@ private class OutgoingTest {
     List<OutgoingDoors.Capability> all = new List<OutgoingDoors.Capability>{
       new OutgoingGroupSchedule(),
       new OutgoingActivitySchedule(),
-      new OutgoingElectiveOfferings(),
+      new OutgoingElectivesOffered(),
       new OutgoingElectiveSeats()
     };
     for (OutgoingDoors.Capability capability : all) {

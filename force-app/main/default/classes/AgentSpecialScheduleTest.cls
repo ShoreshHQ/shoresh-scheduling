@@ -519,4 +519,103 @@ private class AgentSpecialScheduleTest {
       );
     }
   }
+
+  // CORE-1.0, CORE-1.35: a special schedule's refusals say the camp's own words, with its own
+  // plurals: its special days and events, an event's stations and its time blocks.
+  @IsTest
+  static void aSpecialScheduleIsRefusedInTheCampsOwnWords() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      Map<String, Id> ids = SpecialScheduleTestData.campWithFieldDay();
+      SpecialScheduleTestData.colorWar(ids);
+      String season = seasonName(ids.get('Season'));
+      Id campId = [
+        SELECT Camp__c
+        FROM Season__c
+        WHERE Id = :ids.get('Season')
+        WITH SYSTEM_MODE
+      ]
+      .Camp__c;
+      List<CampLabel__c> labels = new List<CampLabel__c>();
+      for (
+        List<String> word : new List<List<String>>{
+          new List<String>{ 'SpecialDay', 'Yom meyuchad', 'Yamim meyuchadim' },
+          new List<String>{ 'SpecialEvent', 'Maccabiah', 'Maccabiot' },
+          new List<String>{ 'Station', 'Tachana', 'Tachanot' },
+          new List<String>{ 'TimeBlock', 'Perek', 'Prakim' }
+        }
+      ) {
+        labels.add(
+          new CampLabel__c(
+            Camp__c = campId,
+            ModelTerm__c = word[0],
+            Singular__c = word[1],
+            Plural__c = word[2]
+          )
+        );
+      }
+      Database.insert(labels, AccessLevel.SYSTEM_MODE);
+      Test.startTest();
+      List<Object> noSpecial = ask(
+        new AgentSpecialFrame(),
+        'POST',
+        new Map<String, Object>{
+          'season' => season,
+          'special' => 'Carnival',
+          'action' => 'add_station',
+          'name' => 'Green',
+          'seen' => '4'
+        }
+      );
+      List<Object> noStation = ask(
+        new AgentSpecialFrame(),
+        'POST',
+        colorWar(
+          season,
+          new Map<String, Object>{
+            'action' => 'move_station',
+            'target' => 'Silver',
+            'direction' => 'left',
+            'seen' => '4'
+          }
+        )
+      );
+      List<Object> noBlock = ask(
+        new AgentSpecialFrame(),
+        'POST',
+        colorWar(
+          season,
+          new Map<String, Object>{
+            'action' => 'move_time_block',
+            'target' => 'Period 9',
+            'direction' => 'later',
+            'seen' => '4'
+          }
+        )
+      );
+      Test.stopTest();
+      for (
+        List<Object> each : new List<List<Object>>{
+          new List<Object>{
+            noSpecial[1],
+            'There is no Yom meyuchad or Maccabiah called "Carnival" in ' +
+            season +
+            '. The Yamim meyuchadim and Maccabiot: '
+          },
+          new List<Object>{
+            noStation[1],
+            'There is no Tachana called "Silver" in this schedule. The Tachanot: '
+          },
+          new List<Object>{
+            noBlock[1],
+            'There is no Perek called "Period 9" in this schedule. The Prakim: '
+          }
+        }
+      ) {
+        Assert.isTrue(
+          String.valueOf(each[0]).startsWith((String) each[1]),
+          String.valueOf(each[0])
+        );
+      }
+    }
+  }
 }

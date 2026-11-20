@@ -19,7 +19,7 @@ deliberately doesn't. Every name, field, message, key and permission says what i
 1. **What comes in:** `division`, `group`, `activity`, `camper`, `camper_group` (which bunk, which
    weeks), `camper_elective_choice`.
 2. **What goes out:** `send_group_schedule_to_<system>`, `send_activity_schedule_to_<system>`,
-   `send_elective_offerings_to_<system>` (so a form can collect choices) and
+   `send_electives_offered_to_<system>` (so a form can collect choices) and
    `send_elective_seats_to_<system>` (on Finalize only). No per-camper schedule: campers are in
    bunks, and another system can translate. `<system>` is the name the camp gives its destination.
 3. **Three doors, one logic.** Each of these is one piece of code reached by a Flow action (inside

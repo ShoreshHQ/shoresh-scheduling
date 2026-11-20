@@ -70,7 +70,9 @@ it. Its building blocks are the menu's own sections, laid on a calm table as can
      no limit is the taken boxes and an open end (∞), and past ten campers eight boxes, how many,
      then ∞, so the row never looks like a limit. However the boxes are scaled (twenty at most),
      campers past the limit always show, a row not yet full never looks full, and a few seats
-     are boxes of a seat's size. Taken is the most it holds at any one time.
+     are boxes of a seat's size. Taken is the most it holds at any one time, an elective time as
+     Elective seats counts it (a day, a block and a division; `ElectiveSeatCounts`, ELECT-4.11):
+     two divisions sharing the set in one block are never added together.
    - **Saved versions**: the latest version, its week, name and day, a check when it is the
      published one.
      An empty area draws its outline (what is missing shows by its shape, decision 29); nothing is
@@ -89,9 +91,10 @@ it. Its building blocks are the menu's own sections, laid on a calm table as can
 3. **One request for the whole table.** Twelve cards are drawn from the season's setup the page
    has already read (`SeasonSetupController`), so they cost nothing. The rest (which weeks have a
    schedule, the two drafts' day, seats, versions) is one call, `RootsController.getTable`
-   (`RootsTable`, with `RootsGlimpses` and `RootsSeats`; `with sharing`, every query `WITH USER_MODE`): eight queries whatever the size of
+   (`RootsTable`, with `RootsGlimpses` and `RootsSeats`; `with sharing`, every query `WITH USER_MODE`): a fixed number of queries whatever the size of
    the camp (R2 adds, from the same queries, the weeks close at hand and the offerings kept below
-   their minimum, for the hand: still eight), asserted by `RootsTableTest` inside `System.runAs` a scheduler, on a camp with six
+   their minimum, for the hand; since ELECT-4.11 the seats card reads its run as Elective seats
+   does, `ElectiveRunState`: at most 20), asserted by `RootsTableTest` inside `System.runAs` a scheduler, on a camp with six
    weeks, 28 bunks, eight time blocks, 25 activities, two drafts of five days, twenty versions
    and 40 seated campers. The names on a glimpse are those the schedule saved, so the request
    reads no camp words (the page read them once). Roots reads it each time it is shown, so coming
@@ -279,8 +282,8 @@ meld settling), `shoreshCampSetup.test.js` (a hand card out and home again; the 
 seats on its run's week and set, not the latest run's), `shoreshRootsFaces`
 (a fixed activity keeps its padlock), `shoreshSetupRules` (kinds), `shoreshElectiveSeats`
 (`openWeek`, and `opening` on a fresh start; the exact run, committed run A against a later run
-B (Final) and a second schedule, and a run gone), `RootsTableTest` (weeks close at hand, offerings below their minimum, still eight
-queries; the run counted is the one Elective seats opens on: committed over a later Final run, then a
+B (Final) and a second schedule, and a run gone), `RootsTableTest` (weeks close at hand, offerings below their minimum, at most 20
+queries, two divisions in one block counted apart (ELECT-4.11); the run counted is the one Elective seats opens on: committed over a later Final run, then a
 newer run on the other schedule), and the browser check's hand step (dealt, opened, played away, axe) and R1.1 steps
 tightened (a name dropped from a face fails too; no overlap at all in the short window).
 

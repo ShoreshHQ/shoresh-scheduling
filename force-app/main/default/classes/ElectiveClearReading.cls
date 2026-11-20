@@ -28,7 +28,10 @@ public with sharing class ElectiveClearReading {
     ];
     if (seasons.isEmpty()) {
       throw new ShoreshException(
-        'That season is no longer there. Reload the page.'
+        AgentRefusal.withFix(
+          'That season is no longer there.',
+          'Reload the page.'
+        )
       );
     }
     picture.seasonName = seasons[0].Name;
@@ -132,9 +135,7 @@ public with sharing class ElectiveClearReading {
 
   /** Adds a camper's choices to their week, past what another run of that set there counted. */
   private void countChoices(ElectiveClear.WeekCounts week, Preference__c pref) {
-    Integer made = String.isBlank(pref.Choices__c)
-      ? 0
-      : pref.Choices__c.countMatches('"a":');
+    Integer made = CamperChoices.count(pref.Choices__c);
     String key =
       week.weekId +
       '|' +

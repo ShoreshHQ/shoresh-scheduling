@@ -312,7 +312,7 @@ private class RainyDayTest {
       ManualBuildViews.DraftView restored = ManualBuildController.restoreVersion(
         draftId,
         versionId,
-        ScheduleDays.stamp(ScheduleDays.read(draftId))
+        WeekTickets.stamp(ScheduleDays.read(draftId))
       );
       Test.stopTest();
       ScheduleViews.DayView monday = restored.schedule.days[0];
@@ -349,7 +349,7 @@ private class RainyDayTest {
     GeneratedTestData.handEdits(
       draftId,
       new List<SlotEdits.Edit>{ marksOnly },
-      GeneratedDrafts.revisionOf(ScheduleDays.read(draftId))
+      WeekTickets.stamp(ScheduleDays.read(draftId))
     );
     return draftId;
   }
@@ -372,7 +372,7 @@ private class RainyDayTest {
       GeneratedWeek.Locked locked = GeneratedScheduleController.setLocks(
         draftId,
         new List<GeneratedWeek.LockChange>{ lock },
-        GeneratedDrafts.revisionOf(ScheduleDays.read(draftId))
+        WeekTickets.stamp(ScheduleDays.read(draftId))
       );
       Test.stopTest();
       Assert.isTrue(used <= FEW, 'Keeping the version used ' + used);
@@ -416,7 +416,7 @@ private class RainyDayTest {
       Boolean undone = GeneratedUndoController.undoBuild(
         draftId,
         rebuilt.versionId,
-        GeneratedDrafts.revisionOf(ScheduleDays.read(draftId))
+        WeekTickets.stamp(ScheduleDays.read(draftId))
       );
       Test.stopTest();
       Assert.isTrue(undone);
@@ -546,7 +546,7 @@ private class RainyDayTest {
       ManualVersions.restore(
         draftId,
         versionId,
-        ScheduleDays.stamp(ScheduleDays.read(draftId))
+        WeekTickets.stamp(ScheduleDays.read(draftId))
       );
       Assert.areEqual(mondayMarks(), asSet(ScheduleDays.read(draftId)[0].rain));
       publishesTheMarks(draftId, publishedId);
@@ -580,7 +580,7 @@ private class RainyDayTest {
       ManualBuildViews.DraftView restored = ManualBuildController.restoreVersion(
         draftId,
         versionId,
-        ScheduleDays.stamp(ScheduleDays.read(draftId))
+        WeekTickets.stamp(ScheduleDays.read(draftId))
       );
       Integer restoring = Limits.getQueries() - before;
       Test.stopTest();

@@ -7,7 +7,7 @@
  * they have on Generated Schedule.
  */
 public with sharing class AgentWeeks {
-  public static final String NO_ACCESS = 'This user can\'t change schedules in Shoresh. A Salesforce admin can give it the "Shoresh Scheduler" permission set.';
+  public static final String NO_ACCESS = 'You can\'t change schedules in Shoresh. A Salesforce admin can give you the "Shoresh Scheduler" permission set.';
 
   /** Someone else's change got in the way: nothing was changed (answered 409). */
   public class ConflictException extends Exception {
@@ -102,20 +102,30 @@ public with sharing class AgentWeeks {
       for (Program__c program : programs) {
         names.add(program.Name);
       }
+      // The camp's Program words (CORE-1.0), read only when refusing.
+      CampLabels words = IncomingSeason.labelsOf(season.Id);
       throw new ShoreshException(
         programs.isEmpty()
-          ? season.Name + ' has no programs yet.'
-          : 'Say which program (program): ' + String.join(names, ', ') + '.'
+          ? season.Name +
+            ' has no ' +
+            words.pluralInSentence('Program') +
+            ' yet.'
+          : 'Say which ' +
+            words.singularInSentence('Program') +
+            ' (program): ' +
+            String.join(names, ', ') +
+            '.'
       );
     }
-    return (Program__c) named(programs, name, 'program');
+    return (Program__c) named(programs, name, 'Program');
   }
 
   /**
    * The one record of that name (as camps type names); refused in plain words otherwise, naming
-   * the ones there are so no one has to guess (API-1.25).
+   * the ones there are so no one has to guess (API-1.25), in the camp words for term of the
+   * season this request found (CORE-1.0), read only when refusing.
    */
-  public static SObject named(List<SObject> rows, String name, String what) {
+  public static SObject named(List<SObject> rows, String name, String term) {
     List<String> names = new List<String>();
     for (SObject row : rows) {
       if (
@@ -125,13 +135,16 @@ public with sharing class AgentWeeks {
       }
       names.add((String) row.get('Name'));
     }
+    CampLabels words = OutgoingRows.used == null
+      ? CampLabels.modelTermsOnly()
+      : IncomingSeason.labelsOf(OutgoingRows.used.Id);
     throw new ShoreshException(
       'There is no ' +
-        what +
+        words.singularInSentence(term) +
         ' called "' +
         name.left(80) +
-        '" that this user can see. ' +
-        namesSaid(what + 's', names)
+        '" that you can see. ' +
+        namesSaid(words.pluralInSentence(term), names)
     );
   }
 

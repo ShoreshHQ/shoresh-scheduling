@@ -2,9 +2,11 @@
  * The hand-edit rules (handEdits.js) on a week alone, without the screen: what an edit changes,
  * its Undo label, and when a Lock refuses it.
  */
+import { dayLabel } from "c/shoreshScheduleViews";
 import {
   canMove,
   clearAllStep,
+  editContextOf,
   placeOverStep,
   placeStep,
   resizeStep
@@ -96,5 +98,84 @@ describe("hand edits without the screen", () => {
     expect(placeOverStep(ctxOf([at(0, 0)]), rows, "S:e1").locked).toEqual(
       at(0, 0)
     );
+  });
+});
+
+// The context the week editor and an AI's tools (connect/cells.js) both edit with.
+describe("a draft's edit context", () => {
+  const t = { s: (term) => term };
+  const draftOf = (more = {}) => ({
+    schedule: { days: [day("2026-06-29", ITEMS, ["1,2,", "1,3,^"])] },
+    activities: [{ id: "a9", name: "Archery" }],
+    ...more
+  });
+  const setup = {
+    special: { specialEvents: [{ Id: "e1", Name: "Carnival" }] },
+    electives: { sets: [{ Id: "s1", Name: "Chugim" }] }
+  };
+  const OPEN_CELL = { items: [] };
+
+  it("names a cell by the day's saved name, else the draft's activity or the season's event or set, else as removed", () => {
+    const ctx = editContextOf({ draft: draftOf(), t, setup });
+    const monday = ctx.week[0];
+    expect(ctx.nameOf(SWIM, monday)).toBe("Swim");
+    expect(ctx.nameOf("A:a9", OPEN_CELL)).toBe("Archery");
+    expect(ctx.nameOf("S:e1", OPEN_CELL)).toBe("Carnival");
+    expect(ctx.nameOf("E:s1", OPEN_CELL)).toBe("Chugim");
+    expect(ctx.nameOf("S:gone", OPEN_CELL)).toBe("SpecialEvent (removed)");
+    expect(ctx.nameOf("", OPEN_CELL)).toBe("Open");
+  });
+
+  it("a group is away where the draft's away blocks say, in any week asked about", () => {
+    const ctx = editContextOf({
+      draft: draftOf({ away: [{ groupId: "g2", blockIds: ["t3"] }] }),
+      t,
+      setup
+    });
+    expect(ctx.isAwayOn(ctx.week, 0, 1, 2)).toBe(true);
+    expect(ctx.isAwayOn(ctx.week, 0, 1, 1)).toBe(false);
+    expect(ctx.isAwayOn(ctx.week, 0, 0, 2)).toBe(false);
+    expect(
+      editContextOf({ draft: draftOf(), t }).isAwayOn(ctx.week, 0, 1, 2)
+    ).toBe(false);
+  });
+
+  // LOCK-4.1
+  it("a lock on one block of a placement locks all of it; no locks lock nothing", () => {
+    const locks = new Set(["2026-06-29|g2|t3"]);
+    const ctx = editContextOf({ draft: draftOf(), t, setup, locks });
+    expect([0, 1, 2].map((b) => ctx.isLocked(at(1, b)))).toEqual([
+      false,
+      true,
+      true
+    ]);
+    expect(ctx.liveLocks).toBe(locks);
+    const none = editContextOf({ draft: draftOf(), t, setup });
+    expect(none.isLocked(at(1, 2))).toBe(false);
+    expect(none.liveLocks).toBeNull();
+  });
+
+  it("a day is its weekday, or a special day's or event's own schedule's name", () => {
+    const week = editContextOf({ draft: draftOf(), t });
+    expect(week.dayNameOf("2026-06-29")).toBe(dayLabel("2026-06-29").label);
+    const own = editContextOf({ draft: draftOf(), t, planName: "Color War" });
+    expect(own.dayNameOf("2026-06-29")).toBe("Color War");
+  });
+
+  // LOCK-4.9
+  it("knows where setup puts each fixed activity, and the days a special day replaces", () => {
+    const setUpCells = [{ key: "2026-06-29|g1|t1", slot: "F:f1" }];
+    const special = { dateValue: "2026-06-30", name: "Trip" };
+    const ctx = editContextOf({
+      draft: draftOf({ setUpCells, specials: { days: [special] } }),
+      t
+    });
+    expect(ctx.setUp).toEqual({ "2026-06-29|g1|t1": "F:f1" });
+    expect(ctx.replaced.get("2026-06-30")).toBe(special);
+    expect(editContextOf({ draft: draftOf(), t }).setUp).toBeNull();
+    const given = new Map();
+    expect(
+      editContextOf({ draft: draftOf(), t, replaced: given }).replaced
+    ).toBe(given);
   });
 });

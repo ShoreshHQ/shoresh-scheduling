@@ -1,7 +1,7 @@
 /**
  * The person's own changes through an agent or the command line (docs/protocol/api.md API-1.11
  * to API-1.14, API-1.148): /v1/schedule_cell (the run typing works out, as the connector sends it)
- * and /v1/undo_last_agent_change (what the connector holds for the conversation) on
+ * and /v1/undo_last_change (what the connector holds for the conversation) on
  * GeneratedTestData's camp, whose first Generate puts Gym games in every group's Period 2.
  */
 @IsTest
@@ -232,7 +232,7 @@ private class AgentChangesTest {
       GeneratedScheduleController.setLocks(
         draftId,
         new List<GeneratedWeek.LockChange>{ lock },
-        GeneratedDrafts.revisionOf(ScheduleDays.read(draftId))
+        WeekTickets.stamp(ScheduleDays.read(draftId))
       );
       List<Object> answer = send('schedule_cell', cell('Gym games', 'Soccer'));
       Test.stopTest();
@@ -254,7 +254,7 @@ private class AgentChangesTest {
       Map<String, Object> sent = cell('Gym games', 'Soccer');
       send('schedule_cell', sent);
       Map<String, Object> asked = undoOf(sent);
-      List<Object> undone = send('undo_last_agent_change', asked);
+      List<Object> undone = send('undo_last_change', asked);
       Map<String, Object> left = undo;
       Boolean locked = ScheduleGridLocks.isLocked(
         ScheduleDays.read(draftId)[0].grid,
@@ -263,7 +263,7 @@ private class AgentChangesTest {
       );
       // Taken back: the connector holds nothing more for the week, as a page's Undo spent.
       List<Object> again = send(
-        'undo_last_agent_change',
+        'undo_last_change',
         week(new Map<String, Object>{ 'held' => new Map<String, Object>() })
       );
       Test.stopTest();
@@ -317,7 +317,7 @@ private class AgentChangesTest {
       );
       held.put('seen', lock.get('seen'));
       List<Object> undone = send(
-        'undo_last_agent_change',
+        'undo_last_change',
         week(new Map<String, Object>{ 'held' => AgentUndoTestCalls.held(held) })
       );
       Test.stopTest();
@@ -379,9 +379,9 @@ private class AgentChangesTest {
             new List<String>{ '' }
           )
         },
-        GeneratedDrafts.revisionOf(ScheduleDays.read(draftId))
+        WeekTickets.stamp(ScheduleDays.read(draftId))
       );
-      List<Object> undone = send('undo_last_agent_change', asked);
+      List<Object> undone = send('undo_last_change', asked);
       Test.stopTest();
       Assert.areEqual(409, undone[0]);
       Assert.areEqual(ScheduleDaySaves.CHANGED_SINCE, undone[1]);
@@ -404,7 +404,10 @@ private class AgentChangesTest {
       List<Object> answer = send('schedule_cell', asked);
       Test.stopTest();
       Assert.areEqual(400, answer[0]);
-      Assert.areEqual(AgentWeeks.NO_ACCESS, answer[1]);
+      Assert.areEqual(
+        'You can\'t change schedules in Shoresh. A Salesforce admin can give you the "Shoresh Scheduler" permission set.',
+        answer[1]
+      );
     }
     Assert.areEqual(GeneratedTestData.a('Gym games'), periodTwo(draftId));
   }
@@ -471,18 +474,18 @@ private class AgentChangesTest {
       AgentFields.onlyOne(
         new List<String>{ 'Bunk 1', 'Bunk 2' },
         'bunk 2',
-        'group'
+        'a group'
       )
     );
     Assert.areEqual(
       -1,
-      AgentFields.onlyOne(new List<String>{ 'Bunk 1' }, '', 'group')
+      AgentFields.onlyOne(new List<String>{ 'Bunk 1' }, '', 'a group')
     );
     try {
       AgentFields.onlyOne(
         new List<String>{ 'Bunk 1', 'bunk  1' },
         'Bunk 1',
-        'group'
+        'a group'
       );
       Assert.fail('Expected look-alike names to be refused');
     } catch (ShoreshException e) {

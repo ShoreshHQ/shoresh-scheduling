@@ -8029,6 +8029,36 @@ function buildTerms(labels) {
     sIn: term => inSentence(term, false),
     pIn: term => inSentence(term, true)
   };
+}/**
+ * What a new row of each kind starts with, beyond its season and order: Camp Setup's Add row,
+ * and the list import's new items when the file has no such column. Greg, 2026-10-16: a new
+ * activity is 1 time block long, done once a week, low priority, indoors, one group at a time;
+ * a new location fits one group. Apex starts its rows the same way (AgentSetupNewRow.startsWith),
+ * held to it by staticresources/ShoreshNewRowExamples.json, which both sides' tests run.
+ */
+const LOCATION = FIELD.Location;
+const ACTIVITY = FIELD.Activity;
+const NEW_ROWS = {
+  Location: {
+    [LOCATION.GroupsThatFit]: 1
+  },
+  Activity: {
+    [ACTIVITY.Length]: 1,
+    [ACTIVITY.TimesPerWeekMin]: 1,
+    [ACTIVITY.TimesPerWeekMax]: 1,
+    [ACTIVITY.Priority]: "Low",
+    [ACTIVITY.Outdoor]: false,
+    [ACTIVITY.GroupsAtOnce]: 1,
+    [ACTIVITY.NoWeeklyMax]: false,
+    [ACTIVITY.NoGroupLimit]: false
+  }
+};
+
+/** kind: "Location" or "Activity". A new row's fields, by the package's field names. */
+function newRow(kind) {
+  return {
+    ...NEW_ROWS[kind]
+  };
 }/*
  * The weeks of a season with no weeks yet, as "Fill in weeks" makes them: shared by the camp
  * workbook import (c/shoreshLists) and Import last year.
@@ -8105,7 +8135,11 @@ buildTerms([]);
 // Each screen's fields, as the package names them (c/shoreshSchema).
 FIELD.Location;
 FIELD.Activity;
-FIELD.ActivityEligibility;/*
+FIELD.ActivityEligibility;
+
+// What a new item starts with when the file has no such column: as one added by hand.
+newRow("Location");
+newRow("Activity");/*
  * Which sheet of a file is the list, and which column is which (slice 4c). Headings are matched
  * to the camp's own words and the usual other headings, after folding (capitals, spaces, and
  * punctuation ignored), never by guessing from what is in the cells. A heading that matches

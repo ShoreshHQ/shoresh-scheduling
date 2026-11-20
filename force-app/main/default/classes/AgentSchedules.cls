@@ -122,8 +122,8 @@ public with sharing class AgentSchedules {
   /**
    * Holds a Generated Schedule week until the request ends and refuses an edit (409, nothing
    * changed) unless the week is still as it was read: its ticket (seen, in field), never the week
-   * read here in its place (SeenSaves.week). Manual Build's save has no ticket: each of its runs
-   * is made only while its cells hold what was seen. Answers the ticket, for the save.
+   * read here in its place (WeekTickets.seenBlankNever). Manual Build's save has no ticket: each
+   * of its runs is made only while its cells hold what was seen. Answers the ticket, for the save.
    */
   public static String holdAsSeen(
     AgentWeeks.Week week,
@@ -138,7 +138,12 @@ public with sharing class AgentSchedules {
       throw new ShoreshException(SAY_SEEN);
     }
     GeneratedDrafts.lockedToEdit(week.draft.Id);
-    if (!SeenSaves.week(ScheduleDays.read(week.draft.Id), seen)) {
+    if (
+      !WeekTickets.seenBlankNever(
+        WeekTickets.stamp(ScheduleDays.read(week.draft.Id)),
+        seen
+      )
+    ) {
       throw new AgentWeeks.ConflictException(ScheduleDaySaves.CHANGED_SINCE);
     }
     return seen;

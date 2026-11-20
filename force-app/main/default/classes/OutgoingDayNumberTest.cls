@@ -208,8 +208,8 @@ private class OutgoingDayNumberTest {
     System.runAs(camp.sender('Read_Elective_Seats')) {
       seats = web(new OutgoingElectiveSeats(), true);
     }
-    System.runAs(camp.sender('Read_Elective_Offerings')) {
-      offerings = web(new OutgoingElectiveOfferings(), false);
+    System.runAs(camp.sender('Read_Electives_Offered')) {
+      offerings = web(new OutgoingElectivesOffered(), false);
     }
     sayDay1(new OutgoingActivitySchedule(), activities);
     Assert.isTrue(

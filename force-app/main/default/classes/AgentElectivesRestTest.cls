@@ -139,7 +139,7 @@ private class AgentElectivesRestTest {
         )
       };
       List<Object> refused = AgentElectivesTestData.send(
-        'start_new_elective_version',
+        'change_seats',
         'POST',
         AgentElectivesTestData.asked(stale)
       );
@@ -147,12 +147,12 @@ private class AgentElectivesRestTest {
         'seen' => AgentElectivesTestData.seen(AgentElectivesTestData.revision())
       };
       List<Object> started = AgentElectivesTestData.send(
-        'start_new_elective_version',
+        'change_seats',
         'POST',
         AgentElectivesTestData.asked(current)
       );
       List<Object> again = AgentElectivesTestData.send(
-        'start_new_elective_version',
+        'change_seats',
         'POST',
         AgentElectivesTestData.asked(current)
       );
@@ -245,6 +245,172 @@ private class AgentElectivesRestTest {
         1,
         [SELECT COUNT() FROM ElectiveSet__c WITH SYSTEM_MODE],
         'the set stays'
+      );
+    }
+  }
+
+  /** The camp's own words (CORE-1.0): Chug / Chugim, Spot / Spots, Chanich / Chanichim, Pair / Pairs. */
+  private static void campWords() {
+    List<CampLabel__c> labels = new List<CampLabel__c>();
+    for (
+      List<String> word : new List<List<String>>{
+        new List<String>{ 'Elective', 'Chug', 'Chugim' },
+        new List<String>{ 'Seats', 'Spot', 'Spots' },
+        new List<String>{ 'Camper', 'Chanich', 'Chanichim' },
+        new List<String>{ 'LinkedChoice', 'Pair', 'Pairs' }
+      }
+    ) {
+      labels.add(
+        new CampLabel__c(
+          Camp__c = AgentElectivesTestData.ids.get('Camp'),
+          ModelTerm__c = word[0],
+          Singular__c = word[1],
+          Plural__c = word[2]
+        )
+      );
+    }
+    Database.insert(labels, AccessLevel.SYSTEM_MODE);
+  }
+
+  // CORE-1.0, CORE-1.35: a seat move refused says the camp's own words, with its own plurals.
+  @IsTest
+  static void aSeatMoveIsRefusedInTheCampsOwnWords() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      AgentElectivesTestData.camp();
+      AgentElectivesTestData.assigned();
+      campWords();
+      Map<String, Object> move = new Map<String, Object>{
+        'camper' => 'Synthetic Camper 1',
+        'day' => 'Monday',
+        'time' => 'Period 1',
+        'elective' => 'Archery',
+        'seen' => AgentElectivesTestData.seen(AgentElectivesTestData.revision())
+      };
+      Test.startTest();
+      Map<String, Object> nobody = move.clone();
+      nobody.put('camper', 'Nobody');
+      List<Object> noCamper = AgentElectivesTestData.send(
+        'move_elective_seat',
+        'POST',
+        AgentElectivesTestData.asked(nobody)
+      );
+      Map<String, Object> pottery = move.clone();
+      pottery.put('elective', 'Pottery');
+      List<Object> noElective = AgentElectivesTestData.send(
+        'move_elective_seat',
+        'POST',
+        AgentElectivesTestData.asked(pottery)
+      );
+      Map<String, Object> lateTime = move.clone();
+      lateTime.put('time', 'Period 9');
+      List<Object> noTime = AgentElectivesTestData.send(
+        'move_elective_seat',
+        'POST',
+        AgentElectivesTestData.asked(lateTime)
+      );
+      Test.stopTest();
+      Assert.areEqual(
+        'There is no Chanich called "Nobody" in these Spots. Read them with read_elective_seats_now.',
+        noCamper[1]
+      );
+      String said = String.valueOf(noElective[1]);
+      Assert.isTrue(
+        said.startsWith(
+          'There is no Chug called "Pottery" in these Spots. The Chugim: '
+        ),
+        said
+      );
+      Assert.isTrue(said.contains('Archery') && said.contains('Drama'), said);
+      String noTimeSaid = String.valueOf(noTime[1]);
+      Assert.isTrue(
+        noTimeSaid.startsWith(
+          'There is no Chug time on Monday at Period 9. The times: '
+        ),
+        noTimeSaid
+      );
+    }
+  }
+
+  // CORE-1.0, CORE-1.34, CORE-1.35: Clear's picture and its answer say the camp's own words; its
+  // sets, which follow its Chug words, read "Chug sets" beside its Chugim.
+  @IsTest
+  static void clearSaysTheCampsOwnWords() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      AgentElectivesTestData.camp();
+      AgentElectivesTestData.finalized();
+      Database.insert(
+        new LinkedChoice__c(
+          ElectiveSet__c = AgentElectivesTestData.ids.get('Chugim'),
+          Name = 'Drama both days',
+          Offering__c = AgentElectivesTestData.ids.get('Drama'),
+          AppliesTo__c = 'All',
+          SortOrder__c = 1
+        ),
+        AccessLevel.USER_MODE
+      );
+      campWords();
+      Test.startTest();
+      String season = (String) AgentElectivesTestData.asked(
+          new Map<String, Object>()
+        )
+        .get('season');
+      String stamp = ElectiveSeatsController.clearPicture(
+          AgentElectivesTestData.ids.get('Season')
+        )
+        .stamp;
+      List<Object> read = AgentElectivesTestData.send(
+        'electives_to_clear',
+        'GET',
+        new Map<String, Object>{ 'season' => season }
+      );
+      List<Object> cleared = AgentElectivesTestData.send(
+        'clear_electives',
+        'POST',
+        new Map<String, Object>{
+          'season' => season,
+          'week' => 'Week 1',
+          'seen' => stamp
+        }
+      );
+      Test.stopTest();
+      String said = String.valueOf(read[1]);
+      Assert.isTrue(said.contains(': 2 Chanichim in all.'), said);
+      Assert.isTrue(said.contains(' Spots, 1 set of Spots, final'), said);
+      Assert.isTrue(
+        said.endsWith(
+          'Stays for next summer: Chug sets Chugim; Chugim Archery, Drama; Pairs Drama both days.'
+        ),
+        said
+      );
+      Assert.areEqual('Cleared these Spots and 2 Chanichim.', cleared[1]);
+    }
+  }
+
+  // API-1.105, CORE-1.0: a padlock on a seat the camper doesn't hold is refused in the camp's own
+  // singular, without the screen's "Reload the page".
+  @IsTest
+  static void aLockWithNoSeatThereIsRefusedWithoutThePage() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      AgentElectivesTestData.camp();
+      campWords();
+      Map<String, Object> lock = new Map<String, Object>{
+        'camper' => 'Synthetic Camper 1',
+        'day' => 'Monday',
+        'time' => 'Period 1',
+        'locked' => true,
+        'seen' => AgentElectivesTestData.seen(AgentElectivesTestData.revision())
+      };
+      Test.startTest();
+      List<Object> refused = AgentElectivesTestData.send(
+        'lock_elective_seat',
+        'POST',
+        AgentElectivesTestData.asked(lock)
+      );
+      Test.stopTest();
+      Assert.areEqual(400, refused[0], String.valueOf(refused[1]));
+      Assert.areEqual(
+        'That Spot wasn\'t changed. That Spot is no longer there.',
+        refused[1]
       );
     }
   }

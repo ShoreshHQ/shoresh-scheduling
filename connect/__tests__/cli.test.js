@@ -61,7 +61,7 @@ describe("Command line", () => {
       parse(["put_special_day_on_day", "--replace", "true"]).input.replace
     ).toBe(true);
     expect(
-      parse(["change_setup_record", "--fields", '{"place": "Pool"}']).input
+      parse(["change_in_setup", "--fields", '{"place": "Pool"}']).input
     ).toEqual({ fields: { place: "Pool" } });
     expect(
       parse(["read_week_checks", "--week", "Week 1", "--program", "Juniors"])
@@ -248,7 +248,7 @@ describe("Code mode", () => {
   it("codeModeAnswersWhatMcpSays: plain values in, the answer MCP's lines are made from out", async () => {
     const seen = [];
     const body = JSON.stringify({ message: "Copied.", season: "Summer 2026" });
-    const said = await code.add_setup_record(
+    const said = await code.add_to_setup(
       { kind: "location", name: "Pool", fields: { type: "Water" } },
       { run: sfAnswering(200, body, seen) }
     );

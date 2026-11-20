@@ -127,19 +127,8 @@ public with sharing class AgentSetupNewRow {
       when 'Group' {
         row.put(Group__c.Availability__c, 'AllDay');
       }
-      when 'Location' {
-        row.put(Location__c.GroupsThatFit__c, 1);
-      }
-      when 'Activity' {
-        // Defaults for an activity added by hand (Greg, 2026-10-16).
-        row.put(Activity__c.Length__c, 1);
-        row.put(Activity__c.TimesPerWeekMin__c, 1);
-        row.put(Activity__c.TimesPerWeekMax__c, 1);
-        row.put(Activity__c.Priority__c, 'Low');
-        row.put(Activity__c.Outdoor__c, false);
-        row.put(Activity__c.GroupsAtOnce__c, 1);
-        row.put(Activity__c.NoWeeklyMax__c, false);
-        row.put(Activity__c.NoGroupLimit__c, false);
+      when 'Location', 'Activity' {
+        startsWith(term, row);
       }
       when 'FixedActivity', 'RecurringActivity' {
         // A recurring activity starts with no day ticked (Greg, 2026-10-16).
@@ -150,6 +139,26 @@ public with sharing class AgentSetupNewRow {
           1
         );
       }
+    }
+  }
+
+  /**
+   * What a new location or activity starts with (Greg, 2026-10-16), as the screens start it
+   * (c/shoreshNewRows): held to it by staticresources/ShoreshNewRowExamples.json, which both
+   * sides' tests run (NewRowExamplesTest, shoreshNewRows newRowExamples.test.js).
+   */
+  public static void startsWith(String term, SObject row) {
+    if (term == 'Location') {
+      row.put(Location__c.GroupsThatFit__c, 1);
+    } else if (term == 'Activity') {
+      row.put(Activity__c.Length__c, 1);
+      row.put(Activity__c.TimesPerWeekMin__c, 1);
+      row.put(Activity__c.TimesPerWeekMax__c, 1);
+      row.put(Activity__c.Priority__c, 'Low');
+      row.put(Activity__c.Outdoor__c, false);
+      row.put(Activity__c.GroupsAtOnce__c, 1);
+      row.put(Activity__c.NoWeeklyMax__c, false);
+      row.put(Activity__c.NoGroupLimit__c, false);
     }
   }
 

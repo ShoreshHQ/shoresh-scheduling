@@ -1,5 +1,5 @@
 /**
- * undo_last_agent_change (API-1.14, API-1.148): Undo as the screen's Undo, held here and nowhere else.
+ * undo_last_change (API-1.14, API-1.148): Undo as the screen's Undo, held here and nowhere else.
  * The screen holds its Undo in the page, only while it is open; the connector holds it in this
  * process, only for this conversation, never in Salesforce. Each change's answer says what its
  * Undo needs (AgentUndoHeld: the schedule (a week's draft, or a special day's or event's

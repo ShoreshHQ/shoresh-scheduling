@@ -72,16 +72,7 @@ public with sharing class WeekTriggerHandler {
   }
 
   public static void beforeDelete(Map<Id, Week__c> oldWeeks) {
-    Set<Id> seasonIds = new Set<Id>();
-    for (Week__c week : oldWeeks.values()) {
-      seasonIds.add(week.Season__c);
-    }
-    Map<Id, Id> campIdBySeasonId = campIdBySeasonId(seasonIds);
-    Map<Id, Id> campIdByWeekId = new Map<Id, Id>();
-    for (Week__c week : oldWeeks.values()) {
-      campIdByWeekId.put(week.Id, campIdBySeasonId.get(week.Season__c));
-    }
-    PublishedHistory.refuseDeletes(oldWeeks.values(), 'Week', campIdByWeekId);
+    PublishedHistory.refuseDeletes(oldWeeks.values());
     Set<Id> deletable = new Set<Id>();
     for (Week__c week : oldWeeks.values()) {
       if (!week.hasErrors()) {
@@ -105,18 +96,5 @@ public with sharing class WeekTriggerHandler {
   @TestVisible
   private static String keyOf(Week__c week) {
     return week.Season__c + '|' + String.valueOf(week.StartDate__c);
-  }
-
-  private static Map<Id, Id> campIdBySeasonId(Set<Id> seasonIds) {
-    Map<Id, Id> result = new Map<Id, Id>();
-    for (Season__c season : [
-      SELECT Id, Camp__c
-      FROM Season__c
-      WHERE Id IN :seasonIds
-      WITH SYSTEM_MODE
-    ]) {
-      result.put(season.Id, season.Camp__c);
-    }
-    return result;
   }
 }
