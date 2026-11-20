@@ -1,8 +1,25 @@
 import { SHORT_DAYS } from "c/shoreshTerms";
 import { LightningElement, api } from "lwc";
 import { looseKey } from "c/shoreshImportEngine";
-import { numberedDay, numberedWeekday, spokenWeekday } from "c/shoreshDayNames";
+import { numberedWeekday, spokenWeekday } from "c/shoreshDayNames";
 import { FIELD, OBJECT } from "c/shoreshSchema";
+import {
+  fieldsOf,
+  fromInput,
+  isBlank,
+  isText,
+  readWords,
+  refusals,
+  sentForms,
+  timeText,
+  typedValue,
+  typedValues,
+  valueWords,
+  waitsForAdd,
+  widthOf
+} from "./columnKinds";
+
+export { timeText };
 
 // Each object's fields, by the object's name as the package has it (a week's name gives
 // the week fields).
@@ -52,18 +69,6 @@ const WEEK_WORDS = {
   off: "Off",
   one: "Week",
   many: "Weeks"
-};
-// Each kind of column's width (rem); the name and words columns share what is left.
-const WIDTHS = {
-  number: 6.5,
-  picklist: 11,
-  time: 8.5,
-  date: 10,
-  checkbox: 5,
-  who: 14,
-  often: 9,
-  days: 11,
-  seats: 9
 };
 // A shared column's least room (rem), unless the column says (minWidth).
 const SHARED_MIN = 12;
@@ -478,13 +483,7 @@ export default class ShoreshEditableTable extends LightningElement {
 
   /** A record's values as the inputs show them (times as "09:00:00.000"). */
   shownValues(record) {
-    const shown = { ...record };
-    (this._columns || [])
-      .filter((col) => col.type === "time")
-      .forEach((col) => {
-        shown[col.fieldName] = timeText(shown[col.fieldName]);
-      });
-    return shown;
+    return typedValues(this._columns, record);
   }
 
   rowFor(key) {
@@ -517,37 +516,7 @@ export default class ShoreshEditableTable extends LightningElement {
    * most) and "days" one tick per day, each named as the director reads it.
    */
   get fieldColumns() {
-    return this.columns.flatMap((col) => {
-      if (col.type === "often") {
-        return [
-          { ...col, type: "number", label: col.minLabel || col.label },
-          {
-            fieldName: col.maxField,
-            label: col.maxLabel || col.label,
-            type: "number",
-            min: col.min
-          }
-        ];
-      }
-      if (col.type === "days") {
-        return (col.days || []).map((day) => ({
-          fieldName: day.fieldName,
-          label: day.label,
-          type: "checkbox"
-        }));
-      }
-      if (col.type === "seats") {
-        return [
-          { ...col, type: "number" },
-          {
-            fieldName: col.noLimitField,
-            label: col.noLimitLabel || "No limit",
-            type: "checkbox"
-          }
-        ];
-      }
-      return [col];
-    });
+    return this.columns.flatMap(fieldsOf);
   }
 
   fieldColumn(field) {
@@ -626,7 +595,7 @@ export default class ShoreshEditableTable extends LightningElement {
   get widths() {
     const widths = this.mainColumns.map((col) => ({
       key: `col-${col.fieldName}`,
-      rem: col.width || WIDTHS[col.type] || null,
+      rem: widthOf(col),
       least: col.minWidth || SHARED_MIN
     }));
     if (this.hasWeeks) {
@@ -1214,12 +1183,7 @@ export default class ShoreshEditableTable extends LightningElement {
    * for one, rather than refusing with "Tick at least one day." (word walk W4).
    */
   noDayTicked(draft) {
-    return this.columns.some(
-      (col) =>
-        col.type === "days" &&
-        col.needsADay &&
-        !col.days.some((day) => !!draft.values[day.fieldName])
-    );
+    return this.columns.some((col) => waitsForAdd(col, draft.values));
   }
 
   tableRow(draft, { offWeeks, sameNames, overlaps, matches }) {
@@ -1231,7 +1195,7 @@ export default class ShoreshEditableTable extends LightningElement {
       matches.has(looseKey(draft.original.Name));
     // The blank row says what it adds in its first text field, else its first field.
     const firstText = (
-      this.columns.find((c) => this.isTextColumn(c)) ||
+      this.columns.find((c) => isText(c)) ||
       this.mainColumns[0] ||
       {}
     ).fieldName;
@@ -1316,7 +1280,7 @@ export default class ShoreshEditableTable extends LightningElement {
           draft.isNew && col.fieldName === firstText
             ? this.addLabel
             : col.label,
-        isText: this.isTextColumn(col),
+        isText: isText(col),
         sameName: col.fieldName === "Name" && sameNames.has(draft.key),
         canMerge: col.fieldName === "Name" && mergeable,
         mergeLabel: this.mergeLabel,
@@ -1334,13 +1298,7 @@ export default class ShoreshEditableTable extends LightningElement {
         // A number's unit beside it (col.unitFor(value)): "1 time block" (word walk W1).
         unit: col.unitFor ? col.unitFor(draft.values[col.fieldName]) : "",
         min: col.min,
-        // A field's refusal names the field and its limit, never Salesforce's "Complete this
-        // field." or "The number is too low." (word walk W4).
-        missingText: `${col.label}: needed.`,
-        tooLowText:
-          col.min == null ? undefined : `${col.label}: at least ${col.min}.`,
-        wholeText: `${col.label}: a whole number.`,
-        badText: `${col.label}: not a ${col.type === "time" ? "time" : "date"}.`,
+        ...refusals(col),
         isDate: col.type === "date",
         isTime: col.type === "time",
         isCheckbox: col.type === "checkbox",
@@ -1446,10 +1404,6 @@ export default class ShoreshEditableTable extends LightningElement {
       weeksTextClass: weeks.exception ? "weeks-text exception" : "weeks-text",
       weeksName: `${name || this.addLabel}: ${this.weeksHeading || ""}`.trim()
     };
-  }
-
-  isTextColumn(col) {
-    return col.type === "text" || !col.type;
   }
 
   /** A cell as the table shows it: with its guess, or, read only, as words. */
@@ -1843,9 +1797,8 @@ export default class ShoreshEditableTable extends LightningElement {
       event.target.type === "checkbox" || event.target.type === "toggle"
         ? event.target.checked
         : event.detail.value;
-    if (column && column.type === "number") {
-      // The number input hands back text; Salesforce wants a number (or nothing).
-      value = value === "" || value === null ? null : Number(value);
+    if (column) {
+      value = fromInput(column, value);
     }
     this.setValue(draft, field, value);
     draft.dirty = true;
@@ -2046,9 +1999,7 @@ export default class ShoreshEditableTable extends LightningElement {
   }
 
   send(draft) {
-    const timeFields = new Set(
-      this.columns.filter((c) => c.type === "time").map((c) => c.fieldName)
-    );
+    const sendAs = sentForms(this.columns);
     const offWeeks = this.offWeeks;
     const extras = { weeksOff: [], weeksBackOn: [] };
     let record;
@@ -2063,7 +2014,7 @@ export default class ShoreshEditableTable extends LightningElement {
       record = toRecord(
         this.objectApiName,
         { ...order, ...draft.values },
-        timeFields
+        sendAs
       );
       if (draft.who.length > 0) {
         who.push({ row: 0, targets: [...draft.who] });
@@ -2075,8 +2026,8 @@ export default class ShoreshEditableTable extends LightningElement {
         changes[field] = draft.values[field];
         before[field] = draft.seen[field];
       });
-      record = toRecord(this.objectApiName, changes, timeFields);
-      seen = toRecord(this.objectApiName, before, timeFields);
+      record = toRecord(this.objectApiName, changes, sendAs);
+      seen = toRecord(this.objectApiName, before, sendAs);
       if (this.whoChanged(draft)) {
         who.push({ target: draft.original.Id, targets: [...draft.who] });
         seenWho = [...(draft.seenWho || draft.savedWho)];
@@ -2229,7 +2180,7 @@ export default class ShoreshEditableTable extends LightningElement {
         where: `${name} · ${column.label}`,
         theirsValue: theirs[field],
         yoursValue: draft.values[field],
-        value: column.type === "time" ? timeText(theirs[field]) : theirs[field]
+        value: typedValue(column, theirs[field])
       };
     });
     if (answer.theirWho) {
@@ -2258,8 +2209,8 @@ export default class ShoreshEditableTable extends LightningElement {
       const column = this.fieldColumn(row.field) || {};
       return {
         ...row,
-        theirs: shownValue(column, row.theirsValue),
-        yours: shownValue(column, row.yoursValue)
+        theirs: valueWords(column, row.theirsValue),
+        yours: valueWords(column, row.yoursValue)
       };
     });
   }
@@ -2347,18 +2298,6 @@ function ranges(numbers) {
   return out.join(", ");
 }
 
-/** Salesforce sends times as milliseconds after midnight; the time field wants "09:00:00.000". */
-export function timeText(value) {
-  if (typeof value !== "number") {
-    return value;
-  }
-  const pad = (n, size = 2) => String(n).padStart(size, "0");
-  const hours = Math.floor(value / 3600000);
-  const minutes = Math.floor((value % 3600000) / 60000);
-  const seconds = Math.floor((value % 60000) / 1000);
-  return `${pad(hours)}:${pad(minutes)}:${pad(seconds)}.${pad(value % 1000, 3)}`;
-}
-
 /**
  * A cell read, not changed (readOnly): its value in words, as a worked-out column shows its own
  * (isReadonly). A blank is left blank; a checkbox says Yes or No.
@@ -2378,8 +2317,7 @@ function readOnlyCell(built, col, draft) {
   } else if (built.isWho) {
     text = built.whoSummary;
   } else {
-    text =
-      isBlank(value) && col.type !== "checkbox" ? "" : shownValue(col, value);
+    text = readWords(col, value);
     if (text && built.unit) {
       text = `${text} ${built.unit}`;
     }
@@ -2396,45 +2334,6 @@ function readOnlyCell(built, col, draft) {
   };
 }
 
-/** A value as the director reads it: a choice's name, Yes or No, a clock time. */
-function shownValue(column, value) {
-  if (isBlank(value)) {
-    return column.type === "checkbox" ? "No" : "None";
-  }
-  if (column.type === "checkbox") {
-    return value ? "Yes" : "No";
-  }
-  if (column.type === "picklist") {
-    // A choice someone else just added is named once the reload brings it; never its Id.
-    const option = (column.options || []).find((o) => o.value === value);
-    return option ? option.label : "None";
-  }
-  if (column.type === "date") {
-    // "Sat, Jul 3, 2027", as a camp director reads a date.
-    const [y, m, d] = String(value).split("-").map(Number);
-    const day = numberedDay(value);
-    return `${day ? `${day}, ` : ""}${new Date(y, m - 1, d).toLocaleDateString(
-      "en-US",
-      {
-        ...(day ? {} : { weekday: "short" }),
-        month: "short",
-        day: "numeric",
-        year: "numeric"
-      }
-    )}`;
-  }
-  if (column.type === "time") {
-    const [hours, minutes] = timeText(value).split(":").map(Number);
-    const hour = hours % 12 || 12;
-    return `${hour}:${String(minutes).padStart(2, "0")} ${hours < 12 ? "AM" : "PM"}`;
-  }
-  return String(value);
-}
-
-function isBlank(value) {
-  return value === undefined || value === null || value === "";
-}
-
 function sameValue(a, b) {
   return (isBlank(a) && isBlank(b)) || a === b;
 }
@@ -2444,22 +2343,18 @@ function sameIds(a, b) {
   return a.length === set.size && a.every((id) => set.has(id));
 }
 
-/** Shapes a row for Apex: names the object, and gives times the zone marker Apex expects. */
-function toRecord(objectApiName, values, timeFields) {
+/**
+ * Shapes a row for Apex: names the object, and sends each field in the form Apex takes (sendAs:
+ * columnKinds' sentForms, giving times the zone marker Apex expects).
+ */
+function toRecord(objectApiName, values, sendAs) {
   const record = { sobjectType: objectApiName };
   Object.keys(values).forEach((field) => {
     let value = values[field];
-    if (timeFields.has(field) && typeof value === "string" && value !== "") {
-      value = apexTime(value);
+    if (sendAs.has(field)) {
+      value = sendAs.get(field)(value);
     }
     record[field] = value === "" || value === undefined ? null : value;
   });
   return record;
-}
-
-/** "09:00" or "09:00:00.000" -> "09:00:00.000Z". */
-function apexTime(value) {
-  const [hours, minutes, rest] = value.replace("Z", "").split(":");
-  const [seconds, millis] = (rest || "00").split(".");
-  return `${hours}:${minutes}:${seconds}.${(millis || "000").padEnd(3, "0")}Z`;
 }
