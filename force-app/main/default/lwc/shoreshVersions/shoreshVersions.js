@@ -184,7 +184,9 @@ export default class ShoreshVersions extends LightningElement {
           ? `Delete ${version.name}? Press again to delete.`
           : `Delete ${version.name}`,
         actionName: `${this.actionLabel} ${version.name}`,
-        renameName: `Rename ${version.name}`
+        renameName: `Rename ${version.name}`,
+        // The box opens empty, so its label says which version it renames.
+        newNameLabel: `New name for ${version.name}`
       };
     });
   }
@@ -344,7 +346,8 @@ export default class ShoreshVersions extends LightningElement {
   handleStartRename(event) {
     const id = event.currentTarget.dataset.id;
     this.renamingId = id;
-    this.renameValue = this._versions.find((v) => v.id === id).name;
+    // An empty box, as the desktop's (VersionsDropdown): the new name is typed, not edited.
+    this.renameValue = "";
     this.focusRenameInputAfterRender = true;
   }
 
