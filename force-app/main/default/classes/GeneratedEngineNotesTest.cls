@@ -2,8 +2,8 @@
  * The engine's notes kept with the Generated draft (GeneratedEngineNotes, ADR 0010 "The engine's
  * notes"), as a scheduler with the Shoresh Scheduler permission set: a build keeps the notes it
  * sends and the week reads them back with no extra query; notes too long or of another shape are
- * not kept, but the week is; a hand edit keeps the notes it sends only when nobody saved the week
- * since; a restored week keeps none. Camp and helpers: GeneratedTestData.
+ * not kept, but the week is; a restored week keeps none (a hand edit's notes: GeneratedHandEditTest).
+ * Camp and helpers: GeneratedTestData.
  */
 @IsTest
 private class GeneratedEngineNotesTest {
@@ -58,44 +58,6 @@ private class GeneratedEngineNotesTest {
 
   private static String revisionNow(Id draftId) {
     return WeekTickets.stamp(ScheduleDays.read(draftId));
-  }
-
-  /**
-   * Swim by hand in a group's Monday Lunch (Open after the first Generate), from a screen that
-   * read the week at seen; the caller adds the engine's notes it sends.
-   */
-  private static GeneratedWeek.HandEdits swimInLunch(
-    Id draftId,
-    String groupKey,
-    String seen
-  ) {
-    Map<String, Id> ids = GeneratedTestData.ids;
-    SlotRunsTestData.useBlocks(
-      new List<Id>{ ids.get('Period 1'), ids.get('Period 2'), ids.get('Lunch') }
-    );
-    GeneratedWeek.HandEdits request = new GeneratedWeek.HandEdits();
-    request.scheduleId = draftId;
-    request.revision = seen;
-    request.edits = new List<SlotEdits.Edit>{
-      SlotRunsTestData.edit(
-        SlotRunsTestData.at(
-          GeneratedTestData.MONDAY,
-          ids.get(groupKey),
-          ids.get('Lunch')
-        ),
-        new List<String>{ '' },
-        new List<String>{ GeneratedTestData.a('Swim') }
-      )
-    };
-    return request;
-  }
-
-  private static SlotEdits.Result saved(
-    GeneratedWeek.HandEdits request,
-    String engineNotes
-  ) {
-    request.engineNotes = engineNotes;
-    return GeneratedScheduleController.saveSlots(request);
   }
 
   @IsTest
@@ -208,64 +170,28 @@ private class GeneratedEngineNotesTest {
   }
 
   @IsTest
-  static void aHandEditKeepsTheNotesItSendsOrLeavesThemAsTheyAre() {
-    System.runAs(ShoreshTestData.scheduler()) {
-      Map<String, Id> ids = GeneratedTestData.camp();
-      String built = notes(ids, 'full');
-      Id draftId = generatedWith(built);
-      String none = JSON.serialize(
-        new Map<String, Object>{
-          'v' => 1,
-          'open' => new List<Object>(),
-          'blank' => new List<Object>(),
-          'floor' => null,
-          'cut' => 0
-        }
-      );
-      Test.startTest();
-      // No notes sent: kept as they are.
-      saved(swimInLunch(draftId, 'Group A', revisionNow(draftId)), null);
-      Assert.areEqual(built, stored(draftId));
-      // The notes without the cell the edit changed.
-      SlotEdits.Result edited = saved(
-        swimInLunch(draftId, 'Group B', revisionNow(draftId)),
-        none
-      );
-      Assert.isTrue(edited.conflicts.isEmpty());
-      Test.stopTest();
-      Assert.isFalse(String.isEmpty(edited.revision));
-      Assert.areEqual(none, stored(draftId));
-    }
-  }
-
-  @IsTest
-  static void aHandEditFromAnOlderReadLeavesTheNewerNotes() {
-    System.runAs(ShoreshTestData.scheduler()) {
-      Map<String, Id> ids = GeneratedTestData.camp();
-      Id draftId = generatedWith(notes(ids, 'full'));
-      String seen = revisionNow(draftId);
-      // The camp's setup and first build leave too few queries for the rest outside the test.
-      Test.startTest();
-      // Someone else rebuilt since this screen read the week, with notes of their own.
-      GeneratedWeek.Save rebuild = GeneratedTestData.filled(
-        GeneratedTestData.request(
-          GeneratedTestData.inputs(),
-          GeneratedSaves.REBUILD,
-          1
-        ),
-        'Gym games'
-      );
-      rebuild.engineNotes = notes(ids, 'searched');
-      GeneratedTestData.save(rebuild);
-      SlotEdits.Result edited = saved(
-        swimInLunch(draftId, 'Group A', seen),
-        notes(ids, 'budget')
-      );
-      Assert.isTrue(edited.conflicts.isEmpty());
-      Test.stopTest();
-      Assert.isTrue(String.isEmpty(edited.revision));
-      Assert.areEqual(notes(ids, 'searched'), stored(draftId));
-    }
+  static void aHandEditDropsItsCellsReasonAndTheFloorNote() {
+    String notes =
+      '{"v":1,"open":[["2026-06-29","g1","t1","full"],["2026-06-29","g2","t1","full"]],' +
+      '"blank":[],"floor":{"kind":"frame"},"cut":0}';
+    Map<String, Object> left = (Map<String, Object>) JSON.deserializeUntyped(
+      GeneratedEngineNotes.withoutCell(
+        notes,
+        new List<String>{ '2026-06-29', 'g1', 't1' }
+      )
+    );
+    Assert.areEqual(
+      JSON.deserializeUntyped('[["2026-06-29","g2","t1","full"]]'),
+      left.get('open')
+    );
+    Assert.isNull(left.get('floor'));
+    // Notes it can't keep, none.
+    Assert.isNull(
+      GeneratedEngineNotes.withoutCell(
+        'not json',
+        new List<String>{ '2026-06-29', 'g1', 't1' }
+      )
+    );
   }
 
   @IsTest

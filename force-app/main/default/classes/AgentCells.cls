@@ -10,7 +10,7 @@
  * out, outside Salesforce: the connector runs the week editor's own module (c/shoreshWeekEditor
  * handEdits.js) on the week as it read it, and sends the runs the screen would send, with the
  * screen's words for them (change, and said: what stayed or was left out). This makes them the
- * screen's own hand edit (GeneratedEngineNotes.saveHandEdits: the same save, conflicts and
+ * screen's own hand edit (GeneratedHandEdit: the same save, conflicts and
  * locking), each run made only when its cells still hold what the agent saw, so someone else's
  * change is never replaced unseen. As on the screen, no version is kept: the answer gives the
  * week's revision after the edit, so the connector can hold its Undo (the runs back, as the
@@ -76,7 +76,7 @@ public with sharing class AgentCells implements AgentWeeks.Action {
     request.revision = seen;
     request.edits = new List<SlotEdits.Edit>{ edit };
     request.engineNotes = notesWithout(week.draft.EngineNotes__c, edit.runs);
-    return GeneratedEngineNotes.saveHandEdits(request);
+    return GeneratedHandEdit.save(request);
   }
 
   /** The runs as the screen sends them (SlotEdits.Run); anything else is refused. */

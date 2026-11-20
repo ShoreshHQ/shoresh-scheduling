@@ -105,7 +105,8 @@ private class GeneratedEditLocksTest {
         );
       }
     }
-    new GeneratedEdits(run, was).lock(grid, new List<Integer>{ 0, first });
+    new GeneratedEdits()
+      .lock(new SlotSaves.RunAt(run, new List<Integer>{ 0, first }, was), grid);
   }
 
   private static String tokenOf(String identity) {
