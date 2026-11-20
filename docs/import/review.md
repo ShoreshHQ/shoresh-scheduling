@@ -100,7 +100,8 @@ Each rule is clue, meaning, example, test.
    block, length or days (ADR 0006 §9), for one the camp has.
    Meaning: an item an earlier import (not undone) created and no one has changed since
    (`ImportProvenance`: its fields still hold what the last import to write them wrote,
-   compared by value from the imports' own logs; it has not been saved since that import, so a
+   compared by value from the imports' own logs, read whatever else they logged (a who list one
+   replaced, cells one took out); it has not been saved since that import, so a
    value changed by hand and set back by hand still counts as changed; and none of its attached
    records, who can do it, who it covers, weeks off, was added, changed or deleted by hand;
    only the season's newest 200 imports are read) is updated from the file
@@ -120,7 +121,8 @@ Each rule is clue, meaning, example, test.
    Test: "INGEST-5.7: untouched since the earlier import: updated without asking, and listed
    with Keep as it is"; "INGEST-5.7: Keep as it is leaves it as it is"; Apex `ImportReviewTest`
    `ingest57WhatAnImportBroughtInIsItsUntilChangedByHand`,
-   `ingest57ASecondImportsUpdateKeepsItTheImports`, `ingest57AnUndoneImportBroughtInNothing`.
+   `ingest57ASecondImportsUpdateKeepsItTheImports`, `ingest57AnUndoneImportBroughtInNothing`;
+   `ImportLogEntriesTest` `ingest57EveryKindOfEntryLeavesWhatImportsBroughtInReadable`.
    Counter-case: "made or changed by hand: asked, never changed unasked".
    Not covered: time blocks, programs' days, groups' divisions and places are still asked
    whoever made them.
@@ -178,8 +180,8 @@ Each rule is clue, meaning, example, test.
     Meaning: every record the import made is removed, every record it changed is put back, every
     record it removed comes back, and what triggers worked out as it saved (keys, a time block's
     name that follows its times, a fixed or recurring activity's last block) is worked out again
-    from what is put back. One import log (`ImportUndoLog`) records all of it as the import saves
-    and reverses it. Undoing a copy takes the new season away with everything in it, and the
+    from what is put back. One import log (`ImportLogEntries`) records all of it as the import saves,
+    and `ImportUndoLog` reverses it. Undoing a copy takes the new season away with everything in it, and the
     screen goes back to the camp. Anything changed since, or in use by something the import did
     not make, is kept and named, never removed silently: that includes every group, time block,
     activity and place named by a schedule built, locked, placed by hand or published since. The
