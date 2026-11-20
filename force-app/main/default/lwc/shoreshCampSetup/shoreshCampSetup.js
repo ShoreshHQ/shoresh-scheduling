@@ -52,6 +52,7 @@ import {
   screenLabels
 } from "c/shoreshScreens";
 import { leftField } from "c/shoreshSavedMark";
+import { newRow } from "c/shoreshNewRows";
 import {
   briefOf,
   NO_PLACE,
@@ -1733,10 +1734,7 @@ export default class ShoreshCampSetup extends LightningElement {
     );
   }
   readLocationDefaults() {
-    return {
-      [LOCATION.Season]: this.seasonId,
-      [LOCATION.GroupsThatFit]: 1
-    };
+    return { [LOCATION.Season]: this.seasonId, ...newRow("Location") };
   }
   /**
    * An activity's row, as docs/design/setup/activities.html draws it (ADR 0015 choice 12): its
@@ -1963,18 +1961,7 @@ export default class ShoreshCampSetup extends LightningElement {
     );
   }
   readActivityDefaults() {
-    // Defaults for an activity added by hand (Greg, 2026-10-16); import never uses these.
-    return {
-      [ACTIVITY.Season]: this.seasonId,
-      [ACTIVITY.Length]: 1,
-      [ACTIVITY.TimesPerWeekMin]: 1,
-      [ACTIVITY.TimesPerWeekMax]: 1,
-      [ACTIVITY.Priority]: "Low",
-      [ACTIVITY.Outdoor]: false,
-      [ACTIVITY.GroupsAtOnce]: 1,
-      [ACTIVITY.NoWeeklyMax]: false,
-      [ACTIVITY.NoGroupLimit]: false
-    };
+    return { [ACTIVITY.Season]: this.seasonId, ...newRow("Activity") };
   }
 
   // ---------- special events (ADR 0014 choice 11) ----------
