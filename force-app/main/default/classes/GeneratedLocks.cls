@@ -5,9 +5,9 @@
  * (all the blocks of a multi-block activity), as the engine keeps it. Fixed and recurring
  * activities always stay where setup puts them, so they are never locked.
  *
- * Like a whole-week save, a change names the revision the screen read the week at (SeenSaves): if someone
- * else saved the week since, nothing is changed and the answer is a conflict, so a screen never
- * goes on building from a week that isn't the saved one. Only the days whose locks changed are
+ * Like a whole-week save, a change names the revision the screen read the week at (WeekTickets):
+ * if someone else saved the week since, nothing is changed and the answer is a conflict, so a
+ * screen never goes on building from a week that isn't the saved one. Only the days whose locks changed are
  * written. Runs in user mode under the draft's lock; the days are written by ScheduleDaySaves.
  */
 public with sharing class GeneratedLocks {
@@ -23,7 +23,7 @@ public with sharing class GeneratedLocks {
     Schedule__c draft = GeneratedDrafts.lockedToEdit(scheduleId);
     List<ScheduleDays.DayGrid> days = ScheduleDays.read(draft.Id);
     GeneratedWeek.Locked result = new GeneratedWeek.Locked();
-    if (!SeenSaves.week(days, seen)) {
+    if (!WeekTickets.seenBlankNever(WeekTickets.stamp(days), seen)) {
       result.conflict = true;
       result.message = ScheduleDaySaves.CHANGED_SINCE;
       return result;
@@ -48,24 +48,18 @@ public with sharing class GeneratedLocks {
     Map<Date, String> before
   ) {
     List<ScheduleDaySaves.DaySave> saves = new List<ScheduleDaySaves.DaySave>();
-    List<ScheduleDays.DayGrid> after = new List<ScheduleDays.DayGrid>();
     for (ScheduleDays.DayGrid day : days) {
       ScheduleGridLocks.tidy(day.grid);
-      ScheduleDays.DayGrid next = new ScheduleDays.DayGrid();
-      next.day = day.day;
-      next.revision = day.revision;
       if (!day.grid.toText().equals(before.get(day.day))) {
         saves.add(
           new ScheduleDaySaves.DaySave(day.day, day.grid, day.revision)
         );
-        next.revision = day.revision + 1;
       }
-      after.add(next);
     }
-    if (!saves.isEmpty()) {
-      ScheduleDaySaves.write(draftId, saves);
-    }
-    return GeneratedDrafts.revisionOf(after);
+    Map<Date, Integer> written = saves.isEmpty()
+      ? new Map<Date, Integer>()
+      : ScheduleDaySaves.write(draftId, saves);
+    return WeekTickets.afterWrite(days, written);
   }
 
   /** One change; refused when it can't be read or names no cell of the week. */

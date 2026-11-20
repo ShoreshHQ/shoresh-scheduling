@@ -232,7 +232,7 @@ private class AgentChangesTest {
       GeneratedScheduleController.setLocks(
         draftId,
         new List<GeneratedWeek.LockChange>{ lock },
-        GeneratedDrafts.revisionOf(ScheduleDays.read(draftId))
+        WeekTickets.stamp(ScheduleDays.read(draftId))
       );
       List<Object> answer = send('schedule_cell', cell('Gym games', 'Soccer'));
       Test.stopTest();
@@ -379,7 +379,7 @@ private class AgentChangesTest {
             new List<String>{ '' }
           )
         },
-        GeneratedDrafts.revisionOf(ScheduleDays.read(draftId))
+        WeekTickets.stamp(ScheduleDays.read(draftId))
       );
       List<Object> undone = send('undo_last_agent_change', asked);
       Test.stopTest();

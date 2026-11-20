@@ -351,7 +351,7 @@ schedules (`checkWeek`), never stored, and over the weekly limit dots only the s
 15. **Saving a week** (`saveWeek`, `GeneratedSaves`): the whole week at once, for Generate,
     Rebuild, Try another, Fill the open cells and Start over. The **schedule-level revision
     check** (ADR 0005 §9): `revision` is every day's revision in one text
-    (`2026-06-29:3,2026-06-30:3,…`, the same text as `ScheduleDays.stamp`, so a publish preview's
+    (`2026-06-29:3,2026-06-30:3,…`, the same text as `WeekTickets.stamp`, so a publish preview's
     revisions compare with it, §42); the save locks the draft, reads its days and compares the
     whole text. Any day saved by someone else since means **nothing is written** and the answer
     is `conflict` with ADR 0005's sentence ("Someone else changed this schedule since you opened
@@ -928,7 +928,7 @@ _Published <date, time>_, never deleted). The desktop has no Publish. What diffe
     saved here. Reload the page._). The copy's Origin is Generated. One published schedule per
     week (decision 0002), whichever schedule published it: publishing Generated replaces one
     Manual Build published, and the other way round; the box lists the cells that change, as
-    for any publish again. `GeneratedDrafts.revisionOf` is now `ScheduleDays.stamp` (a comma
+    for any publish again. The revision is `WeekTickets.stamp` (a comma
     between days instead of `|`), so the screen compares the preview's revisions with the
     revision it read the week at; the text is only sent between screen and server, never stored.
 43. **Locks go with the published copy** (§32: a copy keeps a day as it is, locks included), so

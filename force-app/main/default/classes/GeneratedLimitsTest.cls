@@ -457,7 +457,7 @@ private class GeneratedLimitsTest {
           built(GeneratedTestData.inputs(), GeneratedSaves.GENERATE)
         )
         .scheduleId;
-      String revision = GeneratedDrafts.revisionOf(ScheduleDays.read(draftId));
+      String revision = WeekTickets.stamp(ScheduleDays.read(draftId));
       GeneratedWeek.LockChange wholeDay = new GeneratedWeek.LockChange();
       wholeDay.action = GeneratedWeek.LOCK;
       wholeDay.dateValue = GeneratedTestData.MONDAY;

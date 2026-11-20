@@ -323,7 +323,7 @@ private class WeekSpecialsTest {
       ManualBuildViews.DraftView restored = ManualBuildController.restoreVersion(
         draftId,
         versionId,
-        ScheduleDays.stamp(ScheduleDays.read(draftId))
+        WeekTickets.stamp(ScheduleDays.read(draftId))
       );
       Integer used = Limits.getQueries() - before;
       Test.stopTest();

@@ -104,26 +104,6 @@ private class SeenSavesTest {
     }
   }
 
-  @IsTest
-  static void aWeekIsAsSeenOnlyAtTheRevisionRead() {
-    System.runAs(ShoreshTestData.scheduler()) {
-      GeneratedTestData.camp();
-      Id draftId = GeneratedTestData.generated();
-      List<ScheduleDays.DayGrid> days = ScheduleDays.read(draftId);
-      String read = GeneratedDrafts.revisionOf(days);
-      Test.startTest();
-      Boolean asRead = SeenSaves.week(days, read);
-      Boolean none = SeenSaves.week(days, null);
-      Boolean blank = SeenSaves.week(days, '');
-      Boolean other = SeenSaves.week(days, read + '1');
-      Test.stopTest();
-      Assert.isTrue(asRead);
-      Assert.isFalse(none, 'No ticket is never as seen');
-      Assert.isFalse(blank);
-      Assert.isFalse(other);
-    }
-  }
-
   // API-1.104: an import's, Clear electives' and Update to match's stamp is as seen only exactly.
   @IsTest
   static void aStampIsAsSeenOnlyExactly() {

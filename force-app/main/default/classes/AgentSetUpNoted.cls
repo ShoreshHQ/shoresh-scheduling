@@ -71,9 +71,7 @@ global with sharing class AgentSetUpNoted implements AgentWeeks.Action {
     );
     undo.put(
       'seen',
-      week.manual
-        ? null
-        : GeneratedDrafts.revisionOf(ScheduleDays.read(week.draft.Id))
+      week.manual ? null : WeekTickets.stamp(ScheduleDays.read(week.draft.Id))
     );
     AgentUndoHeld.hold(undo);
     return done.said;

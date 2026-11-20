@@ -138,8 +138,10 @@ schedule), decisions 0002 and 0005. Shoresh desktop for look and behaviour:
    the revision each day was opened at (none for a new day), and may name each day once. If any day was saved since, or a "new" day already exists, the whole save is
    refused ("Someone else changed this schedule since you opened it…") and nothing is
    written. Every part of a day has the same revision, which goes up by one per save. A save
-   across several days and parts writes all or none, in user mode. Nothing on screen saves
-   grids in 4a; the import and Manual Build will.
+   across several days and parts writes all or none, in user mode, and returns each saved
+   day's new revision. The week's ticket (every day's revision as one text), the rule each use
+   takes for a missing ticket, and the ticket a write leaves are `WeekTickets`. Nothing on
+   screen saves grids in 4a; the import and Manual Build will.
 10. **Deletes** (data model, Protecting history; desktop `DeleteWeekDialog`):
     - deleting a **week** on the Shoresh screens deletes its drafts and versions with it; the
       confirmation says how many ("That includes 2 saved versions."). Salesforce's own
