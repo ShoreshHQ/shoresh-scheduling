@@ -4,7 +4,8 @@
  * leaves: the fixed activity saved and the recurring activity kept at its other time blocks. On
  * SetTimeTestData's camp: Period 1 (9:00), Period 2 (10:00), Lunch (12:00); Main runs Monday to
  * Thursday. The screen's side of the same case: shoreshProgram.test.js (CORE-3.9) and
- * SetTimeAroundTest.
+ * SetTimeAroundTest. The question and pieces themselves: the shared examples at the end, which
+ * the screen's fixedOver.js passes too.
  */
 @IsTest
 private class AgentFixedOverTest {
@@ -384,42 +385,6 @@ private class AgentFixedOverTest {
     }
   }
 
-  // API-1.147: a recurring activity every day a Monday-to-Friday program runs is asked about
-  // "on Monday to Friday", as dayList says it.
-  @IsTest
-  static void aWholeWeekOfDaysIsSaidAsARange() {
-    System.runAs(ShoreshTestData.scheduler()) {
-      Map<String, Id> ids = SetTimeTestData.camp();
-      Database.update(
-        new Program__c(Id = ids.get('Main'), Friday__c = true),
-        AccessLevel.SYSTEM_MODE
-      );
-      swimOn(
-        ids,
-        2,
-        new List<Schema.SObjectField>{
-          RecurringActivity__c.Monday__c,
-          RecurringActivity__c.Tuesday__c,
-          RecurringActivity__c.Wednesday__c,
-          RecurringActivity__c.Thursday__c,
-          RecurringActivity__c.Friday__c
-        }
-      );
-      Test.startTest();
-      List<Object> answers = askedThenYes('add', restAt('Period 2'));
-      Test.stopTest();
-      String question = String.valueOf(answers[0]);
-      Assert.isTrue(
-        question.contains(
-          'What is “Swim” at Period 2 on Monday to Friday, where “Rest” is?'
-        ),
-        question
-      );
-      Assert.areEqual(200, answers[1], String.valueOf(answers[2]));
-      Assert.areEqual(new List<String>{ 'Period 1 x1' }, piecesOf('Swim'));
-    }
-  }
-
   // API-1.147: a recurring activity on only some of the program's days is asked about on those.
   @IsTest
   static void aRecurringActivityOnSomeDaysIsAskedAboutOnThoseDays() {
@@ -459,43 +424,343 @@ private class AgentFixedOverTest {
     }
   }
 
-  // API-1.147: a fixed activity moved, and in this save run only in a week the recurring one is
-  // off, never meets it: nothing is asked and nothing split, as on the screen.
-  @IsTest
-  static void weeksOffOnTheFixedActivityMeanTheyNeverMeet() {
-    System.runAs(ShoreshTestData.scheduler()) {
-      Map<String, Id> ids = SetTimeTestData.camp();
-      // Field day is off Week 2.
-      fieldDay(ids, 3);
-      SetTimeTestData.save(
-        new List<SObject>{ SetTimeTestData.fixed(ids, 'Rest', 'Lunch') },
-        SetTimeTestData.extras(
-          new List<RunsIn.WeekOff>{
-            SetTimeTestData.weekOff(0, null, ids.get('Week 1')),
-            SetTimeTestData.weekOff(0, null, ids.get('Week 3')),
-            SetTimeTestData.weekOff(0, null, ids.get('Week 4')),
-            SetTimeTestData.weekOff(0, null, ids.get('Week 5')),
-            SetTimeTestData.weekOff(0, null, ids.get('Week 6'))
-          },
-          null,
-          null
+  // CORE-3.9 / API-1.147: the shared fixed-over examples (staticresources/ShoreshFixedOverExamples
+  // .json), which the screen's fixedOver.js must also pass (shoreshProgram fixedOverExamples.test.js):
+  // AgentFixedOver.of asks the same question and keeps the same pieces. One test each, so each
+  // camp gets its own limits; every example in the file must have one.
+  private static final Set<String> EXAMPLE_TESTS = new Set<String>{
+    'added over one: it keeps its other time blocks',
+    'moved over one',
+    'two recurring together',
+    'every day of a Monday to Friday program is said as a range',
+    'on some days: asked about on those',
+    'a week ticked back on that meets it',
+    'nothing under it',
+    'only where it goes: it can\'t go around, so nothing is asked',
+    'weeks off on the saved fixed activity: they never meet',
+    'weeks ticked off in this save: they never meet',
+    'only on a day the program doesn\'t run',
+    'no group it covers is there then'
+  };
+
+  private static Map<String, Object> examplesFile() {
+    String ours = ShoreshSchema.namespace();
+    StaticResource read = [
+      SELECT Body
+      FROM StaticResource
+      WHERE Name = 'ShoreshFixedOverExamples' AND NamespacePrefix = :ours
+      LIMIT 1
+    ];
+    return (Map<String, Object>) JSON.deserializeUntyped(read.Body.toString());
+  }
+
+  private static List<Object> listOf(Map<String, Object> source, String key) {
+    Object value = source == null ? null : source.get(key);
+    return value == null ? new List<Object>() : (List<Object>) value;
+  }
+
+  /** The example's recurring activities saved as Camp Setup saves them, into ids by name. */
+  private static void saveRecurring(
+    Map<String, Id> ids,
+    Map<String, Object> example
+  ) {
+    List<SObject> rows = new List<SObject>();
+    List<String> names = new List<String>();
+    List<RunsIn.WeekOff> weeksOff = new List<RunsIn.WeekOff>();
+    List<SetTimeWho.Who> who = new List<SetTimeWho.Who>();
+    for (Object each : listOf(example, 'recurring')) {
+      Map<String, Object> spec = (Map<String, Object>) each;
+      RecurringActivity__c item = new RecurringActivity__c(
+        Program__c = ids.get('Main'),
+        Name = (String) spec.get('name'),
+        TimeBlock__c = ids.get((String) spec.get('timeBlock')),
+        Length__c = (Integer) spec.get('length')
+      );
+      for (Object day : listOf(spec, 'days')) {
+        item.put(
+          SetTimePlan.dayField(RecurringActivity__c.SObjectType, (String) day),
+          true
+        );
+      }
+      Integer row = rows.size();
+      for (Object week : listOf(spec, 'weeksOff')) {
+        weeksOff.add(
+          SetTimeTestData.weekOff(row, null, ids.get((String) week))
+        );
+      }
+      List<Id> covers = new List<Id>();
+      for (Object grp : listOf(spec, 'covers')) {
+        covers.add(ids.get((String) grp));
+      }
+      if (!covers.isEmpty()) {
+        who.add(SetTimeTestData.who(row, null, covers));
+      }
+      rows.add(item);
+      names.add(item.Name);
+    }
+    List<Id> saved = SetTimeTestData.save(
+      rows,
+      SetTimeTestData.extras(
+        weeksOff.isEmpty() ? null : weeksOff,
+        null,
+        who.isEmpty() ? null : who
+      )
+    );
+    for (Integer i = 0; i < rows.size(); i++) {
+      ids.put(names[i], saved[i]);
+    }
+  }
+
+  /** The example's fixed activity saved first, if any; its Id. */
+  private static Id saveFixed(Map<String, Id> ids, Map<String, Object> spec) {
+    if (spec == null) {
+      return null;
+    }
+    List<RunsIn.WeekOff> weeksOff = new List<RunsIn.WeekOff>();
+    for (Object week : listOf(spec, 'weeksOff')) {
+      weeksOff.add(SetTimeTestData.weekOff(0, null, ids.get((String) week)));
+    }
+    return SetTimeTestData.save(
+      new List<SObject>{
+        SetTimeTestData.fixed(
+          ids,
+          (String) spec.get('name'),
+          (String) spec.get('timeBlock')
+        )
+      },
+      SetTimeTestData.extras(weeksOff.isEmpty() ? null : weeksOff, null, null)
+    )[0];
+  }
+
+  /** The program's extra days and the groups only there in the morning. */
+  private static void setUpCamp(
+    Map<String, Id> ids,
+    Map<String, Object> example
+  ) {
+    Program__c program = new Program__c(Id = ids.get('Main'));
+    for (Object day : listOf(example, 'programAlsoRuns')) {
+      program.put(
+        SetTimePlan.dayField(Program__c.SObjectType, (String) day),
+        true
+      );
+    }
+    Database.update(program, AccessLevel.SYSTEM_MODE);
+    List<Group__c> groups = new List<Group__c>();
+    for (Object grp : listOf(example, 'onlyMornings')) {
+      groups.add(
+        new Group__c(
+          Id = ids.get((String) grp),
+          Availability__c = 'MorningOnly'
         )
       );
-      Test.startTest();
-      List<Object> moved = post(
-        'change',
-        new Map<String, Object>{
-          'kind' => 'fixed activity',
-          'name' => 'Rest',
-          'fields' => new Map<String, Object>{ 'time_block' => 'Period 2' },
-          'seen' => new Map<String, Object>{ 'time_block' => 'Lunch' }
-        }
-      );
-      Test.stopTest();
-      String said = String.valueOf(moved[1]);
-      Assert.areEqual(200, moved[0], said);
-      Assert.isFalse(said.startsWith(AgentAskFirst.NOT_YET), said);
-      Assert.areEqual(new List<String>{ 'Period 1 x3' }, piecesOf('Field day'));
     }
+    Database.update(groups, AccessLevel.SYSTEM_MODE);
+  }
+
+  /** The save: a new fixed activity, or the saved one with only the fields given. */
+  private static FixedActivity__c recordOf(
+    Map<String, Id> ids,
+    Map<String, Object> save,
+    Id savedId
+  ) {
+    FixedActivity__c record = savedId == null
+      ? new FixedActivity__c(Program__c = ids.get('Main'))
+      : new FixedActivity__c(Id = savedId);
+    if (save.containsKey('name')) {
+      record.Name = (String) save.get('name');
+    }
+    if (save.containsKey('timeBlock')) {
+      record.TimeBlock__c = ids.get((String) save.get('timeBlock'));
+    }
+    return record;
+  }
+
+  /** The weeks ticked off in the save, and the saved one's marks ticked back on. */
+  private static ScreenSaves.Extras extrasOf(
+    Map<String, Id> ids,
+    Map<String, Object> example,
+    Id savedId
+  ) {
+    List<RunsIn.WeekOff> weeksOff = new List<RunsIn.WeekOff>();
+    for (Object week : listOf(example, 'weeksOff')) {
+      weeksOff.add(SetTimeTestData.weekOff(0, null, ids.get((String) week)));
+    }
+    Set<Id> backOnWeeks = new Set<Id>();
+    for (Object week : listOf(example, 'weeksBackOn')) {
+      backOnWeeks.add(ids.get((String) week));
+    }
+    List<Id> backOn = new List<Id>();
+    for (WeekException__c mark : [
+      SELECT Id
+      FROM WeekException__c
+      WHERE FixedActivity__c = :savedId AND Week__c IN :backOnWeeks
+      WITH SYSTEM_MODE
+    ]) {
+      backOn.add(mark.Id);
+    }
+    return SetTimeTestData.extras(weeksOff, backOn, null);
+  }
+
+  /** A piece as the examples say it: "Field day: Period 1 x1 (seen Period 1 x3)". */
+  private static String pieceWords(
+    Object target,
+    Object timeBlock,
+    Object length,
+    Object seenTimeBlock,
+    Object seenLength
+  ) {
+    return target +
+      ': ' +
+      timeBlock +
+      ' x' +
+      length +
+      ' (seen ' +
+      seenTimeBlock +
+      ' x' +
+      seenLength +
+      ')';
+  }
+
+  private static void check(String name) {
+    Assert.isTrue(EXAMPLE_TESTS.contains(name), name);
+    Map<String, Object> example;
+    for (Object each : listOf(examplesFile(), 'examples')) {
+      if (((Map<String, Object>) each).get('name') == name) {
+        example = (Map<String, Object>) each;
+      }
+    }
+    Assert.isNotNull(example, 'No example called ' + name);
+    System.runAs(ShoreshTestData.scheduler()) {
+      Map<String, Id> ids = SetTimeTestData.camp();
+      setUpCamp(ids, example);
+      saveRecurring(ids, example);
+      Id savedId = saveFixed(ids, (Map<String, Object>) example.get('saved'));
+      FixedActivity__c record = recordOf(
+        ids,
+        (Map<String, Object>) example.get('save'),
+        savedId
+      );
+      ScreenSaves.Extras extras = extrasOf(ids, example, savedId);
+      AgentSetupRecords.Found found = new AgentSetupRecords.Found();
+      found.seasonId = ids.get('Season');
+      found.programId = ids.get('Main');
+      found.labels = CampLabels.forCamp(ids.get('Camp'));
+      Map<Id, String> nameOf = new Map<Id, String>();
+      for (String each : ids.keySet()) {
+        nameOf.put(ids.get(each), each);
+      }
+
+      Test.startTest();
+      Integer before = Limits.getQueries();
+      AgentFixedOver.Ask ask = AgentFixedOver.of(record, extras, found);
+      Integer queries = Limits.getQueries() - before;
+      Test.stopTest();
+
+      Assert.isTrue(queries < 30, name + ': queries ' + queries);
+      Map<String, Object> asks = (Map<String, Object>) example.get('asks');
+      if (asks == null) {
+        Assert.isNull(ask, name + ': ' + (ask == null ? '' : ask.words()));
+        return;
+      }
+      Assert.isNotNull(ask, name);
+      Assert.areEqual((String) asks.get('heading'), ask.heading, name);
+      Assert.areEqual((String) asks.get('line'), ask.line, name);
+      List<String> expected = new List<String>();
+      for (Object each : listOf(asks, 'around')) {
+        Map<String, Object> piece = (Map<String, Object>) each;
+        expected.add(
+          pieceWords(
+            piece.get('target'),
+            piece.get('timeBlock'),
+            piece.get('length'),
+            piece.get('seenTimeBlock'),
+            piece.get('seenLength')
+          )
+        );
+      }
+      List<String> actual = new List<String>();
+      for (SetTimeAround.Piece piece : ask.around) {
+        Assert.areEqual(nameOf.get(piece.target), piece.seenName, name);
+        actual.add(
+          pieceWords(
+            nameOf.get(piece.target),
+            nameOf.get(piece.timeBlock),
+            piece.length,
+            nameOf.get(piece.seenTimeBlock),
+            piece.seenLength
+          )
+        );
+      }
+      Assert.areEqual(expected, actual, name);
+    }
+  }
+
+  @IsTest
+  static void everySharedExampleHasItsTest() {
+    Set<String> inFile = new Set<String>();
+    for (Object each : listOf(examplesFile(), 'examples')) {
+      inFile.add((String) ((Map<String, Object>) each).get('name'));
+    }
+    Assert.areEqual(EXAMPLE_TESTS, inFile);
+  }
+
+  @IsTest
+  static void exampleAddedOverOne() {
+    check('added over one: it keeps its other time blocks');
+  }
+
+  @IsTest
+  static void exampleMovedOverOne() {
+    check('moved over one');
+  }
+
+  @IsTest
+  static void exampleTwoRecurringTogether() {
+    check('two recurring together');
+  }
+
+  @IsTest
+  static void exampleMondayToFriday() {
+    check('every day of a Monday to Friday program is said as a range');
+  }
+
+  @IsTest
+  static void exampleOnSomeDays() {
+    check('on some days: asked about on those');
+  }
+
+  @IsTest
+  static void exampleAWeekTickedBackOn() {
+    check('a week ticked back on that meets it');
+  }
+
+  @IsTest
+  static void exampleNothingUnderIt() {
+    check('nothing under it');
+  }
+
+  @IsTest
+  static void exampleCantGoAround() {
+    check('only where it goes: it can\'t go around, so nothing is asked');
+  }
+
+  @IsTest
+  static void exampleWeeksOffOnTheSavedOne() {
+    check('weeks off on the saved fixed activity: they never meet');
+  }
+
+  @IsTest
+  static void exampleWeeksTickedOffInTheSave() {
+    check('weeks ticked off in this save: they never meet');
+  }
+
+  @IsTest
+  static void exampleADayTheProgramDoesntRun() {
+    check('only on a day the program doesn\'t run');
+  }
+
+  @IsTest
+  static void exampleNoGroupItCoversIsThere() {
+    check('no group it covers is there then');
   }
 }
