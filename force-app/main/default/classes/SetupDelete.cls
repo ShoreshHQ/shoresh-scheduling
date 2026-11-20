@@ -237,7 +237,9 @@ public with sharing class SetupDelete {
   /** The preview, or a refusal to ask about something the person can no longer see. */
   private static Preview found(Preview result) {
     if (result.message == null) {
-      throw ScreenErrors.of('That is no longer there. Reload the page.');
+      throw ScreenErrors.of(
+        AgentRefusal.withFix('That is no longer there.', 'Reload the page.')
+      );
     }
     return result;
   }
@@ -274,7 +276,9 @@ public with sharing class SetupDelete {
       AccessLevel.USER_MODE
     );
     if (found.isEmpty()) {
-      throw ScreenErrors.of('That is no longer there. Reload the page.');
+      throw ScreenErrors.of(
+        AgentRefusal.withFix('That is no longer there.', 'Reload the page.')
+      );
     }
     return (String) found[0].get('Name');
   }

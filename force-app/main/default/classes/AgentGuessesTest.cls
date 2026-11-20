@@ -150,6 +150,11 @@ private class AgentGuessesTest {
       Test.stopTest();
 
       Assert.areEqual(200, done[0], String.valueOf(done[1]));
+      // The field in words, as Camp Setup's column names it, never its input name how_often.
+      Assert.areEqual(
+        'Marked Looks right: the activity "Swim", times per week: 1 to 2 a week. Camp Setup no longer marks it as guessed.',
+        done[1]
+      );
       Assert.areEqual(409, again[0], 'once looked at, it is no longer marked');
       Assert.areEqual(200, bunk[0], String.valueOf(bunk[1]));
       // Of six: Swim's how often and Bunk 1's division looked at, forgotten as the mark forgets.
@@ -244,5 +249,40 @@ private class AgentGuessesTest {
       two,
       AgentConfirmGuess.onlyOne(standing, bunkIn(null, 'teens')).recordId
     );
+  }
+
+  // CORE-1.0, CORE-1.34: Looks right on a location's groups that fit says them in the camp's
+  // words ("Edot that fit"), never the input's name groups_that_fit.
+  @IsTest
+  static void looksRightSaysTheFieldInTheCampsWords() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      Season__c season = guessedCamp();
+      Database.insert(
+        new CampLabel__c(
+          Camp__c = [
+            SELECT Camp__c
+            FROM Season__c
+            WHERE Id = :season.Id
+            WITH SYSTEM_MODE
+          ]
+          .Camp__c,
+          ModelTerm__c = 'Group',
+          Singular__c = 'Edah',
+          Plural__c = 'Edot'
+        ),
+        AccessLevel.SYSTEM_MODE
+      );
+      Test.startTest();
+      List<Object> done = ask(
+        new AgentConfirmGuess(),
+        'POST',
+        confirm(new List<String>{ 'location', 'Hall', 'groups_that_fit', '4' })
+      );
+      Test.stopTest();
+      Assert.areEqual(
+        'Marked Looks right: the location "Hall", Edot that fit: 4. Camp Setup no longer marks it as guessed.',
+        done[1]
+      );
+    }
   }
 }

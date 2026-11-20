@@ -109,9 +109,9 @@ public with sharing class GroupPlacements {
     if (grid == null) {
       return;
     }
-    for (Integer g = 0; g < grid.rows.size() && g < grid.groups.size(); g++) {
+    for (Integer g = 0; g < grid.groups.size(); g++) {
       if (asId(grid.groups[g].id) == groupId) {
-        tallyRow(grid, grid.rows[g], cells);
+        tallyRow(grid, g, cells);
       }
     }
   }
@@ -124,18 +124,14 @@ public with sharing class GroupPlacements {
     }
   }
 
-  /** One group's row: each block of an activity counts one cell, "^" carrying the one above on. */
+  /** One group's row: each block of an activity counts one cell, the blocks it carries on into too. */
   private static void tallyRow(
     ScheduleGrid grid,
-    List<String> row,
+    Integer g,
     Map<Id, Integer> cells
   ) {
-    ScheduleGrid.Item carrying;
-    for (String cell : row) {
-      carrying = cell == ScheduleGrid.CARRIES_ON
-        ? carrying
-        : itemAt(grid, cell);
-      Id activityId = activityOf(carrying);
+    for (ScheduleGrid.Item item : ScheduleGridCells.itemsIn(grid, g)) {
+      Id activityId = activityOf(item);
       if (activityId != null) {
         cells.put(
           activityId,
@@ -143,15 +139,6 @@ public with sharing class GroupPlacements {
         );
       }
     }
-  }
-
-  /** The item a cell names ("1" is the first), or null for an empty cell or one out of range. */
-  private static ScheduleGrid.Item itemAt(ScheduleGrid grid, String cell) {
-    if (String.isBlank(cell) || !cell.isNumeric()) {
-      return null;
-    }
-    Integer at = Integer.valueOf(cell) - 1;
-    return at >= 0 && at < grid.items.size() ? grid.items[at] : null;
   }
 
   private static Id activityOf(ScheduleGrid.Item item) {

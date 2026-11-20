@@ -65,7 +65,7 @@ public with sharing class ElectiveTimes {
         continue;
       }
       for (Integer b = 0; b < grid.blocks.size(); b++) {
-        ScheduleGrid.Item item = GridItems.itemAt(grid, g, b);
+        ScheduleGrid.Item item = ScheduleGridCells.itemAt(grid, g, b);
         if (item != null && item.kind == ELECTIVE && item.id == setId) {
           cells.add(
             String.valueOf(day) + '|' + grid.blocks[b].id + '|' + grp.Id
@@ -134,9 +134,11 @@ public with sharing class ElectiveTimes {
    */
   public ElectivePeriod periodOf(Id groupId, Date onDay, String blockId) {
     List<ElectivePeriod> here = bySlot.get(slotOf(onDay, blockId));
-    if (here == null) {
-      return null;
-    }
+    return here == null ? null : takenBy(here, groupId);
+  }
+
+  /** Of the times at one day and block (division order), the one a bunk takes; no bunk, the first. */
+  public static ElectivePeriod takenBy(List<ElectivePeriod> here, Id groupId) {
     if (groupId == null) {
       return here[0];
     }

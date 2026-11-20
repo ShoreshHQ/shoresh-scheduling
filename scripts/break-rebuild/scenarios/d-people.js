@@ -114,8 +114,8 @@ const NOT_ACCESS =
 const CAPS = {
   Read_Group_Schedules: "read_group_schedule",
   Read_Activity_Schedules: "read_activity_schedule",
-  Read_Elective_Offerings: "read_elective_offerings",
-  Read_Elective_Seats: "read_elective_seats",
+  Read_Electives_Offered: "read_electives_offered",
+  Read_Elective_Seats: "read_final_elective_seats",
   Send_Divisions: "bring_in_divisions",
   Send_Groups: "bring_in_groups",
   Send_Activities: "bring_in_activities",
@@ -168,7 +168,7 @@ module.exports = [
             ...src,
             camper_id: "BR-1",
             camper_name: "Avery Madeup",
-            elective: "Chugim",
+            elective_set: "Chugim",
             week: "Week 1",
             first_choice: "Swim",
             second_choice: "Art"
@@ -221,7 +221,7 @@ module.exports = [
           ["read_camp_words", { season }],
           ["read_learned_answers", { season }],
           ["read_last_imports", { season }],
-          ["read_setup_record", { season, kind: "activity", name: "Swim" }],
+          ["read_from_setup", { season, kind: "activity", name: "Swim" }],
           ["read_special_days", { season }],
           ["read_failed_sends", { season }]
         ]) {
@@ -287,7 +287,7 @@ module.exports = [
           ),
           JSON.stringify(d.cell(cell.day, "Bunk 1", cell.time_block))
         );
-        const undo = await confirmed("undo_last_agent_change", week, as);
+        const undo = await confirmed("undo_last_change", week, as);
         rec.check(
           "API-1.14",
           "the AI's undo",
@@ -323,7 +323,7 @@ module.exports = [
           ["save_version", { ...week, name: "Person's version" }],
           ["build_week", week],
           [
-            "add_setup_record",
+            "add_to_setup",
             { season, kind: "location", name: "Person's place" }
           ],
           [

@@ -126,7 +126,10 @@ public with sharing class ElectiveRunState {
   private static ShoreshException notThere() {
     return new ShoreshException(
       // Word-free: with the run gone, Shoresh no longer knows whose camp words to use.
-      'These seats are no longer there. Reload the page.'
+      AgentRefusal.withFix(
+        'These seats are no longer there.',
+        'Reload the page.'
+      )
     );
   }
 
@@ -264,9 +267,12 @@ public with sharing class ElectiveRunState {
     }
     if (!SeenSaves.revision(run.Revision__c, seenRevision)) {
       throw new ShoreshException(
-        'Someone else changed these ' +
-          labels().pluralInSentence('Seats') +
-          ' since you opened them. Reload the page to see them.'
+        AgentRefusal.withFix(
+          'Someone else changed these ' +
+            labels().pluralInSentence('Seats') +
+            ' since you opened them.',
+          'Reload the page to see them.'
+        )
       );
     }
   }
@@ -276,7 +282,10 @@ public with sharing class ElectiveRunState {
     Preference__c pref = byCamper.get(camperId);
     if (pref == null) {
       throw new ShoreshException(
-        'That camper is not in these seats. Reload the page.'
+        AgentRefusal.withFix(
+          'That camper is not in these seats.',
+          'Reload the page.'
+        )
       );
     }
     return pref.Group__c;

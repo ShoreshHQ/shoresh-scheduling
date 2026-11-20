@@ -4,8 +4,9 @@
  * (ChoicesImport.SheetChoice: ranked, the name as written and the activity it is), so a camper's
  * choices read the same however they came in.
  *
- * - API-4.1: choices a person changed in Shoresh are kept; the incoming ones are kept beside them
- *   (ImportedChoices__c) and a person is asked on Roots.
+ * - API-4.1, ELECT-2.6: choices a person changed in Shoresh are kept; the incoming ones are kept
+ *   beside them (ImportedChoices__c) and a person is asked on Roots. The same merge as the choices
+ *   sheet's (CamperChoices.mergeIn); only the words are this door's.
  * - API-2.5: the same choices again change nothing; changed_at older than the last taken for
  *   those choices is ignored, and said.
  * - Final seats are never changed from outside.
@@ -51,7 +52,7 @@ public with sharing class IncomingElectiveChoicePlan {
       if (batch.open(i)) {
         this.i = i;
         record = records[i];
-        run = runs.run(record.elective, record.week);
+        run = runs.run(record.elective_set, record.week);
         planOne();
       }
     }
@@ -67,7 +68,7 @@ public with sharing class IncomingElectiveChoicePlan {
     if (!seen.add(run.Id + '|' + camperId)) {
       batch.problem(
         i,
-        'This camper is in the batch more than once for this elective. Only the first was used.'
+        'This camper is in the batch more than once for this elective set. Only the first was used.'
       );
       return;
     }
@@ -83,7 +84,7 @@ public with sharing class IncomingElectiveChoicePlan {
       return aboutCamper;
     }
     if (run == null) {
-      return runs.noRun(batch, record.elective, record.week);
+      return runs.noRun(batch, record.elective_set, record.week);
     }
     // ELECT-2.5: a saved version is never the week's schedule, as on the screen.
     if (runs.onVersion(run)) {
@@ -112,8 +113,8 @@ public with sharing class IncomingElectiveChoicePlan {
     if (IncomingCamperPlan.isFuture(record.changed_at)) {
       return IncomingCamperPlan.FUTURE;
     }
-    if (String.isBlank(record.elective) || String.isBlank(record.week)) {
-      return 'Say which elective (elective) and which week (week).';
+    if (String.isBlank(record.elective_set) || String.isBlank(record.week)) {
+      return 'Say which elective set (elective_set) and which week (week).';
     }
     if (campers.doubt(i)) {
       return IncomingCampers.DOUBT;
@@ -123,7 +124,7 @@ public with sharing class IncomingElectiveChoicePlan {
 
   private void readOffered(List<IncomingCamperElectiveChoice.Record> records) {
     for (IncomingCamperElectiveChoice.Record each : records) {
-      ElectiveRun__c named = runs.run(each.elective, each.week);
+      ElectiveRun__c named = runs.run(each.elective_set, each.week);
       if (named != null) {
         offered.put(named.ElectiveSet__c, new Map<String, Id>());
       }
@@ -171,64 +172,34 @@ public with sharing class IncomingElectiveChoicePlan {
   }
 
   private void bringIn(List<ChoicesImport.SheetChoice> choices) {
-    String imported = JSON.serialize(choices, true);
     Preference__c had = saved.get(run.Id + '|' + campers.at(i).Id);
-    if (had == null) {
-      batch.save(
-        i,
-        new Preference__c(
-          ElectiveRun__c = run.Id,
-          Camper__c = campers.at(i).Id,
-          Choices__c = imported,
-          ImportedChoices__c = imported,
-          ChoicesChangedAt__c = record.changed_at
-        ),
-        'Saved.'
-      );
-    } else if (
+    if (
+      had != null &&
       IncomingCamperPlan.isOlder(record.changed_at, had.ChoicesChangedAt__c)
     ) {
       batch.unchanged(
         i,
         'Ignored: Shoresh already has later choices for this camper.'
       );
-    } else if (isSame(had, choices)) {
-      batch.unchanged(i, 'Already up to date.');
-    } else {
-      change(had, imported);
+      return;
     }
-  }
-
-  /** A person changed them by hand: marked so, or no longer what was last brought in. */
-  private static Boolean handChanged(Preference__c had) {
-    return had.ManualChange__c ||
-      (had.ImportedChoices__c != null &&
-      ChoicesImportChoices.signature(had.Choices__c) !=
-      ChoicesImportChoices.signature(had.ImportedChoices__c));
-  }
-
-  /** What was brought in last is these, and the choices used are too (unless a person's). */
-  private static Boolean isSame(
-    Preference__c had,
-    List<ChoicesImport.SheetChoice> choices
-  ) {
-    String signature = ChoicesImportChoices.signature(choices);
-    return ChoicesImportChoices.signature(had.ImportedChoices__c) ==
-      signature &&
-      (handChanged(had) ||
-      ChoicesImportChoices.signature(had.Choices__c) == signature);
-  }
-
-  private void change(Preference__c had, String imported) {
-    Preference__c row = new Preference__c(
-      Id = had.Id,
-      ImportedChoices__c = imported,
-      ChoicesChangedAt__c = record.changed_at == null
-        ? had.ChoicesChangedAt__c
-        : record.changed_at
-    );
-    if (!handChanged(had)) {
-      row.Choices__c = imported;
+    CamperChoices.Merged merged = CamperChoices.mergeIn(had, choices);
+    if (merged.unchanged) {
+      batch.unchanged(i, 'Already up to date.');
+      return;
+    }
+    Preference__c row = merged.row;
+    if (had == null) {
+      row.ElectiveRun__c = run.Id;
+      row.Camper__c = campers.at(i).Id;
+      row.ChoicesChangedAt__c = record.changed_at;
+      batch.save(i, row, 'Saved.');
+      return;
+    }
+    row.ChoicesChangedAt__c = record.changed_at == null
+      ? had.ChoicesChangedAt__c
+      : record.changed_at;
+    if (merged.outcome == CamperChoices.Outcome.TAKEN) {
       batch.save(i, row, 'Saved.');
       return;
     }

@@ -213,7 +213,7 @@ function draftCell(text, group, day, time) {
       text.slice(text.indexOf("{"), text.lastIndexOf("}") + 1)
     );
     const at = (name) => answer.columns.indexOf(name);
-    return answer.records.find(
+    return answer.rows.find(
       (r) =>
         r[at("group")] === group &&
         r[at("day")] === day &&
@@ -284,11 +284,11 @@ function electives(tmp) {
         .join("\n") +
       "\n"
   };
-  const sheetReview = step("bring_in_choices", sheet, "done", [
+  const sheetReview = step("import_choices", sheet, "done", [
     ["API-1.117", has("- 3 campers: "), "reviewed as the screen counts it"]
   ]);
   step(
-    "bring_in_choices",
+    "import_choices",
     { ...sheet, save: true, seen: seenIn(sheetReview) },
     "done",
     [
@@ -319,7 +319,7 @@ function electives(tmp) {
     `SELECT Id FROM Preference__c WHERE ElectiveRun__r.${IN_SEASON} AND Group__c != null`,
     3
   );
-  step("read_elective_offerings", { week: "Week 2" }, "done", [
+  step("read_electives_offered", { week: "Week 2" }, "done", [
     [
       "API-1.6",
       (t) => t.includes('"Swim"') && t.includes('"Art"'),
@@ -350,7 +350,7 @@ function electives(tmp) {
     );
   assign(
     now(),
-    "This assigns seats in Chugim in Week 2, in the version being worked on: 3 seats placed from the campers' choices. There is no undo.",
+    "This assigns seats in Chugim in Week 2, in the Draft: 3 seats placed from the campers' choices. There is no undo.",
     "every camper seated"
   );
   // Same camp, same choices, Assign again: exactly the same seats (same inputs, same output).
@@ -362,7 +362,7 @@ function electives(tmp) {
   const once = seatLines(step("read_elective_seats_now", at, "done"));
   assign(
     now(),
-    "in the version being worked on: no seat changes; 3 seats stay as they are. There is no undo.",
+    "in the Draft: no seat changes; 3 seats stay as they are. There is no undo.",
     "seated again"
   );
   step("read_elective_seats_now", at, "done", [
@@ -451,7 +451,7 @@ function electives(tmp) {
     ]
   );
   ticketed("finalize_electives", at, "Finalized Chugim in Week 2");
-  step("read_elective_seats", { week: "Week 2" }, "done", [
+  step("read_final_elective_seats", { week: "Week 2" }, "done", [
     ["API-6.2", has('"camper_name": "Casey Madeup"'), "finalized seats go out"]
   ]);
   for (const f of [
@@ -570,7 +570,7 @@ function importsSave(tmp) {
   activity("Rowing", 0, "API-1.83");
 
   // A special day's schedule from a file.
-  step("add_setup_record", { kind: "special day", name: "Lake day" }, "done");
+  step("add_to_setup", { kind: "special day", name: "Lake day" }, "done");
   const plan = step("read_special_schedule", { special: "Lake day" }, "done");
   step(
     "import_special_schedule",
@@ -595,10 +595,10 @@ function everyCommand(tmp) {
   step("list_seasons", {}, "done");
   // Setup reads and changes.
   const words = step("read_camp_words");
-  step("read_setup_record", { kind: "activity", name: "Swim" });
-  const swim = step("read_setup_record", { kind: "location", name: "Pool" });
+  step("read_from_setup", { kind: "activity", name: "Swim" });
+  const swim = step("read_from_setup", { kind: "location", name: "Pool" });
   step(
-    "change_setup_record",
+    "change_in_setup",
     {
       kind: "location",
       name: "Pool",
@@ -608,25 +608,25 @@ function everyCommand(tmp) {
     "any"
   );
   step(
-    "add_setup_record",
+    "add_to_setup",
     { kind: "location", name: "Lake", fields: { groups_that_fit: "2" } },
     "any"
   );
   step(
-    "rename_setup_record",
+    "rename_in_setup",
     { kind: "location", name: "Lake", new_name: "Lakefront" },
     "any"
   );
-  step("read_setup_delete", { kind: "location", name: "Lakefront" }, "any");
+  step("read_delete_question", { kind: "location", name: "Lakefront" }, "any");
   const del = step(
-    "delete_setup_record",
+    "delete_from_setup",
     { kind: "location", name: "Lakefront" },
     "asks first"
   );
   ctx.deleteConfirm = confirmIn(del);
-  step("read_activity_rules", { name: "Art" });
+  step("read_activity_details", { name: "Art" });
   step(
-    "change_activity_rules",
+    "change_activity_details",
     { name: "Art", fields: { notes: "Bring smocks" }, seen: { notes: "" } },
     "any"
   );
@@ -658,7 +658,7 @@ function everyCommand(tmp) {
   step("merge_locations", { name: "Pool", seen: { Pool: "3" } }, "any");
   step("read_setup_guesses");
   step(
-    "confirm_setup_guess",
+    "mark_looks_right",
     {
       kind: "activity",
       name: "Swim",
@@ -667,10 +667,10 @@ function everyCommand(tmp) {
     },
     "any"
   );
-  step("read_proposed_offerings");
+  step("read_guessed_electives");
   step(
-    "confirm_proposed_offering",
-    { activity: "Swim", seen: "proposed" },
+    "elective_looks_right",
+    { activity: "Swim", seen: "guessed" },
     "any"
   );
   const copy = step("read_season_copy", { start_date: "2028-07-03" }, "any");
@@ -683,7 +683,7 @@ function everyCommand(tmp) {
     },
     "any"
   );
-  // A person's AI brings data in only as the screens do (import_list, bring_in_choices); the
+  // A person's AI brings data in only as the screens do (import_list, import_choices); the
   // bring_in_* doors are for other systems sending it themselves, not offered to it (API-1.6).
   // The week: build, check, publish, read.
   step("build_week", week);
@@ -691,16 +691,16 @@ function everyCommand(tmp) {
   ctx.seen = said(checks, "seen");
   const finding = /"([^"]+: \d+ of \d+)"/.exec(checks)?.[1];
   step(
-    "accept_finding",
-    { ...week, finding: finding ?? "Swim: 1 of 2" },
+    "accept_line",
+    { ...week, line: finding ?? "Swim: 1 of 2" },
     "any"
   );
   step("publish_week", week);
   const csv = step("read_group_schedule", { ...week, as_csv: true });
   step("read_group_schedule", week);
   step("read_activity_schedule", week);
-  step("read_elective_offerings", week, "any");
-  step("read_elective_seats", week, "any");
+  step("read_electives_offered", week, "any");
+  step("read_final_elective_seats", week, "any");
   // A cell from what was published: Bunk 1, Monday, Period 1.
   const cell =
     /Week 1,2027-07-05,Bunk 1,Period 1,[^,]*,[^,]*,([^,\n]*)/
@@ -716,7 +716,7 @@ function everyCommand(tmp) {
   const holds = rows[rows.length - 1].kind === "done" ? other : cell;
   // Undo is held for one conversation, as the screen's for one open page (API-1.14): each command
   // line command runs on its own, so it has nothing to undo, and says so.
-  step("undo_last_agent_change", week, "refused", [
+  step("undo_last_change", week, "refused", [
     [
       "API-1.14",
       (t) => t.includes("The command line can't undo"),
@@ -780,7 +780,7 @@ function everyCommand(tmp) {
   );
   ctx.seen = said(step("read_week_checks", week), "seen");
   step(
-    "switch_to_rain_plans",
+    "rainy_day",
     { ...week, day: "Friday", seen: ctx.seen },
     "any"
   );
@@ -812,19 +812,19 @@ function everyCommand(tmp) {
   step("read_linked_choices", {}, "any");
   step(
     "make_linked_choice",
-    { activity: "Nope", periods: [{ day: "Monday", time: "Period 1" }] },
+    { activity: "Nope", times: [{ day: "Monday", time: "Period 1" }] },
     "any"
   );
   step("change_linked_choice", { name: "Nope", new_name: "Still nope" }, "any");
   step("delete_linked_choice", { name: "Nope" }, "any");
   // Offerings (API-1.135 to API-1.137).
-  step("read_offerings", {}, "any");
+  step("read_electives_list", {}, "any");
   step(
-    "change_offering",
+    "change_elective",
     { activity: "Nope", fields: { seats: "1" }, seen: { seats: "2" } },
     "any"
   );
-  step("delete_offering", { activity: "Nope" }, "any");
+  step("delete_elective", { activity: "Nope" }, "any");
   // A placement's length (API-1.138).
   step(
     "change_cell_length",
@@ -905,12 +905,12 @@ function everyCommand(tmp) {
     },
     "any"
   );
-  step("start_new_elective_version", { ...week, seen: "x" }, "any");
+  step("change_seats", { ...week, seen: "x" }, "any");
   step("finalize_electives", week, "any");
   const clear = step("read_electives_to_clear", {}, "any");
   step("clear_electives", { seen: said(clear, "seen") ?? "x" }, "any");
   // Special days and events.
-  step("add_setup_record", { kind: "special day", name: "Color war" }, "any");
+  step("add_to_setup", { kind: "special day", name: "Color war" }, "any");
   step("read_special_days");
   step(
     "put_special_day_on_day",
@@ -969,7 +969,7 @@ function everyCommand(tmp) {
     "any"
   );
   step(
-    "set_up_noted_item",
+    "set_it_up",
     { week: "Week 2", kind: "special day", name: "Color war" },
     "any"
   );

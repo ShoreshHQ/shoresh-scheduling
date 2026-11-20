@@ -104,26 +104,6 @@ private class SeenSavesTest {
     }
   }
 
-  @IsTest
-  static void aWeekIsAsSeenOnlyAtTheRevisionRead() {
-    System.runAs(ShoreshTestData.scheduler()) {
-      GeneratedTestData.camp();
-      Id draftId = GeneratedTestData.generated();
-      List<ScheduleDays.DayGrid> days = ScheduleDays.read(draftId);
-      String read = GeneratedDrafts.revisionOf(days);
-      Test.startTest();
-      Boolean asRead = SeenSaves.week(days, read);
-      Boolean none = SeenSaves.week(days, null);
-      Boolean blank = SeenSaves.week(days, '');
-      Boolean other = SeenSaves.week(days, read + '1');
-      Test.stopTest();
-      Assert.isTrue(asRead);
-      Assert.isFalse(none, 'No ticket is never as seen');
-      Assert.isFalse(blank);
-      Assert.isFalse(other);
-    }
-  }
-
   // API-1.104: an import's, Clear electives' and Update to match's stamp is as seen only exactly.
   @IsTest
   static void aStampIsAsSeenOnlyExactly() {
@@ -172,25 +152,30 @@ private class SeenSavesTest {
       Id bunk = [SELECT Id FROM Group__c WITH USER_MODE LIMIT 1].Id;
       Test.startTest();
       List<String> refused = new List<String>();
-      for (Integer i = 0; i < 2; i++) {
+      // On the screen, then to an AI (change_activity_details), which has no page (API-1.105).
+      for (Integer i = 0; i < 4; i++) {
+        AgentRefusal.forAgent = i >= 2;
         try {
           ActivitiesController.saveActivityDetails(
-            i == 0
+            Math.mod(i, 2) == 0
               ? new Activity__c(Id = swim, Notes__c = 'x')
               : new Activity__c(Id = swim),
-            i == 0 ? null : new List<Id>{ bunk },
+            Math.mod(i, 2) == 0 ? null : new List<Id>{ bunk },
             SeenSaves.ticket(new Activity__c(Id = swim), null)
           );
         } catch (AuraHandledException e) {
           refused.add(e.getMessage());
         }
       }
+      AgentRefusal.forAgent = false;
       Test.stopTest();
       Assert.areEqual(
         // Word walk W4: the refusal names the field.
         new List<String>{
           'Notes wasn\'t saved: reload the page and change it again.',
-          'Who can do it wasn\'t saved: reload the page and change it again.'
+          'Who can do it wasn\'t saved: reload the page and change it again.',
+          'Notes wasn\'t saved.',
+          'Who can do it wasn\'t saved.'
         },
         refused
       );

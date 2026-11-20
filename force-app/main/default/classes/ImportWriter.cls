@@ -10,9 +10,10 @@ public with sharing class ImportWriter {
   // Created records by kind: { fieldsets: [[field, ...]], rows: [[id, fieldset, fingerprint]] }:
   // the values written, as a fingerprint, so Undo can tell whether anyone edited them since.
   public Map<String, Map<String, Object>> created { get; private set; }
-  // Changed records: [{ id, type, before, after }]; who lists replaced (slice 4c):
-  // [{ who: owner id, type, name, before: [target ids], after: [target ids] }].
+  // What it changed, entry by entry, as Changed__c keeps it (ImportLogEntries).
   public List<Map<String, Object>> changed { get; private set; }
+  // Each record's values entry, so a later write to it goes into the same one.
+  private Map<Id, ImportLogEntries.Values> valuesLogged = new Map<Id, ImportLogEntries.Values>();
   // Each created record as written, and its entry in created, so a later step can amend it.
   private Map<Id, SObject> createdRows = new Map<Id, SObject>();
   private Map<Id, List<Object>> createdEntries = new Map<Id, List<Object>>();
@@ -33,9 +34,9 @@ public with sharing class ImportWriter {
     List<ImportPlan.Entry> entries,
     List<SObject> rows
   ) {
-    List<Map<String, Object>> before = ImportUndoLog.before(rows);
+    List<ImportLogEntries.Values> before = ImportLogValues.before(rows);
     UserModeWrites.save(rows);
-    changed.addAll(ImportUndoLog.withAfter(before, rows));
+    logValues(ImportLogValues.withAfter(before, rows));
     for (Integer i = 0; i < entries.size(); i++) {
       if (entries[i].isNew()) {
         keys.put(entries[i].key(), rows[i].Id);
@@ -67,16 +68,18 @@ public with sharing class ImportWriter {
         existing.add(row);
       }
     }
-    List<Map<String, Object>> before = ImportUndoLog.before(existing);
+    List<ImportLogEntries.Values> before = ImportLogValues.before(existing);
     UserModeWrites.save(rows);
-    mergeChanges(ImportUndoLog.withAfter(before, existing));
+    mergeChanges(ImportLogValues.withAfter(before, existing));
     for (SObject row : rows) {
       if (createdRows.containsKey(row.Id)) {
         SObject written = createdRows.get(row.Id);
-        for (Schema.SObjectField field : ImportUndoLog.written(row).values()) {
+        for (
+          Schema.SObjectField field : ImportLogValues.written(row).values()
+        ) {
           written.put(field, row.get(field));
         }
-        List<String> fields = ImportUndoLog.fieldsOf(written);
+        List<String> fields = ImportLogValues.fieldsOf(written);
         List<Object> entry = createdEntries.get(row.Id);
         entry[1] = fieldsetOf(createdTerms.get(row.Id), fields);
         entry[2] = ImportUndoValues.digest(written, fields);
@@ -88,32 +91,23 @@ public with sharing class ImportWriter {
    * Changes to records already logged as changed go into their first entry (what it was before
    * the import stays the first "before"), so Undo puts each record back in one update.
    */
-  private void mergeChanges(List<Map<String, Object>> entries) {
-    Map<Object, Map<String, Object>> logged = new Map<Object, Map<String, Object>>();
-    for (Map<String, Object> entry : changed) {
-      if (entry.containsKey('id')) {
-        logged.put(entry.get('id'), entry);
+  private void mergeChanges(List<ImportLogEntries.Values> entries) {
+    for (ImportLogEntries.Values entry : entries) {
+      Id recordId = entry.recordId();
+      ImportLogEntries.Values first = valuesLogged.get(recordId);
+      if (first == null) {
+        logValues(new List<ImportLogEntries.Values>{ entry });
+        countChange(ImportFields.termOf(recordId.getSObjectType()), recordId);
+      } else {
+        first.addLater(entry);
       }
     }
-    for (Map<String, Object> entry : entries) {
-      Map<String, Object> first = logged.get(entry.get('id'));
-      if (first == null) {
-        changed.add(entry);
-        Id recordId = (Id) entry.get('id');
-        countChange(ImportFields.termOf(recordId.getSObjectType()), recordId);
-        continue;
-      }
-      Map<String, Object> before = (Map<String, Object>) first.get('before');
-      Map<String, Object> laterBefore = (Map<String, Object>) entry.get(
-        'before'
-      );
-      for (String field : laterBefore.keySet()) {
-        if (!before.containsKey(field)) {
-          before.put(field, laterBefore.get(field));
-        }
-      }
-      ((Map<String, Object>) first.get('after'))
-        .putAll((Map<String, Object>) entry.get('after'));
+  }
+
+  private void logValues(List<ImportLogEntries.Values> entries) {
+    for (ImportLogEntries.Values entry : entries) {
+      changed.add(entry.toLog());
+      valuesLogged.put(entry.recordId(), entry);
     }
   }
 
@@ -126,11 +120,11 @@ public with sharing class ImportWriter {
     List<SObject> added,
     List<SObject> existing
   ) {
-    List<Map<String, Object>> before = ImportUndoLog.before(existing);
+    List<ImportLogEntries.Values> before = ImportLogValues.before(existing);
     if (!existing.isEmpty()) {
       UserModeWrites.save(existing);
     }
-    changed.addAll(ImportUndoLog.withAfter(before, existing));
+    logValues(ImportLogValues.withAfter(before, existing));
     for (SObject row : existing) {
       countChange(term, row.Id);
     }
@@ -144,20 +138,13 @@ public with sharing class ImportWriter {
 
   /** A camp word a workbook set back to Shoresh's own (removed): logged for Undo to put back. */
   public void logWordOff(CampLabel__c label) {
-    changed.add(
-      new Map<String, Object>{
-        ImportUndoLog.WORD_OFF => label.Id,
-        'term' => label.ModelTerm__c,
-        'singular' => label.Singular__c,
-        'plural' => label.Plural__c
-      }
-    );
+    changed.add(new ImportLogEntries.WordOff(label).toLog());
     countChange('CampLabel', label.Id);
   }
 
   /** A week an item was off that a workbook ticked back on (removed): logged for Undo. */
-  public void logWeekBackOn(Map<String, Object> entry, Id target) {
-    changed.add(entry);
+  public void logWeekBackOn(ImportLogEntries.WeekOn entry, Id target) {
+    changed.add(entry.toLog());
     countChange(ImportFields.termOf(target.getSObjectType()), target);
   }
 
@@ -167,13 +154,7 @@ public with sharing class ImportWriter {
    */
   public void logRemoved(List<SObject> records) {
     for (SObject record : records) {
-      changed.add(
-        new Map<String, Object>{
-          ImportUndoLog.REMOVED => record.Id,
-          'type' => ShoreshSchema.localName(record.getSObjectType()),
-          'name' => record.get('Name')
-        }
-      );
+      changed.add(new ImportLogEntries.Removed(record).toLog());
       result.countRemoved(ImportFields.termOf(record.getSObjectType()));
     }
   }
@@ -188,38 +169,14 @@ public with sharing class ImportWriter {
    * its grid before and after, for Undo to put back exactly.
    */
   public void logCellsOut(ScheduleDay__c day, String after) {
-    changed.add(
-      new Map<String, Object>{
-        ImportUndoLog.CELLS_OUT => day.Id,
-        'name' => day.Schedule__r.Name,
-        'before' => day.Grid__c,
-        'after' => after
-      }
-    );
+    changed.add(new ImportLogEntries.CellsOut(day, after).toLog());
   }
 
-  /** A who list an import replaced: whose, which rows' object, and the targets before and after. */
-  public class WhoChange {
-    public SObject owner;
-    public String type;
-    public List<String> before;
-    public List<String> after;
-  }
-
-  public void logWho(WhoChange change) {
-    countChange(
-      ImportFields.termOf(change.owner.getSObjectType()),
-      change.owner.Id
-    );
-    changed.add(
-      new Map<String, Object>{
-        ImportUndoLog.WHO => change.owner.Id,
-        'type' => change.type,
-        'name' => change.owner.get('Name'),
-        'before' => change.before,
-        'after' => change.after
-      }
-    );
+  /** A who list an import replaced (slice 4c): logged for Undo to put back. */
+  public void logWho(ImportLogEntries.Who change) {
+    Id ownerId = change.ownerId();
+    countChange(ImportFields.termOf(ownerId.getSObjectType()), ownerId);
+    changed.add(change.toLog());
   }
 
   private void countChange(String term, Id recordId) {
@@ -248,7 +205,7 @@ public with sharing class ImportWriter {
         }
       );
     }
-    List<String> fields = ImportUndoLog.fieldsOf(row);
+    List<String> fields = ImportLogValues.fieldsOf(row);
     List<Object> entry = new List<Object>{
       row.Id,
       fieldsetOf(term, fields),

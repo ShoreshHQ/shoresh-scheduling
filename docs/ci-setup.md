@@ -23,7 +23,7 @@ deploy ignores change-tracking conflicts: the repository is always what should e
 
 ### How much of the test org a pull request needs
 
-A full check takes about 20 minutes, and every pull request waits for the one before it. So a
+A full check (every Apex class) takes 45 to 65 minutes (the job stops at 90), and every pull request waits for the one before it. So a
 first, quick check ("Which org checks this change needs", `scripts/ci-pr-category.js`) looks at
 the files the pull request changes and picks one of three:
 
@@ -45,7 +45,7 @@ The deploy is always whole, so every class still compiles. But a pull request ru
 Apex test classes its change can reach (`scripts/ci-apex-tests.js`, also the base branch's
 copy): a test class runs if it names a changed class, or names a class that names one, and so on.
 A change to a screen Apex repeats counts as a change to the Apex class that repeats it. A change
-to shared examples (`ShoreshCellExamples`, `ShoreshRuleExamples`, `ShoreshSeatExamples`) runs
+to shared examples (`ShoreshCellExamples`, `ShoreshFixedOverExamples`, `ShoreshNewRowExamples`, `ShoreshRuleExamples`, `ShoreshSeatExamples`) runs
 the Apex test that reads them (`EXAMPLES_READ_BY`), never every class; a test keeps that list to every Apex class that
 queries a static resource by name (`FROM StaticResource WHERE Name = '…'`), the way both read them. A pull
 request that touches only electives runs a handful of classes in a few minutes; one that changes
@@ -116,7 +116,7 @@ Neither proves the namespaced org works; that is checked after the namespace is 
 
 ## Checks that catch org-only mistakes early (in "LWC Jest and Code Analyzer")
 
-The test org is shared and each run takes about 20 minutes, so these checks catch, with no org,
+The test org is shared and a full run takes 45 to 65 minutes, so these checks catch, with no org,
 mistakes that used to show up only there or at AppExchange security review:
 
 - **AppExchange security-review rules.** The Code Analyzer step runs `Recommended` plus the scan

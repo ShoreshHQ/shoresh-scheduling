@@ -1,12 +1,12 @@
 /**
- * confirm_proposed_offering: Camp Setup's Confirm on a proposed offering, through an agent or the
- * command line (docs/protocol/api.md API-1.101). Web address /v1/confirm_proposed_offering, POST
+ * elective_looks_right: Camp Setup's Confirm on a proposed offering, through an agent or the
+ * command line (docs/protocol/api.md API-1.101). Web address /v1/elective_looks_right, POST
  * {season, elective_set, activity, seen}. It is the screen's own save of the row's Confirm
  * (SetupTablesController.saveRow with Proposed off, proposed as seen), done only while the
- * offering, locked, is still proposed as the AI read it (seen "proposed"); otherwise refused
+ * offering, locked, is still proposed as the AI read it (seen "guessed"); otherwise refused
  * (409), nothing changed.
  */
-@RestResource(urlMapping='/v1/confirm_proposed_offering')
+@RestResource(urlMapping='/v1/elective_looks_right')
 global with sharing class AgentConfirmProposed implements AgentWeeks.Action {
   private static final Set<String> FIELDS = new Set<String>{
     'season',
@@ -15,6 +15,8 @@ global with sharing class AgentConfirmProposed implements AgentWeeks.Action {
     'seen'
   };
   private static final String NOTHING = ' Nothing was changed.';
+  // The camp's words, for what is refused (CORE-1.0).
+  private CampLabels words;
 
   @HttpPost
   global static void post() {
@@ -26,6 +28,7 @@ global with sharing class AgentConfirmProposed implements AgentWeeks.Action {
     Season__c season = AgentChangeCampWords.seasonOf(
       AgentFields.text(body, 'season')
     );
+    words = CampLabels.forCamp(season.Camp__c);
     String activity = AgentFields.text(body, 'activity');
     String setName = AgentFields.text(body, 'elective_set');
     refuseUnsaid(body, activity);
@@ -53,7 +56,7 @@ global with sharing class AgentConfirmProposed implements AgentWeeks.Action {
         named +
           ' isn\'t guessed now: someone said it looks right since.' +
           NOTHING +
-          ' read_proposed_offerings says what is guessed.'
+          ' read_guessed_electives says what is guessed.'
       );
     }
     RowSaves.Result result;
@@ -74,26 +77,32 @@ global with sharing class AgentConfirmProposed implements AgentWeeks.Action {
     }
     return 'Confirmed ' +
       named +
-      ': it is offered now, and campers can get a seat in it.';
+      ': it is offered now, and ' +
+      words.pluralInSentence('Camper') +
+      ' can get ' +
+      words.withArticle('Seats') +
+      ' in it.';
   }
 
-  /** No activity, or no seen "proposed", is refused before anything is read. */
+  /** No activity, or no seen "guessed", is refused before anything is read. */
   private static void refuseUnsaid(Map<String, Object> body, String activity) {
     if (String.isBlank(activity)) {
       throw new ShoreshException(
-        'Say which activity is offered (activity), as read_proposed_offerings said it.'
+        'Say which activity is offered (activity), as read_guessed_electives said it.'
       );
     }
-    if (AgentFields.text(body, 'seen') != 'proposed') {
+    if (AgentFields.text(body, 'seen') != 'guessed') {
       throw new ShoreshException(
-        'Say what read_proposed_offerings said it is (seen: "proposed"), so one marked Looks right since isn\'t marked again.'
+        'Say what read_guessed_electives said it is (seen: "guessed"), so one marked Looks right since isn\'t marked again.'
       );
     }
   }
 
-  /** The offering named, in the elective set asked about when the activity is in two. */
-  @TestVisible
-  private static Offering__c onlyOne(
+  /**
+   * The offering named, in the elective set asked about when the activity is in two; refused in
+   * the camp's words.
+   */
+  private Offering__c onlyOne(
     List<Offering__c> found,
     String activity,
     String setName
@@ -112,19 +121,22 @@ global with sharing class AgentConfirmProposed implements AgentWeeks.Action {
     }
     if (matched.isEmpty()) {
       throw new ShoreshException(
-        'No elective set' +
+        'No ' +
+          words.singularInSentence('ElectiveSet') +
           (String.isBlank(setName) ? '' : ' "' + setName.left(80) + '"') +
           ' offers "' +
           activity.left(80) +
           '".' +
           NOTHING +
-          ' read_proposed_offerings says what is guessed.'
+          ' read_guessed_electives says what is guessed.'
       );
     }
     if (matched.size() > 1) {
       sets.sort();
       throw new ShoreshException(
-        'More than one elective set offers "' +
+        'More than one ' +
+          words.singularInSentence('ElectiveSet') +
+          ' offers "' +
           activity.left(80) +
           '". Say which (elective_set): ' +
           String.join(sets, ', ') +

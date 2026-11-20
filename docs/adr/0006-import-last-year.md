@@ -273,7 +273,7 @@ Undo last import, and remembered answers (`ImportAnswer__c`).
     goes back to how it was. Anything you have edited since the import stays as it is.").
     - Each import is recorded in `Import__c` (detail of the season): its files, every record it
       created with the values it wrote, and every record it changed with the values before and
-      after (`ImportWriter`, `ImportUndoLog`).
+      after (`ImportWriter`, `ImportLogEntries`, `ImportUndoLog`).
     - Undo (`ImportUndo`) removes what the import created, children first, and puts back what it
       changed, but **keeps anything edited since** (a field no longer holds what the import
       wrote) **or still in use** (something not made by the import is inside it, or Salesforce

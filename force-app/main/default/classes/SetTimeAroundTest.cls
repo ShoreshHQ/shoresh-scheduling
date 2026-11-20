@@ -157,6 +157,25 @@ private class SetTimeAroundTest {
         around
       );
       Assert.isTrue(gone.contains('"Field day" is no longer there'), gone);
+      Assert.isTrue(gone.endsWith('Nothing was saved. Reload the page.'), gone);
+      // API-1.105: an AI has no page to reload; it hears the problem alone.
+      AgentRefusal.forAgent = true;
+      String goneToAnAi = refusalOf(
+        SetTimeTestData.fixed(ids, 'Rest', 'Period 2'),
+        around
+      );
+      around.around = fieldDayAround(ids, fieldDayId);
+      String changedToAnAi = refusalOf(
+        SetTimeTestData.fixed(ids, 'Rest', 'Period 2'),
+        around
+      );
+      AgentRefusal.forAgent = false;
+      Assert.isTrue(goneToAnAi.endsWith('Nothing was saved.'), goneToAnAi);
+      Assert.isTrue(
+        changedToAnAi.contains('"Field day" was changed') &&
+        changedToAnAi.endsWith('Nothing was saved.'),
+        changedToAnAi
+      );
 
       around.around = fieldDayAround(ids, fieldDayId);
       String notFixed = refusalOf(

@@ -23,18 +23,16 @@ public with sharing class ImportUndoLater {
       LIMIT :LATER_LIMIT
     ]) {
       if (String.isNotBlank(later.Changed__c)) {
-        addIds((List<Object>) JSON.deserializeUntyped(later.Changed__c));
+        addIds(ImportLogEntries.read(later.Changed__c).recordValues);
       }
     }
   }
 
-  private void addIds(List<Object> entries) {
-    for (Object entry : entries) {
-      Object id = entry instanceof Map<String, Object>
-        ? ((Map<String, Object>) entry).get('id')
-        : null;
-      if (id instanceof String && String.isNotBlank((String) id)) {
-        changed.add((Id) (String) id);
+  private void addIds(List<ImportLogEntries.Values> entries) {
+    for (ImportLogEntries.Values entry : entries) {
+      Id recordId = entry.namedId();
+      if (recordId != null) {
+        changed.add(recordId);
       }
     }
   }

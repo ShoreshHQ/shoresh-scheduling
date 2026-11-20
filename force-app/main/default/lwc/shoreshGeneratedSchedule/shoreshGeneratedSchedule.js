@@ -1,10 +1,8 @@
 import { LightningElement, api } from "lwc";
 import { BuildScreen } from "c/shoreshBuildScreen";
+import { BuildWeek } from "c/shoreshBuildWeek";
 import setUpItem from "@salesforce/apex/SpecialPlacingController.setUpItem";
 import takeOffDay from "@salesforce/apex/SpecialPlacingController.takeOffDay";
-import previewPublish from "@salesforce/apex/GeneratedScheduleController.previewPublish";
-import publish from "@salesforce/apex/GeneratedScheduleController.publish";
-import unpublish from "@salesforce/apex/GeneratedScheduleController.unpublish";
 import saveVersion from "@salesforce/apex/GeneratedScheduleController.saveVersion";
 import keepWeekBeforeRain from "@salesforce/apex/RainyDayController.keepGeneratedWeek";
 import restoreVersion from "@salesforce/apex/GeneratedScheduleController.restoreVersion";
@@ -13,24 +11,20 @@ import restoreVersionAsNew from "@salesforce/apex/GeneratedScheduleController.re
 import deleteVersion from "@salesforce/apex/GeneratedScheduleController.deleteVersion";
 import renameSchedule from "@salesforce/apex/SchedulesController.renameSchedule";
 import { failed } from "c/shoreshErrors";
-import { publishQuestion, publishedWord } from "c/shoreshPublish";
+import { publishedWord } from "c/shoreshPublish";
 import { notesWithout, whyOf } from "c/shoreshEngine";
 import {
   ACTION,
-  CHANGED_SINCE,
   CONFLICT,
   LOCK,
   SAVED,
-  SETUP_CHANGED,
   addActivity,
   buildInputOf,
   builtWeekOf,
   loadWeek,
-  readSetupChanges,
   saveEdits,
   saveWeek,
-  setLocks,
-  updateToMatchSetup
+  setLocks
 } from "c/shoreshGeneratedWeek";
 import { dayLabel, days as dayPillsOf, groups } from "c/shoreshScheduleViews";
 import { buildInPieces } from "./pieces";
@@ -39,6 +33,7 @@ import { lockChoices, lockedKeys, lockedText, weekCells } from "./locks";
 import { clearedDays, editedKeys } from "./week";
 import { lockOf } from "./editing";
 import { checkDays, editorDraftOf } from "./counter";
+import { generatedWeekAdapter } from "./weekAdapter";
 
 // What each action is called on its button and while it runs.
 const ACTION_LABEL = {
@@ -217,12 +212,6 @@ export default class ShoreshGeneratedSchedule extends BuildScreen(
   editorHasWeek = false;
   // What setup changed since the week was built (SetupMatch.Preview), for the week shown, or null.
   setupPreview = null;
-  setupTicket = 0;
-  // The newest read of it (a promise), or null.
-  setupRead = null;
-  // The "couldn't check against setup" message while it is shown, so a later read that works
-  // clears it and nothing else.
-  setupError = null;
   // "Update to match setup" is open, or null: { notice, announcement, said (counts each time
   // its words are to be read out, even the same words again), kept (an update in this opening
   // kept the week as it was, so the next keeps none), updated (an update in this opening was
@@ -230,7 +219,8 @@ export default class ShoreshGeneratedSchedule extends BuildScreen(
   // is on its way.
   setupAsk = null;
   setupWorking = false;
-  setupSaid = 0;
+  // The week as this screen last read it, and the flows that act on it.
+  buildWeek = new BuildWeek(generatedWeekAdapter(this));
   // The setup dots as the editor takes them, worked out once per preview.
   setupDotsMemo = { preview: null, dots: null };
 
@@ -450,10 +440,8 @@ export default class ShoreshGeneratedSchedule extends BuildScreen(
       this.loaded = null;
       this.useEngineNotes(null);
       this.loadedFor = null;
-      this.publishing = false;
       // No week shown: a publish question open for the last one goes (nothing was sent).
-      this.publishAsk = null;
-      this.unpublishAsk = null;
+      this.buildWeek.forgetPublish();
       this.reading = false;
       this.loading = false;
       this.reloading = null;
@@ -481,14 +469,9 @@ export default class ShoreshGeneratedSchedule extends BuildScreen(
       this.restored = null;
       // Another week: a publish question open for the last one goes (nothing was sent).
       this.publishState = null;
-      this.publishAsk = null;
-      this.unpublishAsk = null;
-      this.publishing = false;
+      this.buildWeek.forgetPublish();
       // The last week's setup changes are not this one's; an answer still on its way is dropped.
-      this.setupPreview = null;
-      this.setupError = null;
-      this.setupAsk = null;
-      this.setupTicket += 1;
+      this.buildWeek.forgetSetup();
     }
     this.loading = !this.loaded;
     try {
@@ -551,7 +534,7 @@ export default class ShoreshGeneratedSchedule extends BuildScreen(
       return;
     }
     this.showInEditor(fresh ? "fresh" : "again");
-    this.loadSetupChanges();
+    this.buildWeek.loadSetupChanges();
   }
 
   /** Coming back to the window shows other people's saves, unless something is under way. */
@@ -1013,7 +996,7 @@ export default class ShoreshGeneratedSchedule extends BuildScreen(
         this.loadVersions();
         this.tellSchedulesChanged(!loaded.scheduleId, week);
         // What still doesn't match setup in the week just built (locks and leftovers stay).
-        this.loadSetupChanges();
+        this.buildWeek.loadSetupChanges();
         // Said when it ends, not only when it starts (the bar's progress changes silently).
         const { filled, total } = this.checked.cells;
         this.announce(
@@ -1619,7 +1602,7 @@ export default class ShoreshGeneratedSchedule extends BuildScreen(
         (preview.awayGroupIds || []).length > 0
       : this.isGenerated;
     if (again) {
-      this.loadSetupChanges();
+      this.buildWeek.loadSetupChanges();
     }
   }
 
@@ -1695,41 +1678,6 @@ export default class ShoreshGeneratedSchedule extends BuildScreen(
 
   // ---------- setup changed since the week was built (as Manual Build: ADR 0008 part 6) ----------
 
-  async readSetupChanges() {
-    this.setupTicket += 1;
-    const ticket = this.setupTicket;
-    const loaded = this.loaded;
-    if (!loaded || !loaded.scheduleId) {
-      this.setupPreview = null;
-      return null;
-    }
-    try {
-      const preview = await readSetupChanges(loaded);
-      if (ticket !== this.setupTicket) {
-        return null;
-      }
-      this.setupPreview = preview;
-      // Checked now: a "couldn't check" from an earlier read goes (any other error stays).
-      if (this.error && this.error === this.setupError) {
-        this.error = null;
-      }
-      this.setupError = null;
-      return preview;
-    } catch (e) {
-      // Said, never hidden: the dots and the box stay as last read rather than vanishing, which
-      // would make the week look as if it matched setup.
-      if (ticket === this.setupTicket) {
-        this.error = failed(
-          `Shoresh couldn't check ${this.weekName} against setup.`,
-          e
-        );
-        this.errorFromRead = false;
-        this.setupError = this.error;
-      }
-      return null;
-    }
-  }
-
   /** Setup changed (the menu's foot says so), or it can't be compared (said under the rail). */
   get showSetupChanged() {
     return (
@@ -1771,7 +1719,10 @@ export default class ShoreshGeneratedSchedule extends BuildScreen(
     }
   }
 
-  /** A read asked for while the list was read, open or updating (the season read again). */
+  /**
+   * A read asked for while the list was read, open or updating, or while a publish was on its way
+   * (the season read again, a read dropped for it).
+   */
   readAfterSetup() {
     const readNow = this.readAfterRun && !this.conflict && !this.setupWaits;
     if (readNow) {
@@ -1780,155 +1731,17 @@ export default class ShoreshGeneratedSchedule extends BuildScreen(
     }
   }
 
-  /**
-   * "Update to match setup": what it would change is read fresh and shown first; nothing changes
-   * until the director chooses a change, or all of them.
-   */
-  async handleSetupMatch() {
-    if (this.actionsDisabled) {
-      this.say("One moment: an edit is still saving.");
-      return;
-    }
-    const week = this.loadedFor;
-    this.setupWorking = true;
-    try {
-      const preview = await this.newestSetupChanges(
-        this.loadSetupChanges(),
-        week
-      );
-      if (week !== this.loadedFor || !preview) {
-        return;
-      }
-      if (preview.problem) {
-        // Can't be compared now: said, never "matches" (the box says the same).
-        this.say(preview.problem);
-      } else if (preview.changes.length) {
-        // A new opening of the list: its first update that takes a placement keeps a version.
-        this.setupAsk = { notice: null, kept: false, updated: false };
-      } else {
-        this.say(`${this.weekName} matches setup.`);
-      }
-    } finally {
-      this.setupWorking = false;
-      if (!this.setupAsk) {
-        this.focusOn = "update-to-match";
-        this.readAfterSetup();
-      }
-    }
-  }
-
-  /**
-   * A read's answer, or, when a newer read overtook it (the week read again on coming back to the
-   * window), that read's: the one shown. So a click waits for it rather than doing nothing.
-   */
-  async newestSetupChanges(read, week) {
-    const preview = await read;
-    if (!preview && week === this.loadedFor && this.setupRead !== read) {
-      return this.newestSetupChanges(this.setupRead, week);
-    }
-    return preview;
+  /** "Update to match setup" (c/shoreshBuildWeek): the list, read fresh, before anything changes. */
+  handleSetupMatch() {
+    return this.buildWeek.openSetupMatch();
   }
 
   handleSetupClose() {
-    this.setupAsk = null;
-    this.focusOn = "update-to-match";
-    this.readAfterSetup();
+    this.buildWeek.closeSetupMatch();
   }
 
-  /**
-   * Makes the chosen changes, on the week as the list showed it, then reads the week again.
-   * Refused, with nothing changed, when someone saved the week since (it is read again) or setup
-   * changed again (the list shows what it would change now). After one change the list stays open
-   * with what is left.
-   */
-  async handleSetupUpdate(event) {
-    const keys = event.detail.keys;
-    const preview = this.setupPreview;
-    if (!preview || !keys.length || this.setupWorking || !this.setupAsk) {
-      return;
-    }
-    let kept = this.setupAsk.kept;
-    // A read already on its way read the week before this update: its answer must not replace
-    // the updated week. A change of week while it runs drops this answer.
-    this.loadTicket += 1;
-    this.weekTicket += 1;
-    const ticket = this.loadTicket;
-    this.reading = false;
-    this.loading = false;
-    this.setupWorking = true;
-    this.error = null;
-    this.errorFromRead = false;
-    try {
-      const result = await updateToMatchSetup(this.loaded, {
-        keys,
-        seenRevisions: preview.revisions,
-        versionKept: kept
-      });
-      if (ticket !== this.loadTicket) {
-        return;
-      }
-      if (result.refused === CHANGED_SINCE) {
-        this.setupAsk = null;
-        this.weekEditor.setNotice(
-          `Someone else changed this ${this.t.sIn("Week")} since, so nothing was updated.`
-        );
-        this.readAfterRun = true;
-        return;
-      }
-      if (result.refused === SETUP_CHANGED) {
-        const fresh = await this.loadSetupChanges();
-        const again =
-          "Something changed while you looked, so nothing was updated.";
-        // The list shows what it would change now, in place.
-        this.setupAsk =
-          fresh && fresh.changes.length
-            ? this.setupAskWith(again, null, kept, this.setupAsk.updated)
-            : null;
-        if (fresh && !this.setupAsk) {
-          // Nothing left to change (or it can't be compared now): the list closes, and says why.
-          this.say(
-            `${again} ${fresh.problem || `${this.weekName} matches setup now.`}`
-          );
-        }
-        return;
-      }
-      kept = kept || result.kept;
-      if (result.kept) {
-        // Versions lists the week as it was, kept just now, here and elsewhere (WEEK-6.7).
-        this.loadVersions();
-        this.tellSchedulesChanged();
-      }
-      const done =
-        keys.length === 1
-          ? "Updated to match setup."
-          : `Made ${keys.length} changes to match setup.`;
-      if (!(await this.showUpdated(ticket))) {
-        // Updated, but the week can't be read just now: said, and read again once this is over.
-        this.setupAsk = null;
-        this.sayDone(done);
-        return;
-      }
-      const fresh = await this.loadSetupChanges();
-      const all = keys.length === preview.changes.length;
-      // While the list stays open it says so itself: a screen reader in the dialog hears only
-      // the dialog.
-      this.setupAsk =
-        !all && fresh && fresh.changes.length
-          ? this.setupAskWith(null, done, kept, true)
-          : null;
-      if (!this.setupAsk) {
-        this.sayDone(done);
-      }
-    } catch (e) {
-      this.setupAsk = null;
-      this.error = failed(`${this.weekName} was not updated.`, e);
-    } finally {
-      this.setupWorking = false;
-      if (ticket === this.loadTicket && !this.setupAsk) {
-        this.focusOn = "update-to-match";
-        this.readAfterSetup();
-      }
-    }
+  handleSetupUpdate(event) {
+    return this.buildWeek.updateToMatchSetup(event.detail.keys);
   }
 
   /**
@@ -2056,214 +1869,21 @@ export default class ShoreshGeneratedSchedule extends BuildScreen(
     this.say(text);
   }
 
-  /**
-   * Publish: the server's preview says what would change; with the week's checks (the Open
-   * cells and their reasons, the dots) that decides whether to ask first
-   * (c/shoreshPublish). A week already published as it is needs nothing.
-   */
-  async handlePublish() {
-    if (this.publishDisabled || !this.isGenerated) {
-      return;
-    }
-    // The answer is for this week ("program|week"); one for a week no longer shown is dropped.
-    const week = this.loadedFor;
-    this.publishing = true;
-    this.error = null;
-    this.errorFromRead = false;
-    try {
-      const preview = await previewPublish({
-        scheduleId: this.loaded.scheduleId
-      });
-      if (week !== this.loadedFor) {
-        return;
-      }
-      // Someone else saved the week since this screen read it: what would be published isn't
-      // what is shown. Nothing is published; the week is read again for the director to see.
-      if (preview.revisions !== this.loaded.revision) {
-        this.refusePublish(this.draftChangedText);
-        return;
-      }
-      const question = publishQuestion({
-        preview,
-        checked: this.checked,
-        counts: null,
-        measure: this.measure,
-        weekName: this.weekName,
-        t: this.t,
-        origin: "Generated"
-      });
-      if (question.kind === "same") {
-        this.publishState = { ...preview.published, changedSince: false };
-        this.say(`${this.weekName} is already published as it is.`);
-      } else if (question.kind === "now") {
-        await this.publishNow(preview, week);
-      } else {
-        this.publishAsk = { ...question, preview, week };
-      }
-    } catch (e) {
-      if (week === this.loadedFor) {
-        this.error = failed(`${this.weekName} was not published.`, e);
-      }
-    } finally {
-      if (!this.publishAsk) {
-        this.publishDone(week, "publish");
-      }
-    }
+  /** Publish and Unpublish (c/shoreshBuildWeek): the question first, when there is one. */
+  handlePublish() {
+    return this.buildWeek.publish();
   }
 
-  async handlePublishAnswer(event) {
-    const ask = this.publishAsk;
-    this.publishAsk = null;
-    try {
-      if (event.detail.yes) {
-        // The server refuses it if the week changed since the preview.
-        await this.publishNow(ask.preview, ask.week);
-      }
-    } catch (e) {
-      if (ask.week === this.loadedFor) {
-        this.error = failed(`${this.weekName} was not published.`, e);
-      }
-    } finally {
-      this.publishDone(ask.week, "publish");
-    }
+  handlePublishAnswer(event) {
+    return this.buildWeek.answerPublish(event.detail.yes);
   }
 
-  /**
-   * Publishes the week the preview showed; a week or publish changed since is refused. The
-   * answer is always shown, unless another week is shown by then.
-   */
-  async publishNow(preview, week) {
-    const result = await publish({
-      scheduleId: this.loaded.scheduleId,
-      seenRevisions: preview.revisions,
-      seenPublishedId: preview.published ? preview.published.id : null
-    });
-    if (week !== this.loadedFor) {
-      // Published, though another week is shown now: the other screens still show it (WEEK-6.7).
-      if (
-        !result.draftChanged &&
-        !result.publishedChanged &&
-        !result.unchanged
-      ) {
-        this.tellSchedulesChanged(true, week);
-      }
-      return;
-    }
-    if (result.draftChanged || result.publishedChanged) {
-      this.refusePublish(
-        result.draftChanged
-          ? this.draftChangedText
-          : `Someone else published this ${this.t.sIn("Week")} since, so nothing was replaced.`
-      );
-      return;
-    }
-    this.publishState = { ...result.published, changedSince: false };
-    // A published schedule it replaced is a version now: Versions lists it straight away.
-    this.loadVersions();
-    // The week's published schedule, on every screen (WEEK-6.7).
-    if (!result.unchanged) {
-      this.tellSchedulesChanged(true);
-    }
-    const published = result.unchanged
-      ? `${this.weekName} is already published as it is.`
-      : `Published ${this.weekName}.`;
-    if (result.unchanged) {
-      this.say(published);
-    } else {
-      this.sayDone(published);
-    }
-  }
-
-  /**
-   * Unpublish (Greg, 2026-10-18): asks first, Cancel focused. The week then has no published
-   * schedule; the one it had is kept as a version marked Published, as one replaced is.
-   */
   handleUnpublish() {
-    if (!this.publishState || this.publishDisabled) {
-      return;
-    }
-    this.publishing = true;
-    this.error = null;
-    this.errorFromRead = false;
-    this.unpublishAsk = {
-      heading: `Unpublish ${this.weekName}?`,
-      lines: [`Nothing will be published for this ${this.t.sIn("Week")}.`],
-      publishedId: this.publishState.id,
-      week: this.loadedFor
-    };
+    this.buildWeek.askUnpublish();
   }
 
-  async handleUnpublishAnswer(event) {
-    const ask = this.unpublishAsk;
-    this.unpublishAsk = null;
-    try {
-      if (event.detail.yes) {
-        await this.unpublishNow(ask);
-      }
-    } catch (e) {
-      if (ask.week === this.loadedFor) {
-        this.error = failed(`${this.weekName} was not unpublished.`, e);
-      }
-    } finally {
-      // Back to Unpublish, or to Publish once the week has nothing published.
-      this.publishDone(ask.week, "unpublish");
-    }
-  }
-
-  /** Refused when the week was published or unpublished since the screen showed it. */
-  async unpublishNow(ask) {
-    const result = await unpublish({
-      scheduleId: this.loaded.scheduleId,
-      seenPublishedId: ask.publishedId
-    });
-    if (ask.week !== this.loadedFor) {
-      // Unpublished, though another week is shown now: the other screens still show it.
-      if (!result.publishedChanged) {
-        this.tellSchedulesChanged(true, ask.week);
-      }
-      return;
-    }
-    if (result.publishedChanged) {
-      this.refusePublish(
-        `Someone else published or unpublished this ${this.t.sIn("Week")} since, so nothing was unpublished.`
-      );
-      return;
-    }
-    this.publishState = null;
-    // The copy is a version now, marked Published: Versions lists it straight away.
-    this.loadVersions();
-    this.tellSchedulesChanged(true);
-    this.sayDone(`Unpublished ${this.weekName}.`);
-  }
-
-  /**
-   * A publish or unpublish is over: builds, edits and the pickers go on, focus goes back to its
-   * button (WCAG 2.4.3) unless another week is shown by then, and a read asked for meanwhile (the
-   * season read again) is done now.
-   */
-  publishDone(week, button) {
-    // An answer for a week no longer shown leaves the week shown as it is: showing it reset
-    // the flag, and a publish asked from it since is still on its way.
-    if (week !== this.loadedFor) {
-      return;
-    }
-    this.publishing = false;
-    this.focusOn = button;
-    const readNow = this.readAfterRun && !this.conflict;
-    this.readAfterRun = false;
-    if (readNow) {
-      this.load(true);
-    }
-  }
-
-  get draftChangedText() {
-    return `Someone else changed this ${this.t.sIn("Week")} since, so nothing was published.`;
-  }
-
-  /** Nothing was published: the line says why, and the week is read again for the director. */
-  refusePublish(text) {
-    this.say(text);
-    this.load(true);
+  handleUnpublishAnswer(event) {
+    return this.buildWeek.answerUnpublish(event.detail.yes);
   }
 
   /** "Published from Manual Build " before the date (c/shoreshPublish). */
@@ -2483,7 +2103,7 @@ export default class ShoreshGeneratedSchedule extends BuildScreen(
     // Undo starts over: its steps were made on the week it replaced. So does a Rebuild's Undo.
     this.startedOver = null;
     this.showInEditor("rebuilt");
-    this.loadSetupChanges();
+    this.buildWeek.loadSetupChanges();
     this.restored = { id, revision: week.revision };
     if (this.editorHasWeek) {
       this.say(said);

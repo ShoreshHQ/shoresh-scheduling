@@ -114,13 +114,12 @@ public with sharing class ElectiveDownloads {
     bunk.groupId = Id.valueOf(grid.groups[g].id);
     Cell open = null;
     for (Integer b = 0; b < grid.blocks.size(); b++) {
-      String text = grid.rows[g][b];
-      if (text == ScheduleGrid.CARRIES_ON && open != null) {
+      if (ScheduleGridCells.carriesOn(grid, g, b) && open != null) {
         open.blocks++;
         continue;
       }
       open = null;
-      ScheduleGrid.Item item = GridItems.itemAt(grid, g, b);
+      ScheduleGrid.Item item = ScheduleGridCells.itemAt(grid, g, b);
       if (item == null) {
         continue;
       }

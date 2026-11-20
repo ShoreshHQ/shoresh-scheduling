@@ -11,17 +11,13 @@ public with sharing class ImportUndoRestores {
     this.result = result;
   }
 
-  public void run(List<Object> changed) {
-    Map<Schema.SObjectType, List<Map<String, Object>>> byKind = new Map<Schema.SObjectType, List<Map<String, Object>>>();
-    for (Object item : changed) {
-      Map<String, Object> entry = (Map<String, Object>) item;
-      Schema.SObjectType kind = ImportFields.ofRecord(entry.get('id'));
-      ImportFields.check(
-        kind,
-        ((Map<String, Object>) entry.get('before')).keySet()
-      );
+  public void run(List<ImportLogEntries.Values> changed) {
+    Map<Schema.SObjectType, List<ImportLogEntries.Values>> byKind = new Map<Schema.SObjectType, List<ImportLogEntries.Values>>();
+    for (ImportLogEntries.Values entry : changed) {
+      Schema.SObjectType kind = entry.kind();
+      ImportFields.check(kind, entry.before().keySet());
       if (!byKind.containsKey(kind)) {
-        byKind.put(kind, new List<Map<String, Object>>());
+        byKind.put(kind, new List<ImportLogEntries.Values>());
       }
       byKind.get(kind).add(entry);
     }
@@ -54,35 +50,30 @@ public with sharing class ImportUndoRestores {
   /** One kind's records put back, read once; edited ones are kept and named. */
   private List<SObject> restored(
     Schema.SObjectType kind,
-    List<Map<String, Object>> entries
+    List<ImportLogEntries.Values> entries
   ) {
     Set<Id> ids = new Set<Id>();
     Set<String> fields = new Set<String>();
-    for (Map<String, Object> entry : entries) {
-      ids.add((Id) (String) entry.get('id'));
-      fields.addAll(((Map<String, Object>) entry.get('after')).keySet());
+    for (ImportLogEntries.Values entry : entries) {
+      ids.add(entry.recordId());
+      fields.addAll(entry.after().keySet());
     }
     Map<Id, SObject> now = ImportUndoValues.read(kind, fields, ids);
     List<SObject> rows = new List<SObject>();
-    for (Map<String, Object> entry : entries) {
-      SObject current = now.get((Id) (String) entry.get('id'));
+    for (ImportLogEntries.Values entry : entries) {
+      SObject current = now.get(entry.recordId());
       if (current == null) {
         // Deleted since: nothing to put back, and the summary says so.
-        result.gone.add((String) entry.get('name'));
+        result.gone.add(entry.name());
         continue;
       }
-      if (
-        !ImportUndoValues.unchanged(
-          current,
-          (Map<String, Object>) entry.get('after')
-        )
-      ) {
+      if (!ImportUndoValues.unchanged(current, entry.after())) {
         result.keptEdited.add(ImportFields.nameOf(current));
         continue;
       }
       names.put(current.Id, ImportFields.nameOf(current));
       SObject row = kind.newSObject(current.Id);
-      Map<String, Object> before = (Map<String, Object>) entry.get('before');
+      Map<String, Object> before = entry.before();
       for (String name : before.keySet()) {
         Schema.SObjectField field = ImportFields.field(kind, name);
         row.put(field, ImportUndoValues.asField(field, before.get(name)));

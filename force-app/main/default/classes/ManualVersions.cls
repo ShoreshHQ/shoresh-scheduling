@@ -91,7 +91,9 @@ public with sharing class ManualVersions {
       Id draftId = draft.Id;
       Schedule__c version = ManualVersions.versionOf(versionId, draft);
       List<ScheduleDays.DayGrid> current = ScheduleDays.read(draftId);
-      if (ScheduleDays.stamp(current) != seenRevisions) {
+      if (
+        !WeekTickets.seenNullNever(WeekTickets.stamp(current), seenRevisions)
+      ) {
         throw new ManualVersions.ChangedSinceException();
       }
       List<ScheduleDays.DayGrid> restored = ManualVersions.readable(

@@ -500,3 +500,54 @@ describe("the board", () => {
     ]);
   });
 });
+
+// ELECT-4.1, ELECT-4.11: the shared seat examples (staticresources/ShoreshSeatExamples.json),
+// which ElectiveSeatCounts must also pass (ElectiveSeatExamplesTest): the board counts each time.
+describe("shared seat counts", () => {
+  const { counts } = JSON.parse(
+    require("fs").readFileSync(
+      require("path").join(
+        __dirname,
+        "../../../staticresources/ShoreshSeatExamples.json"
+      ),
+      "utf8"
+    )
+  );
+  it.each(counts.map((c) => [c.name, c]))("%s", (name, example) => {
+    const base = runView();
+    const bunks = [...new Set(example.times.flat())];
+    const view = runView({
+      times: example.times.map((groupIds, i) => ({
+        ...base.times[0],
+        key: `${MONDAY}|b1|d${i}`,
+        divisionId: `d${i}`,
+        divisionOrder: i,
+        groupIds,
+        offeringIds: ["o1"]
+      })),
+      offerings: [
+        {
+          ...base.offerings[0],
+          seats: example.seats,
+          noLimit: example.noLimit
+        }
+      ],
+      groups: bunks.map((id) => {
+        const i = example.times.findIndex((g) => g.includes(id));
+        return { id, name: id, divisionId: `d${i}`, divisionName: `D${i}` };
+      }),
+      campers: example.seated.map((groupId, i) => ({
+        id: `c${i}`,
+        name: `Camper ${i}`,
+        groupId,
+        choices: "[]"
+      })),
+      seats: example.seated.map((groupId, i) =>
+        seat(`x${i}`, `c${i}`, MONDAY, "o1")
+      )
+    });
+    const row = buildBoard(readRun(view), t).offeringRows[0];
+    expect(row.cells.map((c) => c.count)).toEqual(example.count);
+    expect(row.cells.map((c) => !!c.over)).toEqual(example.over);
+  });
+});

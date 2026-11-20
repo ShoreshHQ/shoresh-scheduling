@@ -6,12 +6,6 @@
  */
 @IsTest
 private class ArchivedSeasonsTest {
-  private class AlwaysPublished implements PublishedHistory.Finder {
-    public Set<Id> withPublishedHistory(Set<Id> recordIds) {
-      return recordIds;
-    }
-  }
-
   private static Boolean archivedNow(Id seasonId) {
     return [
       SELECT Archived__c
@@ -39,7 +33,10 @@ private class ArchivedSeasonsTest {
         FROM Group__c
         WHERE Division__r.Program__r.Season__c = :season.Id
       ];
-      PublishedHistory.finder = new AlwaysPublished();
+      PublishedTestData.schedule(
+        ShoreshTestData.lastSeasonIds.get('Main'),
+        ShoreshTestData.lastSeasonIds.get('Week 1')
+      );
       Test.startTest();
       SetupDelete.Preview preview = SetupDelete.preview(season.Id);
       SeasonArchive.archive(season.Id);

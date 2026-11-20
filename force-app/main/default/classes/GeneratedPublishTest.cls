@@ -30,7 +30,7 @@ private class GeneratedPublishTest {
     GeneratedWeek.Locked locked = GeneratedScheduleController.setLocks(
       draftId,
       new List<GeneratedWeek.LockChange>{ change },
-      GeneratedDrafts.revisionOf(ScheduleDays.read(draftId))
+      WeekTickets.stamp(ScheduleDays.read(draftId))
     );
     Assert.isFalse(locked.conflict);
   }
@@ -53,7 +53,7 @@ private class GeneratedPublishTest {
           new List<String>{ GeneratedTestData.a('Swim') }
         )
       },
-      GeneratedDrafts.revisionOf(ScheduleDays.read(draftId))
+      WeekTickets.stamp(ScheduleDays.read(draftId))
     );
     Assert.isTrue(result.conflicts.isEmpty());
   }

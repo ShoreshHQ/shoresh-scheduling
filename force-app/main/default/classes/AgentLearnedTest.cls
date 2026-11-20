@@ -242,8 +242,12 @@ private class AgentLearnedTest {
         RestContext.response.statusCode,
         String.valueOf(answer)
       );
+      // Design guide §2: no internal key as an example.
       Assert.isTrue(
-        String.valueOf(answer.get('message')).startsWith('Say the pattern'),
+        String.valueOf(answer.get('message'))
+          .startsWith(
+            'Say the pattern exactly as read_learned_answers gave it (pattern).'
+          ),
         String.valueOf(answer.get('message'))
       );
     }

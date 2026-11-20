@@ -175,13 +175,12 @@ public with sharing class OutgoingPublished {
     for (Integer g = 0; g < grid.groups.size(); g++) {
       Thing open = null;
       for (Integer b = 0; b < grid.blocks.size(); b++) {
-        String cell = b < grid.rows[g].size() ? grid.rows[g][b] : '';
-        if (cell == ScheduleGrid.CARRIES_ON && open != null) {
+        if (ScheduleGridCells.carriesOn(grid, g, b) && open != null) {
           open.endTime = grid.blocks[b].endTime;
           continue;
         }
         open = null;
-        ScheduleGrid.Item item = GridItems.itemAt(grid, g, b);
+        ScheduleGrid.Item item = ScheduleGridCells.itemAt(grid, g, b);
         if (item == null) {
           continue;
         }

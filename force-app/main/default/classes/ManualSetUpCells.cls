@@ -104,12 +104,10 @@ public with sharing class ManualSetUpCells {
     Integer g
   ) {
     ScheduleGrid grid = day.grid;
-    ScheduleGrid.Item carrying = null;
-    for (Integer b = 0; b < grid.blocks.size(); b++) {
-      String token = grid.rows[g][b];
-      Boolean carries = token == ScheduleGrid.CARRIES_ON && carrying != null;
-      carrying = carries ? carrying : setTimeOf(grid, token);
-      if (carrying != null) {
+    List<ScheduleGrid.Item> held = ScheduleGridCells.itemsIn(grid, g);
+    for (Integer b = 0; b < held.size(); b++) {
+      ScheduleGrid.Item item = held[b];
+      if (isSetTime(item)) {
         Cell cell = new Cell();
         cell.key =
           String.valueOf(day.day) +
@@ -118,22 +116,20 @@ public with sharing class ManualSetUpCells {
           '|' +
           grid.blocks[b].id;
         cell.slot =
-          (carries ? ScheduleGrid.CARRIES_ON : '') +
-          carrying.kind +
+          (ScheduleGridCells.carriesOn(grid, g, b)
+            ? ScheduleGrid.CARRIES_ON
+            : '') +
+          item.kind +
           ':' +
-          carrying.id;
-        cell.name = carrying.name;
+          item.id;
+        cell.name = item.name;
         result.add(cell);
       }
     }
   }
 
-  /** The fixed or recurring activity a cell's token starts, or null. */
-  private static ScheduleGrid.Item setTimeOf(ScheduleGrid grid, String token) {
-    if (String.isBlank(token) || !token.isNumeric()) {
-      return null;
-    }
-    ScheduleGrid.Item item = grid.items[Integer.valueOf(token) - 1];
-    return item.kind == 'F' || item.kind == 'R' ? item : null;
+  /** A fixed or recurring activity. */
+  private static Boolean isSetTime(ScheduleGrid.Item item) {
+    return item != null && (item.kind == 'F' || item.kind == 'R');
   }
 }

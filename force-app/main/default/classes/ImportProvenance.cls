@@ -162,7 +162,7 @@ public with sharing class ImportProvenance {
       readCreated(created, written, done.CreatedDate);
       ImportProvenanceAttached.read(created, attached, done.CreatedDate);
       readChanged(
-        (List<Object>) JSON.deserializeUntyped(done.Changed__c),
+        ImportLogEntries.read(done.Changed__c),
         written,
         done.CreatedDate
       );
@@ -201,34 +201,29 @@ public with sharing class ImportProvenance {
   }
 
   private static void readChanged(
-    List<Object> changed,
+    ImportLogEntries.Changes changed,
     Map<Id, Written> written,
     Datetime at
   ) {
-    for (Object item : changed) {
-      if (item instanceof Map<String, Object>) {
-        readChange((Map<String, Object>) item, written, at);
-      }
+    for (ImportLogEntries.Values entry : changed.recordValues) {
+      readChange(entry, written, at);
+    }
+    // Removed by a later import (rule 8): no longer there to update or list.
+    for (ImportLogEntries.Removed entry : changed.removals) {
+      written.remove(entry.recordId());
     }
   }
 
-  /** One entry of what an import changed, for a record an import created. */
+  /** One record's values an import changed, for a record an import created. */
   private static void readChange(
-    Map<String, Object> entry,
+    ImportLogEntries.Values entry,
     Map<Id, Written> written,
     Datetime at
   ) {
-    // Removed by a later import (rule 8): no longer there to update or list.
-    if (entry.containsKey(ImportUndoLog.REMOVED)) {
-      written.remove((Id) (String) entry.get(ImportUndoLog.REMOVED));
-      return;
-    }
-    Object recordId = entry.get('id');
-    Written w = recordId instanceof String
-      ? written.get((Id) (String) recordId)
-      : null;
-    Map<String, Object> before = (Map<String, Object>) entry.get('before');
-    Map<String, Object> after = (Map<String, Object>) entry.get('after');
+    Id recordId = entry.namedId();
+    Written w = recordId == null ? null : written.get(recordId);
+    Map<String, Object> before = entry.before();
+    Map<String, Object> after = entry.after();
     if (w == null || before == null || after == null) {
       return;
     }

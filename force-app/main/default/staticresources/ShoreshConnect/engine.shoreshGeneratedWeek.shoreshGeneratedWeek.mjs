@@ -3,8 +3,6 @@ const saveWeekOnServer = () => Promise.reject(new Error("GeneratedScheduleContro
 const saveSlots = () => Promise.reject(new Error("GeneratedScheduleController.saveSlots runs only on Shoresh's screens."));
 const setLocksOnServer = () => Promise.reject(new Error("GeneratedScheduleController.setLocks runs only on Shoresh's screens."));
 const addActivityOnServer = () => Promise.reject(new Error("GeneratedScheduleController.addActivity runs only on Shoresh's screens."));
-const getSetupChanges = () => Promise.reject(new Error("SetupMatchController.getSetupChanges runs only on Shoresh's screens."));
-const updateToMatchSetupOnServer = () => Promise.reject(new Error("SetupMatchController.updateToMatchSetup runs only on Shoresh's screens."));
 import { reasonOf } from "./engine.shoreshErrors.shoreshErrors.mjs";
 import { notesText, readNotes } from "./engine.shoreshEngine.shoreshEngine.mjs";
 import { loadedOf, locksOf, saveRequestOf } from "./engine.shoreshGeneratedWeek.build.mjs";
@@ -230,50 +228,4 @@ export async function setLocks(loaded, changes) {
   } catch (e) {
     return { status: REFUSED, message: reasonOf(e) };
   }
-}
-
-/** Why "Update to match setup" was refused, with nothing changed (SetupMatch). */
-export const CHANGED_SINCE = "changedSince";
-export const SETUP_CHANGED = "setupChanged";
-
-/**
- * What setup changed since the Generated draft's week was built (Manual Build's SetupMatch, ADR
- * 0010 §56): resolves to { changes, dots, revisions, closedActivityIds, awayGroupIds, problem } (SetupMatch
- * Preview, every list there), or null before the week's first save; rejects when it can't be read.
- */
-export async function readSetupChanges(loaded) {
-  if (!loaded || !loaded.scheduleId) {
-    return null;
-  }
-  const preview = await getSetupChanges({ scheduleId: loaded.scheduleId });
-  return {
-    changes: (preview && preview.changes) || [],
-    dots: (preview && preview.dots) || [],
-    revisions: (preview && preview.revisions) || "",
-    closedActivityIds: (preview && preview.closedActivityIds) || [],
-    awayGroupIds: (preview && preview.awayGroupIds) || [],
-    problem: (preview && preview.problem) || null
-  };
-}
-
-/**
- * "Update to match setup" on the Generated draft: the chosen changes (keys) of the preview
- * worked out on the week at seenRevisions; versionKept: an earlier update in this opening of the
- * list kept the week as it was already. The draft's locks stay on every cell left as it was.
- * Resolves to { refused: CHANGED_SINCE | SETUP_CHANGED } with nothing changed, or
- * { refused: null, kept } once made (kept: this update kept "Before Update to match setup"); the
- * screen reads the week again (loadWeek). Rejects when the server refuses it.
- */
-export async function updateToMatchSetup(
-  loaded,
-  { keys, seenRevisions, versionKept }
-) {
-  const result = await updateToMatchSetupOnServer({
-    scheduleId: loaded.scheduleId,
-    ask: { keys, seenRevisions, versionKept: !!versionKept }
-  });
-  return {
-    refused: (result && result.refused) || null,
-    kept: !!(result && result.kept)
-  };
 }

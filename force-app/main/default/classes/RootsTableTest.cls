@@ -1,8 +1,9 @@
 /**
  * Roots' table (repo ADR 0020), as a scheduler with the Shoresh Scheduler permission set, on a
  * synthetic camp the size of a real one: six weeks, 28 bunks in six divisions, eight time blocks,
- * 25 activities, a Generated and a Manual draft of Week 2 (five days each), a published Week 1,
- * twenty saved versions, and an elective run with 40 campers seated. No real campers or staff.
+ * 25 activities, a Generated and a Manual draft of Week 2 (five days each, Chugim in Period 1 and
+ * Lunch for the last bunk), a published Week 1, twenty saved versions, and an elective run with
+ * 40 campers seated. No real campers or staff.
  */
 @IsTest
 private class RootsTableTest {
@@ -15,7 +16,8 @@ private class RootsTableTest {
     List<TimeBlock__c> blocks = new List<TimeBlock__c>();
     List<Group__c> groups = new List<Group__c>();
     List<Activity__c> activities = new List<Activity__c>();
-    // The elective run seats are added to (electives()).
+    // The elective set on every draft's grid, and the run seats are added to (electives()).
+    Id setId;
     Id runId;
 
     Camp() {
@@ -31,6 +33,12 @@ private class RootsTableTest {
       }
       addGroups();
       addActivities();
+      ElectiveSet__c chugim = new ElectiveSet__c(
+        Season__c = ids.get('Season'),
+        Name = 'Chugim'
+      );
+      Database.insert(chugim, AccessLevel.USER_MODE);
+      setId = chugim.Id;
     }
 
     void addBlocks() {
@@ -136,6 +144,7 @@ private class RootsTableTest {
         grid.items.add(new ScheduleGrid.Item('A', activity.Id, activity.Name));
       }
       grid.items.add(new ScheduleGrid.Item('F', ids.get('Lunch'), 'Lunch'));
+      grid.items.add(new ScheduleGrid.Item('E', setId, 'Chugim'));
       for (Integer g = 0; g < groups.size(); g++) {
         grid.groups.add(
           new ScheduleGrid.GroupRef(groups[g].Id, groups[g].Name)
@@ -143,15 +152,22 @@ private class RootsTableTest {
         List<String> row = new List<String>();
         for (Integer b = 0; b < blocks.size(); b++) {
           row.add(
-            blocks[b].Id == ids.get('Lunch')
-              ? String.valueOf(activities.size() + 1)
-              : String.valueOf(Math.mod(g + b, activities.size()) + 1)
+            g == groups.size() - 1 && isElectiveBlock(blocks[b].Id)
+              ? String.valueOf(activities.size() + 2)
+              : blocks[b].Id == ids.get('Lunch')
+                  ? String.valueOf(activities.size() + 1)
+                  : String.valueOf(Math.mod(g + b, activities.size()) + 1)
           );
         }
         grid.rows.add(row);
       }
       ScheduleGridLocks.lock(grid, new List<Integer>{ 0, 0 });
       return grid;
+    }
+
+    /** Period 1 and Lunch: where the last bunk has Chugim. */
+    Boolean isElectiveBlock(Id blockId) {
+      return blockId == ids.get('Period 1') || blockId == ids.get('Lunch');
     }
 
     void publishedAndVersions() {
@@ -187,18 +203,16 @@ private class RootsTableTest {
       Database.insert(versions, AccessLevel.SYSTEM_MODE);
     }
 
-    /** Chugim with six offerings; a run of Week 2 seating 40 campers over two periods. */
+    /**
+     * Chugim with six offerings; a run of Week 2 seating 40 campers of the last bunk over its two
+     * elective times on Monday.
+     */
     void electives(Id scheduleId) {
-      ElectiveSet__c chugim = new ElectiveSet__c(
-        Season__c = ids.get('Season'),
-        Name = 'Chugim'
-      );
-      Database.insert(chugim, AccessLevel.USER_MODE);
       List<Offering__c> offerings = new List<Offering__c>();
       for (Integer o = 0; o < 6; o++) {
         offerings.add(
           new Offering__c(
-            ElectiveSet__c = chugim.Id,
+            ElectiveSet__c = setId,
             Activity__c = activities[o].Id,
             Seats__c = 12,
             MinimumToRun__c = o == 1 ? 6 : null
@@ -209,7 +223,7 @@ private class RootsTableTest {
       ElectiveRun__c run = new ElectiveRun__c(
         Season__c = ids.get('Season'),
         Name = 'Chugim · Week 2',
-        ElectiveSet__c = chugim.Id,
+        ElectiveSet__c = setId,
         Week__c = ids.get('Week 2'),
         Schedule__c = scheduleId,
         Status__c = 'Committed',
@@ -228,23 +242,38 @@ private class RootsTableTest {
         );
       }
       Database.insert(made, AccessLevel.USER_MODE);
+      List<Preference__c> prefs = new List<Preference__c>();
+      for (Camper__c camper : made) {
+        prefs.add(
+          new Preference__c(
+            ElectiveRun__c = runId,
+            Camper__c = camper.Id,
+            Group__c = lastGroup()
+          )
+        );
+      }
+      Database.insert(prefs, AccessLevel.USER_MODE);
       List<Assignment__c> seats = new List<Assignment__c>();
       for (Integer c = 0; c < CAMPERS; c++) {
         // Period 1: the first offering takes 10, the second 5, the rest share what is left.
         Integer first = c < 10 ? 0 : (c < 15 ? 1 : 2 + Math.mod(c, 4));
         seats.add(seat(made[c].Id, ids.get('Period 1'), offerings[first].Id));
-        // Lunch's slot stands in for a second period: the first offering takes 3 there.
+        // Lunch, the bunk's second elective time: the first offering takes 3 there.
         Integer second = c < 3 ? 0 : 2 + Math.mod(c, 4);
         seats.add(seat(made[c].Id, ids.get('Lunch'), offerings[second].Id));
       }
       Database.insert(seats, AccessLevel.USER_MODE);
     }
 
+    Id lastGroup() {
+      return groups[groups.size() - 1].Id;
+    }
+
     Assignment__c seat(Id camperId, Id blockId, Id offeringId) {
       return new Assignment__c(
         ElectiveRun__c = runId,
         Camper__c = camperId,
-        Group__c = ids.get('Group A'),
+        Group__c = lastGroup(),
         Date__c = WEEK_2_MONDAY,
         TimeBlock__c = blockId,
         Offering__c = offeringId
@@ -272,9 +301,9 @@ private class RootsTableTest {
       Integer queries = Limits.getQueries() - before;
       Test.stopTest();
 
-      // Nine queries whatever the size of the camp: well under 100.
-      // 9: one more since what last year's schedule named is read (RootsNoted, ADR 0027).
-      Assert.isTrue(queries <= 9, 'Roots read with ' + queries + ' queries');
+      // A fixed number of queries whatever the size of the camp, well under 100: the seats card
+      // reads its run as Elective seats does (ElectiveRunState, ELECT-4.11).
+      Assert.isTrue(queries <= 20, 'Roots read with ' + queries + ' queries');
       // Outside the season: no week is this week; the cards show the first week with a draft.
       Assert.isNull(table.thisWeekId);
       Assert.areEqual(camp.ids.get('Week 2'), table.shownWeekId);
@@ -357,8 +386,7 @@ private class RootsTableTest {
       Integer before = Limits.getQueries();
       RootsTable.Table table = RootsController.getTable(camp.ids.get('Season'));
       Integer queries = Limits.getQueries() - before;
-      // 9: one more since what last year's schedule named is read (RootsNoted, ADR 0027).
-      Assert.isTrue(queries <= 9, 'Roots read with ' + queries + ' queries');
+      Assert.isTrue(queries <= 20, 'Roots read with ' + queries + ' queries');
       Assert.areEqual(camp.runId, table.seatsRunId);
       Assert.areEqual(generatedId, table.seatsScheduleId);
       Assert.areEqual(setId, table.seatsSetId);
@@ -528,6 +556,74 @@ private class RootsTableTest {
       Test.stopTest();
       Assert.isNull(table.shownWeekId);
       Assert.isTrue(table.builtWeekIds.isEmpty());
+    }
+  }
+
+  // ELECT-4.11
+  @IsTest
+  static void twoDivisionsInOneBlockAreCountedAsElectiveSeatsCountsThem() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      // Chugim on Monday's Period 1 for Group A (Juniors) and Group B, moved to a division of
+      // its own: two elective times then, one a division. Campers 0, 2, 4, 6 are in Group A;
+      // 1, 3, 5, 7 in Group B.
+      ElectiveSeatsCamp camp = new ElectiveSeatsCamp(8);
+      Division__c seniors = new Division__c(
+        Program__c = camp.ids.get('Main'),
+        Name = 'Seniors'
+      );
+      insert as user seniors;
+      update as user new Group__c(
+        Id = camp.ids.get('Group B'),
+        Division__c = seniors.Id
+      );
+      // Archery (2 seats): 2 of Group A, 1 of Group B. Pottery (at least 3): 2 of each.
+      Map<Integer, String> seated = new Map<Integer, String>{
+        0 => 'Archery',
+        2 => 'Archery',
+        1 => 'Archery',
+        4 => 'Pottery',
+        6 => 'Pottery',
+        3 => 'Pottery',
+        5 => 'Pottery',
+        7 => 'Drama'
+      };
+      List<Assignment__c> seats = new List<Assignment__c>();
+      for (Integer camper : seated.keySet()) {
+        ElectiveSeatSaves.SeatIn at = camp.seat(
+          camper,
+          Date.newInstance(2026, 6, 29),
+          seated.get(camper)
+        );
+        seats.add(
+          new Assignment__c(
+            ElectiveRun__c = camp.runId,
+            Camper__c = at.camperId,
+            Date__c = at.day,
+            TimeBlock__c = at.blockId,
+            Offering__c = at.offeringId
+          )
+        );
+      }
+      insert as user seats;
+
+      Test.startTest();
+      Integer before = Limits.getQueries();
+      RootsTable.Table table = RootsController.getTable(camp.ids.get('Season'));
+      Integer queries = Limits.getQueries() - before;
+      Test.stopTest();
+
+      Assert.isTrue(queries <= 20, 'Roots read with ' + queries + ' queries');
+      Map<String, RootsTable.Seat> byName = new Map<String, RootsTable.Seat>();
+      for (RootsTable.Seat seat : table.seats) {
+        byName.put(seat.name, seat);
+      }
+      // Each division's time on its own, as Elective seats shows them: Archery holds 2 of 2 at
+      // most (not 3, over), and Pottery 2 at each time, kept below its minimum (not 4).
+      Assert.areEqual(2, byName.get('Archery').taken, JSON.serialize(table));
+      Assert.areEqual(2, byName.get('Pottery').taken);
+      Assert.areEqual(1, table.shortSeats.size(), JSON.serialize(table));
+      Assert.areEqual('Pottery', table.shortSeats[0].name);
+      Assert.areEqual(2, table.shortSeats[0].fewest);
     }
   }
 

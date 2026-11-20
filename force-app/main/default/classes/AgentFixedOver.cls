@@ -3,7 +3,8 @@
  * recurring activity asks what Camp Setup's Fixed activities table asks, and on the yes sends the
  * same pieces. A faithful port of the screen's own working (lwc/shoreshProgram/fixedOver.js), read
  * from the records the screen reads (SeasonSetupReader's programs, the season's weeks and week-off
- * marks), so the same setup gives the same question and the same pieces. Change both together.
+ * marks), so the same setup gives the same question and the same pieces. Change both together:
+ * both must pass the shared examples (staticresources/ShoreshFixedOverExamples.json).
  * The fixed activity as it would be saved: AgentFixedOverPlan; the recurring activities it lands
  * on and the pieces each keeps: AgentFixedOverLandings; the question: AgentFixedOverWords.
  */

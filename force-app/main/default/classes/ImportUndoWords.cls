@@ -13,8 +13,7 @@ public with sharing class ImportUndoWords {
     this.campId = campId;
   }
 
-  /** entries: [{ wordOff, term, singular, plural }]. */
-  public void run(List<Object> entries) {
+  public void run(List<ImportLogEntries.WordOff> entries) {
     if (entries.isEmpty()) {
       return;
     }
@@ -32,8 +31,8 @@ public with sharing class ImportUndoWords {
       now.put(label.ModelTerm__c, label);
     }
     List<CampLabel__c> toAdd = new List<CampLabel__c>();
-    for (Object item : entries) {
-      CampLabel__c label = checked((Map<String, Object>) item, terms);
+    for (ImportLogEntries.WordOff entry : entries) {
+      CampLabel__c label = entry.label(campId, terms);
       if (now.containsKey(label.ModelTerm__c)) {
         // A word chosen since: the camp's choice stays.
         result.keptEdited.add(now.get(label.ModelTerm__c).Singular__c);
@@ -56,32 +55,5 @@ public with sharing class ImportUndoWords {
       }
       result.restored++;
     }
-  }
-
-  private CampLabel__c checked(Map<String, Object> entry, Set<String> terms) {
-    if (
-      ImportFields.ofRecord(entry.get(ImportUndoLog.WORD_OFF)) !=
-      CampLabel__c.SObjectType || !terms.contains(word(entry, 'term'))
-    ) {
-      throw ImportFields.unreadableLog();
-    }
-    return new CampLabel__c(
-      Camp__c = campId,
-      ModelTerm__c = word(entry, 'term'),
-      Singular__c = word(entry, 'singular'),
-      Plural__c = word(entry, 'plural')
-    );
-  }
-
-  private static String word(Map<String, Object> entry, String key) {
-    Object value = entry.get(key);
-    if (
-      !(value instanceof String) ||
-      String.isBlank((String) value) ||
-      ((String) value).length() > 80
-    ) {
-      throw ImportFields.unreadableLog();
-    }
-    return (String) value;
   }
 }

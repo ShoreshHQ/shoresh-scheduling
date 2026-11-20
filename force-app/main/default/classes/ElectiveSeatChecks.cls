@@ -34,16 +34,22 @@ public with sharing class ElectiveSeatChecks {
       : state.live.periodOf(groupId, seat.day, seat.blockId);
     if (at == null) {
       throw new ShoreshException(
-        state.labels().withArticle('Seats').capitalize() +
-          ' is at a time when that camper has no ' +
-          state.run.ElectiveSet__r.Name +
-          ' on the schedule. Reload the page.'
+        AgentRefusal.withFix(
+          state.labels().withArticle('Seats').capitalize() +
+            ' is at a time when that camper has no ' +
+            state.run.ElectiveSet__r.Name +
+            ' on the schedule.',
+          'Reload the page.'
+        )
       );
     }
     if (!at.offeringIds.contains(seat.offeringId)) {
       throw new ShoreshException(
-        state.labels().withArticle('Seats').capitalize() +
-        ' is in something not offered then. Reload the page.'
+        AgentRefusal.withFix(
+          state.labels().withArticle('Seats').capitalize() +
+          ' is in something not offered then.',
+          'Reload the page.'
+        )
       );
     }
     return at;

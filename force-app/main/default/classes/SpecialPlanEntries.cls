@@ -10,17 +10,9 @@ public with sharing class SpecialPlanEntries {
    * the desktop's seed is never a reason to refuse an import (its ADR 2026-08-22-event-schedule-import §6).
    */
   public static Boolean hasEntries(ScheduleGrid grid) {
-    for (
-      List<String> row : grid == null ? new List<List<String>>() : grid.rows
-    ) {
-      for (String cell : row) {
-        if (
-          String.isNotBlank(cell) &&
-          cell != ScheduleGrid.CARRIES_ON &&
-          !isSetTime(grid.items[Integer.valueOf(cell) - 1])
-        ) {
-          return true;
-        }
+    for (ScheduleGrid.Item item : startsIn(grid)) {
+      if (!isSetTime(item)) {
+        return true;
       }
     }
     return false;
@@ -29,16 +21,22 @@ public with sharing class SpecialPlanEntries {
   /** The fixed and recurring activities in the grid's cells, each name once, in the plan's order. */
   public static List<String> setTimesIn(ScheduleGrid grid) {
     List<String> result = new List<String>();
-    for (
-      List<String> row : grid == null ? new List<List<String>>() : grid.rows
-    ) {
-      for (String cell : row) {
-        if (String.isBlank(cell) || cell == ScheduleGrid.CARRIES_ON) {
-          continue;
-        }
-        ScheduleGrid.Item item = grid.items[Integer.valueOf(cell) - 1];
-        if (isSetTime(item) && !result.contains(item.name)) {
-          result.add(item.name);
+    for (ScheduleGrid.Item item : startsIn(grid)) {
+      if (isSetTime(item) && !result.contains(item.name)) {
+        result.add(item.name);
+      }
+    }
+    return result;
+  }
+
+  /** The item starting in each cell where one starts, row by row. */
+  private static List<ScheduleGrid.Item> startsIn(ScheduleGrid grid) {
+    List<ScheduleGrid.Item> result = new List<ScheduleGrid.Item>();
+    for (Integer g = 0; grid != null && g < grid.groups.size(); g++) {
+      List<ScheduleGrid.Item> held = ScheduleGridCells.itemsIn(grid, g);
+      for (Integer b = 0; b < held.size(); b++) {
+        if (held[b] != null && !ScheduleGridCells.carriesOn(grid, g, b)) {
+          result.add(held[b]);
         }
       }
     }
