@@ -1,6 +1,6 @@
 /**
  * CORE-3.9: the shared fixed-over examples (staticresources/ShoreshFixedOverExamples.json), which
- * the AI's port must also pass (AgentFixedOverTest): the Fixed activities table asks the same
+ * the AI's port must also pass (FixedOverExamplesTest): the Fixed activities table asks the same
  * question and keeps the same pieces. Ids here are the records' names.
  */
 import { CHILDREN, FIELD } from "c/shoreshSchema";
