@@ -106,7 +106,7 @@ public with sharing class AgentLockScope {
   /** The camp's words, read the first time something is refused. */
   private CampLabels words() {
     if (campWords == null) {
-      campWords = AgentVersions.labelsOf(week);
+      campWords = AgentSchedules.campWordsOf(week);
     }
     return campWords;
   }

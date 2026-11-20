@@ -26,11 +26,7 @@ global with sharing class AgentSaveVersion implements AgentWeeks.Action {
     String name = AgentFields.text(body, 'name');
     try {
       // Each screen's own Save version (API-1.41).
-      if (week.manual) {
-        ManualBuildController.saveVersion(week.draft.Id, name);
-      } else {
-        GeneratedScheduleController.saveVersion(week.draft.Id, name);
-      }
+      AgentScreenVersions.saveVersion(week, name);
     } catch (Exception e) {
       if (String.isBlank(name)) {
         throw new ShoreshException(ScreenErrors.words(e));

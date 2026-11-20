@@ -26,12 +26,10 @@ global with sharing class AgentRestoreVersion implements AgentWeeks.Action {
     Map<String, Object> body = AgentFields.body(FIELDS);
     AgentWeeks.Week week = AgentSchedules.placeOfEither(body);
     ScheduleViews.VersionRow version = AgentVersions.named(week, body);
-    if (week.manual) {
-      AgentSchedules.requireDraft(week);
-    }
+    AgentScreenVersions.requireDraftToRestore(week);
     Boolean done;
     try {
-      done = restored(week, version);
+      done = AgentScreenVersions.restoreVersion(week, version.id);
     } catch (Exception e) {
       throw AgentVersions.failed(
         version.name + ' wasn\'t restored. Nothing was changed.',
@@ -41,7 +39,7 @@ global with sharing class AgentRestoreVersion implements AgentWeeks.Action {
     if (!done) {
       throw new AgentWeeks.ConflictException(
         'Someone else changed this ' +
-          AgentVersions.labelsOf(week).singularInSentence('Week') +
+          AgentSchedules.campWordsOf(week).singularInSentence('Week') +
           ' since you opened it, so nothing was restored.'
       );
     }
@@ -56,35 +54,5 @@ global with sharing class AgentRestoreVersion implements AgentWeeks.Action {
       AgentUndoHeld.hold(undo);
     }
     return 'Restored ' + version.name + '.';
-  }
-
-  /**
-   * The screen's own Restore, Manual Build's or Generated Schedule's (API-1.41): false when
-   * someone saved the week since it was read.
-   */
-  private static Boolean restored(
-    AgentWeeks.Week week,
-    ScheduleViews.VersionRow version
-  ) {
-    if (week.manual) {
-      return ManualBuildController.restoreVersion(
-            week.draft.Id,
-            version.id,
-            WeekTickets.stamp(ScheduleDays.read(week.draft.Id))
-          )
-          .changedSince != true;
-    }
-    if (week.draft == null) {
-      return GeneratedScheduleController.restoreVersionAsNew(
-        week.program.Id,
-        week.weekId,
-        version.id
-      );
-    }
-    return GeneratedScheduleController.restoreVersion(
-      week.draft.Id,
-      version.id,
-      WeekTickets.stamp(ScheduleDays.read(week.draft.Id))
-    );
   }
 }

@@ -45,16 +45,9 @@ global with sharing class AgentRainyDay implements AgentWeeks.Action {
     }
     // The version the screen keeps first, under the name it gives: "Before rainy Monday".
     String kept = 'Before ' + change.uncapitalize();
-    Id versionId = week.manual
-      ? RainyDayController.keepManualWeek(week.draft.Id, kept)
-      : RainyDayController.keepGeneratedWeek(week.draft.Id, kept);
+    Id versionId = AgentScreenVersions.keepVersion(week, kept);
     // One edit, as the screen sends one step: made whole or not at all.
-    SlotEdits.Result result = week.manual
-      ? ManualBuildController.saveSlots(
-          week.draft.Id,
-          new List<SlotEdits.Edit>{ edit }
-        )
-      : AgentCells.handEdit(week, seen, edit);
+    SlotEdits.Result result = AgentSchedules.saveEdit(week, seen, edit);
     if (!result.conflicts.isEmpty()) {
       throw AgentWeeks.changedSince(change);
     }

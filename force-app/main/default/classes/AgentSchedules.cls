@@ -184,6 +184,23 @@ public with sharing class AgentSchedules {
         );
   }
 
+  /**
+   * The screen's own save of one hand edit, made whole or not at all: Manual Build's saveSlots, or
+   * Generated Schedule's hand-edit save with the week's ticket (seen, from holdAsSeen).
+   */
+  public static SlotEdits.Result saveEdit(
+    AgentWeeks.Week week,
+    String seen,
+    SlotEdits.Edit edit
+  ) {
+    return week.manual
+      ? ManualBuildController.saveSlots(
+          week.draft.Id,
+          new List<SlotEdits.Edit>{ edit }
+        )
+      : AgentCells.handEdit(week, seen, edit);
+  }
+
   /** The screen's own Unpublish of the published schedule it showed. */
   public static SchedulePublish.Result unpublish(
     AgentWeeks.Week week,
@@ -192,5 +209,17 @@ public with sharing class AgentSchedules {
     return week.manual
       ? ManualBuildController.unpublish(week.draft.Id, seenPublishedId)
       : GeneratedScheduleController.unpublish(week.draft.Id, seenPublishedId);
+  }
+
+  /** The week's camp's own words, with or without a draft. */
+  public static CampLabels campWordsOf(AgentWeeks.Week week) {
+    Id campId = [
+      SELECT Camp__c
+      FROM Season__c
+      WHERE Id = :week.season.Id
+      WITH USER_MODE
+    ]
+    .Camp__c;
+    return CampLabels.forCamp(campId);
   }
 }

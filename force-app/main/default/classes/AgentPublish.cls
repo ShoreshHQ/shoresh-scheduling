@@ -22,9 +22,7 @@ global with sharing class AgentPublish implements AgentWeeks.Action {
 
   public String run() {
     AgentWeeks.Week week = AgentSchedules.eitherOf(AgentFields.body(FIELDS));
-    String weekWord = CampLabels.forCamp(
-        week.draft.Program__r.Season__r.Camp__c
-      )
+    String weekWord = AgentSchedules.campWordsOf(week)
       .singularInSentence('Week');
     SchedulePublish.Result result;
     try {

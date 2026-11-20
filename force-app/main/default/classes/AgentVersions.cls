@@ -145,19 +145,7 @@ global with sharing class AgentVersions {
 
   /** "version", in the camp's own words. */
   public static String wordOf(AgentWeeks.Week week) {
-    return labelsOf(week).singularInSentence('Version');
-  }
-
-  /** The camp's own words. */
-  public static CampLabels labelsOf(AgentWeeks.Week week) {
-    Id campId = [
-      SELECT Camp__c
-      FROM Season__c
-      WHERE Id = :week.season.Id
-      WITH USER_MODE
-    ]
-    .Camp__c;
-    return CampLabels.forCamp(campId);
+    return AgentSchedules.campWordsOf(week).singularInSentence('Version');
   }
 
   /**
