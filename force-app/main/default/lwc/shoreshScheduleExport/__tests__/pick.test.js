@@ -1,4 +1,4 @@
-// Print and Excel by choice (PUB-6.4 to PUB-6.9): the whole week, a day, a bunk, an activity, a
+// Print and Excel by choice (PUB-6.6 to PUB-6.11): the whole week, a day, a bunk, an activity, a
 // location or a division, and a big camp's day split into readable pages. Made-up data only.
 import {
   EVERY,
@@ -95,7 +95,7 @@ function bigCamp(n, divisionOf) {
 }
 
 describe("print and Excel by choice", () => {
-  // PUB-6.4
+  // PUB-6.6
   describe("the choices", () => {
     it("offers the whole week, each day, bunk, activity, location and division", () => {
       const choices = printChoices(opened(), CATALOGUE, SETUP, t);
@@ -167,7 +167,7 @@ describe("print and Excel by choice", () => {
     });
   });
 
-  // PUB-6.6
+  // PUB-6.8
   describe("the printout", () => {
     const titles = (choice, view = opened()) =>
       pagesFor(view, choice, CATALOGUE, SETUP, t).map((p) => p.title);
@@ -271,7 +271,7 @@ describe("print and Excel by choice", () => {
       );
     });
 
-    // PUB-6.7
+    // PUB-6.9
     it("prints a special day as its own schedule, with its notes, titled with its name", () => {
       const view = opened();
       view.specials = {
@@ -305,7 +305,7 @@ describe("print and Excel by choice", () => {
     });
   });
 
-  // PUB-6.5
+  // PUB-6.7
   describe("a big camp's day on paper", () => {
     it("keeps a day that fits on one page", () => {
       const { view, setup } = bigCamp(PAGE_COLUMNS, () => "Juniors");
@@ -355,7 +355,7 @@ describe("print and Excel by choice", () => {
     });
   });
 
-  // PUB-6.8
+  // PUB-6.10
   describe("the Excel file", () => {
     const sheets = (choice, view = opened()) =>
       sheetsFor(view, choice, CATALOGUE, SETUP, t, offerings);

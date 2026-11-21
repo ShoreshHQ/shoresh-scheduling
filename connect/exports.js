@@ -19,7 +19,7 @@ const { queryFields } = require("./camp");
 const { refused, asTheScreenReads } = require("./imports");
 
 /**
- * What a file holds, as the screens' Excel and Print menus offer it (PUB-6.4): the menu's kinds
+ * What a file holds, as the screens' Excel and Print menus offer it (PUB-6.6): the menu's kinds
  * by the words a person says. The old view (daily, group, activity) is the whole week, every
  * group or every activity.
  */

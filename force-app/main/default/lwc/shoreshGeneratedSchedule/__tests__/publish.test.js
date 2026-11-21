@@ -299,12 +299,28 @@ describe("Publish on the Generated Schedule screen", () => {
     expect(publishButton(element).disabled).toBe(false);
   });
 
-  it("what the Why list shows is still to do: the box counts its rows", async () => {
+  // PUB-6.4
+  it("what the Why list shows is still to do: the box counts its rows and names each", async () => {
     const element = await render(cleanWeek({ maxSwim: 0 }));
     previewPublish.mockResolvedValue(preview());
     await clickPublish(element);
-    // Swim's over row and its session past the limit, in the counter's words.
-    expect(ask(element).lines).toEqual(["1 over", "1 to look at"]);
+    // Swim's over row and its session past the limit, in the counter's words, each under its
+    // count and going to the activity or the cell.
+    const { lines } = ask(element);
+    expect(lines.filter((line) => typeof line === "string")).toEqual([
+      "1 over",
+      "1 to look at"
+    ]);
+    expect(lines[1]).toMatchObject({
+      text: "Swim: 1 over · 1 Bunk",
+      go: { activityId: expect.any(String) },
+      sub: true
+    });
+    expect(lines[3]).toMatchObject({
+      text: "Bunk 1 · Monday · Period 1 · Swim: Over its weekly limit",
+      go: { line: expect.objectContaining({ groupId: expect.any(String) }) },
+      sub: true
+    });
     publish.mockResolvedValue({ published: PUBLISHED });
     await answer(ask(element), true);
     expect(publish).toHaveBeenCalledTimes(1);

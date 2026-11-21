@@ -1,11 +1,11 @@
 /**
- * Print and Excel by what a director asks for (PUB-6.4 to PUB-6.9; Greg 2026-11-21: "print the
+ * Print and Excel by what a director asks for (PUB-6.6 to PUB-6.11; Greg 2026-11-21: "print the
  * whole day. by bunk. by activity. etc. go beyond the desktop"): the whole week, one day for the
  * whole camp, one bunk, one activity, one location or one division, or every one of a kind. The
  * same choices on the Schedules page, Generated Schedule and Manual Build (c/shoreshPrintMenu).
  * Pure: the same week and choice always give the same pages and sheets.
  *
- * A day prints at most PAGE_COLUMNS bunks a page (PUB-6.5): when the camp is wider, its
+ * A day prints at most PAGE_COLUMNS bunks a page (PUB-6.7): when the camp is wider, its
  * divisions go a page at a time (small ones next to each other share one), and a division wider
  * than a page is split evenly. Each page says which bunks it holds.
  *
@@ -225,7 +225,7 @@ function evenParts(list, size) {
 }
 
 /**
- * A day's groups as pages (PUB-6.5): all on one page when they fit; else a division at a time,
+ * A day's groups as pages (PUB-6.7): all on one page when they fit; else a division at a time,
  * divisions side by side sharing a page while they fit, and one wider than a page split evenly.
  * Groups with no division form a run of their own. [{ indexes, label }]: label says which bunks
  * ("Juniors", "Juniors, Inters", "Seniors (1 of 2)", or "Cedar – Oak" outside any division);

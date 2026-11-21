@@ -1,4 +1,4 @@
-// The Print and Excel menu (PUB-6.4): the whole week, then each kind opening its choices.
+// The Print and Excel menu (PUB-6.6): the whole week, then each kind opening its choices.
 import { createElement } from "lwc";
 import ShoreshPrintMenu from "c/shoreshPrintMenu";
 

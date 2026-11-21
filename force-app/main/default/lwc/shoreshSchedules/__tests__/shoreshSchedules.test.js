@@ -201,7 +201,7 @@ describe("c-shoresh-schedules", () => {
     await expect(element).toBeAccessible();
   });
 
-  // PUB-6.4: what the menus offer comes from the week, whichever view is on screen; an empty
+  // PUB-6.6: what the menus offer comes from the week, whichever view is on screen; an empty
   // week still prints its days (UI pass item 23: never a blank page for an activity).
   it("offers the same choices in every view, leaving out activities when none is placed", async () => {
     getVersions.mockResolvedValue(VERSIONS);
@@ -620,7 +620,7 @@ describe("c-shoresh-schedules", () => {
       expect(fileName).toBe("Week 1 - Before my changes.xlsx");
     });
 
-    // PUB-6.8
+    // PUB-6.10
     it("downloads one choice: every bunk's week, named for it", async () => {
       getVersions.mockResolvedValue(VERSIONS);
       openSchedule.mockImplementation(answerFor);
@@ -677,7 +677,7 @@ describe("c-shoresh-schedules", () => {
       expect(window.print).toHaveBeenCalledTimes(2);
     });
 
-    // PUB-6.6
+    // PUB-6.8
     it("prints every bunk a page each, whatever the view on screen", async () => {
       getVersions.mockResolvedValue(VERSIONS);
       openSchedule.mockImplementation(answerFor);

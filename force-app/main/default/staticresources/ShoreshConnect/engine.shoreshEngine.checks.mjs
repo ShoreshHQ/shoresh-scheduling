@@ -169,7 +169,20 @@ function weeklyMax(ctx) {
     (p) => `${p.groupId}|${p.id}`
   ).forEach((list) => {
     const act = ctx.activities.get(list[0].id);
-    if (act && act.max !== null && list.length > act.max) {
+    if (act && act.max === 0) {
+      // At most 0 times a week: placed by hand only (a special day's, or one typed into a cell:
+      // LOCK-4.12). A placement the director made is never over; one a build made still is
+      // (GEN-7.3: the weekly max is a preference).
+      list
+        .filter((p) => !ctx.byHand && !ctx.locked.has(p.key))
+        .forEach((p) =>
+          flags.push({
+            p,
+            rule: RULES.WEEKLY_MAX,
+            reason: reasonFor(RULES.WEEKLY_MAX)
+          })
+        );
+    } else if (act && act.max !== null && list.length > act.max) {
       // Only the sessions past the limit, the latest in the week (Greg, 2026-10-17), and of
       // those not a locked one while an unlocked one can carry the dot instead: the director's
       // choices win (coordinator, 2026-10-17).
@@ -578,7 +591,8 @@ function filledCount(ctx) {
 /**
  * The week checked. model: { activities (readActivities), locations (readLocations), divisions
  * and setTimeLocations (readProgram), electivePlaces (readElectivePlaces), notFor: activity Id -> group Ids it isn't set up for,
- * isAway(groupId, blockId), locked (placement keys the director locked), isLockedOpen(groupId,
+ * isAway(groupId, blockId), locked (placement keys the director locked), byHand (every placement
+ * is the director's: Manual Build), isLockedOpen(groupId,
  * dateValue, blockId) (a cell locked empty, not counted as to fill), othersAt(kind, id, dayIndex,
  * blockId), otherNamesAt(locationId, dayIndex, blockId) }. words: { t (camp terms),
  * dayName(dateValue) }.
@@ -617,6 +631,8 @@ export function checkWeek(days, model, words) {
     // Manual Build: what setup puts in a cell (dateValue, groupId, blockId), or null.
     setUpAt: model.setUpAt || null,
     locked: model.locked || new Set(),
+    // Every placement is the director's own (Manual Build, a special day's plan): LOCK-4.12.
+    byHand: !!model.byHand,
     // The camp's normal first day of the week: an early-week goal's days count from it.
     firstDay: model.firstDay || 1,
     // Other programs' groups (G5): kind "place" or "activity", its Id, and "d|b". Both schedules

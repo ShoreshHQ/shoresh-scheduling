@@ -1,7 +1,7 @@
 import { LightningElement, api } from "lwc";
 
 /**
- * Print or Excel as a rail menu (PUB-6.4): the whole week, then Day, the bunk, activity, location
+ * Print or Excel as a rail menu (PUB-6.6): the whole week, then Day, the bunk, activity, location
  * and division words, each opening its choices under it ("Every Bunk" first where there are
  * several), one open at a time. The same menu on the Schedules page, Generated Schedule and
  * Manual Build.

@@ -187,7 +187,7 @@ describe("the screens' files, made on this computer", () => {
       })
     });
 
-    // PUB-6.4: what and which, as the screen's menu offers them.
+    // PUB-6.6: what and which, as the screen's menu offers them.
     const oneBunk = await make(
       "download_schedule",
       { week: "Week 1", as: "print", what: "group", which: "bunk 2" },

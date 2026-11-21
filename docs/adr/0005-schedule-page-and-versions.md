@@ -268,7 +268,7 @@ schedule), decisions 0002 and 0005. Shoresh desktop for look and behaviour:
 
 15. **Print and Excel by what the director asks for** (2026-11-21, Greg: "build in the print
     option", "we should be able to print the whole day. by bunk. by activity. etc. go beyond the
-    desktop"; PUB-6.4 to PUB-6.9). The desktop has Export to Excel only; this goes beyond it.
+    desktop"; PUB-6.6 to PUB-6.11). The desktop has Export to Excel only; this goes beyond it.
     - **Where.** The Saved versions page, Generated Schedule and Manual Build, the same piece on
       each (`c/shoreshScheduleOut`): **Excel** and **Print** on the rail, each a menu
       (`c/shoreshPrintMenu`, ADR 0015's rail menu). On the build screens they sit before Versions
@@ -286,18 +286,18 @@ schedule), decisions 0002 and 0005. Shoresh desktop for look and behaviour:
       week (the groups at it); a location's week (what runs there and which groups, "Swim
       (Cedar, Oak)", from the activity's, fixed or recurring activity's or special event's
       location); a division, a page per day with only its groups.
-    - **Readable at 40 bunks** (PUB-6.5). A day prints at most 10 groups a page. Wider, its
+    - **Readable at 40 bunks** (PUB-6.7). A day prints at most 10 groups a page. Wider, its
       divisions go a page each, divisions side by side sharing a page while they fit, one wider
       than a page split evenly; groups in no division form their own run. Each page's title
       names its groups: "Monday, Jun 29 · Juniors, Inters", "· Seniors (1 of 2)", "· Bunk 1 –
       Bunk 10". Ten keeps a landscape page's columns about 2 cm wide at 10 pt, wide enough for
       an activity's name on two lines.
-    - **The same look** (PUB-6.7): every page is `c-shoresh-schedule-print` as before.
-    - **Excel** (PUB-6.8): the whole week is the desktop's file as before (`scheduleSheets`).
+    - **The same look** (PUB-6.9): every page is `c-shoresh-schedule-print` as before.
+    - **Excel** (PUB-6.10): the whole week is the desktop's file as before (`scheduleSheets`).
       Any other choice is a sheet per thing chosen (a division's, a sheet per day; a day's holds
       the whole camp, as a sheet has no pages), time blocks down and the columns as printed,
       named "Week 1 - <version> - Cedar.xlsx", elective offerings listed, formula guard.
-    - **The published schedule** (PUB-6.9). Saved versions listed only rows with Status Version,
+    - **The published schedule** (PUB-6.11). Saved versions listed only rows with Status Version,
       so the week's published schedule could be opened only once replaced. Its list
       (`SchedulesController.getSavedSchedules`) now holds the published schedule too, newest
       first, marked Published as replaced ones are. The build screens' Versions keep to
@@ -305,7 +305,7 @@ schedule), decisions 0002 and 0005. Shoresh desktop for look and behaviour:
     - **An AI makes the same files** (API-1.86): `download_schedule` takes `what` and `which`
       as the menu names them; the older `view` still works.
     - Checked by `pick.test.js`, `shoreshPrintMenu.test.js`, `shoreshWeekEditor` `out.test.js`,
-      `shoreshSchedules.test.js`, `SchedulePublishTest`, connector `files.test.js`; in the test
+      `shoreshSchedules.test.js`, `SchedulesTest`, connector `files.test.js`; in the test
       org's print preview (see the PR).
 
 ## Choices that are hard to undo after release

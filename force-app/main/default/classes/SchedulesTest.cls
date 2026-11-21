@@ -329,7 +329,7 @@ private class SchedulesTest {
     }
   }
 
-  // PUB-6.9
+  // PUB-6.11
   @IsTest
   static void theSavedVersionsPageListsTheWeeksPublishedScheduleWithItsVersions() {
     System.runAs(ShoreshTestData.scheduler()) {

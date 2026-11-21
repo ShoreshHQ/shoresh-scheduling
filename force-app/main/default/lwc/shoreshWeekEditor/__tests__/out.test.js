@@ -1,4 +1,4 @@
-// Excel and Print on Manual Build and Generated Schedule (PUB-6.4): the same menus as the
+// Excel and Print on Manual Build and Generated Schedule (PUB-6.6): the same menus as the
 // Schedules page, for the week on screen, a special day printed as its own schedule. Synthetic
 // data only.
 import { createElement } from "lwc";

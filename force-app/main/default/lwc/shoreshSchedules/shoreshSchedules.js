@@ -1,6 +1,6 @@
 import { LightningElement, api } from "lwc";
 import { ShowToastEvent } from "lightning/platformShowToastEvent";
-// The week's versions and its published schedule (PUB-6.9).
+// The week's versions and its published schedule (PUB-6.11).
 import getVersions from "@salesforce/apex/SchedulesController.getSavedSchedules";
 import openSchedule from "@salesforce/apex/SchedulesController.openSchedule";
 import renameSchedule from "@salesforce/apex/SchedulesController.renameSchedule";

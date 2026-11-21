@@ -3,6 +3,7 @@ import saveWeekOnServer from "@salesforce/apex/GeneratedScheduleController.saveW
 import saveSlots from "@salesforce/apex/GeneratedScheduleController.saveSlots";
 import setLocksOnServer from "@salesforce/apex/GeneratedScheduleController.setLocks";
 import addActivityOnServer from "@salesforce/apex/GeneratedScheduleController.addActivity";
+import removeAddedOnServer from "@salesforce/apex/AddedActivityController.removeFromGenerated";
 import { reasonOf } from "c/shoreshErrors";
 import { notesText, readNotes } from "c/shoreshEngine";
 import { loadedOf, locksOf, saveRequestOf } from "./build";
@@ -198,6 +199,11 @@ export async function saveEdits(loaded, edits, engineNotes) {
  */
 export function addActivity({ scheduleId, name }) {
   return addActivityOnServer({ scheduleId, name });
+}
+
+/** Undo of "Add <name>": the activity taken off again while unused (LOCK-5.5); whether it was. */
+export function removeAddedActivity({ scheduleId, activityId }) {
+  return removeAddedOnServer({ scheduleId, activityId });
 }
 
 /**

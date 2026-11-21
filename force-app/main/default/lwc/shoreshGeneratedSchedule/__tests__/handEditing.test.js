@@ -20,6 +20,7 @@ import setLocksOnServer from "@salesforce/apex/GeneratedScheduleController.setLo
 import saveSlots from "@salesforce/apex/GeneratedScheduleController.saveSlots";
 import addOnGenerated from "@salesforce/apex/GeneratedScheduleController.addActivity";
 import addOnManualBuild from "@salesforce/apex/ManualBuildController.addActivity";
+import removeOnGenerated from "@salesforce/apex/AddedActivityController.removeFromGenerated";
 import { buildTerms } from "c/shoreshTerms";
 import { nsRecord } from "shoresh-jest/namespace";
 import { PROGRAM, SCHEDULE, SMALL, WEEK, camp, keeping } from "./data/camp";
@@ -54,6 +55,11 @@ jest.mock(
 jest.mock("@salesforce/apex/ManualBuildController.addActivity", () => apex(), {
   virtual: true
 });
+jest.mock(
+  "@salesforce/apex/AddedActivityController.removeFromGenerated",
+  () => apex(),
+  { virtual: true }
+);
 
 const SETUP = nsRecord({
   season: { Id: "a0Z000000000001AAA", Name: "Summer 2026" },
@@ -850,6 +856,59 @@ describe("hand editing on the Generated Schedule screen", () => {
         whyAt(element, "Bunk 1 · Monday · Period 3")
       ].join(" ")
     ).toMatch(/weekly limit/);
+  });
+
+  // LOCK-4.12, LOCK-5.5
+  it("an activity typed in at 0 a week is never over where it is typed, and its Undo takes it off this draft's way", async () => {
+    const element = await render(savedWeek({ rows: ["1,,,", "1,,,"] }));
+    saveSlots.mockReturnValue(new Promise(() => {}));
+    const zoo = "a0A000000000009AAA";
+    addOnGenerated.mockResolvedValue({
+      id: zoo,
+      name: "Zoo trip",
+      length: 1,
+      minPerWeek: 0,
+      maxPerWeek: 0,
+      notFor: [],
+      record: nsRecord({
+        Id: zoo,
+        Name: "Zoo trip",
+        Length__c: 1,
+        TimesPerWeekMin__c: 0,
+        TimesPerWeekMax__c: 0,
+        GroupsAtOnce__c: 1
+      })
+    });
+    const typeZoo = async (key) => {
+      await press(cellAt(element, key), "Enter");
+      const input = q(element, '[data-id="slot-input"]');
+      input.value = "Zoo trip";
+      input.dispatchEvent(new CustomEvent("input"));
+      await flush();
+      await press(input, "Enter");
+    };
+    await typeZoo("0-2");
+    await typeZoo("0-3");
+    expect(textAt(element, "0-3")).toBe("Zoo trip");
+    // Both typed by hand (locked): neither is over its weekly limit of 0.
+    expect(
+      [
+        whyAt(element, "Bunk 1 · Monday · Period 2"),
+        whyAt(element, "Bunk 1 · Monday · Period 3")
+      ].join(" ")
+    ).not.toMatch(/weekly limit/);
+    // Undo's take-off goes to Generated Schedule's draft.
+    removeOnGenerated.mockResolvedValue(true);
+    await expect(
+      editor(element).removeActivityWith({
+        scheduleId: SCHEDULE,
+        activityId: zoo
+      })
+    ).resolves.toBe(true);
+    expect(removeOnGenerated).toHaveBeenCalledWith({
+      scheduleId: SCHEDULE,
+      activityId: zoo
+    });
   });
 
   it("an activity added while another edit saves is on the Activity View as this week's, not deleted, after both save", async () => {

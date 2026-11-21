@@ -28,7 +28,7 @@ global with sharing class AgentScheduleFile implements AgentRequest.Read {
       AgentFields.text(asked, 'program')
     );
     ScheduleViews.VersionRow version;
-    // The Saved versions page's own list, its published schedule among them (PUB-6.9).
+    // The Saved versions page's own list, its published schedule among them (PUB-6.11).
     List<ScheduleViews.VersionRow> rows = SchedulesController.getSavedSchedules(
       week.program.Id,
       week.weekId

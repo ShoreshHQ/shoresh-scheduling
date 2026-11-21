@@ -104,6 +104,37 @@ describe("measureWeek: the counter's and the drawer's one measure", () => {
     expect(m.hasGoals).toBe(false);
   });
 
+  // LOCK-4.12
+  it("an activity at most 0 times a week counts over only where the check calls it over", () => {
+    // Zoo trip, typed in by hand for b1 and b2 (not over), placed by a build for b3 (over).
+    const placements = [
+      { ...p("b1", "zoo"), key: "k1" },
+      { ...p("b2", "zoo"), key: "k2" },
+      { ...p("b3", "zoo"), key: "k3" }
+    ];
+    const m = measureWeek(
+      {
+        cells: { filled: 3, total: 6 },
+        placements,
+        bends: new Map([["k3", ["weeklyMax"]]])
+      },
+      [act("zoo", "Zoo trip", 0, 0)],
+      DAYS
+    );
+    expect(m.under.count).toBe(0);
+    expect(m.over).toEqual({
+      count: 1,
+      rows: [{ id: "zoo", name: "Zoo trip", placed: 1, goal: 0, groups: 1 }]
+    });
+    const byHand = measureWeek(
+      { cells: { filled: 2, total: 6 }, placements: placements.slice(0, 2) },
+      [act("zoo", "Zoo trip", 0, 0)],
+      DAYS
+    );
+    expect(byHand.over.count).toBe(0);
+    expect(byHand.offTarget).toBe(false);
+  });
+
   it("rows keep the order the activities are listed in, and the counts add up", () => {
     const m = measureWeek(
       { cells: { filled: 0, total: 6 }, placements: [p("b1", "b")] },

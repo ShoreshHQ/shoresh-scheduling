@@ -65,6 +65,28 @@ describe("checks: the bronze dots", () => {
     expect(result.flags.has(`${MON}|g2|t1`)).toBe(false);
   });
 
+  // LOCK-4.12
+  it("an activity at most 0 times a week placed by hand is never over; one a build placed is", () => {
+    const days = weekOf({
+      [MON]: [
+        ["A:zoo", "", ""],
+        ["A:zoo", "", ""]
+      ]
+    });
+    const zoo = [activity("zoo", { max: 0 })];
+    // Manual Build: every placement is the director's.
+    const manual = checkWeek(days, model(zoo, { byHand: true }), words);
+    expect(manual.flags.size).toBe(0);
+    // Generated: the director's hand edit is locked; the build's own placement still says it.
+    const generated = checkWeek(
+      days,
+      model(zoo, { locked: new Set([`${MON}|g1|t1`]) }),
+      words
+    );
+    expect(generated.flags.has(`${MON}|g1|t1`)).toBe(false);
+    expect(generated.flags.get(`${MON}|g2|t1`)).toBe("Over its weekly limit");
+  });
+
   it("past the limit goes by time of day, not by row order: the later block on the same day", () => {
     // Period 2 (10:00) comes before Period 1 (9:00) in this day's list of blocks.
     const days = weekOf(

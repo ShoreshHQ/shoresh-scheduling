@@ -90,7 +90,7 @@ public with sharing class ScheduleViews {
 
   /**
    * The week's versions and its published schedule, newest first: what the Saved versions page
-   * opens, prints and downloads (PUB-6.9). The build screens' Versions keep to versions().
+   * opens, prints and downloads (PUB-6.11). The build screens' Versions keep to versions().
    */
   public static List<VersionRow> versionsAndPublished(Id programId, Id weekId) {
     return listed(

@@ -1,7 +1,7 @@
 /**
  * "Add <name> to activities" from Generated Schedule (ADR 0010 §38), as a scheduler with the
- * Shoresh Scheduler permission set: a new name makes the season's activity with the starting
- * values of one added by hand, the same name again (spaces and capitals aside) gives that one,
+ * Shoresh Scheduler permission set: a new name makes the season's activity at 0 times a week
+ * (LOCK-4.12), the same name again (spaces and capitals aside) gives that one,
  * an existing activity's name gives it; only from a Generated draft, never a version or Manual
  * Build's draft. Camp: GeneratedTestData. Synthetic data only.
  */
@@ -11,7 +11,7 @@ private class GeneratedAddActivityTest {
   private static final Integer QUERY_BOUND = 10;
 
   @IsTest
-  static void aNewNameIsAddedOnceWithHandAddedStartingValues() {
+  static void aNewNameIsAddedOnceAtZeroTimesAWeek() {
     System.runAs(ShoreshTestData.scheduler()) {
       Map<String, Id> ids = GeneratedTestData.camp();
       Id draftId = GeneratedTestData.generated();
@@ -40,7 +40,8 @@ private class GeneratedAddActivityTest {
       ];
       Assert.areEqual('Arts and crafts', saved.Name);
       Assert.areEqual(1, saved.Length__c);
-      Assert.areEqual(1, saved.TimesPerWeekMax__c);
+      // At 0 times a week (LOCK-4.12), as one typed into a special day starts.
+      Assert.areEqual(0, saved.TimesPerWeekMax__c);
       Assert.areEqual(ids.get('Season'), saved.Season__c);
       Assert.areEqual(1, added.length);
       Assert.isTrue(added.notFor.isEmpty());

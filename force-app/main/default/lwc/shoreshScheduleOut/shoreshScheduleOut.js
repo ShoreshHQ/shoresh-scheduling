@@ -14,7 +14,7 @@ import {
 
 /**
  * Getting a week out, the same on the Schedules page, Generated Schedule and Manual Build
- * (PUB-6.4 to PUB-6.9): Excel and Print, each a menu of the whole week, a day, a bunk, an
+ * (PUB-6.6 to PUB-6.11): Excel and Print, each a menu of the whole week, a day, a bunk, an
  * activity, a location or a division (c-shoresh-print-menu). Excel saves the file at once; Print
  * puts the printout on the page (c-shoresh-schedule-print, on paper only), opens the browser's
  * print, and takes the printout away after (ADR 0005 choice 13). Salesforce's header and menu stay
@@ -77,7 +77,7 @@ export default class ShoreshScheduleOut extends LightningElement {
 
   /**
    * The Excel file for the choice: the whole week is the desktop's file (a sheet per day, then
-   * every group's and activity's week); anything else a sheet per thing chosen (PUB-6.8).
+   * every group's and activity's week); anything else a sheet per thing chosen (PUB-6.10).
    */
   async handleExport(event) {
     if (this.disabled || this.exporting) {
@@ -116,7 +116,7 @@ export default class ShoreshScheduleOut extends LightningElement {
     }
   }
 
-  /** The printout for the choice (PUB-6.4 to PUB-6.7), then the browser's print. */
+  /** The printout for the choice (PUB-6.6 to PUB-6.9), then the browser's print. */
   async handlePrint(event) {
     if (this.disabled || this.printout) {
       return;

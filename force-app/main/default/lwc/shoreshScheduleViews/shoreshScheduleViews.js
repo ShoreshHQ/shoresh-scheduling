@@ -680,7 +680,7 @@ export function activityGrid(view, activityId, t) {
 }
 
 /**
- * A place's week (PUB-6.6), opened on one location: in each block of each day, what is there and
+ * A place's week (PUB-6.8), opened on one location: in each block of each day, what is there and
  * the groups doing it, "Swim (Cedar, Oak)". isHere(item): whether a placed item runs at the place.
  * A group there from a rainy-day switch puts its raindrop before its item. A day a special day
  * replaces is one cell named for it, as in Activity View.

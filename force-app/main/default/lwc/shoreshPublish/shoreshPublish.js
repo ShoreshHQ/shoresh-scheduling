@@ -6,12 +6,22 @@
  * round 1 #2 to #4: never blocked). It uses the counters' own words, the same on both screens
  * (PUB-6.2, CORE-6.5): "7 of 10 placed", Conflicts (CORE-1.29), Still needed, Spread across the week.
  *
+ * Each count is followed by what it counts, named as the Why list names it (PUB-6.4), and a special
+ * day on the week with bunks it plans nothing for is named too (PUB-6.5); a line naming a cell, an
+ * activity or a special day takes the director there ({ text, go }, c-shoresh-ask).
+ *
  * publishQuestion returns one of:
  *   { kind: "same" }: the published schedule already is the week; nothing to do.
  *   { kind: "now" }: the week's first publish, with nothing to show; publish at once.
- *   { kind: "ask", heading, lines, confirmLabel }: for c-shoresh-ask.
+ *   { kind: "ask", heading, lines, confirmLabel }: for c-shoresh-ask. A line is its words, or
+ *   { text, go, sub } for one under a count (sub) or one that goes somewhere (go: { line } for a
+ *   cell, as the Why list's locate; { activityId }; { specialItemId }).
  */
 import { buildTerms } from "c/shoreshTerms";
+import { checkLines } from "c/shoreshWeekChecks";
+
+// Under each count, at most this many of its lines; then "…and N more."
+const NAMED = 5;
 
 // The screen a published schedule was published from, by the Origin__c its copy records.
 const SCREENS = { Manual: "Manual Build", Generated: "Generated Schedule" };
@@ -67,16 +77,25 @@ function changeWords(preview, t) {
  * (c-shoresh-week-checks counts: lines the director accepted aside), when the screen has them.
  * measure: the week's measure as the Why list (c-shoresh-week-checks) shows it, counted as its
  * headings count, accepted or not ("5 under", "2 over", "4 to look at", "1 note"). Without it, the placements the check flags are
- * ("2 activities need a look."). t: the camp's words (c/shoreshTerms).
+ * ("2 activities need a look."). t: the camp's words (c/shoreshTerms). named: the lines to list
+ * under each count, by kind (open, short, over, look, note), when the question names them.
  */
-export function problemLines(checked, counts, t = buildTerms([]), measure) {
+export function problemLines(
+  checked,
+  counts,
+  t = buildTerms([]),
+  measure,
+  named = {}
+) {
   if (!checked) {
     return [];
   }
   const lines = [];
+  // Each count, then the lines it counts when given (PUB-6.4: named by kind).
+  const add = (count, kind) => lines.push(count, ...(named[kind] || []));
   const { filled, total } = checked.cells || { filled: 0, total: 0 };
   if (total > filled) {
-    lines.push(`${filled} of ${total} placed`);
+    add(`${filled} of ${total} placed`, "open");
   }
   // As the counter says them beside the button ("5 under", "2 over", "4 to look at", "1 note"),
   // with its own numbers: under and over count sessions, as its headings do (UX pass finding
@@ -90,16 +109,16 @@ export function problemLines(checked, counts, t = buildTerms([]), measure) {
   const dotted = !measure && checked.flags ? checked.flags.size : 0;
   if (under > 0) {
     // One word with the counter's lines ("3 short · 2 Bunks"; Greg's pick, 2026-11-12).
-    lines.push(`${under} short`);
+    add(`${under} short`, "short");
   }
   if (over > 0) {
-    lines.push(`${over} over`);
+    add(`${over} over`, "over");
   }
   if (look > 0) {
-    lines.push(`${look} to look at`);
+    add(`${look} to look at`, "look");
   }
   if (notes > 0) {
-    lines.push(`${notes} ${notes === 1 ? "note" : "notes"}`);
+    add(`${notes} ${notes === 1 ? "note" : "notes"}`, "note");
   }
   if (dotted > 0) {
     lines.push(
@@ -129,6 +148,99 @@ export function problemLines(checked, counts, t = buildTerms([]), measure) {
   return lines;
 }
 
+/** The lines under a count: each, at most NAMED, then how many more. */
+function underCount(rows, lineOf) {
+  const shown = rows
+    .slice(0, NAMED)
+    .map((row) => ({ ...lineOf(row), sub: true }));
+  const more = rows.length - shown.length;
+  return more > 0
+    ? [...shown, { text: `…and ${more} more.`, sub: true }]
+    : shown;
+}
+
+/** A Why list line ({ text, groupId, dateValue, blockId }): one naming a bunk goes there. */
+function located(line) {
+  return line.groupId ? { text: line.text, go: { line } } : { text: line.text };
+}
+
+/**
+ * PUB-6.4: problemLines' counts with the Why list's own lines under each, in its words: the Open
+ * cells, each activity short or over with its bunks, each line to look at and each note. measure:
+ * the week's measure as the Why list shows it; accepted lines are named too, as they are counted.
+ */
+function namedProblems(checked, measure, t) {
+  const lines = checkLines(measure, [], {
+    one: t.sIn("Group"),
+    many: t.pIn("Group")
+  });
+  const activity = (row) => ({ text: row.said, go: { activityId: row.id } });
+  return problemLines(checked, null, t, measure, {
+    open: underCount(lines.open, located),
+    short: underCount(lines.under, activity),
+    over: underCount(lines.over, activity),
+    look: underCount(lines.look, located),
+    note: underCount(lines.notes, (line) => ({ text: line.text }))
+  });
+}
+
+/** A row of a special day's own schedule: each cell's token ("" Open, "^" carries on, else 1-based item). */
+function plannedIn(plan, row) {
+  const items = plan.items || [];
+  return (row || "").split(",").some((token) => {
+    const item = /^\d+$/.test(token) ? items[Number(token) - 1] : null;
+    // A fixed or recurring activity is the regular day's (SPECIAL-2.1), not the special day's plan.
+    return item && item.kind !== "F" && item.kind !== "R";
+  });
+}
+
+/**
+ * PUB-6.5: each special day on the week whose own schedule plans nothing for some of the week's
+ * bunks (every cell Open, or only the regular day's fixed and recurring activities), named with
+ * them: "Color war (Thursday): nothing planned for Bunk 2, Bunk 3, Bunk 4 and 6 more (9 of 10
+ * Bunks)"; one with no schedule saved yet, "nothing planned yet". It opens that special day. specials: the week's (WeekSpecials: { days }), as the week
+ * editor has them.
+ */
+export function specialDayLines(specials, t = buildTerms([])) {
+  return ((specials && specials.days) || []).flatMap((day) => {
+    const plan = day.plan;
+    if (!plan || plan.problem) {
+      return [];
+    }
+    const where = `${day.name} (${day.day})`;
+    const go = { specialItemId: day.specialDayId };
+    const groups = plan.groups || [];
+    // No time blocks: no schedule saved yet (SpecialPlanDay sends it with no bunks either).
+    if (!(plan.blocks || []).length) {
+      return [{ text: `${where}: nothing planned yet`, go }];
+    }
+    const empty = groups.filter(
+      (grp, g) => !plannedIn(plan, (plan.rows || [])[g])
+    );
+    if (!empty.length) {
+      return [];
+    }
+    if (empty.length === groups.length) {
+      return [{ text: `${where}: nothing planned yet`, go }];
+    }
+    // Three names, then how many more: "Bunk 2, Bunk 3, Bunk 4 and 6 more", "Bunk 2 and Bunk 3".
+    const names = empty.slice(0, 3).map((grp) => grp.name);
+    const more = empty.length - names.length;
+    const words = more > 0 ? [...names, `${more} more`] : names;
+    const listed =
+      words.length > 1
+        ? `${words.slice(0, -1).join(", ")} and ${words[words.length - 1]}`
+        : words[0];
+    const unit = groups.length === 1 ? t.sIn("Group") : t.pIn("Group");
+    return [
+      {
+        text: `${where}: nothing planned for ${listed} (${empty.length} of ${groups.length} ${unit})`,
+        go
+      }
+    ];
+  });
+}
+
 // The screen a published schedule came from, by its Origin.
 const FROM_SCREEN = { Manual: "Manual Build", Generated: "Generated Schedule" };
 
@@ -154,6 +266,7 @@ export function publishQuestion({
   checked,
   counts,
   measure,
+  specials = null,
   weekName,
   t,
   origin = null
@@ -162,7 +275,12 @@ export function publishQuestion({
   if (replacing && preview.changeCount === 0) {
     return { kind: "same" };
   }
-  const problems = problemLines(checked, counts, t, measure);
+  const problems = [
+    ...(measure && checked
+      ? namedProblems(checked, measure, t)
+      : problemLines(checked, counts, t, measure)),
+    ...specialDayLines(specials, t)
+  ];
   if (!replacing && problems.length === 0) {
     return { kind: "now" };
   }
