@@ -678,3 +678,74 @@ export function activityGrid(view, activityId, t) {
     cells
   };
 }
+
+/**
+ * A place's week (PUB-6.8), opened on one location: in each block of each day, what is there and
+ * the groups doing it, "Swim (Cedar, Oak)". isHere(item): whether a placed item runs at the place.
+ * A group there from a rainy-day switch puts its raindrop before its item. A day a special day
+ * replaces is one cell named for it, as in Activity View.
+ */
+export function locationGrid(view, isHere, t) {
+  const { blocks, rowOf } = weekRows(view);
+  const cells = [];
+  (view.days || []).forEach((day, dayIndex) => {
+    if (day.problem) {
+      cells.push(problemCell(dayIndex, blocks.length));
+      return;
+    }
+    if (day.special) {
+      cells.push(specialCell(dayIndex, blocks.length, day.special, t));
+      return;
+    }
+    // row -> item name -> { groups, rain }, in the order first met.
+    const byRow = new Map();
+    const switched = switchedOn(view, day);
+    day.groups.forEach((grp, g) =>
+      groupCells(day, g).forEach((c) => {
+        if (!c.item || !isHere(c.item)) {
+          return;
+        }
+        const rain = isSwitched(switched, day, g, c.blockIndex, c.item);
+        for (let b = c.blockIndex; b < c.blockIndex + c.length; b++) {
+          const row = rowOf(day, b);
+          const items = byRow.get(row) || new Map();
+          const entry = items.get(c.item.name) || { groups: [], rain: false };
+          entry.groups.push(grp.name);
+          entry.rain = entry.rain || rain;
+          items.set(c.item.name, entry);
+          byRow.set(row, items);
+        }
+      })
+    );
+    blocks.forEach((block, row) => {
+      const here = [...(byRow.get(row) || new Map()).entries()].map(
+        ([name, entry]) => ({
+          name: `${name} (${entry.groups.join(", ")})`,
+          rain: entry.rain
+        })
+      );
+      cells.push({
+        key: `${dayIndex}-${row}`,
+        row,
+        column: dayIndex,
+        length: 1,
+        style: place(row, dayIndex, 1),
+        className: here.length
+          ? "cell cell_activity-here"
+          : "cell cell_activity-none",
+        names: here.map((entry, i) => ({
+          key: String(i),
+          name: entry.name,
+          rain: entry.rain,
+          said: entry.rain ? `, ${RAIN_PLAN}` : null
+        })),
+        title: here.length ? here.map((entry) => entry.name).join(", ") : "Open"
+      });
+    });
+  });
+  return {
+    columns: days(view).map(dayColumn),
+    rows: blockRows(blocks),
+    cells
+  };
+}

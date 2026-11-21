@@ -1,6 +1,6 @@
 import { createElement } from "lwc";
 import ShoreshSchedules from "c/shoreshSchedules";
-import getVersions from "@salesforce/apex/SchedulesController.getVersions";
+import getVersions from "@salesforce/apex/SchedulesController.getSavedSchedules";
 import openSchedule from "@salesforce/apex/SchedulesController.openSchedule";
 import renameSchedule from "@salesforce/apex/SchedulesController.renameSchedule";
 import { buildTerms } from "c/shoreshTerms";
@@ -13,9 +13,13 @@ import {
 } from "../../shoreshScheduleViews/__tests__/data/scheduleFixture";
 
 const apex = () => ({ default: jest.fn() });
-jest.mock("@salesforce/apex/SchedulesController.getVersions", () => apex(), {
-  virtual: true
-});
+jest.mock(
+  "@salesforce/apex/SchedulesController.getSavedSchedules",
+  () => apex(),
+  {
+    virtual: true
+  }
+);
 jest.mock("@salesforce/apex/SchedulesController.openSchedule", () => apex(), {
   virtual: true
 });
@@ -101,6 +105,21 @@ async function render(setup = SETUP) {
 }
 
 const q = (element, selector) => element.shadowRoot.querySelector(selector);
+
+/** The Excel or Print menu (c-shoresh-print-menu), inside c-shoresh-schedule-out. */
+function menuOf(element, id) {
+  const out = q(element, '[data-id="out"]');
+  return out ? out.shadowRoot.querySelector(`[data-id="${id}"]`) : null;
+}
+/** Chooses from the Excel or Print menu, as a director's click does. */
+function choose(element, id, detail = { kind: "week" }) {
+  menuOf(element, id).dispatchEvent(new CustomEvent("choose", { detail }));
+}
+/** The printout while it is on the page, else null. */
+function printoutOf(element) {
+  const out = q(element, '[data-id="out"]');
+  return out ? out.shadowRoot.querySelector("c-shoresh-schedule-print") : null;
+}
 const qa = (element, selector) => [
   ...element.shadowRoot.querySelectorAll(selector)
 ];
@@ -171,27 +190,20 @@ describe("c-shoresh-schedules", () => {
     expect(rail.querySelector('.mid [data-id="day-pills"]')).not.toBeNull();
     const right = rail.querySelector(".side_right");
     expect(
-      [...right.querySelectorAll("c-shoresh-versions, button")].map(
-        (el) => el.dataset.id || el.tagName.toLowerCase()
-      )
-    ).toEqual(["c-shoresh-versions", "export", "print"]);
-    expect(
-      right
-        .querySelector('[data-id="print"]')
-        .classList.contains("shoresh-item_primary")
-    ).toBe(true);
-    expect(
-      right
-        .querySelector('[data-id="export"]')
-        .classList.contains("shoresh-item_primary")
-    ).toBe(false);
+      [
+        ...right.querySelectorAll("c-shoresh-versions, c-shoresh-schedule-out")
+      ].map((el) => el.dataset.id || el.tagName.toLowerCase())
+    ).toEqual(["c-shoresh-versions", "out"]);
+    expect(menuOf(element, "print").primary).toBe(true);
+    expect(menuOf(element, "export").primary).toBe(false);
     // No strip above the grid: the version's name is on Versions.
     expect(q(element, '[data-id="viewing"]')).toBeNull();
     await expect(element).toBeAccessible();
   });
 
-  // UI pass item 23: Activity View with no activity placed printed a blank page.
-  it("Print is off in Activity View when no activity is placed, and on again in Daily", async () => {
+  // PUB-6.6: what the menus offer comes from the week, whichever view is on screen; an empty
+  // week still prints its days (UI pass item 23: never a blank page for an activity).
+  it("offers the same choices in every view, leaving out activities when none is placed", async () => {
     getVersions.mockResolvedValue(VERSIONS);
     openSchedule.mockImplementation(() => {
       const view = opened();
@@ -204,12 +216,11 @@ describe("c-shoresh-schedules", () => {
       });
     });
     const element = await render();
+    const kinds = () => menuOf(element, "print").choices.map((c) => c.kind);
+    expect(kinds()).toEqual(["week", "day", "group"]);
     q(element, '[data-view="activity"]').click();
     await flush();
-    expect(q(element, '[data-id="print"]').disabled).toBe(true);
-    q(element, '[data-view="day"]').click();
-    await flush();
-    expect(q(element, '[data-id="print"]').disabled).toBe(false);
+    expect(kinds()).toEqual(["week", "day", "group"]);
   });
 
   it("never says nothing is saved or open while the newest version is loading", async () => {
@@ -579,28 +590,23 @@ describe("c-shoresh-schedules", () => {
       const element = await render();
       const group = q(element, '[aria-label="Versions and export"]');
       expect(group.getAttribute("role")).toBe("group");
-      // "Excel" on the rail, "Download Excel" as its name (Greg's pick, 2026-11-12: Download).
-      const excel = group.querySelector('[data-id="export"]');
-      expect(excel.textContent.trim()).toBe("Excel");
-      expect(excel.getAttribute("aria-label")).toBe("Download Excel");
-      expect(group.querySelector('[data-id="print"]').textContent.trim()).toBe(
-        "Print"
-      );
+      expect(menuOf(element, "export").label).toBe("Excel");
+      expect(menuOf(element, "print").label).toBe("Print");
       await expect(element).toBeAccessible();
     });
 
     it("are not there while nothing is open", async () => {
       getVersions.mockResolvedValue([]);
       const element = await render();
-      expect(q(element, '[data-id="export"]')).toBeNull();
-      expect(q(element, '[data-id="print"]')).toBeNull();
+      expect(menuOf(element, "export")).toBeNull();
+      expect(menuOf(element, "print")).toBeNull();
     });
 
-    it("downloads the version on screen, without asking which: a sheet per day, then the flat ones", async () => {
+    it("downloads the whole week of the version on screen: a sheet per day, then the flat ones", async () => {
       getVersions.mockResolvedValue(VERSIONS);
       openSchedule.mockImplementation(answerFor);
       const element = await render();
-      q(element, '[data-id="export"]').click();
+      choose(element, "export");
       await flush();
       expect(downloadWorkbook).toHaveBeenCalledTimes(1);
       const [, sheets, fileName] = downloadWorkbook.mock.calls[0];
@@ -614,28 +620,40 @@ describe("c-shoresh-schedules", () => {
       expect(fileName).toBe("Week 1 - Before my changes.xlsx");
     });
 
+    // PUB-6.10
+    it("downloads one choice: every bunk's week, named for it", async () => {
+      getVersions.mockResolvedValue(VERSIONS);
+      openSchedule.mockImplementation(answerFor);
+      const element = await render();
+      choose(element, "export", { kind: "group", key: "*" });
+      await flush();
+      const [, sheets, fileName] = downloadWorkbook.mock.calls[0];
+      expect(sheets.map((x) => x.name)).toEqual(["Bunk 1", "Bunk 2"]);
+      expect(fileName).toBe("Week 1 - Before my changes - Every Bunk.xlsx");
+    });
+
     it("says a download that failed, and why only in Shoresh's words", async () => {
       getVersions.mockResolvedValue(VERSIONS);
       openSchedule.mockImplementation(answerFor);
       downloadWorkbook.mockRejectedValueOnce(new Error("XLSX is not defined"));
       const element = await render();
-      q(element, '[data-id="export"]').click();
+      choose(element, "export");
       await flush();
       expect(q(element, '[data-id="schedules-error"]').textContent).toBe(
         "The schedule wasn't downloaded. Try again."
       );
     });
 
-    it("prints a page per day from Daily View, and takes the printout away after", async () => {
+    it("prints the whole week a page per day, and takes the printout away after", async () => {
       getVersions.mockResolvedValue(VERSIONS);
       openSchedule.mockImplementation(answerFor);
       const element = await render();
-      expect(q(element, "c-shoresh-schedule-print")).toBeNull();
+      expect(printoutOf(element)).toBeNull();
       let pagesWhilePrinting;
       window.print = jest.fn(() => {
-        pagesWhilePrinting = q(element, "c-shoresh-schedule-print").pages;
+        pagesWhilePrinting = printoutOf(element).pages;
       });
-      q(element, '[data-id="print"]').click();
+      choose(element, "print");
       await flush();
       expect(loadStyle).toHaveBeenCalledTimes(1);
       expect(loadStyle.mock.calls[0][1]).toContain("ShoreshPrint");
@@ -645,33 +663,30 @@ describe("c-shoresh-schedules", () => {
         "Tuesday, Jun 30",
         "Wednesday, Jul 1"
       ]);
-      const printout = q(element, "c-shoresh-schedule-print");
+      const printout = printoutOf(element);
       expect(printout.week).toBe("Week 1");
       expect(printout.version).toBe("Before my changes");
       window.dispatchEvent(new CustomEvent("afterprint"));
       await flush();
-      expect(q(element, "c-shoresh-schedule-print")).toBeNull();
+      expect(printoutOf(element)).toBeNull();
 
       // Printing again doesn't load the style again.
-      q(element, '[data-id="print"]').click();
+      choose(element, "print");
       await flush();
       expect(loadStyle).toHaveBeenCalledTimes(1);
       expect(window.print).toHaveBeenCalledTimes(2);
     });
 
-    it("prints a page per bunk from Group View", async () => {
+    // PUB-6.8
+    it("prints every bunk a page each, whatever the view on screen", async () => {
       getVersions.mockResolvedValue(VERSIONS);
       openSchedule.mockImplementation(answerFor);
       const element = await render();
-      q(element, '[data-view="group"]').click();
-      await flush();
       let titles;
       window.print = jest.fn(() => {
-        titles = q(element, "c-shoresh-schedule-print").pages.map(
-          (p) => p.title
-        );
+        titles = printoutOf(element).pages.map((p) => p.title);
       });
-      q(element, '[data-id="print"]').click();
+      choose(element, "print", { kind: "group", key: "*" });
       await flush();
       expect(titles).toEqual(["Bunk 1", "Bunk 2"]);
     });
@@ -681,44 +696,33 @@ describe("c-shoresh-schedules", () => {
       openSchedule.mockImplementation(answerFor);
       loadStyle.mockRejectedValueOnce(new Error("blocked"));
       const element = await render();
-      q(element, '[data-id="print"]').click();
+      choose(element, "print");
       await flush();
       expect(window.print).toHaveBeenCalledTimes(1);
     });
 
-    // aria-disabled, not disabled, while under way: a focused button that turns disabled drops
-    // the cursor to the top of the page.
-    it("keep the cursor on Print while printing, and a second press does nothing", async () => {
+    // While under way the menu stays usable (never disabled, which would drop the cursor to the
+    // top of the page) and a second choice does nothing.
+    it("prints once while printing, the menu still usable", async () => {
       getVersions.mockResolvedValue(VERSIONS);
       openSchedule.mockImplementation(answerFor);
       const element = await render();
       let whilePrinting;
       window.print = jest.fn(() => {
-        const button = q(element, '[data-id="print"]');
-        whilePrinting = {
-          disabled: button.disabled,
-          busy: button.getAttribute("aria-disabled"),
-          focused: element.shadowRoot.activeElement === button
-        };
-        button.click();
+        const menu = menuOf(element, "print");
+        whilePrinting = { disabled: menu.disabled, busy: menu.busy };
+        choose(element, "print");
       });
-      q(element, '[data-id="print"]').focus();
-      q(element, '[data-id="print"]').click();
+      choose(element, "print");
       await flush();
-      expect(whilePrinting).toEqual({
-        disabled: false,
-        busy: "true",
-        focused: true
-      });
+      expect(whilePrinting).toEqual({ disabled: false, busy: true });
       expect(window.print).toHaveBeenCalledTimes(1);
       window.dispatchEvent(new CustomEvent("afterprint"));
       await flush();
-      const button = q(element, '[data-id="print"]');
-      expect(button.getAttribute("aria-disabled")).toBe("false");
-      expect(element.shadowRoot.activeElement).toBe(button);
+      expect(menuOf(element, "print").busy).toBe(false);
     });
 
-    it("keep the cursor on Export while the file is made, and a second press does nothing", async () => {
+    it("makes one file while the file is made, the menu still usable", async () => {
       getVersions.mockResolvedValue(VERSIONS);
       openSchedule.mockImplementation(answerFor);
       let finish;
@@ -726,20 +730,17 @@ describe("c-shoresh-schedules", () => {
         () => new Promise((resolve) => (finish = resolve))
       );
       const element = await render();
-      const button = q(element, '[data-id="export"]');
-      button.focus();
-      button.click();
+      choose(element, "export");
       await flush();
-      expect(button.disabled).toBe(false);
-      expect(button.getAttribute("aria-disabled")).toBe("true");
-      expect(element.shadowRoot.activeElement).toBe(button);
-      button.click();
+      const menu = menuOf(element, "export");
+      expect(menu.disabled).toBe(false);
+      expect(menu.busy).toBe(true);
+      choose(element, "export");
       await flush();
       expect(downloadWorkbook).toHaveBeenCalledTimes(1);
       finish();
       await flush();
-      expect(button.getAttribute("aria-disabled")).toBe("false");
-      expect(element.shadowRoot.activeElement).toBe(button);
+      expect(menu.busy).toBe(false);
     });
 
     it("can't export or print a version with no days", async () => {
@@ -749,8 +750,8 @@ describe("c-shoresh-schedules", () => {
       );
       const element = await render();
       expect(q(element, '[data-id="no-days"]')).not.toBeNull();
-      expect(q(element, '[data-id="export"]').disabled).toBe(true);
-      expect(q(element, '[data-id="print"]').disabled).toBe(true);
+      expect(menuOf(element, "export").disabled).toBe(true);
+      expect(menuOf(element, "print").disabled).toBe(true);
     });
   });
 

@@ -1,0 +1,21 @@
+@import "c/shoreshTokens";
+
+:host {
+  display: inline-flex;
+}
+
+/* A kind's word, its chevron at the row's end; open, the chevron turns down. */
+.kind-word {
+  flex: 1 1 auto;
+}
+
+.kind-row[aria-expanded="true"] .shoresh-chevron {
+  transform: rotate(90deg);
+}
+
+/* A kind's choices sit indented under its word; a long list (40 bunks) scrolls in place. */
+.options {
+  max-height: 50vh;
+  overflow-y: auto;
+  padding-left: var(--shoresh-space-control-x);
+}
