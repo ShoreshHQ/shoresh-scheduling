@@ -4,6 +4,7 @@ import getDraft from "@salesforce/apex/ManualBuildController.getDraft";
 import startBlankWeek from "@salesforce/apex/ManualBuildController.startBlankWeek";
 import saveSlots from "@salesforce/apex/ManualBuildController.saveSlots";
 import addActivity from "@salesforce/apex/ManualBuildController.addActivity";
+import removeAddedActivity from "@salesforce/apex/AddedActivityController.removeFromManualBuild";
 import { buildTerms } from "c/shoreshTerms";
 import { nsRecord } from "shoresh-jest/namespace";
 import {
@@ -35,6 +36,11 @@ jest.mock("@salesforce/apex/ManualBuildController.saveSlots", () => apex(), {
 jest.mock("@salesforce/apex/ManualBuildController.addActivity", () => apex(), {
   virtual: true
 });
+jest.mock(
+  "@salesforce/apex/AddedActivityController.removeFromManualBuild",
+  () => apex(),
+  { virtual: true }
+);
 
 const SETUP = {
   season: { Id: "se1", Name: "Summer 2026" },
@@ -460,6 +466,174 @@ describe("c-shoresh-manual-build", () => {
     });
     expect(saveSlots.mock.calls[0][0].edits[0].runs[0].after).toEqual(["A:a7"]);
     expect(cellText(element, "0-1")).toBe("Archery");
+  });
+
+  // LOCK-4.11
+  it("a name no activity has offers the closest ones first, so Enter places one the season has", async () => {
+    getDraft.mockResolvedValue(draft());
+    saveSlots.mockResolvedValue(answer(WITH_SWIM, ["1,2,", "1,,"]));
+    const element = await render();
+    await press(cell(element, "0-1"), "Enter");
+    const input = await type(element, "swsw");
+    expect(optionLabels(element)).toEqual(["Swim", 'Add "swsw" to activities']);
+    await press(input, "Enter");
+    expect(addActivity).not.toHaveBeenCalled();
+    expect(saveSlots.mock.calls[0][0].edits[0].runs[0].after).toEqual(["A:a1"]);
+  });
+
+  // LOCK-5.5, LOCK-6.3
+  it("Undo of a new name takes it off activities again, Redo adds it back, and the page hears each", async () => {
+    getDraft.mockResolvedValue(draft());
+    addActivity
+      .mockResolvedValueOnce({
+        id: "a7",
+        name: "Zoo trip",
+        length: 1,
+        notFor: [],
+        created: true
+      })
+      .mockResolvedValueOnce({
+        id: "a8",
+        name: "Zoo trip",
+        length: 1,
+        notFor: [],
+        created: true
+      });
+    removeAddedActivity.mockResolvedValue(true);
+    const zoo = (id) => [
+      ...WITH_SOCCER.slice(0, 1),
+      { kind: "A", id, name: "Zoo trip" }
+    ];
+    saveSlots
+      .mockResolvedValueOnce(answer(zoo("a7"), ["1,2,", "1,,"]))
+      .mockResolvedValueOnce(answer(WITH_SOCCER.slice(0, 1), ["1,,", "1,,"]))
+      .mockResolvedValueOnce(answer(zoo("a8"), ["1,2,", "1,,"]));
+    const element = await render();
+    const heard = jest.fn();
+    element.addEventListener("seasonchanged", heard);
+    await press(cell(element, "0-1"), "Enter");
+    await press(await type(element, "Zoo trip"), "Enter");
+    expect(heard).toHaveBeenCalledTimes(1);
+    q(element, '[data-id="undo"]').click();
+    await flush();
+    expect(removeAddedActivity).toHaveBeenCalledWith({
+      scheduleId: "d1",
+      activityId: "a7"
+    });
+    expect(heard).toHaveBeenCalledTimes(2);
+    expect(q(element, '[data-id="notice"]').textContent).toContain(
+      '"Zoo trip" taken off Activities.'
+    );
+    q(element, '[data-id="redo"]').click();
+    await flush();
+    // Added again by its name, and the redone cell names the new one.
+    expect(addActivity).toHaveBeenLastCalledWith({
+      scheduleId: "d1",
+      name: "Zoo trip"
+    });
+    expect(saveSlots.mock.calls[2][0].edits[0].runs[0].after).toEqual(["A:a8"]);
+    expect(heard).toHaveBeenCalledTimes(3);
+  });
+
+  // LOCK-5.5
+  it("Undo leaves an activity on activities while something else still uses it", async () => {
+    getDraft.mockResolvedValue(draft());
+    addActivity.mockResolvedValue({
+      id: "a7",
+      name: "Zoo trip",
+      length: 1,
+      notFor: [],
+      created: true
+    });
+    removeAddedActivity.mockResolvedValue(false);
+    saveSlots
+      .mockResolvedValueOnce(
+        answer(
+          [
+            ...WITH_SOCCER.slice(0, 1),
+            { kind: "A", id: "a7", name: "Zoo trip" }
+          ],
+          ["1,2,", "1,,"]
+        )
+      )
+      .mockResolvedValueOnce(answer(WITH_SOCCER.slice(0, 1), ["1,,", "1,,"]));
+    const element = await render();
+    await press(cell(element, "0-1"), "Enter");
+    await press(await type(element, "Zoo trip"), "Enter");
+    q(element, '[data-id="undo"]').click();
+    await flush();
+    expect(removeAddedActivity).toHaveBeenCalledTimes(1);
+    const notice = q(element, '[data-id="notice"]');
+    expect(notice ? notice.textContent : "").not.toContain("taken off");
+    // Typing it again finds it: it is still one of the activities.
+    await press(cell(element, "0-1"), "Enter");
+    await type(element, "zoo");
+    expect(optionLabels(element)).toContain("Zoo trip");
+  });
+
+  // LOCK-5.5
+  it("Undo never takes off an activity the add found by its name instead of making it", async () => {
+    getDraft.mockResolvedValue(draft());
+    // Someone else made Archery since this week was read: the add finds theirs.
+    addActivity.mockResolvedValue({
+      id: "a7",
+      name: "Archery",
+      length: 1,
+      notFor: [],
+      created: false
+    });
+    const archery = [
+      ...WITH_SOCCER.slice(0, 1),
+      { kind: "A", id: "a7", name: "Archery" }
+    ];
+    saveSlots
+      .mockResolvedValueOnce(answer(archery, ["1,2,", "1,,"]))
+      .mockResolvedValueOnce(answer(WITH_SOCCER.slice(0, 1), ["1,,", "1,,"]));
+    const element = await render();
+    await press(cell(element, "0-1"), "Enter");
+    await press(await type(element, "Archery"), "Enter");
+    q(element, '[data-id="undo"]').click();
+    await flush();
+    expect(saveSlots).toHaveBeenCalledTimes(2);
+    expect(removeAddedActivity).not.toHaveBeenCalled();
+  });
+
+  // LOCK-5.5
+  it("Undo and Redo wait while an Undo's activity is still being taken off", async () => {
+    getDraft.mockResolvedValue(draft());
+    addActivity.mockResolvedValue({
+      id: "a7",
+      name: "Zoo trip",
+      length: 1,
+      notFor: [],
+      created: true
+    });
+    const removing = later();
+    removeAddedActivity.mockReturnValue(removing.promise);
+    saveSlots
+      .mockResolvedValueOnce(
+        answer(
+          [
+            ...WITH_SOCCER.slice(0, 1),
+            { kind: "A", id: "a7", name: "Zoo trip" }
+          ],
+          ["1,2,", "1,,"]
+        )
+      )
+      .mockResolvedValueOnce(answer(WITH_SOCCER.slice(0, 1), ["1,,", "1,,"]));
+    const element = await render();
+    await press(cell(element, "0-1"), "Enter");
+    await press(await type(element, "Zoo trip"), "Enter");
+    q(element, '[data-id="undo"]').click();
+    await flush();
+    expect(q(element, '[data-id="redo"]').disabled).toBe(true);
+    q(element, '[data-id="redo"]').click();
+    await flush();
+    // Nothing redone while it is unknown whether Zoo trip goes.
+    expect(saveSlots).toHaveBeenCalledTimes(2);
+    removing.answer(true);
+    await flush();
+    expect(q(element, '[data-id="redo"]').disabled).toBe(false);
   });
 
   it("a slot someone else changed asks keep theirs or use yours; Use yours saves over theirs", async () => {

@@ -14,6 +14,7 @@ import {
   SAVED,
   addActivity,
   buildInputOf,
+  removeAddedActivity,
   builtWeekOf,
   loadWeek,
   saveEdits,
@@ -1570,6 +1571,23 @@ export default class ShoreshGeneratedSchedule extends BuildScreen(
     }
     return added;
   };
+  /** Undo of "Add <name>" on this week: the activity, when taken off, leaves the week's records too. */
+  removeActivityWith = async (request) => {
+    const removed = await removeAddedActivity(request);
+    const loaded = this.loaded;
+    if (removed && loaded) {
+      this.loaded = {
+        ...loaded,
+        input: {
+          ...loaded.input,
+          activities: loaded.input.activities.filter(
+            (a) => a.Id !== request.activityId
+          )
+        }
+      };
+    }
+    return removed;
+  };
 
   /**
    * A hand edit saved: the week to go on with is the one the server sent (never patched). Setup
@@ -1866,7 +1884,11 @@ export default class ShoreshGeneratedSchedule extends BuildScreen(
   }
 
   handlePublishAnswer(event) {
-    return this.buildWeek.answerPublish(event.detail.yes);
+    const done = this.buildWeek.answerPublish(event.detail.yes);
+    if (event.detail.go) {
+      this.goToProblem(event.detail.go);
+    }
+    return done;
   }
 
   handleUnpublish() {

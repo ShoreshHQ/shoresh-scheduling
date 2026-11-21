@@ -48,6 +48,34 @@ describe("c-shoresh-ask", () => {
     expect(element.shadowRoot.activeElement).toBe(q(element, '[data-id="no"]'));
   });
 
+  // PUB-6.4
+  it("a line that goes somewhere is a link under its count: choosing it answers no, saying where", async () => {
+    const element = createElement("c-shoresh-ask", { is: ShoreshAsk });
+    element.heading = "Publish Week 1?";
+    element.lines = [
+      "1 over",
+      { text: "Art: 1 over · 1 Bunk", go: { activityId: "art" }, sub: true },
+      { text: "…and 2 more.", sub: true }
+    ];
+    element.confirmLabel = "Publish";
+    document.body.appendChild(element);
+    await flush();
+    const answers = [];
+    element.addEventListener("answer", (e) => answers.push(e.detail));
+    const rows = [...element.shadowRoot.querySelectorAll("p")];
+    expect(rows.map((p) => p.className)).toEqual([
+      "slds-m-bottom_x-small",
+      "slds-m-bottom_x-small ask-sub",
+      "slds-m-bottom_x-small ask-sub"
+    ]);
+    expect(rows[0].querySelector("button")).toBeNull();
+    expect(rows[2].querySelector("button")).toBeNull();
+    const link = rows[1].querySelector("button.ask-link");
+    expect(link.textContent.trim()).toBe("Art: 1 over · 1 Bunk");
+    link.click();
+    expect(answers).toEqual([{ yes: false, go: { activityId: "art" } }]);
+  });
+
   it("answers yes, no, or no on Escape; Tab stays on the lines and the two buttons", async () => {
     const element = await render();
     const answers = [];

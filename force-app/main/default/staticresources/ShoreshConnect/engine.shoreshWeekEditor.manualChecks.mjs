@@ -77,6 +77,8 @@ export function checkManualDays(draft, weekDays, how) {
         (records.activities || []).map((a) => [a.id, a.notFor || []])
       ),
       isAway: (groupId, blockId) => away.has(`${groupId}|${blockId}`),
+      // Every placement here is the director's own (LOCK-4.12).
+      byHand: true,
       // One total per week (LOCK-4.10): setup's fixed and recurring cells are left out whatever
       // they hold, so typing over one or clearing it doesn't change the total.
       setUpAt: setUp

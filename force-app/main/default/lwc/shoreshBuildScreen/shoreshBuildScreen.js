@@ -76,6 +76,20 @@ export const BuildScreen = (Base) =>
         })
       );
     }
+    /**
+     * A problem chosen in Publish's question (PUB-6.4, PUB-6.5), which is answered no: a cell or a
+     * bunk's line, as the Why list goes there; an activity, in Activity View; a special day, on
+     * the Special events screen. go: c-shoresh-ask's answer.
+     */
+    goToProblem(go) {
+      if (go.specialItemId) {
+        this.handleOpenSpecial({ detail: { itemId: go.specialItemId } });
+      } else if (this.weekEditor && go.activityId) {
+        this.weekEditor.showActivity(go.activityId);
+      } else if (this.weekEditor && go.line) {
+        this.weekEditor.showLine(go.line);
+      }
+    }
     /** What building still needs (desktop readiness.js): Generate and Start wait for all of it. */
     get stillNeeded() {
       return stillNeeded(this._setup, this.t, this.programId);
@@ -204,6 +218,15 @@ export const BuildScreen = (Base) =>
           detail: { weekId, programId, season }
         })
       );
+    }
+    /**
+     * An activity was added from a cell, or its Undo took it off (LOCK-6.3): the page reads the
+     * season again, so Activities and the other screens show it now; this screen already has it,
+     * so that read doesn't read its week again. Fires: seasonchanged.
+     */
+    handleActivitiesChanged() {
+      this.ownSeasonRead = `${this.programId}|${this.weekId}`;
+      this.dispatchEvent(new CustomEvent("seasonchanged"));
     }
     /**
      * Whether this season read is the one this screen asked for, for the week it shows (it has

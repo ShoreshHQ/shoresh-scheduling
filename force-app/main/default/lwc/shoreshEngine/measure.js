@@ -1,3 +1,5 @@
+import { RULE } from "./weekRules";
+
 /**
  * The week's measure (wiki decisions 38 and 41, ADR 0008 part 7): what the rail's counter, its
  * dropdown and the drawer under the grid all show, worked out once from the week's check so they
@@ -117,7 +119,33 @@ export function measureWeek(checked, list, days) {
       under.rows.push({ id: a.id, name: a.name, placed: got, goal, groups });
     }
     let extra = 0;
-    if (hasNumber(a.maxPerWeek)) {
+    if (hasNumber(a.maxPerWeek) && Number(a.maxPerWeek) === 0) {
+      // Placed by hand only (LOCK-4.12): only the placements the check calls over count.
+      const flagged = new Map();
+      ((checked && checked.placements) || [])
+        .filter(
+          (p) =>
+            p.kind === "A" &&
+            p.id === a.id &&
+            ((checked.bends && checked.bends.get(p.key)) || []).includes(
+              RULE.WEEKLY_MAX
+            )
+        )
+        .forEach((p) =>
+          flagged.set(p.groupId, (flagged.get(p.groupId) || 0) + 1)
+        );
+      if (flagged.size) {
+        extra = [...flagged.values()].reduce((sum, n) => sum + n, 0);
+        over.count += extra;
+        over.rows.push({
+          id: a.id,
+          name: a.name,
+          placed: extra,
+          goal: 0,
+          groups: flagged.size
+        });
+      }
+    } else if (hasNumber(a.maxPerWeek)) {
       const max = Number(a.maxPerWeek);
       const past = groupIds.filter((id) => count(id, a.id) > max);
       if (past.length) {
