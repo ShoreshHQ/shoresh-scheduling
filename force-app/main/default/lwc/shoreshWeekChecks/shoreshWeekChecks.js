@@ -10,6 +10,9 @@ import {
   spreadOf
 } from "./lines";
 
+// The counter's lines, for Publish's question (c/shoreshPublish), in the same words.
+export { checkLines } from "./lines";
+
 /**
  * The week's counter on the rail (wiki decisions 38 and 41; ADR 0008 part 7), shared by Manual
  * Build and Generated Schedule: one item, "29 of 35 placed", with the needs-a-look corner when

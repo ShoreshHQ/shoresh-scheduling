@@ -54,6 +54,18 @@ public with sharing class GeneratedScheduleController {
       throw ScreenErrors.of(e);
     }
   }
+  /**
+   * Undo of "Add <name>": the activity it made is taken off again while nothing else uses it
+   * (LOCK-5.5). True when it was.
+   */
+  @AuraEnabled
+  public static Boolean removeAddedActivity(Id scheduleId, Id activityId) {
+    try {
+      return ManualBuildActivities.removeUnused(scheduleId, activityId);
+    } catch (Exception e) {
+      throw ScreenErrors.of(e);
+    }
+  }
 
   /** Lock or unlock a cell, a day or a group (decision 3); a conflict if the week changed since. */
   @AuraEnabled

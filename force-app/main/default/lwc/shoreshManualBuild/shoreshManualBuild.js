@@ -7,6 +7,7 @@ import takeOffDay from "@salesforce/apex/SpecialPlacingController.takeOffDay";
 import getDraft from "@salesforce/apex/ManualBuildController.getDraft";
 import startBlankWeek from "@salesforce/apex/ManualBuildController.startBlankWeek";
 import saveSlots from "@salesforce/apex/ManualBuildController.saveSlots";
+import removeAddedActivity from "@salesforce/apex/ManualBuildController.removeAddedActivity";
 import keepWeekBeforeRain from "@salesforce/apex/RainyDayController.keepManualWeek";
 import getWeekSources from "@salesforce/apex/ManualBuildController.getWeekSources";
 import startFromWeek from "@salesforce/apex/ManualBuildController.startFromWeek";
@@ -509,6 +510,9 @@ export default class ShoreshManualBuild extends BuildScreen(LightningElement) {
    * Coming back to the window shows other people's changes, unless an edit, a Restore or a start
    * is under way. Returns whether the week is read again.
    */
+  /** Undo of "Add <name>": the activity taken off again while unused (LOCK-5.5). */
+  removeActivityWith = (request) => removeAddedActivity(request);
+
   /**
    * "Set it up" on a cell noted from a file as a special event or day (ADR 0014 slice 4): made
    * on the server from what the file had, then the week and the season are read again (the
@@ -826,7 +830,11 @@ export default class ShoreshManualBuild extends BuildScreen(LightningElement) {
   }
 
   handlePublishAnswer(event) {
-    return this.buildWeek.answerPublish(event.detail.yes);
+    const done = this.buildWeek.answerPublish(event.detail.yes);
+    if (event.detail.go) {
+      this.goToProblem(event.detail.go);
+    }
+    return done;
   }
 
   handleUnpublish() {

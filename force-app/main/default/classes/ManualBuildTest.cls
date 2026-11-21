@@ -841,7 +841,7 @@ private class ManualBuildTest {
   }
 
   @IsTest
-  static void aTypedNameAddsAnActivityOnceWithHandAddedStartingValues() {
+  static void aTypedNameAddsAnActivityOnceAtZeroTimesAWeek() {
     Map<String, Id> ids = camp();
     System.runAs(KeptCamp.scheduler(ids)) {
       Test.startTest();
@@ -864,13 +864,15 @@ private class ManualBuildTest {
       ];
       Assert.areEqual('Arts and crafts', saved.Name);
       Assert.areEqual(1, saved.Length__c);
-      Assert.areEqual(1, saved.TimesPerWeekMax__c);
+      // At 0 times a week (LOCK-4.12): no bunk is short of it, and a build never spreads it.
+      Assert.areEqual(0, saved.TimesPerWeekMin__c);
+      Assert.areEqual(0, saved.TimesPerWeekMax__c);
       Assert.areEqual(ids.get('Season'), saved.Season__c);
       Assert.isTrue(added.notFor.isEmpty());
       // Its setup record comes back too, as the setup screen reads it, for the screen's checks.
       Assert.areEqual(added.id, added.record.Id);
-      Assert.areEqual(1, added.record.TimesPerWeekMin__c);
-      Assert.areEqual(1, added.record.TimesPerWeekMax__c);
+      Assert.areEqual(0, added.record.TimesPerWeekMin__c);
+      Assert.areEqual(0, added.record.TimesPerWeekMax__c);
       Assert.areEqual(1, added.record.GroupsAtOnce__c);
       Assert.isFalse(added.record.NoGroupLimit__c);
       // The same name again (spaces and capitals aside) is the same activity.

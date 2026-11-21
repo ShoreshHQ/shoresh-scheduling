@@ -11,6 +11,7 @@ import { buildTerms } from "c/shoreshTerms";
 import { nsRecord } from "shoresh-jest/namespace";
 import { find } from "shoresh-jest/week-editor";
 import {
+  WITH_SOCCER,
   WITH_SWIM,
   day,
   draft
@@ -302,6 +303,45 @@ describe("c-shoresh-manual-build: Publish", () => {
     expect(publish).not.toHaveBeenCalled();
     expect(ask(element)).toBeNull();
     expect(q(element, '[data-id="publish"]').disabled).toBe(false);
+  });
+
+  // PUB-6.4
+  it("names what is short under its count; choosing it publishes nothing and shows that activity", async () => {
+    // Soccer twice a week: Bunk 1 has it once, Bunk 2 not at all.
+    const element = await render(
+      read({
+        ...draft(WITH_SOCCER, ["1,2,", "1,,"]),
+        activityRecords: nsRecord([
+          {
+            Id: "a3",
+            Name: "Soccer",
+            Length__c: 1,
+            TimesPerWeekMin__c: 2,
+            TimesPerWeekMax__c: 3
+          }
+        ])
+      })
+    );
+    previewPublish.mockResolvedValue(FIRST_PREVIEW);
+    await clickPublish(element);
+    const { lines } = ask(element);
+    const short = lines.find((line) => line.go && line.go.activityId);
+    expect(short).toEqual({
+      text: "Soccer: 3 short · 2 Bunks",
+      go: { activityId: "a3" },
+      sub: true
+    });
+    // Under its count.
+    expect(lines[lines.indexOf(short) - 1]).toBe("3 short");
+    ask(element).dispatchEvent(
+      new CustomEvent("answer", { detail: { yes: false, go: short.go } })
+    );
+    await flush();
+    expect(publish).not.toHaveBeenCalled();
+    expect(ask(element)).toBeNull();
+    expect(
+      q(element, '[data-view="activity"]').getAttribute("aria-pressed")
+    ).toBe("true");
   });
 
   it("publishing again lists what changes, and sends the published schedule the preview showed", async () => {

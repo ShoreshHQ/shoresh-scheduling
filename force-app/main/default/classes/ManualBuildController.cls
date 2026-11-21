@@ -66,6 +66,18 @@ public with sharing class ManualBuildController {
       throw ScreenErrors.of(e);
     }
   }
+  /**
+   * Undo of "Add <name>": the activity it made is taken off again while nothing else uses it
+   * (LOCK-5.5). True when it was.
+   */
+  @AuraEnabled
+  public static Boolean removeAddedActivity(Id scheduleId, Id activityId) {
+    try {
+      return ManualBuildActivities.removeUnused(scheduleId, activityId);
+    } catch (Exception e) {
+      throw ScreenErrors.of(e);
+    }
+  }
 
   /** Save version: the draft as it is now, kept under a name. */
   @AuraEnabled

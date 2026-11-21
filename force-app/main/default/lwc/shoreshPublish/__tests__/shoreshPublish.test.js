@@ -1,4 +1,9 @@
-import { problemLines, publishQuestion, publishedWord } from "c/shoreshPublish";
+import {
+  problemLines,
+  publishQuestion,
+  publishedWord,
+  specialDayLines
+} from "c/shoreshPublish";
 import { buildTerms } from "c/shoreshTerms";
 
 // What to ask before publishing, from the server's preview and the week's checks.
@@ -331,6 +336,146 @@ describe("c/shoreshPublish", () => {
       "Bunk 1 · Monday · Period 2: Swim → Soccer",
       "…and 1 more."
     ]);
+  });
+
+  // PUB-6.4
+  it("names what each count counts, in the Why list's words, each going to its cell or activity", () => {
+    const bunks = buildTerms([
+      { term: "Group", singular: "Bunk", plural: "Bunks", isCustom: true }
+    ]);
+    const cellLine = (n) => ({
+      key: `overlap|2026-06-29|g${n}|t1`,
+      kind: "overlapping",
+      text: `Bunk ${n} · Monday · Period 1: Over its limit of 1 Bunk at once`,
+      groupId: `g${n}`,
+      dateValue: "2026-06-29",
+      blockId: "t1"
+    });
+    const measure = {
+      open: [
+        {
+          key: "open|g1",
+          text: "Bunk 1 · Monday · Period 2: nothing fits",
+          groupId: "g1",
+          dateValue: "2026-06-29",
+          blockId: "t2"
+        }
+      ],
+      under: {
+        count: 2,
+        rows: [{ id: "swim", name: "Swim", placed: 4, goal: 6, groups: 2 }]
+      },
+      over: {
+        count: 1,
+        rows: [{ id: "art", name: "Art", placed: 3, goal: 2, groups: 1 }]
+      },
+      look: [1, 2, 3, 4, 5, 6, 7].map(cellLine),
+      notes: [
+        { key: "n1", text: "Groups at once left blank for Art: taken as 1" }
+      ]
+    };
+    const question = publishQuestion({
+      preview: FIRST,
+      checked: { ...CLEAN, cells: { filled: 9, total: 10 } },
+      measure,
+      weekName: "Week 1",
+      t: bunks
+    });
+    expect(question.lines).toEqual([
+      "9 of 10 placed",
+      {
+        text: measure.open[0].text,
+        go: { line: expect.objectContaining(measure.open[0]) },
+        sub: true
+      },
+      "2 short",
+      {
+        text: "Swim: 2 short · 2 Bunks",
+        go: { activityId: "swim" },
+        sub: true
+      },
+      "1 over",
+      { text: "Art: 1 over · 1 Bunk", go: { activityId: "art" }, sub: true },
+      "7 to look at",
+      ...measure.look.slice(0, 5).map((line) => ({
+        text: line.text,
+        go: { line: expect.objectContaining({ key: line.key }) },
+        sub: true
+      })),
+      { text: "…and 2 more.", sub: true },
+      "1 note",
+      { text: measure.notes[0].text, sub: true }
+    ]);
+  });
+
+  // PUB-6.5
+  it("names a special day on the week that plans nothing for some bunks, and opens it", () => {
+    const bunks = buildTerms([
+      { term: "Group", singular: "Bunk", plural: "Bunks", isCustom: true }
+    ]);
+    const groups = [1, 2, 3, 4, 5, 6].map((n) => ({
+      id: `g${n}`,
+      name: `Bunk ${n}`
+    }));
+    const colorWar = {
+      specialDayId: "sd1",
+      name: "Color war",
+      day: "Thursday",
+      plan: {
+        blocks: [{ id: "t1" }, { id: "t2" }],
+        groups,
+        items: [
+          { kind: "F", id: "f1", name: "Flagpole" },
+          { kind: "A", id: "a1", name: "Tug of war" }
+        ],
+        // Bunk 1 plays; the rest have only the regular day's Flagpole, or nothing.
+        rows: ["1,2", "1,", ",", "1,", "1,", ","]
+      }
+    };
+    const planned = {
+      ...colorWar,
+      specialDayId: "sd2",
+      name: "Visiting day",
+      plan: { ...colorWar.plan, rows: groups.map(() => "1,2") }
+    };
+    const empty = {
+      ...colorWar,
+      specialDayId: "sd3",
+      name: "Carnival",
+      day: "Friday",
+      plan: { ...colorWar.plan, blocks: [], rows: [] }
+    };
+    expect(
+      specialDayLines({ days: [colorWar, planned, empty] }, bunks)
+    ).toEqual([
+      {
+        text: "Color war (Thursday): nothing planned for 5 of 6 Bunks: Bunk 2, Bunk 3, Bunk 4 and 2 more",
+        go: { specialItemId: "sd1" }
+      },
+      {
+        text: "Carnival (Friday): nothing planned yet",
+        go: { specialItemId: "sd3" }
+      }
+    ]);
+    // A finished week's first publish asks when a special day on it plans nothing.
+    const question = publishQuestion({
+      preview: FIRST,
+      checked: CLEAN,
+      specials: { days: [colorWar] },
+      weekName: "Week 1",
+      t: bunks
+    });
+    expect(question.kind).toBe("ask");
+    expect(question.lines[0].go).toEqual({ specialItemId: "sd1" });
+    expect(
+      publishQuestion({
+        preview: FIRST,
+        checked: CLEAN,
+        specials: { days: [planned] },
+        weekName: "Week 1",
+        t: bunks
+      })
+    ).toEqual({ kind: "now" });
   });
 
   it("names dots in the camp's word for Activity", () => {
