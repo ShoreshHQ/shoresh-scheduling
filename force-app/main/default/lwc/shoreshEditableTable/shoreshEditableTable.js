@@ -477,7 +477,9 @@ export default class ShoreshEditableTable extends LightningElement {
       whoOpen: false,
       isNew: true,
       dirty: false,
-      adding: false
+      adding: false,
+      // Date and time fields typed in but not yet handed over (WEEK-6.10).
+      typed: new Set()
     };
   }
 
@@ -1173,7 +1175,7 @@ export default class ShoreshEditableTable extends LightningElement {
     return (
       this.busy ||
       this.addRow.adding ||
-      !this.complete(this.addRow) ||
+      !this.complete(this.addRow, true) ||
       this.noDayTicked(this.addRow)
     );
   }
@@ -1851,13 +1853,57 @@ export default class ShoreshEditableTable extends LightningElement {
     }
   }
 
+  /**
+   * WEEK-6.10: typing in a date or time field. Salesforce's date and time fields hand over what
+   * was typed only when they are left (or a day is picked), so the blank row notes it: its Add
+   * is ready, and Enter or Add hands it over first.
+   */
+  handleTyping(event) {
+    const { rowKey, field } = event.currentTarget.dataset;
+    const draft = this.rowFor(rowKey);
+    if (!draft || !draft.isNew || draft.typed.has(field)) {
+      return;
+    }
+    draft.typed = new Set(draft.typed).add(field);
+    this.touch(draft);
+  }
+
+  /**
+   * The date or time field the cursor is in, in this row, hands over what was typed in it (its
+   * own blur, as leaving it does; it stays the row's, so the row isn't saved as left). Returns
+   * that field, to put the cursor back in, or null.
+   */
+  handOverTyping(key) {
+    const field = this.template.activeElement;
+    if (
+      !field ||
+      !field.dataset ||
+      field.dataset.rowKey !== key ||
+      !["date", "time"].includes(field.type)
+    ) {
+      return null;
+    }
+    this.handingOver = true;
+    try {
+      field.blur();
+    } finally {
+      this.handingOver = false;
+    }
+    return field;
+  }
+
   /** Enter saves the row; Escape puts a saved row back as it was. */
   handleRowKeyDown(event) {
     const key = event.currentTarget.dataset.row;
     const from = event.target.tagName;
     if (event.key === "Enter" && from === "LIGHTNING-INPUT") {
       event.preventDefault();
+      // WEEK-6.10: a date or time typed and not yet handed over counts, as on the desktop.
+      const typedIn = this.handOverTyping(key);
       this.commit(key, true, event.target.dataset.field);
+      if (typedIn) {
+        typedIn.focus();
+      }
     } else if (
       event.key === "Escape" &&
       key !== ADD &&
@@ -1875,7 +1921,7 @@ export default class ShoreshEditableTable extends LightningElement {
   /** Leaving a row (for anywhere outside it and its who picker) saves it. */
   handleRowLeave(event) {
     const key = event.currentTarget.dataset.row;
-    if (insideOf(key, event.relatedTarget)) {
+    if (this.handingOver || insideOf(key, event.relatedTarget)) {
       return;
     }
     this.commit(key, false);
@@ -1927,13 +1973,17 @@ export default class ShoreshEditableTable extends LightningElement {
 
   // ---------- saving, one row at a time ----------
 
-  /** Every required value filled in. */
-  complete(draft) {
+  /**
+   * Every required value filled in. withTyped: a date or time typed but not yet handed over
+   * counts (the blank row's Add is ready for it; pressing it hands it over, WEEK-6.10).
+   */
+  complete(draft, withTyped = false) {
     return this.columns.every(
       (col) =>
         !col.required ||
         (col.savedOnly && draft.isNew) ||
-        !isBlank(draft.values[col.fieldName])
+        !isBlank(draft.values[col.fieldName]) ||
+        (withTyped && !!draft.typed && draft.typed.has(col.fieldName))
     );
   }
 

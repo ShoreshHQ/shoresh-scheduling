@@ -289,6 +289,72 @@ describe("c-shoresh-editable-table", () => {
       expect(typeof sent[0].onDone).toBe("function");
     });
 
+    // WEEK-6.10 (camp-director review 2026-11-21: on Weeks, Return or Add "did nothing until I
+    // left the date box"). Salesforce's date and time fields hand over what was typed only when
+    // left; the stub stands in for that with its blur.
+    describe("WEEK-6.10: a date or time typed and not yet handed over", () => {
+      function typeWithoutLeaving(input, value) {
+        input.tabIndex = 0;
+        input.focus();
+        input.dispatchEvent(new CustomEvent("input", { bubbles: true }));
+        input.blur = () => change(input, value);
+      }
+
+      it("Enter adds the row with it, and the cursor stays in that field", async () => {
+        const element = render({ columns: COLUMNS, rows: ROWS });
+        const sent = listen(element);
+        await flush();
+        change(field(element, 2, "Name"), "Swim");
+        const start = field(element, 2, "StartTime__c");
+        typeWithoutLeaving(start, "13:30:00.000");
+        allValid(element);
+        press(start, "Enter");
+        expect(sent.length).toBe(1);
+        expect(sent[0].record).toMatchObject({
+          Name: "Swim",
+          StartTime__c: "13:30:00.000Z"
+        });
+        expect(element.shadowRoot.activeElement).toBe(start);
+      });
+
+      it("Add is ready for it, and pressing it adds the row with it", async () => {
+        const element = render({ columns: COLUMNS, rows: ROWS });
+        const sent = listen(element);
+        await flush();
+        change(field(element, 2, "Name"), "Swim");
+        await flush();
+        expect(addButton(element).disabled).toBe(true);
+        const start = field(element, 2, "StartTime__c");
+        typeWithoutLeaving(start, "13:30:00.000");
+        await flush();
+        expect(addButton(element).disabled).toBe(false);
+        allValid(element);
+        // Pressing Add takes the cursor out of the field: it hands its value over.
+        start.blur();
+        addButton(element).click();
+        expect(sent.length).toBe(1);
+        expect(sent[0].record).toMatchObject({
+          Name: "Swim",
+          StartTime__c: "13:30:00.000Z"
+        });
+      });
+
+      it("a saved row's Enter saves the time typed into it", async () => {
+        const element = render({ columns: COLUMNS, rows: ROWS });
+        const sent = listen(element);
+        await flush();
+        const start = field(element, 0, "StartTime__c");
+        typeWithoutLeaving(start, "08:30:00.000");
+        allValid(element);
+        press(start, "Enter");
+        expect(sent.length).toBe(1);
+        expect(sent[0].record).toMatchObject({
+          Id: "a1",
+          StartTime__c: "08:30:00.000Z"
+        });
+      });
+    });
+
     it("a time block can be added with no name: the server names it by its times", async () => {
       // As shoreshProgram.blockColumns: Name not required (TimeBlockTriggerHandler fills it).
       const columns = COLUMNS.map((c) => {
