@@ -27,6 +27,18 @@ public with sharing class SetTimeMessages {
   private String what() {
     switch on clash.kind {
       when PAST_END {
+        if (
+          !readable(
+            SetTimePlan.fieldsOf(clash.item.record.getSObjectType()).length
+          )
+        ) {
+          return quoted(clash.item.name) +
+            ' would run past the last ' +
+            t.singularInSentence('TimeBlock') +
+            ' of ' +
+            clash.item.program.program.Name +
+            '.';
+        }
         return quoted(clash.item.name) +
           ' takes ' +
           clash.item.length +
@@ -41,6 +53,12 @@ public with sharing class SetTimeMessages {
           '.';
       }
       when CLOSED_DAY {
+        if (!dayShown()) {
+          return quoted(clash.item.name) +
+            ' is ticked for a day ' +
+            clash.item.program.program.Name +
+            ' does not run on.';
+        }
         return quoted(clash.item.name) +
           ' is ticked for ' +
           clash.day +
@@ -69,6 +87,16 @@ public with sharing class SetTimeMessages {
     List<String> names = new List<String>();
     for (String name : clash.names) {
       names.add(quoted(name));
+    }
+    if (!readable(Location__c.GroupsThatFit__c)) {
+      return quoted(clash.location.Name) +
+        ' can\'t fit the ' +
+        groups(clash.count) +
+        ' ' +
+        String.join(names, ' and ') +
+        ' would have there' +
+        moment() +
+        '.';
     }
     Integer fits = clash.location.GroupsThatFit__c.intValue();
     return quoted(clash.location.Name) +
@@ -124,7 +152,7 @@ public with sharing class SetTimeMessages {
           '.';
       }
       when CLOSED_DAY {
-        return 'Untick ' + clash.day + '.';
+        return 'Untick ' + (dayShown() ? clash.day : 'that day') + '.';
       }
       when SAME_GROUP {
         return sameGroupFix();
@@ -187,6 +215,21 @@ public with sharing class SetTimeMessages {
       (count == 1
         ? t.singularInSentence('Group')
         : t.pluralInSentence('Group'));
+  }
+
+  /**
+   * Whether the person may read this field. The clash is found in system mode (ADR 0001 point 6),
+   * so a value from a field their admin hid is left out of the sentence.
+   */
+  private static Boolean readable(Schema.SObjectField field) {
+    return field.getDescribe().isAccessible();
+  }
+
+  /** Whether the person may read the day's tick on both the item and its program. */
+  private Boolean dayShown() {
+    return readable(
+        SetTimePlan.dayField(clash.item.record.getSObjectType(), clash.day)
+      ) && readable(SetTimePlan.dayField(Program__c.SObjectType, clash.day));
   }
 
   private static String quoted(String name) {
