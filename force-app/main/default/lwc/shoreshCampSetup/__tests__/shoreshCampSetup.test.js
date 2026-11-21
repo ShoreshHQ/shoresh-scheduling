@@ -5429,6 +5429,59 @@ describe("a reload stays where you were", () => {
     ).toMatchObject({ seasonId: "s2", screen: "campWords" });
   });
 
+  // WEEK-6.9 (camp-director review 2026-11-21: "the first click on a menu entry is often ignored")
+  it("WEEK-6.9: a menu entry clicked while the season is still being read is ready, and opens once it is read", async () => {
+    window.sessionStorage.setItem(
+      "shoresh.place",
+      JSON.stringify({ ...PLACE, screen: "groups", weekId: null })
+    );
+    let readSeason;
+    getSeasonSetup.mockReturnValueOnce(
+      new Promise((resolve) => {
+        readSeason = resolve;
+      })
+    );
+    const element = await open();
+    const menu = element.shadowRoot.querySelector("c-shoresh-menu");
+    // Not greyed out as if there were no season: the season is on its way.
+    const entry = (key) =>
+      menu.sections
+        .flatMap((section) => section.items)
+        .find((item) => item.key === key);
+    expect(entry("activities").disabled).toBe(false);
+    menu.dispatchEvent(
+      new CustomEvent("navigate", { detail: { screen: "activities" } })
+    );
+    await flush();
+    readSeason(
+      nsRecord(
+        setupWith({
+          season: CEDAR,
+          weeks: [{ Id: "w1", Name: "Week 1" }]
+        })
+      )
+    );
+    await flush();
+    await flush();
+    // The click opened its screen, over the reload's Groups.
+    expect(shownScreens(element)).toEqual(["activities"]);
+    expect(
+      JSON.parse(window.sessionStorage.getItem("shoresh.place"))
+    ).toMatchObject({ seasonId: "s2", screen: "activities" });
+  });
+
+  it("WEEK-6.9: a season that couldn't be read leaves its screens greyed, holding no click", async () => {
+    window.sessionStorage.removeItem("shoresh.place");
+    getSeasonSetup.mockRejectedValueOnce(new Error("offline"));
+    const element = await open();
+    await flush();
+    const menu = element.shadowRoot.querySelector("c-shoresh-menu");
+    const activities = menu.sections
+      .flatMap((section) => section.items)
+      .find((item) => item.key === "activities");
+    expect(activities.disabled).toBe(true);
+  });
+
   // WEEK-6.3
   it("keeps the screen this tab is on for a reload, and a new tab starts on Roots", async () => {
     window.sessionStorage.clear();

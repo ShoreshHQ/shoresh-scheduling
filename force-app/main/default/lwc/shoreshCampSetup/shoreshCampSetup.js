@@ -297,6 +297,9 @@ export default class ShoreshCampSetup extends LightningElement {
   // that the menu leads, as for any screen).
   preview = null;
   previewOpened = false;
+  // WEEK-6.9: the season being read (its loadTicket), and a screen asked for meanwhile.
+  readingTicket = null;
+  askedWhileLoading = null;
   // Where Schedules starts when the address asked for a week ({ programId, weekId, scheduleId }).
   schedulesOpening = null;
   // Why the last Merge was refused, shown in the question only (one alert, not two).
@@ -560,10 +563,18 @@ export default class ShoreshCampSetup extends LightningElement {
       this.importing = {};
     }
     const ticket = ++this.loadTicket;
-    const setup = await getSeasonSetup({
-      campId: this.campId,
-      seasonId: this.seasonId
-    });
+    this.readingTicket = ticket;
+    let setup;
+    try {
+      setup = await getSeasonSetup({
+        campId: this.campId,
+        seasonId: this.seasonId
+      });
+    } finally {
+      if (this.readingTicket === ticket) {
+        this.readingTicket = null;
+      }
+    }
     if (ticket !== this.loadTicket) {
       // A newer read is on its way: this answer would show older data over it.
       return;
@@ -587,6 +598,17 @@ export default class ShoreshCampSetup extends LightningElement {
     this.setup = setup;
     this.termLabels = setup.labels;
     this.seasonForm = form;
+    // WEEK-6.9: a screen asked for while the season was being read opens now.
+    const asked = this.askedWhileLoading;
+    this.askedWhileLoading = null;
+    if (asked && this.mode === "screens") {
+      this.handleNavigate({ detail: asked });
+    }
+  }
+
+  /** A season is chosen and being read: its screens can be asked for (WEEK-6.9). */
+  get seasonComing() {
+    return this.mode === "screens" && !this.setup && !!this.readingTicket;
   }
 
   renderedCallback() {
@@ -714,7 +736,14 @@ export default class ShoreshCampSetup extends LightningElement {
         }
       }
     }
-    return menuSections(this.terms, !!this.setup, marks, this.preview);
+    // While the season is being read its screens stay ready to click, never greyed as if
+    // there were none (WEEK-6.9).
+    return menuSections(
+      this.terms,
+      !!this.setup || this.seasonComing,
+      marks,
+      this.preview
+    );
   }
   /**
    * A screen just left (it stays on the page, hidden): its message row and floating refusal were
@@ -824,8 +853,17 @@ export default class ShoreshCampSetup extends LightningElement {
   handleNavigate(event) {
     const screen = event.detail.screen;
     if (!canOpen(screen, !!this.setup, this.preview)) {
+      // WEEK-6.9: the season is still being read: the click waits for it, never dropped, and
+      // wins over a reload or a link still bringing the tab somewhere (WEEK-6.5).
+      if (this.seasonComing && canOpen(screen, true, this.preview)) {
+        this.placeToRestore = null;
+        this.weekToRestore = null;
+        this.previewOpened = true;
+        this.askedWhileLoading = event.detail;
+      }
       return;
     }
+    this.askedWhileLoading = null;
     // The person's own click wins over a reload still bringing the tab back (WEEK-6.5): the
     // screen and week it was on are not opened over it later.
     this.placeToRestore = null;
