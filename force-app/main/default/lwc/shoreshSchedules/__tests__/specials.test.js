@@ -3,7 +3,7 @@
 // read-only, with the cursor following there and back. Made-up data.
 import { createElement } from "lwc";
 import ShoreshSchedules from "c/shoreshSchedules";
-import getVersions from "@salesforce/apex/SchedulesController.getVersions";
+import getVersions from "@salesforce/apex/SchedulesController.getSavedSchedules";
 import openSchedule from "@salesforce/apex/SchedulesController.openSchedule";
 import { buildTerms } from "c/shoreshTerms";
 import { downloadWorkbook } from "c/shoreshDownload";
@@ -14,7 +14,7 @@ import {
 } from "../../shoreshScheduleViews/__tests__/data/scheduleFixture";
 
 const apex = () => ({ default: jest.fn() });
-jest.mock("@salesforce/apex/SchedulesController.getVersions", () => apex(), {
+jest.mock("@salesforce/apex/SchedulesController.getSavedSchedules", () => apex(), {
   virtual: true
 });
 jest.mock("@salesforce/apex/SchedulesController.openSchedule", () => apex(), {

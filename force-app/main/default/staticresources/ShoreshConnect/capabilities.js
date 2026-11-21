@@ -2234,12 +2234,12 @@ const CAPABILITIES = [
   {
     name: "download_schedule",
     // Used on this computer, never sent.
-    localFields: ["as", "view"],
+    localFields: ["as", "view", "what", "which"],
     api: "schedule_file",
     method: "GET",
     makesFile: "schedule",
     description:
-      "Make a week's schedule file exactly as the Schedules screen's Excel or Print makes it, with the same code, and save it in the Downloads folder on this computer (nothing is sent anywhere else). Excel: a sheet per day, then every group's and every activity's week. Print: a page per day, group or activity, as the view chosen; it is saved as a page that opens the browser's Print (Save as PDF there makes a PDF). It is the newest version unless you name one (list_versions names them). The answer is the file's name and where it was saved: tell the person.",
+      "Make a week's schedule file exactly as the Schedules screen's Excel or Print menu makes it, with the same code, and save it in the Downloads folder on this computer (nothing is sent anywhere else). What it holds, as the menu offers: the whole week (Excel: a sheet per day, then every group's and every activity's week; Print: a page per day, a wide camp's day split by division), one day for the whole camp, one group's week, where one activity runs, what runs at one location, or one division's days; or every group, activity, location or division. Print is saved as a page that opens the browser's Print (Save as PDF there makes a PDF). It is the newest of the week's versions and its published schedule unless you name one (list_versions names the versions; the published schedule is called by its name). The answer is the file's name and where it was saved: tell the person.",
     about:
       "The file was made on this computer exactly as the Schedules screen makes it and saved in its Downloads folder; nothing else was changed or sent.",
     inputSchema: {
@@ -2256,11 +2256,22 @@ const CAPABILITIES = [
           enum: ["excel", "print"],
           description: "excel (the default) or print."
         },
+        what: {
+          type: "string",
+          enum: ["week", "day", "group", "activity", "location", "division"],
+          description:
+            "What the file holds, as the screen's menu: the whole week (the default), a day, a group, an activity, a location or a division."
+        },
+        which: {
+          type: "string",
+          description:
+            "Which one, as the menu names it (\"Cedar\", \"Monday\", \"Swim\", \"Lake\", \"Juniors\"). Leave it out, or say every, for every one of what."
+        },
         view: {
           type: "string",
           enum: ["daily", "group", "activity"],
           description:
-            "For print: a page per day (daily, the default), per group, or per activity."
+            "Older way to say what, for print: the whole week a page per day (daily), every group, or every activity."
         }
       },
       required: ["week"],

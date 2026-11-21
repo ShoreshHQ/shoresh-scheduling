@@ -19,6 +19,19 @@ public with sharing class SchedulesController {
     }
   }
 
+  /** The Saved versions page's list: the week's versions and its published schedule (PUB-6.9). */
+  @AuraEnabled
+  public static List<ScheduleViews.VersionRow> getSavedSchedules(
+    Id programId,
+    Id weekId
+  ) {
+    try {
+      return ScheduleViews.versionsAndPublished(programId, weekId);
+    } catch (Exception e) {
+      throw ScreenErrors.ofLoading(e);
+    }
+  }
+
   @AuraEnabled
   public static ScheduleViews.ScheduleView openSchedule(Id scheduleId) {
     ScheduleViews.ScheduleView view;

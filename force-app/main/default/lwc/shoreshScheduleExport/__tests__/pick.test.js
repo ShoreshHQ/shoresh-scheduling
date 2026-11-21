@@ -12,17 +12,18 @@ import {
 import { campPlaces } from "../pick";
 import { withRaindrops, withSpecials } from "c/shoreshScheduleViews";
 import { buildTerms } from "c/shoreshTerms";
+import { nsRecord } from "shoresh-jest/namespace";
 import {
   LABELS,
   opened
 } from "../../shoreshScheduleViews/__tests__/data/scheduleFixture";
 
 const t = buildTerms(LABELS);
-const CATALOGUE = [
+const CATALOGUE = nsRecord([
   { Id: "a1", Name: "Swim", Location__c: "l1" },
   { Id: "a2", Name: "Canoe", Location__c: "l1" }
-];
-const SETUP = {
+]);
+const SETUP = nsRecord({
   activities: CATALOGUE,
   locations: [
     { Id: "l1", Name: "Lake" },
@@ -48,7 +49,7 @@ const SETUP = {
       ]
     }
   ]
-};
+});
 const offerings = new Map();
 
 /** A camp of n bunks on one day: bunk i in the division divisionOf(i) gives (or none). */
@@ -78,7 +79,7 @@ function bigCamp(n, divisionOf) {
       }
     ]
   };
-  const setup = {
+  const setup = nsRecord({
     activities: CATALOGUE,
     locations: [],
     programs: [
@@ -89,11 +90,12 @@ function bigCamp(n, divisionOf) {
         }))
       }
     ]
-  };
+  });
   return { view, setup };
 }
 
 describe("print and Excel by choice", () => {
+  // PUB-6.4
   describe("the choices", () => {
     it("offers the whole week, each day, bunk, activity, location and division", () => {
       const choices = printChoices(opened(), CATALOGUE, SETUP, t);
@@ -165,6 +167,7 @@ describe("print and Excel by choice", () => {
     });
   });
 
+  // PUB-6.6
   describe("the printout", () => {
     const titles = (choice, view = opened()) =>
       pagesFor(view, choice, CATALOGUE, SETUP, t).map((p) => p.title);
@@ -268,6 +271,7 @@ describe("print and Excel by choice", () => {
       );
     });
 
+    // PUB-6.7
     it("prints a special day as its own schedule, with its notes, titled with its name", () => {
       const view = opened();
       view.specials = {
@@ -301,6 +305,7 @@ describe("print and Excel by choice", () => {
     });
   });
 
+  // PUB-6.5
   describe("a big camp's day on paper", () => {
     it("keeps a day that fits on one page", () => {
       const { view, setup } = bigCamp(PAGE_COLUMNS, () => "Juniors");
@@ -350,6 +355,7 @@ describe("print and Excel by choice", () => {
     });
   });
 
+  // PUB-6.8
   describe("the Excel file", () => {
     const sheets = (choice, view = opened()) =>
       sheetsFor(view, choice, CATALOGUE, SETUP, t, offerings);

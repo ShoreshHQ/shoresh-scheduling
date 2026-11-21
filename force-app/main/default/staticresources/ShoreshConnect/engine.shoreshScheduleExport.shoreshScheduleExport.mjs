@@ -23,17 +23,16 @@
 import { sanitizeCell } from "./engine.shoreshLists.shoreshLists.mjs";
 import {
   activityCards,
-  activityGrid,
   clock,
-  dailyGrid,
   days,
   eventPlans,
   groupCells,
-  groupGrid,
   groups,
   isElectiveItem,
   isSetUpItem
 } from "./engine.shoreshScheduleViews.shoreshScheduleViews.mjs";
+import { printTable } from "./engine.shoreshScheduleExport.table.mjs";
+import { EVERY, pagesFor } from "./engine.shoreshScheduleExport.pick.mjs";
 
 const REMOVED = "(removed)";
 const CANT_BE_SHOWN = "Can't be shown";
@@ -243,183 +242,30 @@ export function scheduleSheets(view, catalogue, t, offerings = new Map()) {
 // ---------- printing ----------
 
 /**
- * What a grid cell prints, in parts ({ key, text, rain }): its name, or in Activity View each
- * group's; a part a rainy-day switch put there carries its raindrop (issue #129), as on screen.
- * Nothing for Open.
+ * The printout of an opened schedule by view ("day", "group", "activity"), as the connector's
+ * download_schedule asks for it (API-1.86): Daily View's whole week, every group, or every
+ * activity that runs, as the Print menu's choices of the same (pick.js pagesFor). setup: the
+ * season, for the divisions a wide day splits by (none: by bunks).
  */
-function printParts(cell) {
-  if (cell.names) {
-    return cell.names.map((n, i) => ({
-      key: String(i),
-      text: i ? `, ${n.name}` : n.name,
-      rain: !!n.rain
-    }));
-  }
-  if (cell.open || !cell.text) {
-    return [];
-  }
-  return [{ key: "0", text: cell.text, rain: !!cell.rain }];
+export function printPages(view, viewKey, catalogue, t, setup = null) {
+  const kind =
+    viewKey === "group"
+      ? "group"
+      : viewKey === "activity"
+        ? "activity"
+        : "week";
+  return pagesFor(view, { kind, key: EVERY }, catalogue, setup, t);
 }
 
-/** What a grid cell prints: its words, nothing for Open. */
-function printText(cell) {
-  if (cell.names) {
-    return cell.names.map((n) => n.name).join(", ");
-  }
-  if (cell.open) {
-    return "";
-  }
-  return cell.text;
-}
-
-/**
- * A schedule grid ({ columns, rows, cells }) as table rows: each row its time block, then a cell
- * per column that starts there (rowspan for one running several blocks; colspan for one item
- * across groups side by side, as the screen draws it, mergeKey; covered places left out).
- */
-export function printTable(grid) {
-  const rowCount = grid.rows.length;
-  const colCount = grid.columns.length;
-  const starts = new Map();
-  const covered = new Set();
-  const spans = new Map();
-  const runs = new Map();
-  grid.cells.forEach((cell) => {
-    if (cell.mergeKey) {
-      const key = `${cell.row}|${cell.mergeKey}`;
-      if (!runs.has(key)) runs.set(key, []);
-      runs.get(key).push(cell);
-    }
-  });
-  runs.forEach((list) => {
-    list.sort((a, b) => a.column - b.column);
-    let start = 0;
-    for (let i = 1; i <= list.length; i++) {
-      if (i === list.length || list[i].column !== list[i - 1].column + 1) {
-        if (i - start > 1) {
-          spans.set(list[start], i - start);
-          list.slice(start + 1, i).forEach((c) => {
-            for (let r = c.row; r < c.row + c.length; r++) {
-              covered.add(`${r}:${c.column}`);
-            }
-          });
-        }
-        start = i;
-      }
-    }
-  });
-  grid.cells.forEach((cell) => {
-    starts.set(`${cell.row}:${cell.column}`, cell);
-    for (let r = cell.row + 1; r < cell.row + cell.length; r++) {
-      covered.add(`${r}:${cell.column}`);
-    }
-  });
-  const rows = [];
-  for (let r = 0; r < rowCount; r++) {
-    const row = grid.rows[r];
-    const cells = [];
-    for (let c = 0; c < colCount; c++) {
-      const at = `${r}:${c}`;
-      if (covered.has(at)) {
-        continue;
-      }
-      const cell = starts.get(at);
-      const text = cell ? printText(cell) : "";
-      cells.push({
-        key: at,
-        text,
-        parts: cell ? printParts(cell) : [],
-        // Paper staff carry says nothing about setup: "not set up yet" stays on screen.
-        note: cell && cell.note && text && !cell.notSetUp ? cell.note : null,
-        rowspan: cell ? cell.length : 1,
-        colspan: (cell && spans.get(cell)) || 1,
-        className: text ? "cell" : "cell cell_empty"
-      });
-    }
-    rows.push({
-      key: row.key,
-      time: row.said || row.time,
-      note: row.gone ? REMOVED : null,
-      cells
-    });
-  }
-  return {
-    columns: grid.columns.map((col) => ({
-      key: col.key,
-      label: col.label,
-      sub: col.sub,
-      note: col.note
-    })),
-    rows
-  };
-}
-
-/**
- * The printout of an opened schedule, following the view on screen ("day", "group", "activity"):
- * [{ key, title, table | null, notes, empty }]. A day that can't be read prints its title and
- * "Can't be shown". In Daily View a day a special day replaces prints its own schedule titled with
- * its name, its notes under it ("empty" when it has no schedule yet), and each special event's own
- * schedule follows the days on a page of its own.
- */
-export function printPages(view, viewKey, catalogue, t) {
-  if (!view) {
-    return [];
-  }
-  if (viewKey === "group") {
-    return groups(view).map((grp) => ({
-      key: `group-${grp.key}`,
-      title: withRemoved(grp.name, grp.gone),
-      table: printTable(groupGrid(view, grp.key, t))
-    }));
-  }
-  if (viewKey === "activity") {
-    return activityCards(view, catalogue, t)
-      .map((card) => ({ card, grid: activityGrid(view, card.key, t) }))
-      .filter(({ grid }) =>
-        grid.cells.some((cell) => cell.names && cell.names.length)
-      )
-      .map(({ card, grid }) => ({
-        key: `activity-${card.key}`,
-        title: withRemoved(card.name, card.gone),
-        table: printTable(grid)
-      }));
-  }
-  const dayPages = days(view).map((day) => {
-    const shown = view.days[day.index];
-    const special = shown.special;
-    if (special && !shown.problem && !shown.blocks.length) {
-      return {
-        key: `day-${day.key}`,
-        title: `${day.label}, ${day.sub} · ${special.name}`,
-        table: null,
-        notes: special.notes,
-        empty: noScheduleYet(special.name)
-      };
-    }
-    const grid = dailyGrid(view, day.index, t);
-    return {
-      key: `day-${day.key}`,
-      title: special
-        ? `${day.label}, ${day.sub} · ${special.name}`
-        : `${day.label}, ${day.sub}`,
-      table: grid ? printTable(grid) : null,
-      notes: special ? special.notes : null,
-      empty: null
-    };
-  });
-  const eventPages = eventPlans(view).map((event) => ({
-    key: `event-${event.eventId}`,
-    title: `${event.name} (${t.s("SpecialEvent")})`,
-    table: printTable(dailyGrid({ days: [event.plan] }, 0, t)),
-    notes: null,
-    empty: null
-  }));
-  return [...dayPages, ...eventPages];
-}
-
-/** What a special day with no time blocks yet says in place of its grid. */
-export function noScheduleYet(name) {
-  return `${name} has no schedule yet.`;
-}
-
-export { CANT_BE_SHOWN };
+export { CANT_BE_SHOWN, printTable };
+export {
+  EVERY,
+  PAGE_COLUMNS,
+  campPlaces,
+  choiceLabel,
+  dayPieces,
+  noScheduleYet,
+  pagesFor,
+  printChoices,
+  sheetsFor
+} from "./engine.shoreshScheduleExport.pick.mjs";

@@ -28,11 +28,12 @@ global with sharing class AgentScheduleFile implements AgentRequest.Read {
       AgentFields.text(asked, 'program')
     );
     ScheduleViews.VersionRow version;
+    // The Saved versions page's own list, its published schedule among them (PUB-6.9).
+    List<ScheduleViews.VersionRow> rows = SchedulesController.getSavedSchedules(
+      week.program.Id,
+      week.weekId
+    );
     if (String.isBlank(AgentFields.text(asked, 'version'))) {
-      List<ScheduleViews.VersionRow> rows = SchedulesController.getVersions(
-        week.program.Id,
-        week.weekId
-      );
       if (rows.isEmpty()) {
         throw new ShoreshException(
           week.name +
@@ -43,7 +44,7 @@ global with sharing class AgentScheduleFile implements AgentRequest.Read {
       }
       version = rows[0];
     } else {
-      version = AgentVersions.named(week, asked);
+      version = AgentVersions.named(week, asked, rows);
     }
     return AgentFiles.joined(
       new Map<String, String>{

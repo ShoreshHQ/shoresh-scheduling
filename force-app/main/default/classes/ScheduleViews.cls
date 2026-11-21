@@ -85,6 +85,26 @@ public with sharing class ScheduleViews {
 
   /** The program's versions for the week, newest first. */
   public static List<VersionRow> versions(Id programId, Id weekId) {
+    return listed(programId, weekId, new List<String>{ 'Version' });
+  }
+
+  /**
+   * The week's versions and its published schedule, newest first: what the Saved versions page
+   * opens, prints and downloads (PUB-6.9). The build screens' Versions keep to versions().
+   */
+  public static List<VersionRow> versionsAndPublished(Id programId, Id weekId) {
+    return listed(
+      programId,
+      weekId,
+      new List<String>{ 'Version', SchedulePublish.PUBLISHED }
+    );
+  }
+
+  private static List<VersionRow> listed(
+    Id programId,
+    Id weekId,
+    List<String> statuses
+  ) {
     List<VersionRow> rows = new List<VersionRow>();
     for (Schedule__c schedule : [
       SELECT Id, Name, Origin__c, VersionReason__c, PublishedAt__c, CreatedDate
@@ -92,7 +112,7 @@ public with sharing class ScheduleViews {
       WHERE
         Program__c = :programId
         AND Week__c = :weekId
-        AND Status__c = 'Version'
+        AND Status__c IN :statuses
       WITH USER_MODE
       ORDER BY CreatedDate DESC, Id DESC
       LIMIT 1000

@@ -171,13 +171,14 @@ describe("the screens' files, made on this computer", () => {
       { week: "Week 1", as: "print", view: "group" },
       read
     );
+    // Named for what it holds, as the screen's Excel of the same choice.
     expect(printed.saved).toEqual([
-      "Week 1 - Imported from sample-week.xlsx.html"
+      "Week 1 - Imported from sample-week.xlsx - Every Bunk.html"
     ]);
     expect(JSON.parse(printed.done.text).print).toMatch(/Save as PDF/);
     expect(printoutIn(path.join(printed.folder, printed.saved[0]))).toEqual({
       kind: "schedule",
-      title: "Week 1 - Imported from sample-week.xlsx",
+      title: "Week 1 - Imported from sample-week.xlsx - Every Bunk",
       props: plain({
         pages: scheduleExport.printPages(shown, "group", setup.activities, t),
         week: "Week 1",
@@ -185,6 +186,50 @@ describe("the screens' files, made on this computer", () => {
         corner: t.s("TimeBlock")
       })
     });
+
+    // PUB-6.4: what and which, as the screen's menu offers them.
+    const oneBunk = await make(
+      "download_schedule",
+      { week: "Week 1", as: "print", what: "group", which: "bunk 2" },
+      read
+    );
+    expect(oneBunk.saved).toEqual([
+      "Week 1 - Imported from sample-week.xlsx - Bunk 2.html"
+    ]);
+    expect(
+      printoutIn(path.join(oneBunk.folder, oneBunk.saved[0])).props.pages
+    ).toEqual(
+      plain(
+        scheduleExport.pagesFor(
+          shown,
+          { kind: "group", key: "g2" },
+          setup.activities,
+          setup,
+          t
+        )
+      )
+    );
+    const monday = await make(
+      "download_schedule",
+      { week: "Week 1", what: "day", which: "Monday" },
+      read
+    );
+    expect(monday.saved).toEqual([
+      "Week 1 - Imported from sample-week.xlsx - Monday, Jun 29.xlsx"
+    ]);
+    expect(
+      sheetsIn(path.join(monday.folder, monday.saved[0])).map((x) => x.name)
+    ).toEqual(["Monday"]);
+    const unknown = await make(
+      "download_schedule",
+      { week: "Week 1", what: "group", which: "Cedar" },
+      read
+    );
+    expect(unknown.done.ok).toBe(false);
+    expect(unknown.done.text).toBe(
+      "There is no cedar to choose. The choices: Bunk 1; Bunk 2."
+    );
+    expect(unknown.saved).toEqual([]);
 
     const empty = await make(
       "download_schedule",
