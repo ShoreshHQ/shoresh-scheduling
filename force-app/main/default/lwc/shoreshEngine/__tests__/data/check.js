@@ -291,11 +291,15 @@ export function problems(spec, input, result) {
     const unkept = ordered.filter((x) => !kept.has(x.k));
     const keptOnes = ordered.filter((x) => kept.has(x.k));
     const fromKept = Math.max(0, extra - unkept.length);
+    // At most 0 a week: placed by hand only (LOCK-4.12), so a kept one is never past it.
     const due = new Set(
-      [
-        ...unkept.slice(unkept.length - Math.min(extra, unkept.length)),
-        ...keptOnes.slice(keptOnes.length - fromKept)
-      ].map((x) => x.k)
+      (act.max === 0
+        ? unkept
+        : [
+            ...unkept.slice(unkept.length - Math.min(extra, unkept.length)),
+            ...keptOnes.slice(keptOnes.length - fromKept)
+          ]
+      ).map((x) => x.k)
     );
     ordered.forEach((s) => {
       const past = due.has(s.k);

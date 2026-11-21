@@ -3,6 +3,7 @@ const saveWeekOnServer = () => Promise.reject(new Error("GeneratedScheduleContro
 const saveSlots = () => Promise.reject(new Error("GeneratedScheduleController.saveSlots runs only on Shoresh's screens."));
 const setLocksOnServer = () => Promise.reject(new Error("GeneratedScheduleController.setLocks runs only on Shoresh's screens."));
 const addActivityOnServer = () => Promise.reject(new Error("GeneratedScheduleController.addActivity runs only on Shoresh's screens."));
+const removeAddedOnServer = () => Promise.reject(new Error("AddedActivityController.removeFromGenerated runs only on Shoresh's screens."));
 import { reasonOf } from "./engine.shoreshErrors.shoreshErrors.mjs";
 import { notesText, readNotes } from "./engine.shoreshEngine.shoreshEngine.mjs";
 import { loadedOf, locksOf, saveRequestOf } from "./engine.shoreshGeneratedWeek.build.mjs";
@@ -198,6 +199,11 @@ export async function saveEdits(loaded, edits, engineNotes) {
  */
 export function addActivity({ scheduleId, name }) {
   return addActivityOnServer({ scheduleId, name });
+}
+
+/** Undo of "Add <name>": the activity taken off again while unused (LOCK-5.5); whether it was. */
+export function removeAddedActivity({ scheduleId, activityId }) {
+  return removeAddedOnServer({ scheduleId, activityId });
 }
 
 /**
