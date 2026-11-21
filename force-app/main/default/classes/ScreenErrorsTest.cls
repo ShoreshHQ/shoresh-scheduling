@@ -58,11 +58,15 @@ private class ScreenErrorsTest {
     }
     Assert.areEqual(
       'Shoresh couldn\'t tell why. Try again.',
-      ScreenErrors.of(unexpected).getMessage()
+      ScreenErrors.of(unexpected)
+        .getMessage()
+        .replaceAll(' For support: [A-Z0-9]{3}-[A-Z0-9]{3}\\.$', '')
     );
     Assert.areEqual(
       'Shoresh couldn\'t tell why. Reload the page to try again.',
-      ScreenErrors.ofLoading(unexpected).getMessage()
+      ScreenErrors.ofLoading(unexpected)
+        .getMessage()
+        .replaceAll(' For support: [A-Z0-9]{3}-[A-Z0-9]{3}\\.$', '')
     );
   }
 
@@ -113,10 +117,13 @@ private class ScreenErrorsTest {
     Assert.areEqual(
       'Shoresh couldn\'t tell why. Try again.',
       ScreenErrors.words(unexpected)
+        .replaceAll(' For support: [A-Z0-9]{3}-[A-Z0-9]{3}\\.$', '')
     );
     // A screen's read an AI goes through (read_elective_seats_now's openRun, and the rest).
     AgentRefusal.forAgent = true;
-    String loading = ScreenErrors.ofLoading(unexpected).getMessage();
+    String loading = ScreenErrors.ofLoading(unexpected)
+      .getMessage()
+      .replaceAll(' For support: [A-Z0-9]{3}-[A-Z0-9]{3}\\.$', '');
     String goneRun;
     try {
       ElectiveSeatsController.openRun(

@@ -60,11 +60,13 @@ private class OutgoingUnexpectedTest {
     );
     Assert.areEqual(
       'Shoresh couldn\'t tell why. Try again.',
-      answer.get('message')
+      ((String) answer.get('message'))
+        .replaceAll(' For support: [A-Z0-9]{3}-[A-Z0-9]{3}\\.$', '')
     );
     Assert.areEqual(
       'Couldn\'t send the group schedule for Week 1 to formstack: Shoresh couldn\'t tell why. Try again.',
-      results[0].message
+      results[0]
+        .message.replaceAll(' For support: [A-Z0-9]{3}-[A-Z0-9]{3}\\.$', '')
     );
   }
 }

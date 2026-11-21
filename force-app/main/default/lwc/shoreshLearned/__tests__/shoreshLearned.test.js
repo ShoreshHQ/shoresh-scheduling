@@ -7,6 +7,7 @@ import forgetLearned from "@salesforce/apex/LearnedController.forgetLearned";
 import restoreLearned from "@salesforce/apex/LearnedController.restoreLearned";
 import undoChangeLearned from "@salesforce/apex/LearnedController.undoChangeLearned";
 import forgetLearnedPattern from "@salesforce/apex/LearnedController.forgetLearnedPattern";
+import installedVersion from "@salesforce/apex/ShoreshVersion.installedVersion";
 
 jest.mock(
   "@salesforce/apex/LearnedController.getLearned",
@@ -36,6 +37,14 @@ jest.mock(
 jest.mock(
   "@salesforce/apex/LearnedController.forgetLearnedPattern",
   () => ({ default: jest.fn() }),
+  { virtual: true }
+);
+jest.mock(
+  "@salesforce/apex/ShoreshVersion.installedVersion",
+  () => {
+    const { createApexTestWireAdapter } = require("@salesforce/sfdx-lwc-jest");
+    return { default: createApexTestWireAdapter(jest.fn()) };
+  },
   { virtual: true }
 );
 jest.mock(
@@ -824,6 +833,24 @@ describe("c-shoresh-learned: Help", () => {
     expect(link.textContent).toBe("imshoresh@gmail.com");
     expect(link.getAttribute("href")).toBe("mailto:imshoresh@gmail.com");
     await expect(element).toBeAccessible();
+  });
+
+  it("CORE-6.16: shows the installed version beside the support email", async () => {
+    const element = await mount([]);
+    installedVersion.emit("1.4");
+    await Promise.resolve();
+    expect($(element, '[data-id="version"]').textContent).toBe("Version 1.4");
+    expect(
+      $(element, '[data-id="help"]').contains($(element, '[data-id="version"]'))
+    ).toBe(true);
+    await expect(element).toBeAccessible();
+  });
+
+  it("CORE-6.16: says no version outside an installed package", async () => {
+    const element = await mount([]);
+    installedVersion.emit(null);
+    await Promise.resolve();
+    expect($(element, '[data-id="version"]')).toBeNull();
   });
 
   it("has About and Legal after Help", async () => {

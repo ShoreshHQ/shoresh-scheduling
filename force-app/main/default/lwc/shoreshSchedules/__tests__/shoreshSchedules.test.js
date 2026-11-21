@@ -621,8 +621,8 @@ describe("c-shoresh-schedules", () => {
       const element = await render();
       q(element, '[data-id="export"]').click();
       await flush();
-      expect(q(element, '[data-id="schedules-error"]').textContent).toBe(
-        "The schedule wasn't downloaded. Try again."
+      expect(q(element, '[data-id="schedules-error"]').textContent).toMatch(
+        /^The schedule wasn't downloaded\. Try again\. For support: [A-Z0-9]{3}-[A-Z0-9]{3}\.$/
       );
     });
 

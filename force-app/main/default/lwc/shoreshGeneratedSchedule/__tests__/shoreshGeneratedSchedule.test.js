@@ -1219,8 +1219,8 @@ describe("c-shoresh-generated-schedule", () => {
     jest.spyOn(console, "error").mockImplementation(() => {});
     action(element, "Rebuild").click();
     await settle(element);
-    expect(q(element, '[data-id="build-error"]').textContent.trim()).toBe(
-      "Week 1 wasn't rebuilt. Try again."
+    expect(q(element, '[data-id="build-error"]').textContent.trim()).toMatch(
+      /^Week 1 wasn't rebuilt\. Try again\. For support: [A-Z0-9]{3}-[A-Z0-9]{3}\.$/
     );
     console.error.mockRestore();
   });
@@ -1237,8 +1237,8 @@ describe("c-shoresh-generated-schedule", () => {
     element.setup = SETUP;
     document.body.appendChild(element);
     await flush();
-    expect(q(element, '[data-id="build-error"]').textContent.trim()).toBe(
-      "Week 1 couldn't be opened. Try again."
+    expect(q(element, '[data-id="build-error"]').textContent.trim()).toMatch(
+      /^Week 1 couldn't be opened\. Try again\. For support: [A-Z0-9]{3}-[A-Z0-9]{3}\.$/
     );
     console.error.mockRestore();
   });

@@ -1,4 +1,4 @@
-import { LightningElement, api } from "lwc";
+import { LightningElement, api, wire } from "lwc";
 import getLearned from "@salesforce/apex/LearnedController.getLearned";
 import getLearnedHistory from "@salesforce/apex/LearnedController.getLearnedHistory";
 import changeLearned from "@salesforce/apex/LearnedController.changeLearned";
@@ -6,6 +6,7 @@ import forgetLearned from "@salesforce/apex/LearnedController.forgetLearned";
 import restoreLearned from "@salesforce/apex/LearnedController.restoreLearned";
 import undoChangeLearned from "@salesforce/apex/LearnedController.undoChangeLearned";
 import forgetLearnedPattern from "@salesforce/apex/LearnedController.forgetLearnedPattern";
+import installedVersion from "@salesforce/apex/ShoreshVersion.installedVersion";
 import { failed, SUPPORT_EMAIL } from "c/shoreshErrors";
 import { buildTerms } from "c/shoreshTerms";
 import { builtInRows } from "./builtIn";
@@ -39,6 +40,14 @@ const STALE = "Someone else changed this just now. Showing the latest.";
 export default class ShoreshLearned extends LightningElement {
   supportEmail = SUPPORT_EMAIL;
   supportHref = `mailto:${SUPPORT_EMAIL}`;
+  // CORE-6.16: the installed version beside support's address ("Version 1.4"); none outside a
+  // package.
+  @wire(installedVersion) installed;
+
+  get version() {
+    const data = this.installed && this.installed.data;
+    return data ? `Version ${data}` : null;
+  }
 
   @api campId;
   @api terms;

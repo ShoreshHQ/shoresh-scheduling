@@ -213,3 +213,7 @@
   gap: var(--shoresh-s5);
   padding: var(--shoresh-space-pad);
 }
+
+.version {
+  color: var(--shoresh-text-2);
+}

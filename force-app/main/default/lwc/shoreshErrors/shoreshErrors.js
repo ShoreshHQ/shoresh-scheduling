@@ -6,9 +6,12 @@
  * (ScreenErrors, ShoreshException, trigger and validation messages, all sent as an
  * AuraHandledException) and the refusals these screens make themselves (refusal()). Anything
  * else (a platform message naming objects, fields or status codes, a stack trace, a script
- * error, a dropped connection) never reaches the director: the why becomes "Try again.", and the
- * raw detail goes to the browser console for support.
+ * error, a dropped connection) never reaches the director: the why becomes "Try again." with a
+ * support code after it (CORE-6.15), and the raw detail is kept under that code in the camp's
+ * org (ErrorCodes) and goes to the browser console.
  */
+import keepFromScreen from "@salesforce/apex/ErrorCodes.keepFromScreen";
+
 const TRY_AGAIN = "Try again.";
 // For a caller that can't say what it was doing (failed() is the usual way in).
 const NOTHING_HAPPENED = "That didn't work. Try again.";
@@ -106,25 +109,111 @@ function hitLimit(error) {
   );
 }
 
+// ---------- support codes (CORE-6.15) ----------
+
+// Letters and digits that can't be heard or read as another; the same set as ErrorCodes.cls.
+const CODE_LETTERS = "ACDEFGHJKMNPQRTUVWXY34679";
+// The most detail kept with one code (the Error Log's Detail field).
+const MOST_DETAIL = 32000;
+// One error shown twice (its why, then its failed() sentence) keeps one code.
+const codes = new WeakMap();
+
+function newCode() {
+  const picks = new Uint32Array(6);
+  if (globalThis.crypto && globalThis.crypto.getRandomValues) {
+    globalThis.crypto.getRandomValues(picks);
+  } else {
+    picks.forEach((_, i) => {
+      picks[i] = Math.floor(Math.random() * CODE_LETTERS.length);
+    });
+  }
+  const letters = Array.from(
+    picks,
+    (n) => CODE_LETTERS[n % CODE_LETTERS.length]
+  );
+  return `${letters.slice(0, 3).join("")}-${letters.slice(3).join("")}`;
+}
+
+/** What support needs to know about an error the screen met on its own. */
+function detailOf(error) {
+  let text;
+  if (error instanceof Error) {
+    text = `${error.name}: ${error.message} ${error.stack || ""}`;
+  } else {
+    try {
+      text = JSON.stringify(error);
+    } catch {
+      text = String(error);
+    }
+  }
+  const where =
+    typeof window !== "undefined" && window.location
+      ? window.location.pathname
+      : "";
+  return `${where} ${text}`.slice(0, MOST_DETAIL);
+}
+
 /**
- * The why: Shoresh's own words, "too big" when Salesforce's limits stopped it, or "Try again."
- * with the detail in the console for support.
+ * The code shown for an error Shoresh can't explain, kept with its detail in the camp's org.
+ * Keeping it never gets in the way: a screen that can't reach Salesforce still shows the code,
+ * and the detail is in the console.
  */
-export function reasonOf(error) {
+function supportCode(error, said) {
+  const known = error && typeof error === "object" ? codes.get(error) : null;
+  if (known) {
+    return known;
+  }
+  const code = newCode();
+  if (error && typeof error === "object") {
+    codes.set(error, code);
+  }
+  console.error(`Shoresh ${code}: ${said}`, error);
+  Promise.resolve()
+    .then(() => keepFromScreen({ code, detail: `${said} ${detailOf(error)}` }))
+    .catch(() => {});
+  return code;
+}
+
+const forSupport = (code) => ` For support: ${code}.`;
+
+/**
+ * The why and what kind it is: Shoresh's own words ("own"), "too big" when Salesforce's limits
+ * stopped it ("limit"), or "Try again." ("unexplained").
+ */
+function explain(error) {
   if (hitLimit(error)) {
-    console.error("Shoresh: stopped by a Salesforce limit:", error);
-    return TOO_BIG;
+    return { why: TOO_BIG, kind: "limit" };
   }
   const own = ownWords(error);
-  if (own === NOTHING_HAPPENED) {
-    // A bare errorMessage() passed along to failed(): its subject says what didn't happen.
-    return TRY_AGAIN;
+  if (own && own.startsWith(NOTHING_HAPPENED)) {
+    // A bare errorMessage() passed along to failed(): its subject says what didn't happen. Its
+    // support code, if it has one, stays.
+    return { why: TRY_AGAIN + own.slice(NOTHING_HAPPENED.length), kind: "own" };
   }
   if (own) {
-    return own;
+    return { why: own, kind: "own" };
   }
-  console.error("Shoresh: not shown to the director:", error);
-  return TRY_AGAIN;
+  return { why: TRY_AGAIN, kind: "unexplained" };
+}
+
+/** The why with a support code after it when Shoresh couldn't explain it (CORE-6.15). */
+function withCode(error, { why, kind }) {
+  if (kind === "own") {
+    return why;
+  }
+  const said =
+    kind === "limit"
+      ? "stopped by a Salesforce limit"
+      : "not shown to the director";
+  return why + forSupport(supportCode(error, said));
+}
+
+/**
+ * The why: Shoresh's own words, "too big" when Salesforce's limits stopped it, or "Try again.";
+ * the last two end with a support code.
+ */
+export function reasonOf(error) {
+  return withCode(error, explain(error));
 }
 
 /**
@@ -132,8 +221,10 @@ export function reasonOf(error) {
  * or "That didn't work. Try again." Prefer failed(), which names what didn't happen.
  */
 export function errorMessage(error) {
-  const why = reasonOf(error);
-  return why === TRY_AGAIN ? NOTHING_HAPPENED : why;
+  const found = explain(error);
+  return found.kind === "unexplained"
+    ? withCode(error, { ...found, why: NOTHING_HAPPENED })
+    : withCode(error, found);
 }
 
 // A subject that says the change was made (the screen only couldn't show it) is always kept.
@@ -165,11 +256,15 @@ export function failed(what, error) {
  */
 export function refusedBecause(what, error) {
   const subject = String(what || "");
-  const why = reasonOf(error);
-  if (DONE.test(subject) || why === TRY_AGAIN || why === TOO_BIG) {
+  const found = explain(error);
+  if (
+    DONE.test(subject) ||
+    found.kind !== "own" ||
+    found.why.startsWith(TRY_AGAIN)
+  ) {
     return failed(subject, error);
   }
-  return why;
+  return found.why;
 }
 
 // ---------- the floating refusal (word walk W4) ----------

@@ -227,7 +227,9 @@ describe("c-shoresh-apply-weeks (WEEK-6.2)", () => {
     const element = await render();
     q(element, '[data-id="yes"]').click();
     await flush();
-    expect(said(element, "w2")).toBe("Try again.");
+    expect(said(element, "w2")).toMatch(
+      /^Try again\. For support: [A-Z0-9]{3}-[A-Z0-9]{3}\.$/
+    );
     expect(said(element, "w3")).toBe("12 cells changed");
   });
 

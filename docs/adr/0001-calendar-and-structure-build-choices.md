@@ -40,7 +40,9 @@ Status: accepted (2026-10-15). Design source: wiki `projects/shoresh-scheduling-
    raw detail goes to the browser console for support. Every caller names what it was doing; one
    that can't says "That didn't work. Try again.") Once packaged,
    only Shoresh support (subscriber login) can read that log, not the camp's own admin. (The import's
-   undo refusal still adds the platform's text; it is changed with the import code.)
+   undo refusal still adds the platform's text; it is changed with the import code.) (Since
+   2026-11-21, ADR 0030: that "Try again." ends with a support code, and its detail is kept in an
+   Error Log record in the camp's org, CORE-6.15.)
 6. **All writes from the screens are user-mode DML** through one controller with an allow-list
    of objects and, per object, of the fields the screens send (a parent field only on a new
    row, except a group's division: a group moves to another division of its own program on

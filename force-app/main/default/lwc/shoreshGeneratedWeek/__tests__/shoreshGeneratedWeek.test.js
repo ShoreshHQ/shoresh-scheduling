@@ -366,7 +366,10 @@ describe("c/shoreshGeneratedWeek", () => {
       option: 1,
       days: [DAY]
     });
-    expect(result).toEqual({ status: REFUSED, message: "Try again." });
+    expect(result.status).toBe(REFUSED);
+    expect(result.message).toMatch(
+      /^Try again\. For support: [A-Z0-9]{3}-[A-Z0-9]{3}\.$/
+    );
     console.error.mockRestore();
   });
 

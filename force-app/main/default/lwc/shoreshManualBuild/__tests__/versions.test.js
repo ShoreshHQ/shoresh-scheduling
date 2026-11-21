@@ -383,8 +383,8 @@ describe("c-shoresh-manual-build: versions and Start from another week", () => {
     await flush();
     panel.querySelector('[data-id="save-button"]').click();
     await flush();
-    expect(q(element, '[data-id="build-error"]').textContent).toBe(
-      "Before the trip wasn't saved. Try again."
+    expect(q(element, '[data-id="build-error"]').textContent).toMatch(
+      /^Before the trip wasn't saved\. Try again\. For support: [A-Z0-9]{3}-[A-Z0-9]{3}\.$/
     );
     expect(consoleError).toHaveBeenCalled();
     consoleError.mockRestore();
