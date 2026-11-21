@@ -1,7 +1,8 @@
 /**
  * The seasons a person can see, each with its weeks and programs, and the one Shoresh's screens
  * open on (docs/protocol/api.md API-1.24): web address /v1/seasons, GET. So an AI never has to
- * guess a season's or a week's name. User mode: only what the person can see.
+ * guess a season's or a week's name. User mode: only what the person can see, and only the fields
+ * they can read.
  */
 @RestResource(urlMapping='/v1/seasons')
 global with sharing class AgentSeasons implements AgentRequest.Read {
@@ -35,7 +36,28 @@ global with sharing class AgentSeasons implements AgentRequest.Read {
 
   /** { opens_on: the season the screens open on, or null; seasons: [ ... ]; camps: their names }. */
   public static Map<String, Object> answer() {
-    List<Season__c> seen = OutgoingRows.seasonsSeen();
+    // Which seasons, in the screens' order, is seasonsSeen's; what is said of each is read again
+    // as the person, so a field they can't read is never said.
+    List<Season__c> listed = OutgoingRows.seasonsSeen();
+    Map<Id, Season__c> asPerson = new Map<Id, Season__c>(
+      [
+        SELECT
+          Id,
+          Name,
+          Camp__r.Name,
+          StartDate__c,
+          EndDate__c,
+          ShrinkShortWeek__c,
+          Archived__c
+        FROM Season__c
+        WHERE Id IN :new Map<Id, Season__c>(listed).keySet()
+        WITH USER_MODE
+      ]
+    );
+    List<Season__c> seen = new List<Season__c>();
+    for (Season__c season : listed) {
+      seen.add(asPerson.get(season.Id));
+    }
     Map<Id, List<String>> weeks = new Map<Id, List<String>>();
     Map<Id, List<String>> programs = new Map<Id, List<String>>();
     for (Season__c season : seen) {
@@ -64,7 +86,7 @@ global with sharing class AgentSeasons implements AgentRequest.Read {
     for (Season__c season : seen) {
       Map<String, Object> said = new Map<String, Object>{
         'season' => season.Name,
-        'camp' => season.Camp__r.Name,
+        'camp' => season.Camp__r?.Name,
         'start_date' => season.StartDate__c,
         'end_date' => season.EndDate__c,
         'short_week' => shortWeekOf(season),
