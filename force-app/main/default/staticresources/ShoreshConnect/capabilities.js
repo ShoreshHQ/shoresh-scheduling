@@ -2265,7 +2265,7 @@ const CAPABILITIES = [
         which: {
           type: "string",
           description:
-            "Which one, as the menu names it (\"Cedar\", \"Monday\", \"Swim\", \"Lake\", \"Juniors\"). Leave it out, or say every, for every one of what."
+            'Which one, as the menu names it ("Cedar", "Monday", "Swim", "Lake", "Juniors"). Leave it out, or say every, for every one of what.'
         },
         view: {
           type: "string",

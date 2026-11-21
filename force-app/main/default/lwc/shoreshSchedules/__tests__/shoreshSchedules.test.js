@@ -13,9 +13,13 @@ import {
 } from "../../shoreshScheduleViews/__tests__/data/scheduleFixture";
 
 const apex = () => ({ default: jest.fn() });
-jest.mock("@salesforce/apex/SchedulesController.getSavedSchedules", () => apex(), {
-  virtual: true
-});
+jest.mock(
+  "@salesforce/apex/SchedulesController.getSavedSchedules",
+  () => apex(),
+  {
+    virtual: true
+  }
+);
 jest.mock("@salesforce/apex/SchedulesController.openSchedule", () => apex(), {
   virtual: true
 });

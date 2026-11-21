@@ -91,7 +91,9 @@ function choiceOf(m, choices, input, t) {
   if (!found) {
     return { problem: `This ${t.sIn("Week")} has no ${input.what} to print.` };
   }
-  const which = String(input.which || "").trim().toLowerCase();
+  const which = String(input.which || "")
+    .trim()
+    .toLowerCase();
   if (!which || which === "every" || which === "all") {
     return { kind, key: m.EVERY };
   }
@@ -103,7 +105,9 @@ function choiceOf(m, choices, input, t) {
     const named = found.options
       .filter((o) => o.key !== m.EVERY)
       .map((o) => o.label);
-    return { problem: `There is no ${which} to choose. The choices: ${named.join("; ")}.` };
+    return {
+      problem: `There is no ${which} to choose. The choices: ${named.join("; ")}.`
+    };
   }
   return { kind, key: option.key };
 }
@@ -126,7 +130,9 @@ function scheduleFile(m, body, input, t) {
   if (choice.problem) return choice;
   const base = `${week} - ${version}`;
   const title =
-    choice.kind === "week" ? base : `${base} - ${m.choiceLabel(choices, choice)}`;
+    choice.kind === "week"
+      ? base
+      : `${base} - ${m.choiceLabel(choices, choice)}`;
   if (input.as === "print") {
     return {
       print: {
