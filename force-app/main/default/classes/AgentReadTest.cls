@@ -324,6 +324,36 @@ private class AgentReadTest {
     Assert.areEqual('Summer 2026', answer.get('opens_on'));
   }
 
+  // The list is read as the person: a scheduler whose admin hid the season's "In a short week"
+  // choice is refused, never told it.
+  @IsTest
+  static void listSeasonsNeverSaysAFieldThePersonCantRead() {
+    IncomingTestData camp = new IncomingTestData();
+    User hidden = ShoreshTestData.schedulerWithout(
+      Season__c.ShrinkShortWeek__c
+    );
+    System.runAs(new User(Id = UserInfo.getUserId())) {
+      Database.insert(
+        new Season__Share(
+          ParentId = camp.season.Id,
+          UserOrGroupId = hidden.Id,
+          AccessLevel = 'Read'
+        ),
+        AccessLevel.SYSTEM_MODE
+      );
+    }
+    Map<String, Object> answer;
+    Exception refused;
+    System.runAs(hidden) {
+      try {
+        answer = AgentSeasons.answer();
+      } catch (QueryException e) {
+        refused = e;
+      }
+    }
+    Assert.isNotNull(refused, 'the list was given: ' + JSON.serialize(answer));
+  }
+
   // API-1.26: the week's view is exactly what the Schedules screen opens for its published week.
   @IsTest
   static void theWeekViewIsTheSchedulesScreensOwn() {
