@@ -30,7 +30,10 @@ import {
   shapeOf,
   sheetPreview,
   startingAnswers,
-  toCheckRows
+  toCheckRows,
+  withApart,
+  camperKeys,
+  whichRows
 } from "./review";
 
 const STEPS = 3;
@@ -45,8 +48,10 @@ const STEPS = 3;
  * 2 of 3: only what needs a person: names Shoresh doesn't know (Same as, Add as an activity, Leave
  *    out; once per name), campers it can't tell apart, what it didn't read, what to check, and the
  *    comments kept with each camper.
- * 3 of 3: the count, what bringing in again keeps, and Bring in. Two campers with one name and no
- *    camper number refuse the sheet, as on the desktop (decision 53); so does a final run.
+ * 3 of 3: the count, what bringing in again keeps, and Bring in. Two rows with one name and no
+ *    camper number refuse the sheet until the director says they are different campers (card 2;
+ *    ELECT-2.7, Greg 2026-11-21, beyond the desktop's refusal); a row whose name more than one
+ *    camper in the season has asks which camper it is (or a new one). A final run refuses.
  *
  * The flow and words follow Shoresh desktop's choices-sheet import (AssignmentPanel.jsx,
  * ParseSummary.jsx); the look is Greg's approved mock-ups (design-research/electives-r1).
@@ -123,6 +128,9 @@ export default class ShoreshChoicesImport extends LightningElement {
   // The set's linked choices by name when the file was read (slice E8): a sheet may name one.
   linked = new Map();
   answers = {};
+  // ELECT-2.7: "Different campers" by cantTellApartRows key, and "which camper?" by camper key.
+  apart = {};
+  which = {};
   check = null;
   done = null;
   // A selector that takes the cursor at the next render.
@@ -329,6 +337,8 @@ export default class ShoreshChoicesImport extends LightningElement {
       this.file = file;
       this.fileName = chosen.name;
       this.reading = reading;
+      this.apart = {};
+      this.which = {};
       // Every name gets an answer to start from (startingAnswers). One click changes it; only
       // a click is remembered.
       this.answers = startingAnswers(
@@ -474,7 +484,20 @@ export default class ShoreshChoicesImport extends LightningElement {
     return left ? String(left) : "";
   }
   get apartRows() {
-    return this.reading ? cantTellApartRows(this.reading) : [];
+    return this.reading
+      ? cantTellApartRows(this.read).map((row) => ({
+          ...row,
+          differentPressed: String(row.different),
+          differentClass: row.different
+            ? "shoresh-item choice shoresh-raised"
+            : "shoresh-item choice",
+          differentLabel: `${row.name}, ${row.where}: different campers`,
+          waiting: !row.different,
+          className: row.different
+            ? "row shoresh-raised"
+            : "row row_look shoresh-raised"
+        }))
+      : [];
   }
   get hasApart() {
     return this.apartRows.length > 0;
@@ -502,7 +525,7 @@ export default class ShoreshChoicesImport extends LightningElement {
     return this.checkList.length > 0;
   }
   get keptList() {
-    return this.reading ? keptCommentRows(this.reading, this.groups) : [];
+    return this.reading ? keptCommentRows(this.read, this.groups) : [];
   }
   get hasKept() {
     return this.keptList.length > 0;
@@ -538,24 +561,36 @@ export default class ShoreshChoicesImport extends LightningElement {
 
   /** Card 3 */
   get refused() {
-    return this.hasApart;
+    return this.apartRows.some((row) => !row.different);
   }
   get apartCount() {
-    return this.reading ? this.reading.cantTellApart.length : 0;
+    const left = this.apartRows.filter((row) => !row.different).length;
+    return left ? String(left) : "";
   }
   get refusalLines() {
-    return this.apartRows.map((row) => ({
-      key: row.key,
-      text: `${row.name}: ${row.where}. ${row.why}`
-    }));
+    return this.apartRows
+      .filter((row) => !row.different)
+      .map((row) => ({
+        key: row.key,
+        text: `${row.name}: ${row.where}. ${row.why}`
+      }));
+  }
+  /** The reading with the rows the director called different campers, each its own camper. */
+  get read() {
+    return withApart(this.reading, this.apart);
   }
   get isFinal() {
     return !!(this.check && this.check.isFinal);
   }
   get request() {
+    return this.requestWith(this.which);
+  }
+  /** The request; which: the "which camper?" answers it carries ({} for the check's). */
+  requestWith(which) {
     if (!this.reading) return null;
     return buildRequest({
-      reading: this.reading,
+      which,
+      reading: this.read,
       activities: this.activities,
       linked: this.linked,
       answers: this.answers,
@@ -586,6 +621,37 @@ export default class ShoreshChoicesImport extends LightningElement {
       className: line.look ? "line line_look" : "line"
     }));
   }
+  /** Card 3's "which camper?" questions (ELECT-2.7), answered on the card. */
+  get whichList() {
+    const request = this.request;
+    if (!this.check || !request) return [];
+    return whichRows({
+      check: this.check,
+      request,
+      keys: camperKeys(this.read, this.groups),
+      which: this.which
+    }).map((row) => ({ ...row, label: `Which camper is ${row.where}?` }));
+  }
+  get hasWhich() {
+    return this.whichList.length > 0;
+  }
+  get whichLeft() {
+    return this.whichList.some((row) => !row.value);
+  }
+  get whichCount() {
+    const left = this.whichList.filter((row) => !row.value).length;
+    return left ? String(left) : "";
+  }
+  handleWhich(event) {
+    const key = event.currentTarget.dataset.key;
+    this.which = { ...this.which, [key]: event.detail.value };
+  }
+  handleDifferent(event) {
+    const key = event.currentTarget.dataset.key;
+    this.apart = { ...this.apart, [key]: !this.apart[key] };
+    this.check = null;
+  }
+
   get canGoOn() {
     if (this.step === 2) {
       return this.reading && allSettled(this.reading.newNames, this.answers);
@@ -603,7 +669,7 @@ export default class ShoreshChoicesImport extends LightningElement {
   get showsPrimary() {
     if (!this.isCards) return false;
     if (this.step < STEPS) return true;
-    return !!this.check && !this.refused && !this.isFinal;
+    return !!this.check && !this.refused && !this.isFinal && !this.whichLeft;
   }
   get primaryDisabled() {
     return this.isBusy || !this.canGoOn;
@@ -638,6 +704,8 @@ export default class ShoreshChoicesImport extends LightningElement {
     this.file = null;
     this.reading = null;
     this.answers = {};
+    this.apart = {};
+    this.which = {};
     this.check = null;
     this.done = null;
     this.fileName = null;
@@ -659,7 +727,8 @@ export default class ShoreshChoicesImport extends LightningElement {
   /** What bringing the sheet in would do (the count, hand changes kept), asked of the server. */
   async runCheck() {
     if (this.refused) return;
-    const request = this.request;
+    // Asked without the "which camper?" answers, so each question stays on the card to change.
+    const request = this.requestWith({});
     if (!request) return;
     this.phase = "checking";
     try {
@@ -676,7 +745,7 @@ export default class ShoreshChoicesImport extends LightningElement {
 
   async save() {
     const request = this.request;
-    if (!request || this.refused || this.isFinal) return;
+    if (!request || this.refused || this.isFinal || this.whichLeft) return;
     this.phase = "saving";
     this.status = "Importing";
     try {

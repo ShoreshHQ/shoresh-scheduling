@@ -8,7 +8,8 @@
  *
  * Everything runs in user mode (queries WITH USER_MODE, writes AccessLevel.USER_MODE). Campers
  * are found by their key (ElectiveRunTriggers.camperKey), never by querying a name, and no
- * message names a camper: refusals give the sheet's row instead.
+ * message names a camper: refusals give the sheet's row instead. A name two saved campers share
+ * is a question for the director, never a guess (ELECT-2.7).
  *
  * The work is split by what it touches: ChoicesImportPlace (the season, set, week, schedule and
  * run), ChoicesImportCampers and ChoicesImportChoices (activities added, and each camper's
@@ -50,6 +51,12 @@ public with sharing class ChoicesImport {
     // The division the sheet names for the row, when the program has it (null: none given).
     public Id divisionId;
     public List<SheetChoice> choices = new List<SheetChoice>();
+    // A person's answer to "which camper?" (Check.whichCamper; ELECT-2.7): the saved camper
+    // this row is, or a new camper.
+    public Id camperId;
+    public Boolean newCamper;
+    // One of the rows of one name the person said are different campers (ELECT-2.7).
+    public Boolean apart;
   }
 
   /**
@@ -135,6 +142,27 @@ public with sharing class ChoicesImport {
     // The run's campers that are not on this sheet: their choices stay.
     @AuraEnabled
     public Integer notOnSheet = 0;
+    // Rows Shoresh can't match to one camper by name: a person says which (ELECT-2.7). Neither
+    // known nor added until then.
+    @AuraEnabled
+    public List<Which> whichCamper = new List<Which>();
+  }
+
+  /** "Which camper is row 7?": the season's campers of that name, each told apart by a label. */
+  public class Which {
+    @AuraEnabled
+    public Integer index;
+    @AuraEnabled
+    public Integer row;
+    @AuraEnabled
+    public List<Pick> choices = new List<Pick>();
+  }
+
+  public class Pick {
+    @AuraEnabled
+    public Id id;
+    @AuraEnabled
+    public String label;
   }
 
   public class Renamed {
@@ -221,8 +249,12 @@ public with sharing class ChoicesImport {
     ChoicesImportCampers campers = new ChoicesImportCampers(request);
     ChoicesImportChoices choices = new ChoicesImportChoices(request, place);
     choices.readSaved();
+    result.whichCamper = campers.questions();
     Set<Id> onSheet = new Set<Id>();
     for (Integer i = 0; i < request.campers.size(); i++) {
+      if (campers.unsettled(i)) {
+        continue;
+      }
       Camper__c saved = campers.at(i);
       if (saved == null) {
         result.added++;

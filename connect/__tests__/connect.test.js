@@ -3340,6 +3340,187 @@ describe("Shoresh for AI tools and the command line", () => {
     });
   });
 
+  // ELECT-2.7 (Greg 2026-11-21): two campers may share a name; the AI answers as the screen.
+  it("twoCampersMayShareAName: rows the person calls different campers come in as two, and a name two campers have is asked by row", async () => {
+    const LWC = "../../force-app/main/default/lwc";
+    const choices = async () => ({
+      ...require(`${LWC}/shoreshImportEngine/shoreshImportEngine.js`),
+      ...require(`${LWC}/shoreshChoicesReader/shoreshChoicesReader.js`),
+      ...require(`${LWC}/shoreshChoicesImport/review.js`),
+      ...require(`${LWC}/shoreshTerms/shoreshTerms.js`),
+      ...require(`${LWC}/shoreshSchema/shoreshSchema.js`)
+    });
+    const { FIELD } = require(`${LWC}/shoreshSchema/shoreshSchema.js`);
+    const S = FIELD.Schedule;
+    const read = {
+      season: "Summer 2027",
+      setup: {
+        season: { Id: "s1" },
+        labels: [],
+        weeks: [{ Id: "w2", Name: "Week 2" }],
+        programs: [
+          {
+            program: { Id: "p1", Name: "Main" },
+            divisions: [
+              {
+                division: { Id: "d1", Name: "Juniors" },
+                groups: [
+                  { Id: "g1", Name: "Bunk 1" },
+                  { Id: "g2", Name: "Bunk 2" }
+                ]
+              }
+            ]
+          }
+        ],
+        schedules: [
+          {
+            Id: "m2",
+            [S.Week]: "w2",
+            [S.Status]: "Draft",
+            [S.Origin]: "Manual",
+            [S.Program]: "p1"
+          }
+        ],
+        activities: [
+          { Id: "a1", Name: "Swim" },
+          { Id: "a2", Name: "Art" }
+        ],
+        electives: {}
+      },
+      situation: {
+        sets: [{ id: "e1", name: "Chugim", activityIds: ["a1", "a2"] }],
+        runs: [],
+        answers: []
+      }
+    };
+    const check = {
+      runId: null,
+      runName: null,
+      runRevision: null,
+      isFinal: false,
+      known: 0,
+      added: 2,
+      handChanged: [],
+      differs: [],
+      renamed: [],
+      notOnSheet: 0
+    };
+    const input = {
+      season: "Summer 2027",
+      elective_set: "Chugim",
+      week: "Week 2",
+      file_name: "choices.csv",
+      csv_text:
+        "Camper,Bunk,Choice 1,Choice 2\nAvery Madeup,Bunk 1,Swim,Art\nCasey Madeup,Bunk 2,Art,Swim\n"
+    };
+    const answering = (answers, seen) => async (args, stdin) => {
+      seen.push({ args, stdin });
+      return answers.shift();
+    };
+    const ok = (body) =>
+      `HTTP/1.1 200\ncontent-type: application/json\n\n${body}`;
+    const message = (o) => ok(JSON.stringify({ message: JSON.stringify(o) }));
+    const twoNoas =
+      "Camper,Bunk,Choice 1,Choice 2\nNoa Madeup,Bunk 1,Swim,Art\nNoa Madeup,Bunk 2,Art,Swim\n";
+    const noas = { ...input, csv_text: twoNoas };
+
+    // Not said: refused as the screen refuses, saying how to answer.
+    const notSaid = await call("import_choices", noas, {
+      run: answering([ok(JSON.stringify(read))], []),
+      choices
+    });
+    expect(notSaid.ok).toBe(false);
+    expect(notSaid.text).toContain(
+      'If they are different campers, send different_campers: ["Noa Madeup"].'
+    );
+
+    // Said: each row is its own camper; the season already has one Noa, so each row is asked.
+    const asking = {
+      ...check,
+      added: 0,
+      whichCamper: [0, 1].map((index) => ({
+        index,
+        row: index + 2,
+        choices: [{ id: "c7", label: "Noa Madeup, Bunk 1" }]
+      }))
+    };
+    const seen = [];
+    const review = await call(
+      "import_choices",
+      { ...noas, different_campers: ["noa madeup"] },
+      {
+        run: answering([ok(JSON.stringify(read)), message(asking)], seen),
+        choices
+      }
+    );
+    expect(review.ok).toBe(true);
+    expect(
+      JSON.parse(seen[1].stdin).request.campers.map((c) => [
+        c.name,
+        c.apart,
+        c.groupId
+      ])
+    ).toEqual([
+      ["Noa Madeup", true, "g1"],
+      ["Noa Madeup", true, "g2"]
+    ]);
+    expect(review.text).toContain(
+      '- Row 2, Noa Madeup: "Noa Madeup, Bunk 1", or "new"'
+    );
+    expect(review.text).toContain("Not ready to import");
+
+    // Unanswered, nothing is saved.
+    const early = await call(
+      "import_choices",
+      { ...noas, different_campers: ["Noa Madeup"], save: true, seen: "none" },
+      {
+        run: answering([ok(JSON.stringify(read)), message(asking)], []),
+        choices
+      }
+    );
+    expect(early.ok).toBe(false);
+    expect(early.text).toContain("Nothing was imported.");
+
+    // Answered by row: the request carries the camper chosen and a new one.
+    const savedSeen = [];
+    const done = await call(
+      "import_choices",
+      {
+        ...noas,
+        different_campers: ["Noa Madeup"],
+        which_camper: { 2: "Noa Madeup, Bunk 1", 3: "new" },
+        save: true,
+        seen: "none"
+      },
+      {
+        run: answering(
+          [
+            ok(JSON.stringify(read)),
+            message(asking),
+            message({
+              campers: 2,
+              added: 1,
+              runName: "Chugim · Week 2",
+              runId: "r1"
+            })
+          ],
+          savedSeen
+        ),
+        choices
+      }
+    );
+    expect(done.ok).toBe(true);
+    expect(
+      JSON.parse(savedSeen[2].stdin).request.campers.map((c) => [
+        c.camperId,
+        c.newCamper
+      ])
+    ).toEqual([
+      ["c7", undefined],
+      [undefined, true]
+    ]);
+  });
+
   // API-1.117a (Greg 2026-11-15, AI = screen)
   it("bringInChoicesStartsAsTheScreenStarts: a new name starts at the screen's answer and only an answer that differs is remembered; the file's fingerprint is the screen's", async () => {
     const LWC = "../../force-app/main/default/lwc";

@@ -171,11 +171,31 @@ async function bringInChoices(capability, input, { read, send, answer, load }) {
       `${file.name}: no campers with choices found. Nothing was imported.`
     );
   }
-  if (reading.cantTellApart.length) {
+  // "Different campers" (ELECT-2.7), as the screen's button: by the name the rows share.
+  const different = new Set(
+    (Array.isArray(input.different_campers) ? input.different_campers : []).map(
+      (name) => m.foldName(String(name))
+    )
+  );
+  const apart = {};
+  m.cantTellApartRows(reading).forEach((row) => {
+    if (row.canSplit && different.has(m.foldName(row.name)))
+      apart[row.key] = true;
+  });
+  const sheet = m.withApart(reading, apart);
+  const waiting = m.cantTellApartRows(sheet).filter((r) => !r.different);
+  if (waiting.length) {
     // The screen brings nothing in while two rows can't be told apart (its refusal card).
-    const rows = m.cantTellApartRows(reading);
+    const canSay = waiting.filter((r) => r.canSplit).map((r) => r.name);
     return refused(
-      `Nothing was imported: ${rows.map((r) => `${r.name}: ${r.where}. ${r.why}`).join(" ")}`
+      [
+        `Nothing was imported: ${waiting.map((r) => `${r.name}: ${r.where}. ${r.why}`).join(" ")}`,
+        ...(canSay.length
+          ? [
+              `If they are different ${t.pIn("Camper")}, send different_campers: ${JSON.stringify(canSay)}. Ask the person; else the sheet needs fixing.`
+            ]
+          : [])
+      ].join("\n")
     );
   }
 
@@ -202,13 +222,15 @@ async function bringInChoices(capability, input, { read, send, answer, load }) {
     weekId: week.item.Id,
     scheduleId: schedule.item.id
   };
-  const request = (runRevision) =>
+  const groups = m.groupsOfProgram(setup, schedule.item.programId);
+  const request = (runRevision, which = {}) =>
     m.buildRequest({
-      reading,
+      which,
+      reading: sheet,
       activities,
       linked,
       answers,
-      groups: m.groupsOfProgram(setup, schedule.item.programId),
+      groups,
       place,
       fileName: file.name,
       fingerprint: fingerprintOf(input),
@@ -221,6 +243,44 @@ async function bringInChoices(capability, input, { read, send, answer, load }) {
   if (checked.status !== 200) return answer(checked);
   const check = JSON.parse(answer(checked).text);
   const seen = check.runRevision == null ? "none" : String(check.runRevision);
+  // "Which camper?" (ELECT-2.7), as the screen asks it on card 3: by row, a choice's words or
+  // "new". The check is asked without the answers, so its questions are all there.
+  const keys = m.camperKeys(sheet, groups);
+  const said =
+    input.which_camper && typeof input.which_camper === "object"
+      ? input.which_camper
+      : {};
+  const which = {};
+  const questions = m.whichRows({
+    check,
+    request: request(null),
+    keys,
+    which: {}
+  });
+  const whichLeft = [];
+  for (const q of questions) {
+    const row = q.where.replace(/^Row /, "");
+    const given = String(said[row] ?? "").trim();
+    const picked = q.options.find(
+      (o) =>
+        (given === "new" && o.value === m.NEW_CAMPER) ||
+        m.foldName(o.label) === m.foldName(given)
+    );
+    if (given && picked) which[q.key] = picked.value;
+    else whichLeft.push(q);
+  }
+  const whichLines = whichLeft.length
+    ? [
+        `More than one ${t.sIn("Camper")} in this season has these names. Say which each row is (ask the person), by which_camper: {"<row>": "<one of these>"} or "new" for a new ${t.sIn("Camper")}:`,
+        ...whichLeft.map(
+          (q) =>
+            `- ${q.where}, ${q.name}: ${q.options
+              .filter((o) => o.value !== m.NEW_CAMPER)
+              .map((o) => JSON.stringify(o.label))
+              .join(", ")}, or "new"`
+        )
+      ]
+    : [];
   if (check.isFinal) {
     return refused(
       `${check.runName || set.item.name} is final, so it can't take new choices.`
@@ -229,7 +289,7 @@ async function bringInChoices(capability, input, { read, send, answer, load }) {
   if (!input.save) {
     const lines = m
       .countLines({
-        request: request(check.runRevision),
+        request: request(check.runRevision, which),
         check,
         set: set.item,
         t,
@@ -249,9 +309,15 @@ async function bringInChoices(capability, input, { read, send, answer, load }) {
               'To change one, send answers by its name: "add" (a new activity, at How often 0), "leave" (leave it out) or "same:<activity>". Ask the person about any the sheet doesn\'t make plain.'
             ]
           : []),
-        `Ready to import. To import it, send the same file and answers with save: true and seen: ${JSON.stringify(seen)}.`
+        ...whichLines,
+        whichLeft.length
+          ? "Not ready to import until each row above is answered."
+          : `Ready to import. To import it, send the same file and answers with save: true and seen: ${JSON.stringify(seen)}.`
       ].join("\n")
     };
+  }
+  if (whichLeft.length) {
+    return refused(["Nothing was imported.", ...whichLines].join("\n"));
   }
   if (String(input.seen ?? "").trim() !== seen) {
     return {
@@ -262,7 +328,7 @@ async function bringInChoices(capability, input, { read, send, answer, load }) {
   }
   const saved = await send(capability.api, {
     season: input.season,
-    request: request(check.runRevision),
+    request: request(check.runRevision, which),
     save: true
   });
   if (saved.status !== 200) return answer(saved);

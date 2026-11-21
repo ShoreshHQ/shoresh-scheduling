@@ -117,7 +117,7 @@ public with sharing class IncomingElectiveChoicePlan {
       return 'Say which elective set (elective_set) and which week (week).';
     }
     if (campers.doubt(i)) {
-      return IncomingCampers.DOUBT;
+      return campers.doubtWords(i);
     }
     return campers.at(i) == null ? IncomingCampers.notFound() : null;
   }
