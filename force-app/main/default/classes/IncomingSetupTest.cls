@@ -388,26 +388,30 @@ private class IncomingSetupTest {
     }
   }
 
-  /** One batch through the web address as that user, refused by Refusing; its answer. */
-  private static Map<String, Object> refusedAs(User user) {
+  /** A batch of this many records through the web address as that user; its answer. */
+  private static Map<String, Object> throughWeb(
+    User user,
+    IncomingBatch.Capability capability,
+    Integer size
+  ) {
+    List<Object> records = new List<Object>();
+    for (Integer i = 0; i < size; i++) {
+      records.add(
+        new Map<String, Object>{
+          'season' => 'Summer 2026',
+          'source_system' => IncomingTestData.SYSTEM_NAME
+        }
+      );
+    }
     RestContext.request = new RestRequest();
     RestContext.request.httpMethod = 'POST';
     RestContext.request.requestBody = Blob.valueOf(
-      JSON.serialize(
-        new Map<String, Object>{
-          'records' => new List<Object>{
-            new Map<String, Object>{
-              'season' => 'Summer 2026',
-              'source_system' => IncomingTestData.SYSTEM_NAME
-            }
-          }
-        }
-      )
+      JSON.serialize(new Map<String, Object>{ 'records' => records })
     );
     RestContext.response = new RestResponse();
     System.runAs(user) {
       IncomingDoors.byWeb(
-        new Refusing(),
+        capability,
         IncomingGroup.Record.class,
         new Set<String>{ 'season', 'source_system' }
       );
@@ -415,12 +419,15 @@ private class IncomingSetupTest {
     Map<String, Object> answer = (Map<String, Object>) JSON.deserializeUntyped(
       RestContext.response.responseBody.toString()
     );
-    Assert.areEqual(
-      400,
-      RestContext.response.statusCode,
-      String.valueOf(answer)
-    );
+    answer.put('status', RestContext.response.statusCode);
     Assert.isFalse(AgentRefusal.forAgent, 'set back after the web address');
+    return answer;
+  }
+
+  /** One batch through the web address as that user, refused by Refusing; its answer. */
+  private static Map<String, Object> refusedAs(User user) {
+    Map<String, Object> answer = throughWeb(user, new Refusing(), 1);
+    Assert.areEqual(400, answer.get('status'), String.valueOf(answer));
     return answer;
   }
 
@@ -441,6 +448,118 @@ private class IncomingSetupTest {
     Assert.areEqual(
       '"Bunk 5" doesn\'t fit in the Dining hall at Lunch. Change "Lunch" first, then try again.',
       refusedAs(camp.sender('Send_Groups')).get('message')
+    );
+  }
+
+  private class UnexpectedException extends Exception {
+  }
+
+  /** A capability that fails in a way Shoresh didn't expect. */
+  private class Unexpected implements IncomingBatch.Capability {
+    public String permissionSet() {
+      return 'Send_Groups';
+    }
+    public String permissionLabel() {
+      return 'Send groups';
+    }
+    public String what() {
+      return 'Groups';
+    }
+    public String seasonOf(Object record) {
+      return ((IncomingGroup.Record) record).season;
+    }
+    public String systemOf(Object record) {
+      return ((IncomingGroup.Record) record).source_system;
+    }
+    public void plan(IncomingBatch batch, List<Object> records) {
+      throw new UnexpectedException('not one of Shoresh\'s own');
+    }
+  }
+
+  /** Two divisions; the first has a name too long for Salesforce, so the save refuses it. */
+  private class OneTooLong implements IncomingBatch.Capability {
+    public String permissionSet() {
+      return 'Send_Divisions';
+    }
+    public String permissionLabel() {
+      return 'Send divisions';
+    }
+    public String what() {
+      return 'Divisions';
+    }
+    public String seasonOf(Object record) {
+      return ((IncomingGroup.Record) record).season;
+    }
+    public String systemOf(Object record) {
+      return ((IncomingGroup.Record) record).source_system;
+    }
+    public void plan(IncomingBatch batch, List<Object> records) {
+      Id main = [
+        SELECT Id
+        FROM Program__c
+        WHERE Season__c = :batch.season.Id
+        WITH USER_MODE
+        LIMIT 1
+      ]
+      .Id;
+      batch.save(
+        0,
+        new Division__c(Program__c = main, Name = 'x'.repeat(81)),
+        'Added.'
+      );
+      batch.save(
+        1,
+        new Division__c(Program__c = main, Name = 'Seniors'),
+        'Added.'
+      );
+    }
+  }
+
+  // API-1.9: over a real web request, a problem Shoresh didn't expect still answers in Shoresh's
+  // words ({"message": ...}), never the platform's error.
+  @IsTest
+  static void anUnexpectedProblemOverTheWebIsSaidPlainly() {
+    IncomingTestData camp = new IncomingTestData();
+    ScreenErrors.overWeb = true;
+    Map<String, Object> answer = throughWeb(
+      camp.sender('Send_Groups'),
+      new Unexpected(),
+      1
+    );
+    Assert.areEqual(500, answer.get('status'), String.valueOf(answer));
+    Assert.areEqual(
+      'Shoresh couldn\'t tell why. Try again.',
+      answer.get('message')
+    );
+  }
+
+  // API-2.5: over a real web request, a record Salesforce refuses is that record's problem
+  // alone; the rest of the batch is saved.
+  @IsTest
+  static void aRefusedRecordOverTheWebLeavesTheRestSaved() {
+    IncomingTestData camp = new IncomingTestData();
+    ScreenErrors.overWeb = true;
+    Map<String, Object> answer = throughWeb(
+      camp.sender('Send_Divisions'),
+      new OneTooLong(),
+      2
+    );
+    Assert.areEqual(200, answer.get('status'), String.valueOf(answer));
+    Assert.areEqual(
+      'problem: Not saved: "' +
+        'x'.repeat(81) +
+        '": Something typed is too long. Shorten it and save again.',
+      IncomingTestData.said(answer, 1)
+    );
+    Assert.areEqual('saved: Added.', IncomingTestData.said(answer, 2));
+    Assert.areEqual(
+      1,
+      [
+        SELECT COUNT()
+        FROM Division__c
+        WHERE Name = 'Seniors'
+        WITH SYSTEM_MODE
+      ]
     );
   }
 }

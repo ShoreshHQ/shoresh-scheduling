@@ -85,7 +85,7 @@ public with sharing class OutgoingDoors {
     } catch (ShoreshException e) {
       refuse(response, 400, e.getMessage());
     } catch (Exception e) {
-      refuse(response, 500, ScreenErrors.of(e).getMessage());
+      refuse(response, 500, ScreenErrors.words(e));
     } finally {
       AgentRefusal.forAgent = false;
     }
@@ -249,7 +249,7 @@ public with sharing class OutgoingDoors {
           ': ' +
           (e instanceof ShoreshException
             ? e.getMessage()
-            : ScreenErrors.of(e).getMessage());
+            : ScreenErrors.words(e));
         log.Problem__c = result.message;
       }
       return result;
