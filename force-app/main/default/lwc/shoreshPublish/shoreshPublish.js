@@ -197,8 +197,8 @@ function plannedIn(plan, row) {
 /**
  * PUB-6.5: each special day on the week whose own schedule plans nothing for some of the week's
  * bunks (every cell Open, or only the regular day's fixed and recurring activities), named with
- * them: "Color war (Thursday): nothing planned for 9 of 10 Bunks: Bunk 2, Bunk 3, Bunk 4 and 6
- * more". It opens that special day. specials: the week's (WeekSpecials: { days }), as the week
+ * them: "Color war (Thursday): nothing planned for Bunk 2, Bunk 3, Bunk 4 and 6 more (9 of 10
+ * Bunks)"; one with no schedule saved yet, "nothing planned yet". It opens that special day. specials: the week's (WeekSpecials: { days }), as the week
  * editor has them.
  */
 export function specialDayLines(specials, t = buildTerms([])) {
@@ -207,15 +207,19 @@ export function specialDayLines(specials, t = buildTerms([])) {
     if (!plan || plan.problem) {
       return [];
     }
+    const where = `${day.name} (${day.day})`;
+    const go = { specialItemId: day.specialDayId };
     const groups = plan.groups || [];
-    const empty = (plan.blocks || []).length
-      ? groups.filter((grp, g) => !plannedIn(plan, (plan.rows || [])[g]))
-      : groups;
+    // No time blocks: no schedule saved yet (SpecialPlanDay sends it with no bunks either).
+    if (!(plan.blocks || []).length) {
+      return [{ text: `${where}: nothing planned yet`, go }];
+    }
+    const empty = groups.filter(
+      (grp, g) => !plannedIn(plan, (plan.rows || [])[g])
+    );
     if (!empty.length) {
       return [];
     }
-    const where = `${day.name} (${day.day})`;
-    const go = { specialItemId: day.specialDayId };
     if (empty.length === groups.length) {
       return [{ text: `${where}: nothing planned yet`, go }];
     }
@@ -230,7 +234,7 @@ export function specialDayLines(specials, t = buildTerms([])) {
     const unit = groups.length === 1 ? t.sIn("Group") : t.pIn("Group");
     return [
       {
-        text: `${where}: nothing planned for ${empty.length} of ${groups.length} ${unit}: ${listed}`,
+        text: `${where}: nothing planned for ${listed} (${empty.length} of ${groups.length} ${unit})`,
         go
       }
     ];

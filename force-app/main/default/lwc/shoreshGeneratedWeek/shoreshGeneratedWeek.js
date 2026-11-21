@@ -3,7 +3,7 @@ import saveWeekOnServer from "@salesforce/apex/GeneratedScheduleController.saveW
 import saveSlots from "@salesforce/apex/GeneratedScheduleController.saveSlots";
 import setLocksOnServer from "@salesforce/apex/GeneratedScheduleController.setLocks";
 import addActivityOnServer from "@salesforce/apex/GeneratedScheduleController.addActivity";
-import removeAddedOnServer from "@salesforce/apex/GeneratedScheduleController.removeAddedActivity";
+import removeAddedOnServer from "@salesforce/apex/AddedActivityController.removeFromGenerated";
 import { reasonOf } from "c/shoreshErrors";
 import { notesText, readNotes } from "c/shoreshEngine";
 import { loadedOf, locksOf, saveRequestOf } from "./build";

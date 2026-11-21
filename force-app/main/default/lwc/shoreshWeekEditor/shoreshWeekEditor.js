@@ -219,6 +219,8 @@ export default class ShoreshWeekEditor extends LightningElement {
   @api removeActivityWith;
   // For each Undo step that added an activity: { id, name, removed } (removed: its Undo took it off).
   stepAdded = new Map();
+  // An activity is being taken off or added again for an Undo or Redo (addedBusy).
+  addedPending = false;
   // Setup changed since the week started (Manual Build): cell key to its words, or nothing.
   @api setupDots;
   // A special day's or event's own schedule (ADR 0014 choice 15): its one day, called this, with
@@ -1952,7 +1954,8 @@ export default class ShoreshWeekEditor extends LightningElement {
     }
     const stepBefore = this.stepSeq;
     this.change(cell.slot, cell.key, `A:${activity.id}`, activity.length);
-    if (option.kind === "add") {
+    // Only one this add made (not the season's own, found by its name) is ever taken off.
+    if (option.kind === "add" && activity.created) {
       if (this.stepSeq > stepBefore) {
         // Its Undo takes the activity off again (LOCK-5.5).
         this.stepAdded.set(this.stepSeq, {
@@ -2007,7 +2010,9 @@ export default class ShoreshWeekEditor extends LightningElement {
         activityId: added.id
       });
     } catch {
-      // Left on Activities, where it can still be deleted: the cell's Undo was made.
+      // Left on Activities, where it can still be deleted: the cell's Undo was made, and this is
+      // said, never left silent.
+      this.sayOnce(`"${added.name}" is still on ${this.t.p("Activity")}.`);
       return false;
     }
     if (removed) {
@@ -2026,11 +2031,34 @@ export default class ShoreshWeekEditor extends LightningElement {
   /** After an Undo of a step that added an activity is saved: it goes too, when unused, and is said. */
   async undoAdded(stepId) {
     const added = this.stepAdded.get(stepId);
-    if (!added || added.removed || !(await this.takeOffAdded(added))) {
+    if (!added || added.removed) {
       return;
     }
-    this.stepAdded.set(stepId, { ...added, removed: true });
-    this.sayOnce(`"${added.name}" taken off ${this.t.p("Activity")}.`);
+    // Undo and Redo wait until it is known whether the activity went (addedBusy).
+    this.addedPending = true;
+    try {
+      if (await this.takeOffAdded(added)) {
+        this.stepAdded.set(stepId, { ...added, removed: true });
+        this.sayOnce(`"${added.name}" taken off ${this.t.p("Activity")}.`);
+      }
+    } finally {
+      this.addedPending = false;
+    }
+  }
+
+  /**
+   * An activity is being taken off or added again for an Undo or Redo, or an Undo that will take
+   * one off is still saving: Undo and Redo wait, so no step names an activity that is going.
+   */
+  get addedBusy() {
+    return (
+      this.addedPending ||
+      this.queue.some((waiting) => {
+        const added =
+          waiting.kind === "undo" && this.stepAdded.get(waiting.stepId);
+        return !!added && !added.removed;
+      })
+    );
   }
 
   /**
@@ -2039,6 +2067,7 @@ export default class ShoreshWeekEditor extends LightningElement {
    */
   async redoAdded(step, added) {
     let activity;
+    this.addedPending = true;
     try {
       activity = await this.addActivity(added.name);
     } catch (e) {
@@ -2046,6 +2075,8 @@ export default class ShoreshWeekEditor extends LightningElement {
       this.historyVersion += 1;
       this.reportError(failed(`Can't redo ${step.label}.`, e));
       return;
+    } finally {
+      this.addedPending = false;
     }
     this.stepAdded.set(step.id, { id: activity.id, name: activity.name });
     const names = {
@@ -2505,13 +2536,17 @@ export default class ShoreshWeekEditor extends LightningElement {
   // ---------- undo and redo ----------
 
   get canUndo() {
-    return this.historyVersion >= 0 && this.history.canUndo;
+    return this.historyVersion >= 0 && this.history.canUndo && !this.addedBusy;
   }
   get cannotUndo() {
     return !this.canUndo;
   }
   get cannotRedo() {
-    return !(this.historyVersion >= 0 && this.history.canRedo);
+    return !(
+      this.historyVersion >= 0 &&
+      this.history.canRedo &&
+      !this.addedBusy
+    );
   }
   get undoTitle() {
     return this.canUndo ? `Undo: ${this.history.undoLabel}` : "Undo";

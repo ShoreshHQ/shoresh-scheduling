@@ -91,20 +91,26 @@ private class AddedActivityUndoTest {
   static void undoTakesOffTheActivityItsStepAddedWhenNothingElseUsesIt() {
     System.runAs(ShoreshTestData.scheduler()) {
       Week week = manualWeek();
-      Id zoo = ManualBuildController.addActivity(week.draftId, 'swsw').id;
-      put(week, '', 'A:' + zoo);
+      // A slip of the keys, added from the cell and placed, then undone.
+      ManualBuildViews.ActivityOption slip = ManualBuildController.addActivity(
+        week.draftId,
+        'swsw'
+      );
+      Id typo = slip.id;
+      Assert.isTrue(slip.created);
+      put(week, '', 'A:' + typo);
       // The Undo's own save first: the cell is Open again.
-      put(week, 'A:' + zoo, '');
+      put(week, 'A:' + typo, '');
       Test.startTest();
       Integer before = Limits.getQueries();
-      Boolean removed = ManualBuildController.removeAddedActivity(
+      Boolean removed = AddedActivityController.removeFromManualBuild(
         week.draftId,
-        zoo
+        typo
       );
       Integer used = Limits.getQueries() - before;
       Test.stopTest();
       Assert.isTrue(removed);
-      Assert.isFalse(exists(zoo));
+      Assert.isFalse(exists(typo));
       Assert.isTrue(used <= QUERY_BOUND, 'Taking it off used ' + used);
     }
   }
@@ -121,9 +127,84 @@ private class AddedActivityUndoTest {
       Test.startTest();
       // The version kept since still holds it.
       Assert.isFalse(
-        ManualBuildController.removeAddedActivity(week.draftId, zoo)
+        AddedActivityController.removeFromManualBuild(week.draftId, zoo)
       );
       Test.stopTest();
+      Assert.isTrue(exists(zoo));
+    }
+  }
+
+  // LOCK-5.5
+  @IsTest
+  static void undoKeepsTheActivityWhileAnotherCellStillHasIt() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      Week week = manualWeek();
+      Id zoo = ManualBuildController.addActivity(week.draftId, 'Zoo trip').id;
+      put(week, '', 'A:' + zoo);
+      // Group B's Monday Period 2 has it too.
+      ManualBuildController.saveSlots(
+        week.draftId,
+        new List<SlotEdits.Edit>{
+          SlotRunsTestData.edit(
+            SlotRunsTestData.at(
+              week.monday,
+              week.ids.get('Group B'),
+              week.ids.get('Period 2')
+            ),
+            new List<String>{ '' },
+            new List<String>{ 'A:' + zoo }
+          )
+        }
+      );
+      put(week, 'A:' + zoo, '');
+      Test.startTest();
+      Assert.isFalse(
+        AddedActivityController.removeFromManualBuild(week.draftId, zoo)
+      );
+      Test.stopTest();
+      Assert.isTrue(exists(zoo));
+    }
+  }
+
+  // LOCK-5.5
+  @IsTest
+  static void aNameTheSeasonHasIsNeverMadeAndNeverTakenOff() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      Week week = manualWeek();
+      // Someone else's new activity, not yet changed: the add finds it.
+      Activity__c theirs = new Activity__c(
+        Season__c = week.ids.get('Season'),
+        Name = 'Archery',
+        Length__c = 1
+      );
+      Database.insert(theirs, AccessLevel.SYSTEM_MODE);
+      Test.startTest();
+      ManualBuildViews.ActivityOption found = ManualBuildController.addActivity(
+        week.draftId,
+        'archery'
+      );
+      Test.stopTest();
+      Assert.areEqual(theirs.Id, found.id);
+      Assert.isFalse(found.created);
+    }
+  }
+
+  // LOCK-5.5
+  @IsTest
+  static void onlyADraftTakesAnActivityOff() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      Week week = manualWeek();
+      Id zoo = ManualBuildController.addActivity(week.draftId, 'Zoo trip').id;
+      String refused;
+      Test.startTest();
+      try {
+        // Manual Build's draft is not Generated Schedule's.
+        AddedActivityController.removeFromGenerated(week.draftId, zoo);
+      } catch (AuraHandledException e) {
+        refused = e.getMessage();
+      }
+      Test.stopTest();
+      Assert.isNotNull(refused);
       Assert.isTrue(exists(zoo));
     }
   }
@@ -144,10 +225,10 @@ private class AddedActivityUndoTest {
       Test.setCreatedDate(pond, Datetime.now().addDays(-1));
       Test.startTest();
       Assert.isFalse(
-        ManualBuildController.removeAddedActivity(week.draftId, zoo)
+        AddedActivityController.removeFromManualBuild(week.draftId, zoo)
       );
       Assert.isFalse(
-        ManualBuildController.removeAddedActivity(week.draftId, pond)
+        AddedActivityController.removeFromManualBuild(week.draftId, pond)
       );
       Test.stopTest();
       Assert.isTrue(exists(zoo));
@@ -166,7 +247,7 @@ private class AddedActivityUndoTest {
         draftId,
         'Zoo trip'
       );
-      Boolean removed = GeneratedScheduleController.removeAddedActivity(
+      Boolean removed = AddedActivityController.removeFromGenerated(
         draftId,
         added.id
       );

@@ -4,7 +4,7 @@ import getDraft from "@salesforce/apex/ManualBuildController.getDraft";
 import startBlankWeek from "@salesforce/apex/ManualBuildController.startBlankWeek";
 import saveSlots from "@salesforce/apex/ManualBuildController.saveSlots";
 import addActivity from "@salesforce/apex/ManualBuildController.addActivity";
-import removeAddedActivity from "@salesforce/apex/ManualBuildController.removeAddedActivity";
+import removeAddedActivity from "@salesforce/apex/AddedActivityController.removeFromManualBuild";
 import { buildTerms } from "c/shoreshTerms";
 import { nsRecord } from "shoresh-jest/namespace";
 import {
@@ -37,7 +37,7 @@ jest.mock("@salesforce/apex/ManualBuildController.addActivity", () => apex(), {
   virtual: true
 });
 jest.mock(
-  "@salesforce/apex/ManualBuildController.removeAddedActivity",
+  "@salesforce/apex/AddedActivityController.removeFromManualBuild",
   () => apex(),
   { virtual: true }
 );
@@ -489,13 +489,15 @@ describe("c-shoresh-manual-build", () => {
         id: "a7",
         name: "Zoo trip",
         length: 1,
-        notFor: []
+        notFor: [],
+        created: true
       })
       .mockResolvedValueOnce({
         id: "a8",
         name: "Zoo trip",
         length: 1,
-        notFor: []
+        notFor: [],
+        created: true
       });
     removeAddedActivity.mockResolvedValue(true);
     const zoo = (id) => [
@@ -540,7 +542,8 @@ describe("c-shoresh-manual-build", () => {
       id: "a7",
       name: "Zoo trip",
       length: 1,
-      notFor: []
+      notFor: [],
+      created: true
     });
     removeAddedActivity.mockResolvedValue(false);
     saveSlots
@@ -566,6 +569,71 @@ describe("c-shoresh-manual-build", () => {
     await press(cell(element, "0-1"), "Enter");
     await type(element, "zoo");
     expect(optionLabels(element)).toContain("Zoo trip");
+  });
+
+  // LOCK-5.5
+  it("Undo never takes off an activity the add found by its name instead of making it", async () => {
+    getDraft.mockResolvedValue(draft());
+    // Someone else made Archery since this week was read: the add finds theirs.
+    addActivity.mockResolvedValue({
+      id: "a7",
+      name: "Archery",
+      length: 1,
+      notFor: [],
+      created: false
+    });
+    const archery = [
+      ...WITH_SOCCER.slice(0, 1),
+      { kind: "A", id: "a7", name: "Archery" }
+    ];
+    saveSlots
+      .mockResolvedValueOnce(answer(archery, ["1,2,", "1,,"]))
+      .mockResolvedValueOnce(answer(WITH_SOCCER.slice(0, 1), ["1,,", "1,,"]));
+    const element = await render();
+    await press(cell(element, "0-1"), "Enter");
+    await press(await type(element, "Archery"), "Enter");
+    q(element, '[data-id="undo"]').click();
+    await flush();
+    expect(saveSlots).toHaveBeenCalledTimes(2);
+    expect(removeAddedActivity).not.toHaveBeenCalled();
+  });
+
+  // LOCK-5.5
+  it("Undo and Redo wait while an Undo's activity is still being taken off", async () => {
+    getDraft.mockResolvedValue(draft());
+    addActivity.mockResolvedValue({
+      id: "a7",
+      name: "Zoo trip",
+      length: 1,
+      notFor: [],
+      created: true
+    });
+    const removing = later();
+    removeAddedActivity.mockReturnValue(removing.promise);
+    saveSlots
+      .mockResolvedValueOnce(
+        answer(
+          [
+            ...WITH_SOCCER.slice(0, 1),
+            { kind: "A", id: "a7", name: "Zoo trip" }
+          ],
+          ["1,2,", "1,,"]
+        )
+      )
+      .mockResolvedValueOnce(answer(WITH_SOCCER.slice(0, 1), ["1,,", "1,,"]));
+    const element = await render();
+    await press(cell(element, "0-1"), "Enter");
+    await press(await type(element, "Zoo trip"), "Enter");
+    q(element, '[data-id="undo"]').click();
+    await flush();
+    expect(q(element, '[data-id="redo"]').disabled).toBe(true);
+    q(element, '[data-id="redo"]').click();
+    await flush();
+    // Nothing redone while it is unknown whether Zoo trip goes.
+    expect(saveSlots).toHaveBeenCalledTimes(2);
+    removing.answer(true);
+    await flush();
+    expect(q(element, '[data-id="redo"]').disabled).toBe(false);
   });
 
   it("a slot someone else changed asks keep theirs or use yours; Use yours saves over theirs", async () => {

@@ -7,7 +7,7 @@ import takeOffDay from "@salesforce/apex/SpecialPlacingController.takeOffDay";
 import getDraft from "@salesforce/apex/ManualBuildController.getDraft";
 import startBlankWeek from "@salesforce/apex/ManualBuildController.startBlankWeek";
 import saveSlots from "@salesforce/apex/ManualBuildController.saveSlots";
-import removeAddedActivity from "@salesforce/apex/ManualBuildController.removeAddedActivity";
+import removeAddedActivity from "@salesforce/apex/AddedActivityController.removeFromManualBuild";
 import keepWeekBeforeRain from "@salesforce/apex/RainyDayController.keepManualWeek";
 import getWeekSources from "@salesforce/apex/ManualBuildController.getWeekSources";
 import startFromWeek from "@salesforce/apex/ManualBuildController.startFromWeek";

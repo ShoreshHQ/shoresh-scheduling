@@ -443,13 +443,14 @@ describe("c/shoreshPublish", () => {
       specialDayId: "sd3",
       name: "Carnival",
       day: "Friday",
-      plan: { ...colorWar.plan, blocks: [], rows: [] }
+      // No schedule saved yet: the server sends no time blocks and no bunks.
+      plan: { ...colorWar.plan, blocks: [], groups: [], items: [], rows: [] }
     };
     expect(
       specialDayLines({ days: [colorWar, planned, empty] }, bunks)
     ).toEqual([
       {
-        text: "Color war (Thursday): nothing planned for 5 of 6 Bunks: Bunk 2, Bunk 3, Bunk 4 and 2 more",
+        text: "Color war (Thursday): nothing planned for Bunk 2, Bunk 3, Bunk 4 and 2 more (5 of 6 Bunks)",
         go: { specialItemId: "sd1" }
       },
       {

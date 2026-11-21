@@ -41,12 +41,11 @@ public with sharing class ManualBuildActivities {
     Schedule__c schedule,
     String trimmed
   ) {
-    Id activityId = SpecialActivities.named(
-        seasonId,
-        new List<String>{ trimmed }
-      )
-      .byName.get(SpecialActivities.looseName(trimmed))
-      .Id;
+    SpecialActivities.Named found = SpecialActivities.named(
+      seasonId,
+      new List<String>{ trimmed }
+    );
+    Id activityId = found.byName.get(SpecialActivities.looseName(trimmed)).Id;
     for (
       ManualBuildViews.ActivityOption option : ManualBuildViews.options(
         seasonId,
@@ -59,6 +58,7 @@ public with sharing class ManualBuildActivities {
             option.record = record;
           }
         }
+        option.created = !found.added.isEmpty();
         return option;
       }
     }
@@ -66,23 +66,39 @@ public with sharing class ManualBuildActivities {
   }
 
   /**
-   * LOCK-5.5: Undo of the step that added an activity from a cell takes the activity off the
-   * season again, only while nothing else uses it: unchanged on Activities since it was made, no
-   * who-can-do-it row, rain plan, offering or week off pointing at it, and no schedule day,
-   * special day's or event's plan, or published plan saved since it was made naming it (another
-   * cell, a version kept, a publish). The undo's own save comes first, so the week shown no longer
-   * holds it. True when it was taken off; false when it stays (nothing to say: it is in use).
+   * LOCK-5.5: Undo of "Add <name>" on Manual Build's draft takes the activity it made off again
+   * (removeUnused). True when it was.
    */
-  public static Boolean removeUnused(Id scheduleId, Id activityId) {
+  public static Boolean removeFromManualBuild(Id scheduleId, Id activityId) {
     Id seasonId = lockedSeasonOf(scheduleId);
+    ManualDrafts.locked(scheduleId);
+    return removeUnused(seasonId, activityId);
+  }
+
+  /** The same from Generated Schedule's draft: a version or a published schedule is refused. */
+  public static Boolean removeFromGenerated(Id scheduleId, Id activityId) {
+    Id seasonId = lockedSeasonOf(scheduleId);
+    GeneratedDrafts.lockedToEdit(scheduleId);
+    return removeUnused(seasonId, activityId);
+  }
+
+  /**
+   * The activity taken off the season, only while nothing else uses it: made by this person and
+   * unchanged on Activities since, no who-can-do-it row, rain plan, offering, week off or copy
+   * pointing at it, and no schedule day, special day's or event's plan, or published plan saved
+   * since it was made naming it (another cell, a version kept, a publish). The undo's own save
+   * comes first, so the week shown no longer holds it. False when it stays (it is in use).
+   */
+  private static Boolean removeUnused(Id seasonId, Id activityId) {
     List<Activity__c> found = [
-      SELECT Id, CreatedDate, LastModifiedDate
+      SELECT Id, CreatedDate, CreatedById, LastModifiedDate
       FROM Activity__c
       WHERE Id = :activityId AND Season__c = :seasonId
       WITH USER_MODE
     ];
     if (
       found.isEmpty() ||
+      found[0].CreatedById != UserInfo.getUserId() ||
       found[0].LastModifiedDate != found[0].CreatedDate ||
       pointedAt(activityId) ||
       named(seasonId, activityId, found[0].CreatedDate)
@@ -100,7 +116,7 @@ public with sharing class ManualBuildActivities {
     return [
         SELECT COUNT()
         FROM Activity__c
-        WHERE RainPlan__c = :activityId
+        WHERE RainPlan__c = :activityId OR CopiedFrom__c = :activityId
         WITH SYSTEM_MODE
       ] +
       [
@@ -126,37 +142,50 @@ public with sharing class ManualBuildActivities {
   /** Whether a grid saved since the activity was made names it (by its Id's first 15 letters). */
   private static Boolean named(Id seasonId, Id activityId, Datetime since) {
     String key = String.valueOf(activityId).left(15);
-    for (ScheduleDay__c day : [
-      SELECT Grid__c
-      FROM ScheduleDay__c
-      WHERE
-        Schedule__r.Program__r.Season__c = :seasonId
-        AND SystemModstamp >= :since
-      WITH SYSTEM_MODE
-    ]) {
-      if (day.Grid__c != null && day.Grid__c.contains(key)) {
-        return true;
-      }
-    }
-    for (PlanPart__c part : [
-      SELECT Plan__c
-      FROM PlanPart__c
-      WHERE Season__c = :seasonId AND SystemModstamp >= :since
-      WITH SYSTEM_MODE
-    ]) {
-      if (part.Plan__c != null && part.Plan__c.contains(key)) {
-        return true;
-      }
-    }
-    for (PublishedPlan__c part : [
-      SELECT Plan__c
-      FROM PublishedPlan__c
-      WHERE
-        Schedule__r.Program__r.Season__c = :seasonId
-        AND SystemModstamp >= :since
-      WITH SYSTEM_MODE
-    ]) {
-      if (part.Plan__c != null && part.Plan__c.contains(key)) {
+    return holds(
+        [
+          SELECT Grid__c
+          FROM ScheduleDay__c
+          WHERE
+            Schedule__r.Program__r.Season__c = :seasonId
+            AND SystemModstamp >= :since
+          WITH SYSTEM_MODE
+        ],
+        ScheduleDay__c.Grid__c,
+        key
+      ) ||
+      holds(
+        [
+          SELECT Plan__c
+          FROM PlanPart__c
+          WHERE Season__c = :seasonId AND SystemModstamp >= :since
+          WITH SYSTEM_MODE
+        ],
+        PlanPart__c.Plan__c,
+        key
+      ) ||
+      holds(
+        [
+          SELECT Plan__c
+          FROM PublishedPlan__c
+          WHERE
+            Schedule__r.Program__r.Season__c = :seasonId
+            AND SystemModstamp >= :since
+          WITH SYSTEM_MODE
+        ],
+        PublishedPlan__c.Plan__c,
+        key
+      );
+  }
+
+  private static Boolean holds(
+    List<SObject> rows,
+    Schema.SObjectField text,
+    String key
+  ) {
+    for (SObject row : rows) {
+      String value = (String) row.get(text);
+      if (value != null && value.contains(key)) {
         return true;
       }
     }

@@ -20,7 +20,7 @@ import setLocksOnServer from "@salesforce/apex/GeneratedScheduleController.setLo
 import saveSlots from "@salesforce/apex/GeneratedScheduleController.saveSlots";
 import addOnGenerated from "@salesforce/apex/GeneratedScheduleController.addActivity";
 import addOnManualBuild from "@salesforce/apex/ManualBuildController.addActivity";
-import removeOnGenerated from "@salesforce/apex/GeneratedScheduleController.removeAddedActivity";
+import removeOnGenerated from "@salesforce/apex/AddedActivityController.removeFromGenerated";
 import { buildTerms } from "c/shoreshTerms";
 import { nsRecord } from "shoresh-jest/namespace";
 import { PROGRAM, SCHEDULE, SMALL, WEEK, camp, keeping } from "./data/camp";
@@ -56,7 +56,7 @@ jest.mock("@salesforce/apex/ManualBuildController.addActivity", () => apex(), {
   virtual: true
 });
 jest.mock(
-  "@salesforce/apex/GeneratedScheduleController.removeAddedActivity",
+  "@salesforce/apex/AddedActivityController.removeFromGenerated",
   () => apex(),
   { virtual: true }
 );
