@@ -42,7 +42,10 @@ the director's computer, so support saw what the director saw.
    Salesforce the code still shows and the detail is in the console. A code the server already
    put in its message is shown as it came, never given a second. Anyone with Shoresh Scheduler can call
    `keepFromScreen`, so a record can be added by a person, never read, changed or deleted; it
-   always names who sent it, and a code already kept is not kept again.
+   always names who sent it, and a code already kept is not kept again. The connector for AI apps carries
+   the same module (scripts/build-connect.js); a problem only its own computer met is said with a
+   code but kept only in that computer's log, since it has no screen in Salesforce to keep it
+   through. Problems Salesforce met reach it with the server's code, kept as usual.
 5. **The version (CORE-6.16).** Help in Settings shows "Version 1.4" beside support's address,
    quiet text, as the desktop's version sits beside About. It is Salesforce's own answer for the
    installed package (`System.requestVersion()`, major and minor; Salesforce gives no patch
