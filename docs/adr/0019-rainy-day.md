@@ -39,14 +39,28 @@ step, sees what changed and what couldn't, and can undo it.
    - **locked** (Generated only): left as it is. A Lock beats a switch as it beats a paste (ADR
      0008 part 9 §5); the desktop has no such lock on a hand edit, and Salesforce's Generated
      Schedule never lets a hand edit cover a lock (ADR 0008, "What Generated Schedule adds");
-   - **full**: its rain plan has no room in that block, so it keeps its activity and is marked;
-   - **switched** to its rain plan, in that one cell.
-     Nothing else is touched: a fixed or recurring activity, a special event placed on the grid
-     (decision 47's flagged event cells), an elective, or anything not set up yet. A cell where the
-     bunk isn't at camp, or that someone else changed since (below), is left out of all of these.
-     Cells are taken block by block and, in each block, bunk by bunk, so the same day always
-     switches the same cells (same inputs, same output).
-4. **"No room"** is the desktop's rule: the rain plan's groups at once are taken, or its place is
+   - **full**: it has an indoor rain plan but nothing indoors fits (below), so it keeps its
+     activity and is marked;
+   - **switched** indoors, in that one cell.
+
+   **Which indoor activity (Greg, 2026-11-21, CLOSE-4.9; beyond the desktop).** The desktop only
+   ever switched to the one named rain plan, so a bunk could get Gym games twice in a day, and a
+   full rain plan left the cell outdoors. Greg: "indoor activities for a rainy day are a product
+   of what their indoor locations are". So a cell switches to its rain plan when that fits, and
+   otherwise to the first indoor activity in the Activities screen's order that fits. An activity
+   fits when it is one block long, set up for the bunk ("who can do it"), not closed this week
+   nor at a place closed this week (CLOSE-4.2), has room (choice 4), and is not already the
+   bunk's that day, counting the cells switched before it. This holds for a cell without a rain
+   plan too; a cell nothing fits keeps its activity, marked full when it has an indoor rain plan
+   and counted as "without a rain plan" when it has none. Manual Build's draft carries the week's
+   closed activities and places for this (`DraftView.closed`); Generated already reads them.
+   Nothing else is touched: a fixed or recurring activity, a special event placed on the grid
+   (decision 47's flagged event cells), an elective, or anything not set up yet. A cell where the
+   bunk isn't at camp, or that someone else changed since (below), is left out of all of these.
+   Cells are taken block by block and, in each block, bunk by bunk, so the same day always
+   switches the same cells (same inputs, same output).
+
+4. **"No room"** is the desktop's rule: the activity's groups at once are taken, or its place is
    full. What counts is what stays in that block, the cells switched before this one, and, as
    Salesforce's checks count them (ADR 0008 §23, `checkWeek`), a fixed or recurring activity at
    the place and other programs' groups there (ADR 0010 §23). The desktop counts only the

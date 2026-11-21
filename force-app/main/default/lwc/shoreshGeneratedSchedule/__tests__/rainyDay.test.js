@@ -117,3 +117,23 @@ describe("c-shoresh-generated-schedule: rainy day", () => {
     ]);
   });
 });
+
+describe("what the switch is told is closed (CLOSE-4.9)", () => {
+  // CLOSE-4.2, CLOSE-4.9
+  it("gives the editor this week's closed activities and places, not another week's", () => {
+    const { editorDraftOf } = require("../counter");
+    const rows = nsRecord({
+      rows: [
+        { Id: "x1", Week__c: "wk1", Activity__c: "gym" },
+        { Id: "x2", Week__c: "wk1", Location__c: "artroom" },
+        { Id: "x3", Week__c: "wk1", Group__c: "g1" },
+        { Id: "x4", Week__c: "wk2", Activity__c: "crafts" }
+      ]
+    }).rows;
+    const draft = editorDraftOf(
+      { scheduleId: "s1", input: { weekId: "wk1", weekExceptions: rows } },
+      { days: [], isAway: () => false }
+    );
+    expect(draft.closed).toEqual(["gym", "artroom"]);
+  });
+});

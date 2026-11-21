@@ -7,6 +7,7 @@
  * screen.
  */
 import { checkGeneratedWeek, whyOf } from "c/shoreshEngine";
+import { FIELD } from "c/shoreshSchema";
 import { engineInputOf } from "c/shoreshGeneratedWeek";
 import { lockedKeys } from "./locks";
 import { openCells } from "./week";
@@ -47,6 +48,20 @@ export function checkDays(loaded, { terms, setup, engineWhy }, days, locks) {
   };
 }
 
+/** The Ids of the activities and places closed in the loaded week (its WeekException__c rows). */
+function closedThisWeek(input) {
+  const ids = [];
+  (input.weekExceptions || []).forEach((row) => {
+    if (input.weekId && row[FIELD.WeekException.Week] !== input.weekId) {
+      return;
+    }
+    [row[FIELD.WeekException.Activity], row[FIELD.WeekException.Location]]
+      .filter(Boolean)
+      .forEach((id) => ids.push(id));
+  });
+  return ids;
+}
+
 /** The week as the editor shows it: the days checked, the activities to place, where groups are away. */
 export function editorDraftOf(loaded, week) {
   const input = loaded.input;
@@ -62,7 +77,9 @@ export function editorDraftOf(loaded, week) {
     locationRecords: input.locations || [],
     fixedActivityRecords: input.fixedActivities || [],
     recurringActivityRecords: input.recurringActivities || [],
-    otherPrograms: input.otherPrograms || []
+    otherPrograms: input.otherPrograms || [],
+    // The activities and places closed this week, as Manual Build's draft has them (CLOSE-4.9).
+    closed: closedThisWeek(input)
   };
 }
 
