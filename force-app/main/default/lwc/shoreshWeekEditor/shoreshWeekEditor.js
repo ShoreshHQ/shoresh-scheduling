@@ -2078,7 +2078,12 @@ export default class ShoreshWeekEditor extends LightningElement {
     } finally {
       this.addedPending = false;
     }
-    this.stepAdded.set(step.id, { id: activity.id, name: activity.name });
+    if (activity.created) {
+      this.stepAdded.set(step.id, { id: activity.id, name: activity.name });
+    } else {
+      // Found by its name (made meanwhile): never this step's to take off again.
+      this.stepAdded.delete(step.id);
+    }
     const names = {
       [`A:${added.id}`]: `A:${activity.id}`,
       [`^A:${added.id}`]: `^A:${activity.id}`
