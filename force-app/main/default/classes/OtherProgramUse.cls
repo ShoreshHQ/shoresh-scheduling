@@ -47,7 +47,8 @@ public with sharing class OtherProgramUse {
 
   /**
    * week: Id, StartDate__c, EndDate__c. exceptions: the week's exceptions with Group__c,
-   * Location__c, FixedActivity__c and RecurringActivity__c (exceptionsOf).
+   * Location__c, FixedActivity__c and RecurringActivity__c (exceptionsOf, which reads Activity__c
+   * too for Manual Build's closed list).
    */
   public OtherProgramUse(Week__c week, List<WeekException__c> exceptions) {
     this.week = week;
@@ -63,7 +64,13 @@ public with sharing class OtherProgramUse {
   /** This week's exceptions, as the constructor needs them (Generated has them already). */
   public static List<WeekException__c> exceptionsOf(Id weekId) {
     return [
-      SELECT Id, Group__c, Location__c, FixedActivity__c, RecurringActivity__c
+      SELECT
+        Id,
+        Group__c,
+        Activity__c,
+        Location__c,
+        FixedActivity__c,
+        RecurringActivity__c
       FROM WeekException__c
       WHERE Week__c = :weekId
       WITH USER_MODE

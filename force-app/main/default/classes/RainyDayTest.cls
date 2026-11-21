@@ -322,6 +322,40 @@ private class RainyDayTest {
     }
   }
 
+  // CLOSE-4.9: Manual Build's draft says what is closed this week, so a switch never picks it.
+  @IsTest
+  static void theDraftListsTheActivitiesAndPlacesClosedThisWeek() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      camp();
+      startWeek();
+      insert new List<WeekException__c>{
+        new WeekException__c(
+          Week__c = ids.get('Week 1'),
+          Activity__c = ids.get('Gym games')
+        ),
+        new WeekException__c(
+          Week__c = ids.get('Week 1'),
+          Location__c = ids.get('Gym')
+        ),
+        new WeekException__c(
+          Week__c = ids.get('Week 1'),
+          Group__c = ids.get('Group C')
+        )
+      };
+      Test.startTest();
+      ManualBuildViews.DraftView view = ManualBuildController.getDraft(
+        ids.get('Main'),
+        ids.get('Week 1')
+      );
+      Test.stopTest();
+      Assert.areEqual(
+        new Set<Id>{ ids.get('Gym games'), ids.get('Gym') },
+        new Set<Id>(view.closed),
+        'the closed activity and place, not the group away'
+      );
+    }
+  }
+
   @IsTest
   static void generatedReadsWhichActivitiesAreOutdoorsAndTheirRainPlans() {
     System.runAs(ShoreshTestData.scheduler()) {

@@ -33,6 +33,10 @@ public with sharing class ManualBuildViews {
     // (OtherProgramUse; the same as Generated Schedule's engine counts).
     @AuraEnabled
     public List<OtherProgramUse.Entry> otherPrograms = new List<OtherProgramUse.Entry>();
+    // The activities and places closed this week: a rainy day never switches a cell to one
+    // (CLOSE-4.2, CLOSE-4.9).
+    @AuraEnabled
+    public List<Id> closed = new List<Id>();
     // Only just after Start a blank week: fixed or recurring activities whose slot was taken
     // ("Rest · Bunk 3 · Monday").
     @AuraEnabled
@@ -269,6 +273,13 @@ public with sharing class ManualBuildViews {
       : WeekSpecials.read(read.week, read.groups);
     view.otherPrograms = new OtherProgramUse(read.week, read.exceptions)
       .read(read.program, read.activities);
+    for (WeekException__c mark : read.exceptions) {
+      for (Id closedId : new List<Id>{ mark.Activity__c, mark.Location__c }) {
+        if (closedId != null) {
+          view.closed.add(closedId);
+        }
+      }
+    }
     // Beside the days as Publish would put them out (SchedulePublish), so a rename since the
     // week was published shows as a change to publish.
     view.published = SchedulePublish.stateOf(
