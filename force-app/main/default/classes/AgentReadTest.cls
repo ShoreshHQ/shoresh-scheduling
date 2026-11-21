@@ -329,7 +329,7 @@ private class AgentReadTest {
   @IsTest
   static void listSeasonsNeverSaysAFieldThePersonCantRead() {
     IncomingTestData camp = new IncomingTestData();
-    User hidden = ShoreshTestData.schedulerWithout(
+    User hidden = FieldAccessTestData.schedulerWithout(
       Season__c.ShrinkShortWeek__c
     );
     System.runAs(new User(Id = UserInfo.getUserId())) {
