@@ -1,5 +1,5 @@
 import { LightningElement, api } from "lwc";
-import { canDelete, metaOf } from "./words";
+import { canDelete, isAutomatic, metaOf } from "./words";
 import { campZone } from "c/shoreshCampClock";
 
 /**
@@ -55,6 +55,10 @@ export default class ShoreshVersions extends LightningElement {
   // The version whose delete was clicked once: it now asks "Delete?".
   deletingId;
   saveName = "";
+  // The older automatic copies, shown (WEEK-6.8): "4 more auto-saved" was pressed.
+  showAllAuto = false;
+  // Just unfolded: the cursor goes to the first copy it showed.
+  focusUnfoldedAfterRender = null;
   // Said to screen readers: "Delete Before the trip? Press again to delete."
   announcement = "";
   // After the panel closes, focus goes back to the Versions button (desktop design audit #7).
@@ -100,6 +104,16 @@ export default class ShoreshVersions extends LightningElement {
       const input = this.template.querySelector('[data-id="rename-input"]');
       if (input) {
         input.focus();
+      }
+    }
+    if (this.focusUnfoldedAfterRender) {
+      const id = this.focusUnfoldedAfterRender;
+      this.focusUnfoldedAfterRender = null;
+      const action = this.template.querySelector(
+        `[data-action="open"][data-id="${id}"]`
+      );
+      if (action) {
+        action.focus();
       }
     }
     if (this.focusAfterDelete && !this.busy) {
@@ -165,8 +179,44 @@ export default class ShoreshVersions extends LightningElement {
     return this.isOpen ? "shoresh-item shoresh-raised" : "shoresh-item";
   }
 
+  /**
+   * WEEK-6.8: every version a person kept, the published ones, the newest automatic copy (the
+   * way back from the last change) and the one on screen show; the older automatic copies
+   * ("Before Rebuild", "Before rainy Monday") are folded into one "4 more auto-saved" until it is
+   * pressed. None is ever deleted for it: each can still be restored.
+   */
+  get shownVersions() {
+    if (this.showAllAuto) {
+      return this._versions;
+    }
+    let newestAuto = true;
+    return this._versions.filter((version) => {
+      if (!isAutomatic(version)) {
+        return true;
+      }
+      const shown = newestAuto || version.id === this.openId;
+      newestAuto = false;
+      return shown;
+    });
+  }
+
+  get foldedCount() {
+    return this._versions.length - this.shownVersions.length;
+  }
+
+  get foldLabel() {
+    return `${this.foldedCount} more auto-saved`;
+  }
+
+  handleUnfold() {
+    const shown = new Set(this.shownVersions.map((version) => version.id));
+    const first = this._versions.find((version) => !shown.has(version.id));
+    this.showAllAuto = true;
+    this.focusUnfoldedAfterRender = first ? first.id : null;
+  }
+
   get rows() {
-    return this._versions.map((version) => {
+    return this.shownVersions.map((version) => {
       const confirming = version.id === this.deletingId;
       const { meta, showSaved } = metaOf(version);
       return {
@@ -234,7 +284,7 @@ export default class ShoreshVersions extends LightningElement {
     this.say("");
     this.focusAfterDelete = {
       id,
-      index: this._versions.findIndex((v) => v.id === id)
+      index: this.shownVersions.findIndex((v) => v.id === id)
     };
     this.dispatchEvent(new CustomEvent("delete", { detail: { id } }));
   }
@@ -280,6 +330,7 @@ export default class ShoreshVersions extends LightningElement {
   handleToggle() {
     this.isOpen = !this.isOpen;
     this.renamingId = null;
+    this.showAllAuto = false;
   }
 
   /**

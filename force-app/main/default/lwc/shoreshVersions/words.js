@@ -33,6 +33,14 @@ export function metaOf(version) {
   return { meta, showSaved };
 }
 
+/** A version Shoresh kept by itself ("Before Restore"), not one a person kept or published. */
+export function isAutomatic(version) {
+  return (
+    (version.reason === AUTO_SAVED || version.reason === THROUGH_AGENT) &&
+    !version.publishedAt
+  );
+}
+
 /**
  * Whether a version of a week being built has a delete: never once it was the week's published
  * schedule (kept as history, SchedulePublish), nor the imported week (kept as it came in,
