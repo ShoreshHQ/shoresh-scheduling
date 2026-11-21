@@ -99,7 +99,9 @@ private class ChoicesSameNameTest {
     return ChoicesImportController.checkChoices(JSON.serialize(request));
   }
 
+  /** As the screen does: checks first, then brings in at the revision the check saw. */
   private static ChoicesImport.Done bringIn(ChoicesImport.Request request) {
+    request.runRevision = check(request).runRevision;
     return ChoicesImportController.bringInChoices(JSON.serialize(request));
   }
 

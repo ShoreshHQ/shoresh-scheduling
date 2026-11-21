@@ -156,17 +156,12 @@ public with sharing class CamperKeys {
 
   /** Whether a saved camper already has an ID from the system this record is from. */
   public static Boolean fromSameSystem(Camper__c saved, Camper__c sent) {
-    // OutsideOwned.outsideKey with the ID left off: season|system|.
-    String systemPrefix = OutsideOwned.outsideKey(
-        new Camper__c(
-          Season__c = sent.Season__c,
-          SourceSystem__c = sent.SourceSystem__c,
-          OutsideId__c = '-'
-        )
-      )
-      .removeEnd('-');
-    return saved.OutsideMatch__c != null &&
-      saved.OutsideMatch__c.startsWith(systemPrefix);
+    // OutsideOwned.outsideKey's parts, from fields the sender can read.
+    return String.isNotBlank(saved.OutsideId__c) &&
+      String.isNotBlank(saved.SourceSystem__c) &&
+      String.isNotBlank(sent.SourceSystem__c) &&
+      saved.SourceSystem__c.normalizeSpace().toLowerCase() ==
+      sent.SourceSystem__c.normalizeSpace().toLowerCase();
   }
 
   /** A choices sheet's camper as a camper of the season (name and number, trimmed), to key. */

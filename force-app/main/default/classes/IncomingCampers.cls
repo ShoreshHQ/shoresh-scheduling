@@ -71,9 +71,10 @@ public with sharing class IncomingCampers {
       WHERE Id IN :all
       WITH USER_MODE
     ]) {
-      camper.OutsideMatch__c = hidden.get(camper.Id).OutsideMatch__c;
-      if (camper.OutsideMatch__c != null) {
-        byOutside.put(camper.OutsideMatch__c, camper);
+      // The hidden key stays off the record, which Undo's log may copy (ImportFields.WRITTEN).
+      String outside = hidden.get(camper.Id).OutsideMatch__c;
+      if (outside != null) {
+        byOutside.put(outside, camper);
       }
       saved.put(camper.Id, camper);
     }
@@ -183,7 +184,6 @@ public with sharing class IncomingCampers {
     Camper__c sent = asSent[index];
     String outside = OutsideOwned.outsideKey(sent);
     if (outside != null) {
-      camper.OutsideMatch__c = outside;
       byOutside.put(outside, camper);
     }
     if (CamperKeys.ofSent(sent) != null) {

@@ -23,7 +23,7 @@ private class IncomingSameNameTest {
     return [
       SELECT COUNT()
       FROM Camper__c
-      WHERE Season__c = :seasonId AND Name = 'Noa Levi'
+      WHERE Season__c = :seasonId AND Name LIKE 'noa%levi'
       WITH SYSTEM_MODE
     ];
   }
