@@ -46,16 +46,25 @@ global with sharing class AgentVersions implements AgentRequest.Read {
     AgentWeeks.Week week,
     Map<String, Object> body
   ) {
+    return named(
+      week,
+      body,
+      SchedulesController.getVersions(week.program.Id, week.weekId)
+    );
+  }
+
+  /** The same, among the rows given (the Saved versions page's, with its published schedule). */
+  public static ScheduleViews.VersionRow named(
+    AgentWeeks.Week week,
+    Map<String, Object> body,
+    List<ScheduleViews.VersionRow> rows
+  ) {
     String asked = AgentFields.text(body, 'version');
     String saved = AgentFields.text(body, 'saved');
     String word = wordOf(week);
     if (String.isBlank(asked)) {
       throw new ShoreshException('Say which ' + word + ' (version).');
     }
-    List<ScheduleViews.VersionRow> rows = SchedulesController.getVersions(
-      week.program.Id,
-      week.weekId
-    );
     List<ScheduleViews.VersionRow> same = new List<ScheduleViews.VersionRow>();
     List<String> names = new List<String>();
     for (ScheduleViews.VersionRow row : rows) {

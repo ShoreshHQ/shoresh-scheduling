@@ -1070,7 +1070,7 @@ describe("Shoresh for AI tools and the command line", () => {
       ["read_electives_list", ["activity"]],
       ["read_linked_choices", ["activity"]],
       ["read_week_draft", ["day", "group"]],
-      ["download_schedule", ["as", "view"]],
+      ["download_schedule", ["as", "view", "what", "which"]],
       ["download_elective_files", ["file"]],
       ["download_setup", ["list"]]
     ]);

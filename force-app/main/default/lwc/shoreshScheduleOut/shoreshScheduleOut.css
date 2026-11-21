@@ -1,0 +1,10 @@
+@import "c/shoreshTokens";
+
+:host {
+  display: inline-flex;
+  align-items: center;
+}
+
+.print {
+  margin-left: var(--shoresh-space-in-group);
+}

@@ -211,6 +211,20 @@
         <template lwc:if={draft}>
           <span class="shoresh-rail-line" role="presentation"></span>
         </template>
+        <!-- Excel and Print, each a menu of what to take out (PUB-6.6), before Versions and
+             Publish, as the Schedules page has them beside Versions. -->
+        <template lwc:if={showsOut}>
+          <c-shoresh-schedule-out
+            view={printView}
+            setup={setup}
+            terms={terms}
+            week-name={weekName}
+            version-name={printName}
+            disabled={cannotGetOut}
+            onfailed={handleOutFailed}
+            data-id="out"
+          ></c-shoresh-schedule-out>
+        </template>
         <slot name="end"></slot>
       </div>
     </div>
