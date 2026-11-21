@@ -3,7 +3,7 @@
     <fullName>Key__c</fullName>
     <caseSensitive>false</caseSensitive>
     <description
-  >Season and camper number, or season and a hash of the name when there is no number, filled by Shoresh, so a camper is in a season once. Holds no copy of the name.</description>
+  >Season and camper number, filled by Shoresh, so a camper number is in a season once. Blank for a camper with no number (their name key is NameKey__c; older campers may still hold it here).</description>
     <externalId>false</externalId>
     <label>Key</label>
     <length>255</length>

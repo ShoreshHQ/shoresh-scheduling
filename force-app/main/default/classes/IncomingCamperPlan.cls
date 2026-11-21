@@ -57,7 +57,7 @@ public with sharing class IncomingCamperPlan {
     } else if (isFuture(record.changed_at)) {
       batch.problem(i, FUTURE);
     } else if (campers.doubt(i)) {
-      batch.problem(i, IncomingCampers.DOUBT);
+      batch.problem(i, campers.doubtWords(i));
       batch.ask('camper|' + campers.likely(i).Id, doubtQuestion(i));
     } else if (found == null) {
       add(i, record);
@@ -93,6 +93,13 @@ public with sharing class IncomingCamperPlan {
   private String doubtQuestion(Integer i) {
     Camper__c sent = campers.sent(i);
     String likely = campers.likely(i).Name;
+    if (campers.sharedName(i)) {
+      // ELECT-2.7: two campers may share a name; only an ID or a number tells which.
+      return sent.SourceSystem__c.normalizeSpace() +
+        ' sent ' +
+        likely +
+        ' with no ID, and more than one camper in this season has that name. Have it send their ID or camper number, then send again.';
+    }
     return sent.SourceSystem__c.normalizeSpace() +
       ' sent a camper with ID ' +
       sent.OutsideId__c +
@@ -100,7 +107,11 @@ public with sharing class IncomingCamperPlan {
       likely +
       ', already in Shoresh. If they are the same child, give ' +
       likely +
-      ' that ID; if not, give one of them a camper number. Then send again.';
+      ' that ID; if not, give ' +
+      likely +
+      ' their own ID from ' +
+      sent.SourceSystem__c.normalizeSpace() +
+      '. Then send again.';
   }
 
   private void add(Integer i, IncomingCamper.Record record) {
