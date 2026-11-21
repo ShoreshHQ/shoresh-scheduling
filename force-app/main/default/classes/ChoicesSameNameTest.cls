@@ -197,7 +197,11 @@ private class ChoicesSameNameTest {
         unanswered
       );
       Assert.areEqual(1, answered.known);
-      Assert.isTrue(answered.whichCamper.isEmpty());
+      Assert.areEqual(
+        1,
+        answered.whichCamper.size(),
+        'Still asked, so the screen keeps showing the answer'
+      );
       Assert.areEqual(2, camp.noasSaved().size(), 'No one added');
     }
   }
