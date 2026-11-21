@@ -52,6 +52,8 @@ export function activity(id, over = {}) {
     priority: "High",
     early: null,
     eligible: [],
+    outdoor: false,
+    rainPlan: null,
     ...over
   };
 }
@@ -99,6 +101,8 @@ export function camp(spec) {
     Priority__c: a.priority,
     EarlyWeekCount__c: a.early ? a.early.count : null,
     EarlyWeekByDay__c: a.early ? a.early.day : null,
+    Outdoor__c: a.outdoor,
+    RainPlan__c: a.rainPlan,
     SortOrder__c: sortOf(activities, a)
   }));
   const eligibilityRecords = [];

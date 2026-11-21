@@ -205,6 +205,6 @@ public with sharing class IncomingDoors {
     ) {
       return e.getMessage();
     }
-    return ScreenErrors.of(e).getMessage();
+    return ScreenErrors.words(e);
   }
 }

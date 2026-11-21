@@ -155,9 +155,16 @@ public with sharing class SpecialDates {
     Schema.SObjectType type,
     List<Placement> days
   ) {
+    // Found in system mode: a person who can't read the day hears only its week, once.
+    Boolean dayReadable = SpecialDate__c.Day__c.getDescribe().isAccessible();
     List<String> named = new List<String>();
     for (Integer i = 0; i < Math.min(days.size(), MAX_DAYS); i++) {
-      named.add(onDay(days[i].day, days[i].weekName));
+      String said = dayReadable
+        ? onDay(days[i].day, days[i].weekName)
+        : days[i].weekName;
+      if (!named.contains(said)) {
+        named.add(said);
+      }
     }
     if (days.size() > MAX_DAYS) {
       named.add('more');

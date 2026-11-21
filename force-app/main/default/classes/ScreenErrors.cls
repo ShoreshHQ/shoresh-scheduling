@@ -20,6 +20,10 @@ public with sharing class ScreenErrors {
     StatusCode.REQUIRED_FIELD_MISSING => 'Something required is blank. Fill it in and save again.',
     StatusCode.STRING_TOO_LONG => 'Something typed is too long.'
   };
+  // Whether this request came through a web address; a test sets it, since a test can't be one.
+  @TestVisible
+  private static Boolean overWeb =
+    Request.getCurrent().getQuiddity() == Quiddity.REST;
 
   /** The plain words; a screen also says what to do next (API-1.105: an AI doesn't). */
   private static String plain(StatusCode code) {
@@ -60,7 +64,7 @@ public with sharing class ScreenErrors {
    * Salesforce allows no AuraHandledException, so the same words come as Shoresh's own refusal.
    */
   public static AuraHandledException of(String message) {
-    if (Request.getCurrent().getQuiddity() == Quiddity.REST) {
+    if (overWeb) {
       throw new ShoreshException(message);
     }
     AuraHandledException e = new AuraHandledException(message);
