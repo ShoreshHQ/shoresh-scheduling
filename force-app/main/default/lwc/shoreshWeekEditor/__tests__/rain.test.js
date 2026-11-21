@@ -277,6 +277,20 @@ describe("planRain", () => {
     ]);
   });
 
+  // CLOSE-4.9
+  it("takes the indoor activities in the Activities screen's order", () => {
+    // Art listed before Gym games on the screen: Hiking (no rain plan) goes to Art.
+    const result = plan(
+      [",3,", ",,", ",,", ",,"],
+      {},
+      {
+        ...withArt,
+        activities: [{ id: "art" }, { id: "gym" }]
+      }
+    );
+    expect(result.switches).toEqual([{ g: 0, b: 1, from: "hike", to: "art" }]);
+  });
+
   // CLOSE-4.2, CLOSE-4.9
   it("never switches to an activity closed this week, or one at a place closed this week", () => {
     // Gym games is closed: Bunk 1 goes to Art. The Art room closed too: nothing fits.

@@ -102,13 +102,17 @@ export function rainModel(draft, weekDays) {
       span: read ? read.span : 1
     });
   });
-  // The indoor activities a cell can switch to, in the Activities screen's order: none closed
-  // this week, nor at a place closed this week (CLOSE-4.2).
+  // The indoor activities a cell can switch to, in the Activities screen's order (the order
+  // both screens list draft.activities in): none closed this week, nor at a place closed this
+  // week (CLOSE-4.2).
   const closed = new Set((draft && draft.closed) || []);
-  const indoor = [...catalog.keys()].filter((id) => {
+  const listed = ((draft && draft.activities) || []).map((a) => a.id);
+  const order = [...new Set([...listed, ...catalog.keys()])];
+  const indoor = order.filter((id) => {
     const act = activities.get(id);
     return (
       act &&
+      catalog.has(id) &&
       !act.outdoor &&
       !closed.has(id) &&
       !(act.locationId && closed.has(act.locationId))
