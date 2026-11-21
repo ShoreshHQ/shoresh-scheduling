@@ -1,15 +1,10 @@
 import { LightningElement, api } from "lwc";
 import { ShowToastEvent } from "lightning/platformShowToastEvent";
-import { loadStyle } from "lightning/platformResourceLoader";
-import PRINT_STYLE from "@salesforce/resourceUrl/ShoreshPrint";
 import getVersions from "@salesforce/apex/SchedulesController.getVersions";
 import openSchedule from "@salesforce/apex/SchedulesController.openSchedule";
 import renameSchedule from "@salesforce/apex/SchedulesController.renameSchedule";
 import { closeRefusal, failed, floatRefusal } from "c/shoreshErrors";
 import { FIELD } from "c/shoreshSchema";
-import { downloadWorkbook, fileNameOf } from "c/shoreshDownload";
-import { offeringNames } from "c/shoreshElectiveDetails";
-import { printPages, scheduleSheets } from "c/shoreshScheduleExport";
 import {
   activityCards,
   activityGrid,
@@ -100,12 +95,6 @@ export default class ShoreshSchedules extends LightningElement {
   loadedFor;
   // Each open asks the server once; only the latest answer is shown.
   openTicket = 0;
-  exporting = false;
-  // The printout's pages while it is being printed (c-shoresh-schedule-print), else null.
-  printout = null;
-  printPending = false;
-  printStyleLoaded = false;
-  afterPrint = null;
   // The version the address asked for (API-1.28), opened instead of the newest once its week loads.
   versionToOpen = null;
   _opening;
@@ -373,8 +362,6 @@ export default class ShoreshSchedules extends LightningElement {
    * #129; on paper too, as the desktop prints what its screen shows; not in Excel, as the
    * desktop's workbook has no marks).
    */
-  printableMemo = {};
-
   get shown() {
     if (this.shownMemo.of !== this.opened) {
       this.shownMemo = {
@@ -601,110 +588,12 @@ export default class ShoreshSchedules extends LightningElement {
   get cannotGetOut() {
     return !this.opened || this.hasNoDays || this.busy;
   }
-  // While a download or a printout is under way the button stays focusable (aria-disabled) and a
-  // click does nothing: a focused button that turns disabled drops the cursor to the top of the
-  // page (WCAG 2.4.3), and the director just pressed it.
-  get exportBusy() {
-    return this.exporting ? "true" : "false";
-  }
-  get printBusy() {
-    return this.printout ? "true" : "false";
-  }
-  get cannotExport() {
-    return this.cannotGetOut || this.exporting;
-  }
-  get cannotPrint() {
-    return this.cannotGetOut || this.nothingToPrint || !!this.printout;
-  }
-  /**
-   * Activity View with no activity placed has no page to print: Print is off rather than giving a
-   * blank sheet (UI pass item 23). Daily and Group always print their days and groups.
-   */
-  get nothingToPrint() {
-    if (this.view !== "activity" || !this.opened) {
-      return false;
-    }
-    // Worked out once per schedule opened, not on every redraw (it lays out every activity).
-    if (this.printableMemo.of !== this.opened) {
-      this.printableMemo = {
-        of: this.opened,
-        none:
-          printPages(this.shown, "activity", this.catalogue, this.t).length ===
-          0
-      };
-    }
-    return this.printableMemo.none;
-  }
-  get printOff() {
-    return this.cannotGetOut || this.nothingToPrint;
-  }
-  /** The version on screen as an Excel file: a sheet per day, then every group's and activity's week. */
-  async handleExport() {
-    if (this.cannotExport) {
-      return;
-    }
-    this.exporting = true;
-    this.error = null;
-    try {
-      await downloadWorkbook(
-        this,
-        scheduleSheets(
-          this.shown,
-          this.catalogue,
-          this.t,
-          offeringNames(this._setup)
-        ),
-        fileNameOf(`${this.weekName} - ${this.openedName}`)
-      );
-    } catch (e) {
-      this.error = failed("The schedule wasn't downloaded.", e);
-    } finally {
-      this.exporting = false;
-    }
-  }
-
-  /**
-   * The version on screen on paper, a page per day, group or activity as the view shows them:
-   * the printout is put on the page, the browser's print opens, and the printout goes after.
-   */
-  async handlePrint() {
-    if (this.cannotPrint) {
-      return;
-    }
-    if (!this.printStyleLoaded) {
-      try {
-        await loadStyle(this, PRINT_STYLE);
-        this.printStyleLoaded = true;
-      } catch {
-        // Without it the paper also shows the page around the printout; it still prints.
-      }
-    }
-    this.printout = printPages(this.shown, this.view, this.catalogue, this.t);
-    this.printPending = true;
-  }
-  get printWeek() {
-    return this.weekName;
-  }
+  /** The version's name on each printed page (c-shoresh-schedule-out). */
   get printVersion() {
     return this.opened ? this.opened.schedule.name : "";
   }
-
-  startPrint() {
-    this.printPending = false;
-    this.afterPrint = () => this.endPrint();
-    window.addEventListener("afterprint", this.afterPrint);
-    window.print();
-  }
-  endPrint() {
-    if (this.afterPrint) {
-      window.removeEventListener("afterprint", this.afterPrint);
-      this.afterPrint = null;
-    }
-    this.printout = null;
-  }
-
-  disconnectedCallback() {
-    this.endPrint();
+  handleOutFailed(event) {
+    this.error = event.detail.message;
   }
 
   /**
@@ -727,12 +616,6 @@ export default class ShoreshSchedules extends LightningElement {
 
   renderedCallback() {
     this.tellWeekState();
-    if (
-      this.printPending &&
-      this.template.querySelector("c-shoresh-schedule-print")
-    ) {
-      this.startPrint();
-    }
     if (!this.focusAfter) {
       return;
     }

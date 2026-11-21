@@ -1,0 +1,29 @@
+<template>
+  <c-shoresh-print-menu
+    label="Excel"
+    choices={choices}
+    disabled={disabled}
+    busy={exporting}
+    onchoose={handleExport}
+    data-id="export"
+  ></c-shoresh-print-menu>
+  <c-shoresh-print-menu
+    class="print"
+    label="Print"
+    primary={primary}
+    choices={choices}
+    disabled={disabled}
+    busy={printing}
+    onchoose={handlePrint}
+    data-id="print"
+  ></c-shoresh-print-menu>
+  <!-- On paper only, while it prints (ShoreshPrint). -->
+  <template lwc:if={printout}>
+    <c-shoresh-schedule-print
+      pages={printout}
+      week={weekName}
+      version={versionName}
+      corner={corner}
+    ></c-shoresh-schedule-print>
+  </template>
+</template>

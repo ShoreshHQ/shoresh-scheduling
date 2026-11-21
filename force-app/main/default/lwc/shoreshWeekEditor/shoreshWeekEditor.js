@@ -12,7 +12,8 @@ import {
   days,
   groupGrid,
   gridMinWidth,
-  groups
+  groups,
+  withSpecials
 } from "c/shoreshScheduleViews";
 import {
   OPEN,
@@ -218,6 +219,9 @@ export default class ShoreshWeekEditor extends LightningElement {
   // A special day's or event's own schedule (ADR 0014 choice 15): its one day, called this, with
   // no views, day pills or drawer. Left out for a week.
   @api planName;
+  // The screen's name, on each printed page and in a downloaded file's name beside the week's
+  // ("Week 1 · Manual Build"): Excel and Print are on the rail only with it (PUB-6.4).
+  @api printName;
   // A special day's own schedule takes the season's elective sets as a week does (SPECIAL-1.3);
   // an event's, whose columns are stations, doesn't.
   @api takesElectives = false;
@@ -612,6 +616,33 @@ export default class ShoreshWeekEditor extends LightningElement {
   }
   get hasNoDays() {
     return !!this.schedule && this.schedule.days.length === 0;
+  }
+
+  // ---------- getting it out: Excel and Print (PUB-6.4) ----------
+
+  /** Excel and Print sit on the rail for a week (not a special schedule) on a screen that names itself. */
+  get showsOut() {
+    return !!this.draft && !!this.printName && !this.planName;
+  }
+  /** The week as printed: each day a special day replaces is its own schedule, as on screen. */
+  get printView() {
+    const draft = this.draft;
+    if (this.printMemo.of !== draft) {
+      this.printMemo = {
+        of: draft,
+        view: draft
+          ? withSpecials({ ...draft.schedule, specials: draft.specials })
+          : null
+      };
+    }
+    return this.printMemo.view;
+  }
+  printMemo = {};
+  get cannotGetOut() {
+    return !this.schedule || this.hasNoDays || !!this.restoring;
+  }
+  handleOutFailed(event) {
+    this.reportError(event.detail.message);
   }
 
   // ---------- checks ----------

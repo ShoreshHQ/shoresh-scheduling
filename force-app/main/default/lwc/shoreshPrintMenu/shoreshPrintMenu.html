@@ -1,0 +1,64 @@
+<template>
+  <c-shoresh-rail-pop
+    label={label}
+    menu
+    primary={primary}
+    align="right"
+    disabled={off}
+    onselect={handleSelect}
+    data-id="menu"
+  >
+    <template for:each={rows} for:item="row">
+      <template lwc:if={row.whole}>
+        <button
+          key={row.value}
+          type="button"
+          role="menuitem"
+          class="shoresh-pop-row"
+          data-value={row.value}
+          data-id="week"
+        >
+          {row.label}
+        </button>
+      </template>
+      <template lwc:else>
+        <div key={row.value} class="kind" data-kind-group={row.kind}>
+          <button
+            type="button"
+            role="menuitem"
+            class="shoresh-pop-row kind-row"
+            aria-haspopup="true"
+            aria-expanded={row.expanded}
+            data-kind={row.kind}
+            onclick={handleKind}
+          >
+            <span class="kind-word">{row.label}</span>
+            <svg class="shoresh-chevron" viewBox="0 0 12 12" aria-hidden="true">
+              <path d="M4.5 3 7.5 6l-3 3"></path>
+            </svg>
+          </button>
+          <template lwc:if={row.open}>
+            <div
+              class="options"
+              role="group"
+              aria-label={row.label}
+              data-id="options"
+            >
+              <template for:each={row.options} for:item="option">
+                <button
+                  key={option.value}
+                  type="button"
+                  role="menuitem"
+                  class="shoresh-pop-row option"
+                  data-value={option.value}
+                >
+                  {option.label}
+                </button>
+              </template>
+            </div>
+          </template>
+        </div>
+      </template>
+    </template>
+  </c-shoresh-rail-pop>
+</template>

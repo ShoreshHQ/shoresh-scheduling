@@ -135,40 +135,18 @@
           ></c-shoresh-versions>
           <template lwc:if={opened}>
             <span class="shoresh-rail-line" role="presentation"></span>
-            <button
-              type="button"
-              class="shoresh-item"
-              aria-label="Download Excel"
-              title="Download Excel"
-              data-id="export"
+            <!-- Excel and Print, each a menu of what to take out (PUB-6.4). -->
+            <c-shoresh-schedule-out
+              view={shown}
+              setup={setup}
+              terms={terms}
+              week-name={weekName}
+              version-name={printVersion}
               disabled={cannotGetOut}
-              aria-disabled={exportBusy}
-              onclick={handleExport}
-            >
-              <svg class="shoresh-glyph" viewBox="0 0 16 16" aria-hidden="true">
-                <path d="M8 2.5V10"></path>
-                <path d="M5 7l3 3 3-3"></path>
-                <path
-                  d="M2.5 10v2.5a1 1 0 0 0 1 1h9a1 1 0 0 0 1-1V10"
-                ></path></svg
-              >Excel
-            </button>
-            <button
-              type="button"
-              class="shoresh-item shoresh-item_primary print"
-              data-id="print"
-              disabled={printOff}
-              aria-disabled={printBusy}
-              onclick={handlePrint}
-            >
-              <svg class="shoresh-glyph" viewBox="0 0 16 16" aria-hidden="true">
-                <path d="M4.5 6V2.5h7V6"></path>
-                <path
-                  d="M4.5 11.5h-2v-5a.5.5 0 0 1 .5-.5h10a.5.5 0 0 1 .5.5v5h-2"
-                ></path>
-                <path d="M4.5 9.5h7v4h-7z"></path></svg
-              >Print
-            </button>
+              primary
+              onfailed={handleOutFailed}
+              data-id="out"
+            ></c-shoresh-schedule-out>
           </template>
         </template>
       </div>
@@ -374,14 +352,5 @@
         </template>
       </div>
     </div>
-    <!-- On paper only, while it prints (c-shoresh-schedule-print, ShoreshPrint). -->
-    <template lwc:if={printout}>
-      <c-shoresh-schedule-print
-        pages={printout}
-        week={printWeek}
-        version={printVersion}
-        corner={corner}
-      ></c-shoresh-schedule-print>
-    </template>
   </div>
 </template>
