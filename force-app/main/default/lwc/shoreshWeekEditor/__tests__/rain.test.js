@@ -64,7 +64,7 @@ const RECORDS = nsRecord({
       RainPlan__c: "crafts",
       Length__c: 2
     },
-    { Id: "crafts", Name: "Crafts", NoGroupLimit__c: true },
+    { Id: "crafts", Name: "Crafts", NoGroupLimit__c: true, Length__c: 2 },
     {
       Id: "canoe",
       Name: "Canoeing",
@@ -173,12 +173,20 @@ describe("planRain", () => {
     expect(at(result.full)).toEqual(["0|1"]);
   });
 
-  // CLOSE-4.5
-  it("leaves a longer one, one without a rain plan, and one whose rain plan is outdoors, and says each", () => {
-    const result = plan(["4,^,3", ",5,", ",,", ",,"]);
+  // CLOSE-4.5, CLOSE-4.9
+  it("leaves a longer one, and one without an indoor rain plan where nothing indoors fits, and says each", () => {
+    // Gym games is the only indoor activity one block long, and it isn't for Bunk 1 or Bunk 2.
+    const result = plan(
+      ["4,^,3", ",5,", ",,", ",,"],
+      {},
+      {
+        activities: [{ id: "gym", notFor: ["g1", "g2"] }]
+      }
+    );
     expect(at(result.spans)).toEqual(["0|0"]);
     expect(at(result.noPlan)).toEqual(["1|1", "0|2"]);
     expect(result.switches).toEqual([]);
+    expect(result.full).toEqual([]);
   });
 
   // CLOSE-4.5
@@ -203,6 +211,89 @@ describe("planRain", () => {
     expect(at(result.locked)).toEqual(["0|1"]);
     expect(result.switches).toEqual([]);
     expect(result.full).toEqual([]);
+  });
+
+  // CLOSE-4.9: the camp's Art room fits 1 bunk.
+  const withArt = {
+    activityRecords: [
+      ...RECORDS.activities,
+      ...nsRecord({
+        activities: [
+          { Id: "art", Name: "Art", Location__c: "artroom", GroupsAtOnce__c: 1 }
+        ]
+      }).activities
+    ],
+    locationRecords: [
+      ...RECORDS.locations,
+      ...nsRecord({
+        locations: [{ Id: "artroom", Name: "Art room", GroupsThatFit__c: 1 }]
+      }).locations
+    ]
+  };
+
+  // CLOSE-4.9
+  it("prefers the rain plan, and once it is full switches to another indoor activity that fits", () => {
+    // The Gym fits 2: Bunk 1 and Bunk 2 get Gym games, Bunk 3 the Art room, Bunk 4 nothing fits.
+    const result = plan([",1,", ",1,", ",1,", ",1,"], {}, withArt);
+    expect(result.switches).toEqual([
+      { g: 0, b: 1, from: "soccer", to: "gym" },
+      { g: 1, b: 1, from: "soccer", to: "gym" },
+      { g: 2, b: 1, from: "soccer", to: "art" }
+    ]);
+    expect(result.full).toEqual([{ g: 3, b: 1, activityId: "soccer" }]);
+  });
+
+  // CLOSE-4.9
+  it("never gives a bunk the same activity twice in a day", () => {
+    // Bunk 1 has Gym games in Period 1: its rainy Soccer goes to Art, not Gym games again.
+    expect(plan(["2,1,", ",,", ",,", ",,"], {}, withArt).switches).toEqual([
+      { g: 0, b: 1, from: "soccer", to: "art" }
+    ]);
+    // Nothing else indoors: it keeps Soccer and is marked, rather than a second Gym games.
+    const alone = plan(["2,1,", ",,", ",,", ",,"]);
+    expect(alone.switches).toEqual([]);
+    expect(alone.full).toEqual([{ g: 0, b: 1, activityId: "soccer" }]);
+    // Nor twice from the switch itself: Soccer in both periods gives Gym games, then Art.
+    expect(plan(["1,1,", ",,", ",,", ",,"], {}, withArt).switches).toEqual([
+      { g: 0, b: 0, from: "soccer", to: "gym" },
+      { g: 0, b: 1, from: "soccer", to: "art" }
+    ]);
+  });
+
+  // CLOSE-4.9
+  it("switches one without a rain plan to an indoor activity that fits, one set up for the bunk and one block long", () => {
+    // Hiking has no rain plan; Crafts is two blocks long; Gym games isn't for Bunk 1.
+    const result = plan(
+      [",3,", ",3,", ",,", ",,"],
+      {},
+      {
+        ...withArt,
+        activities: [{ id: "gym", notFor: ["g1"] }]
+      }
+    );
+    expect(result.switches).toEqual([
+      { g: 0, b: 1, from: "hike", to: "art" },
+      { g: 1, b: 1, from: "hike", to: "gym" }
+    ]);
+  });
+
+  // CLOSE-4.2, CLOSE-4.9
+  it("never switches to an activity closed this week, or one at a place closed this week", () => {
+    // Gym games is closed: Bunk 1 goes to Art. The Art room closed too: nothing fits.
+    expect(
+      plan([",1,", ",,", ",,", ",,"], {}, { ...withArt, closed: ["gym"] })
+        .switches
+    ).toEqual([{ g: 0, b: 1, from: "soccer", to: "art" }]);
+    const both = plan(
+      [",1,", ",,", ",,", ",,"],
+      {},
+      {
+        ...withArt,
+        closed: ["gym", "artroom"]
+      }
+    );
+    expect(both.switches).toEqual([]);
+    expect(both.full).toEqual([{ g: 0, b: 1, activityId: "soccer" }]);
   });
 
   // CLOSE-5.1

@@ -5,13 +5,17 @@
  * On the day, each activity cell (not a fixed or recurring activity, an event, an elective, or
  * something not set up yet) whose activity is outdoors is one of:
  * - `spans`: it runs longer than one time block, so it is left as it is;
- * - `noPlan`: it has no rain plan, or its rain plan is outdoors too;
  * - `locked`: a cell the director locked (Generated Schedule): a Lock beats a switch, as it beats
  *   a paste (ADR 0008 part 9);
- * - `full`: its rain plan has no room in that block: its groups at once are taken, or its place is
- *   full (counting what stays, what has switched before it, and other programs' groups, as the
- *   checks count them). It keeps its activity and gets the "Rain plan full" mark;
- * - `switches`: it switches to its rain plan.
+ * - `switches`: it switches indoors: to its rain plan when that fits, or else to the first indoor
+ *   activity in the Activities screen's order that fits (CLOSE-4.9);
+ * - `full`: it has an indoor rain plan but nothing indoors fits. It keeps its activity and gets
+ *   the "Rain plan full" mark;
+ * - `noPlan`: it has no rain plan, or its rain plan is outdoors too, and nothing indoors fits.
+ * An indoor activity fits a cell when it is one block long, set up for the group, not already the
+ * group's that day, and has room in that block: its groups at once aren't taken and its place
+ * isn't full (counting what stays, what has switched before it, a fixed or recurring activity at
+ * the place, and other programs' groups, as the checks count them).
  * Cells are taken block by block, and in each block group by group, so the same day always
  * switches the same cells. A cell `skip` names (someone else's change since, ADR 0008 §24) or
  * where the group isn't at camp is left out of all of these, and counts as what it holds.
@@ -94,9 +98,28 @@ export function rainModel(draft, weekDays) {
       outdoor: Boolean(r[FIELD.Activity.Outdoor]),
       rainPlanId: r[FIELD.Activity.RainPlan] || null,
       atOnce: read ? read.atOnce : 1,
-      locationId: read ? read.locationId : null
+      locationId: read ? read.locationId : null,
+      span: read ? read.span : 1
     });
   });
+  // The indoor activities a cell can switch to, in the Activities screen's order: none closed
+  // this week, nor at a place closed this week (CLOSE-4.2).
+  const closed = new Set((draft && draft.closed) || []);
+  const indoor = [...catalog.keys()].filter((id) => {
+    const act = activities.get(id);
+    return (
+      act &&
+      !act.outdoor &&
+      !closed.has(id) &&
+      !(act.locationId && closed.has(act.locationId))
+    );
+  });
+  const notFor = new Map(
+    ((draft && draft.activities) || []).map((a) => [
+      a.id,
+      new Set(a.notFor || [])
+    ])
+  );
   const places = readLocations((draft && draft.locationRecords) || []);
   const { setTimeLocations } = readProgram({
     fixedActivities: (draft && draft.fixedActivityRecords) || [],
@@ -110,6 +133,9 @@ export function rainModel(draft, weekDays) {
   const indexOf = new Map(days.map((d, i) => [d.dateValue, i]));
   return {
     activities,
+    indoor,
+    isFor: (activityId, groupId) =>
+      !(notFor.get(activityId) || new Set()).has(groupId),
     fit: (locationId) => {
       const place = places.get(locationId);
       return place ? place.fit : null;
@@ -150,16 +176,13 @@ export function planRain(day, model, options = {}) {
         result.spans.push({ g, b });
         return;
       }
-      const plan = act.rainPlanId ? model.activities.get(act.rainPlanId) : null;
-      if (!plan || plan.outdoor) {
-        result.noPlan.push({ g, b });
-        return;
-      }
       if (isLocked(g, b)) {
         result.locked.push({ g, b });
         return;
       }
-      candidates.push({ g, b, activityId, to: act.rainPlanId });
+      const plan = act.rainPlanId ? model.activities.get(act.rainPlanId) : null;
+      const named = plan && !plan.outdoor ? act.rainPlanId : null;
+      candidates.push({ g, b, activityId, named });
     });
   });
   const leaving = new Set(candidates.map((c) => `${c.g}|${c.b}`));
@@ -193,35 +216,64 @@ export function planRain(day, model, options = {}) {
       add(byPlace, `${b}|${place}`, g);
     }
   };
+  // The activities each group has that day: "g|id" (CLOSE-4.9: no repeat in a day).
+  const held = new Set();
+  const hold = (g, identity) => {
+    if (startsActivity(identity)) {
+      held.add(`${g}|${identity.slice(2)}`);
+    }
+  };
   rows.forEach((row, g) =>
     row.forEach((slot, b) => {
       if (slot && !leaving.has(`${g}|${b}`)) {
         book(g, b, owner(slot));
+        hold(g, slot);
       }
     })
   );
 
   candidates.forEach((c) => {
-    const plan = model.activities.get(c.to);
     const blockId = day.blocks[c.b].id;
+    const groupId = day.groups[c.g].id;
     const others = (kind, id) =>
       model.othersAt(kind, id, day.dateValue, blockId);
-    const doing =
-      (byActivity.get(`${c.b}|${c.to}`) || new Set()).size +
-      others("activity", c.to);
-    const atOnceFull = plan.atOnce !== null && doing >= plan.atOnce;
-    const fit = plan.locationId ? model.fit(plan.locationId) : null;
-    const there =
-      fit === null
-        ? 0
-        : (byPlace.get(`${c.b}|${plan.locationId}`) || new Set()).size +
-          others("place", plan.locationId);
-    if (atOnceFull || (fit !== null && there >= fit)) {
-      result.full.push({ g: c.g, b: c.b, activityId: c.activityId });
-      book(c.g, c.b, `A:${c.activityId}`);
+    const fits = (id) => {
+      const act = model.activities.get(id);
+      if (
+        act.span > 1 ||
+        !model.isFor(id, groupId) ||
+        held.has(`${c.g}|${id}`)
+      ) {
+        return false;
+      }
+      const doing =
+        (byActivity.get(`${c.b}|${id}`) || new Set()).size +
+        others("activity", id);
+      const fit = act.locationId ? model.fit(act.locationId) : null;
+      const there =
+        fit === null
+          ? 0
+          : (byPlace.get(`${c.b}|${act.locationId}`) || new Set()).size +
+            others("place", act.locationId);
+      return (
+        (act.atOnce === null || doing < act.atOnce) &&
+        (fit === null || there < fit)
+      );
+    };
+    const to = [c.named, ...model.indoor].find(
+      (id) => id && model.indoor.includes(id) && fits(id)
+    );
+    if (to) {
+      result.switches.push({ g: c.g, b: c.b, from: c.activityId, to });
+      book(c.g, c.b, `A:${to}`);
+      hold(c.g, `A:${to}`);
     } else {
-      result.switches.push({ g: c.g, b: c.b, from: c.activityId, to: c.to });
-      book(c.g, c.b, `A:${c.to}`);
+      if (c.named) {
+        result.full.push({ g: c.g, b: c.b, activityId: c.activityId });
+      } else {
+        result.noPlan.push({ g: c.g, b: c.b });
+      }
+      book(c.g, c.b, `A:${c.activityId}`);
     }
   });
   return result;
