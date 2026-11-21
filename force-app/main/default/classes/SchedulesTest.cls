@@ -348,7 +348,10 @@ private class SchedulesTest {
         Origin__c = 'Manual',
         PublishedAt__c = Datetime.now()
       );
+      // Made as Publish makes it (PublishedGuard lets only Publish write a published schedule).
+      PublishedGuard.allow();
       Database.insert(published, AccessLevel.SYSTEM_MODE);
+      PublishedGuard.done();
       Test.startTest();
       List<ScheduleViews.VersionRow> saved = SchedulesController.getSavedSchedules(
         c.program.Id,
