@@ -48,7 +48,12 @@ public with sharing class ElectiveSeatSaves {
   /** Replaces the unlocked seats with the ones sent, after checking them, writing only what differs. */
   public static ElectiveSeats.RunView assign(AssignRequest request) {
     if (request == null || request.runId == null || request.seats == null) {
-      throw new ShoreshException('The seats could not be sent. Try again.');
+      throw new ShoreshException(
+        ErrorCodes.said(
+          'The seats could not be sent. Try again.',
+          'ElectiveSeatSaves: a request missing its run or seats'
+        )
+      );
     }
     ElectiveRunState state = ElectiveRunState.held(request.runId);
     state.refuseUnlessCurrent(request.revision);

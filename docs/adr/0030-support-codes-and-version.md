@@ -28,7 +28,9 @@ the director's computer, so support saw what the director saw.
    No permission set grants it, so only an admin, or Shoresh support logged in as one
    (subscriber support login), reads it: Setup's Developer Console or any SOQL tool,
    `SELECT Name, CreatedDate, Person__r.Name, Detail__c FROM ErrorLog__c WHERE Name = 'K7Q-4MX'`
-   (with the package's namespace prefix once it has one). Global search also finds it by code.
+   (with the package's namespace prefix once it has one). Global search also finds it by code. The detail is
+   the platform's own message and stack, which can rarely quote a typed value (a name), as the debug
+   log always did; it stays in the camp's org and is not cleared on its own.
 3. **Kept even when the request is undone.** A refused save undoes everything its request wrote,
    so a record written there would vanish with it. The detail goes out on a platform event
    published immediately (`ErrorLogEvent__e`), which an undo doesn't take back; its trigger, run by
@@ -38,7 +40,9 @@ the director's computer, so support saw what the director saw.
    reach only the screen. `c/shoreshErrors` makes the code there, shows it at once, and asks
    `ErrorCodes.keepFromScreen` to keep it with what the screen knows; if that can't reach
    Salesforce the code still shows and the detail is in the console. A code the server already
-   put in its message is shown as it came, never given a second.
+   put in its message is shown as it came, never given a second. Anyone with Shoresh Scheduler can call
+   `keepFromScreen`, so a record can be added by a person, never read, changed or deleted; it
+   always names who sent it, and a code already kept is not kept again.
 5. **The version (CORE-6.16).** Help in Settings shows "Version 1.4" beside support's address,
    quiet text, as the desktop's version sits beside About. It is Salesforce's own answer for the
    installed package (`System.requestVersion()`, major and minor; Salesforce gives no patch

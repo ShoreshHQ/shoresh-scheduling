@@ -203,6 +203,10 @@ describe("refusedBecause", () => {
         refusedBecause("Bunks not saved.", refusal(errorMessage(uncaught)))
       )
     ).toBe("Bunks not saved. Try again.");
+    const limit = { body: { message: "Apex CPU time limit exceeded" } };
+    expect(
+      refusedBecause("Bunks not saved.", refusal(errorMessage(limit)))
+    ).toMatch(/^Bunks not saved\. This camp is bigger than Salesforce/);
     expect(
       refusedBecause(
         "Done, but the screen couldn't show it yet. Reload the page.",

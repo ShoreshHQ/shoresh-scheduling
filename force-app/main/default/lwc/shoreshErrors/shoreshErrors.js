@@ -120,8 +120,9 @@ const codes = new WeakMap();
 
 function newCode() {
   const picks = new Uint32Array(6);
-  if (globalThis.crypto && globalThis.crypto.getRandomValues) {
-    globalThis.crypto.getRandomValues(picks);
+  const random = typeof window !== "undefined" ? window.crypto : null;
+  if (random && random.getRandomValues) {
+    random.getRandomValues(picks);
   } else {
     picks.forEach((_, i) => {
       picks[i] = Math.floor(Math.random() * CODE_LETTERS.length);
@@ -260,7 +261,8 @@ export function refusedBecause(what, error) {
   if (
     DONE.test(subject) ||
     found.kind !== "own" ||
-    found.why.startsWith(TRY_AGAIN)
+    found.why.startsWith(TRY_AGAIN) ||
+    found.why.startsWith(TOO_BIG)
   ) {
     return failed(subject, error);
   }

@@ -91,6 +91,7 @@ private class ErrorCodesTest {
   static void aScreensOwnCodeIsKept() {
     Test.startTest();
     ErrorCodes.keepFromScreen('K7Q-4MX', 'Disconnected or Canceled');
+    ErrorCodes.keepFromScreen('K7Q-4MX', 'Sent again: not kept twice');
     ErrorCodes.keepFromScreen('not a code', 'Ignored');
     ErrorCodes.keepFromScreen(null, 'Ignored');
     Test.stopTest();
@@ -99,7 +100,7 @@ private class ErrorCodesTest {
       FROM ErrorLog__c
       WITH SYSTEM_MODE
     ];
-    Assert.areEqual(1, logs.size(), 'Only a real code is kept');
+    Assert.areEqual(1, logs.size(), 'Only a real code is kept, and once');
     Assert.areEqual('K7Q-4MX', logs[0].Name);
     Assert.isTrue(logs[0].Detail__c.contains('Disconnected or Canceled'));
   }

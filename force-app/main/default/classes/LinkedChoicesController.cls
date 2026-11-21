@@ -32,7 +32,12 @@ public with sharing class LinkedChoicesController {
         LinkedChoiceSaves.Edit.class
       );
     } catch (Exception e) {
-      throw new ShoreshException('That change could not be sent. Try again.');
+      throw new ShoreshException(
+        ErrorCodes.said(
+          'That change could not be sent. Try again.',
+          ErrorCodes.detailOf(e)
+        )
+      );
     }
   }
 }

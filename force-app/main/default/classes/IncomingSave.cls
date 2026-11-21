@@ -85,7 +85,10 @@ public with sharing class IncomingSave {
       }
     }
     throw new IncomingBatch.RefusedException(
-      'Shoresh couldn\'t tell which record failed. Try again.'
+      ErrorCodes.said(
+        'Shoresh couldn\'t tell which record failed. Try again.',
+        'IncomingSave: no failed record matched the refusal'
+      )
     );
   }
 

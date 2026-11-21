@@ -225,12 +225,14 @@ private class LinkedChoicesTest {
       Assert.areEqual(
         'That time could not be sent. Try again.',
         refusalOf(funday)
+          .replaceAll(' For support: [A-Z0-9]{3}-[A-Z0-9]{3}\\.$', '')
       );
 
       LinkedChoiceSaves.Edit nothing = new LinkedChoiceSaves.Edit();
       Assert.areEqual(
         'That change could not be sent. Try again.',
         refusalOf(nothing)
+          .replaceAll(' For support: [A-Z0-9]{3}-[A-Z0-9]{3}\\.$', '')
       );
       LinkedChoiceSaves.Edit odd = new LinkedChoiceSaves.Edit();
       odd.offeringId = menu.dramaId;
@@ -239,6 +241,7 @@ private class LinkedChoicesTest {
       Assert.areEqual(
         'That change could not be sent. Try again.',
         refusalOf(odd)
+          .replaceAll(' For support: [A-Z0-9]{3}-[A-Z0-9]{3}\\.$', '')
       );
 
       // Another season's time block: refused by the trigger, and the linked choice is not made.
@@ -261,7 +264,10 @@ private class LinkedChoicesTest {
       }
       Test.stopTest();
 
-      Assert.areEqual('That change could not be sent. Try again.', garbled);
+      Assert.areEqual(
+        'That change could not be sent. Try again.',
+        garbled.replaceAll(' For support: [A-Z0-9]{3}-[A-Z0-9]{3}\\.$', '')
+      );
       Assert.areEqual(
         0,
         [SELECT COUNT() FROM LinkedChoice__c WHERE ElectiveSet__c = :menu.setId]

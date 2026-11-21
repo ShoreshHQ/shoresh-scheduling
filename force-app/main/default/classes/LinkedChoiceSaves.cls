@@ -44,7 +44,12 @@ public with sharing class LinkedChoiceSaves {
   /** Saves one gesture; returns the linked choice's Id. */
   public static Id save(Edit edit) {
     if (edit == null || (edit.id == null && edit.offeringId == null)) {
-      throw new ShoreshException('That change could not be sent. Try again.');
+      throw new ShoreshException(
+        ErrorCodes.said(
+          'That change could not be sent. Try again.',
+          'LinkedChoiceSaves: an edit with no linked choice or offering'
+        )
+      );
     }
     refuseUnknownValues(edit);
     Savepoint before = Database.setSavepoint();
@@ -61,11 +66,21 @@ public with sharing class LinkedChoiceSaves {
 
   private static void refuseUnknownValues(Edit edit) {
     if (edit.appliesTo != null && !APPLIES_TO.contains(edit.appliesTo)) {
-      throw new ShoreshException('That change could not be sent. Try again.');
+      throw new ShoreshException(
+        ErrorCodes.said(
+          'That change could not be sent. Try again.',
+          'LinkedChoiceSaves: unknown appliesTo ' + edit.appliesTo
+        )
+      );
     }
     for (Period each : LinkedChoiceRows.periodsOf(edit.periodsOn)) {
       if (!WEEKDAYS.contains(each.weekday) || each.blockId == null) {
-        throw new ShoreshException('That time could not be sent. Try again.');
+        throw new ShoreshException(
+          ErrorCodes.said(
+            'That time could not be sent. Try again.',
+            'LinkedChoiceSaves: a period with an unknown day or no time block'
+          )
+        );
       }
     }
   }

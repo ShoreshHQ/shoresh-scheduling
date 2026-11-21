@@ -108,6 +108,9 @@ import electiveSetThursday from "@salesforce/schema/ElectiveSet__c.Thursday__c";
 import electiveSetTimeBlock from "@salesforce/schema/ElectiveSet__c.TimeBlock__c";
 import electiveSetTuesday from "@salesforce/schema/ElectiveSet__c.Tuesday__c";
 import electiveSetWednesday from "@salesforce/schema/ElectiveSet__c.Wednesday__c";
+import errorLogObject from "@salesforce/schema/ErrorLog__c";
+import errorLogDetail from "@salesforce/schema/ErrorLog__c.Detail__c";
+import errorLogPerson from "@salesforce/schema/ErrorLog__c.Person__c";
 import fixedActivityObject from "@salesforce/schema/FixedActivity__c";
 import fixedActivityCopiedFrom from "@salesforce/schema/FixedActivity__c.CopiedFrom__c";
 import fixedActivityEarlyBlocks from "@salesforce/schema/FixedActivity__c.EarlyBlocks__c";
@@ -346,6 +349,7 @@ export const OBJECT = Object.freeze({
   Division: divisionObject.objectApiName,
   ElectiveRun: electiveRunObject.objectApiName,
   ElectiveSet: electiveSetObject.objectApiName,
+  ErrorLog: errorLogObject.objectApiName,
   FixedActivity: fixedActivityObject.objectApiName,
   Group: groupObject.objectApiName,
   ImportAnswer: importAnswerObject.objectApiName,
@@ -481,6 +485,10 @@ export const FIELD = Object.freeze({
     TimeBlock: electiveSetTimeBlock.fieldApiName,
     Tuesday: electiveSetTuesday.fieldApiName,
     Wednesday: electiveSetWednesday.fieldApiName
+  }),
+  ErrorLog: Object.freeze({
+    Detail: errorLogDetail.fieldApiName,
+    Person: errorLogPerson.fieldApiName
   }),
   FixedActivity: Object.freeze({
     CopiedFrom: fixedActivityCopiedFrom.fieldApiName,
@@ -760,6 +768,9 @@ export const PARENT = Object.freeze({
     Season: FIELD.ElectiveSet.Season.replace(/__c$/, "__r"),
     TimeBlock: FIELD.ElectiveSet.TimeBlock.replace(/__c$/, "__r")
   }),
+  ErrorLog: Object.freeze({
+    Person: FIELD.ErrorLog.Person.replace(/__c$/, "__r")
+  }),
   FixedActivity: Object.freeze({
     CopiedFrom: FIELD.FixedActivity.CopiedFrom.replace(/__c$/, "__r"),
     LastTimeBlock: FIELD.FixedActivity.LastTimeBlock.replace(/__c$/, "__r"),
@@ -1005,7 +1016,8 @@ export const CHILDREN = Object.freeze({
   }),
   User: Object.freeze({
     FinalizedElectiveRuns: `${NAMESPACE_PREFIX}FinalizedElectiveRuns__r`,
-    PublishedSchedules: `${NAMESPACE_PREFIX}PublishedSchedules__r`
+    PublishedSchedules: `${NAMESPACE_PREFIX}PublishedSchedules__r`,
+    ShoreshErrorLogs: `${NAMESPACE_PREFIX}ShoreshErrorLogs__r`
   }),
   Week: Object.freeze({
     ElectiveRuns: `${NAMESPACE_PREFIX}ElectiveRuns__r`,

@@ -57,20 +57,38 @@ public with sharing class ErrorCodes {
     kept(code, 'From the screen: ' + (detail == null ? '' : detail));
   }
 
-  /** The event's trigger: one Error Log record per code. */
+  /**
+   * The event's trigger: one Error Log record per code. A code already kept is not kept again,
+   * so a screen sending a code a second time (or someone sending another person's) adds nothing.
+   */
   public static void write(List<ErrorLogEvent__e> events) {
-    List<ErrorLog__c> logs = new List<ErrorLog__c>();
+    Set<String> codes = new Set<String>();
     for (ErrorLogEvent__e event : events) {
-      logs.add(
-        new ErrorLog__c(
-          Name = event.Code__c,
-          Detail__c = event.Detail__c,
-          Person__c = event.CreatedById
-        )
-      );
+      codes.add(event.Code__c);
     }
     // System mode: the trigger runs as Salesforce's Automated Process user, and the log is
-    // granted to no one, so no person can write or forge one (reviewer notes, system mode row 3).
+    // granted to no one (reviewer notes, system mode row 3). People can add to it only through
+    // keepFromScreen, never read, change or delete it; Person__c is who really sent it.
+    for (ErrorLog__c kept : [
+      SELECT Name
+      FROM ErrorLog__c
+      WHERE Name IN :codes
+      WITH SYSTEM_MODE
+    ]) {
+      codes.remove(kept.Name);
+    }
+    List<ErrorLog__c> logs = new List<ErrorLog__c>();
+    for (ErrorLogEvent__e event : events) {
+      if (codes.remove(event.Code__c)) {
+        logs.add(
+          new ErrorLog__c(
+            Name = event.Code__c,
+            Detail__c = event.Detail__c,
+            Person__c = event.CreatedById
+          )
+        );
+      }
+    }
     Database.insert(logs, false, AccessLevel.SYSTEM_MODE);
   }
 
