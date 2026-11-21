@@ -122,7 +122,9 @@ describe("c-shoresh-week-editor: Excel and Print", () => {
     choose(element, "export", { kind: "week" });
     await flush();
     expect(said).toHaveBeenCalledWith(
-      "The schedule wasn't downloaded. Try again."
+      expect.stringMatching(
+        /^The schedule wasn't downloaded\. Try again\. For support: [A-Z0-9]{3}-[A-Z0-9]{3}\.$/
+      )
     );
   });
 
