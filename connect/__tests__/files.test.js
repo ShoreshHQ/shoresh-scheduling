@@ -257,6 +257,41 @@ describe("the screens' files, made on this computer", () => {
       "There is no cedar to choose. The choices: Bunk 1; Bunk 2."
     );
     expect(unknown.saved).toEqual([]);
+    // A name said exactly wins over another that only starts with it.
+    const upper = (o) => ({
+      ...o,
+      days: o.days.map((d) => ({
+        ...d,
+        groups: d.groups.map((g) =>
+          g.id === "g1" ? { ...g, name: "Bunk 2, Upper" } : g
+        )
+      }))
+    });
+    const exact = await make(
+      "download_schedule",
+      { week: "Week 1", what: "group", which: "bunk 2" },
+      { ...read, opened: upper(opened()) }
+    );
+    expect(exact.saved).toEqual([
+      "Week 1 - Imported from sample-week.xlsx - Bunk 2.xlsx"
+    ]);
+    // Only one of the kind: every one is that one, named as itself.
+    const alone = (o) => ({
+      ...o,
+      days: o.days.map((d) => ({
+        ...d,
+        groups: d.groups.filter((g) => g.id === "g2"),
+        rows: d.rows.slice(1)
+      }))
+    });
+    const onlyOne = await make(
+      "download_schedule",
+      { week: "Week 1", what: "group" },
+      { ...read, opened: alone(opened()) }
+    );
+    expect(onlyOne.saved).toEqual([
+      "Week 1 - Imported from sample-week.xlsx - Bunk 2.xlsx"
+    ]);
 
     const empty = await make(
       "download_schedule",
