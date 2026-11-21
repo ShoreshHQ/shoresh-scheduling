@@ -407,6 +407,22 @@ describe("print and Excel by choice", () => {
       expect(out[2].rows).toEqual([["Can't be shown"]]);
     });
 
+    it("keeps sheet names apart once shortened to Excel's 31 characters", () => {
+      const long = "The Very Long Senior Division Name";
+      const setup = JSON.parse(JSON.stringify(SETUP));
+      setup.programs[0].divisions[0].division.Name = long;
+      const names = sheetsFor(
+        opened(),
+        { kind: "division", key: "d1" },
+        CATALOGUE,
+        setup,
+        t,
+        offerings
+      ).map((s) => s.name);
+      expect(names.every((n) => n.length <= 31)).toBe(true);
+      expect(new Set(names).size).toBe(names.length);
+    });
+
     it("lists an elective set's offerings (ELECT-6.3) and guards against formulas", () => {
       const view = opened();
       view.days[0].items = [

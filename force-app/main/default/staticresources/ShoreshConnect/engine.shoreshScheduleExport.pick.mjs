@@ -15,7 +15,7 @@
  * one chosen, EVERY for every one of the kind (none for the week).
  */
 import { FIELD } from "./engine.shoreshSchema.shoreshSchema.mjs";
-import { sanitizeCell } from "./engine.shoreshLists.shoreshLists.mjs";
+import { sanitizeCell, sheetName } from "./engine.shoreshLists.shoreshLists.mjs";
 import {
   activityCards,
   activityGrid,
@@ -471,14 +471,19 @@ function sheet(name, grid, corner, offerings) {
   };
 }
 
-/** Sheet names, each used once (the workbook refuses two of the same name). */
+/**
+ * Sheet names, each used once (the workbook refuses two of the same name), counted after the
+ * workbook shortens them to Excel's 31 characters, so two long names alike at the start stay apart.
+ */
 function oneEach(sheets) {
   const seen = new Set();
   return sheets.map((s) => {
-    let name = s.name;
+    const base = sheetName(s.name);
+    let name = base;
     let n = 2;
     while (seen.has(name.toLowerCase())) {
-      name = `${s.name} ${n}`;
+      const more = ` ${n}`;
+      name = `${base.slice(0, 31 - more.length)}${more}`;
       n += 1;
     }
     seen.add(name.toLowerCase());
