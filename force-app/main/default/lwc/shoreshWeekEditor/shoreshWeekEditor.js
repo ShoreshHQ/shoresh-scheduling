@@ -58,6 +58,7 @@ import { intentOf, plan, withSeen } from "./conflicts";
 import { drawerTiles } from "./counts";
 import { dayNameOf, weekMeasure, withPriority } from "./measure";
 import { checkManualDays } from "./manualChecks";
+import { closeActivities } from "./nearNames";
 import {
   alreadySkipped,
   foldRun,
@@ -213,6 +214,13 @@ export default class ShoreshWeekEditor extends LightningElement {
   @api editItems;
   // Adds an activity on the host's draft: ({ scheduleId, name }) => the activity as offered.
   @api addActivityWith;
+  // Takes an activity a step added off again, when unused: ({ scheduleId, activityId }) =>
+  // Promise of whether it was (LOCK-5.5). Left out, Undo leaves it on Activities.
+  @api removeActivityWith;
+  // For each Undo step that added an activity: { id, name, removed } (removed: its Undo took it off).
+  stepAdded = new Map();
+  // An activity is being taken off or added again for an Undo or Redo (addedBusy).
+  addedPending = false;
   // Setup changed since the week started (Manual Build): cell key to its words, or nothing.
   @api setupDots;
   // A special day's or event's own schedule (ADR 0014 choice 15): its one day, called this, with
@@ -898,6 +906,8 @@ export default class ShoreshWeekEditor extends LightningElement {
 
   // ---------- special days and events (ADR 0014 slice 4) ----------
 
+  /** The week's special days ({ days }, WeekSpecials): also what Publish asks about (PUB-6.5). */
+  @api
   get specials() {
     return specialsOf(this.draft);
   }
@@ -1736,7 +1746,10 @@ export default class ShoreshWeekEditor extends LightningElement {
     return this.editor ? this.slotName(this.editor.slot) : "";
   }
 
-  /** What can go in the slot: Open (when filled), the activities, and adding a new one. */
+  /**
+   * What can go in the slot: Open (when filled), the activities (those whose names hold what was
+   * typed, else the closest: LOCK-4.11), and adding a new one, last.
+   */
   get editorOptions() {
     if (!this.editor) {
       return [];
@@ -1745,9 +1758,13 @@ export default class ShoreshWeekEditor extends LightningElement {
     const day = this.dayOf(slot);
     const grp = day.groups[slot.group];
     const typed = loose(text);
-    const matches = ((this.draft && this.draft.activities) || []).filter(
+    const activities = (this.draft && this.draft.activities) || [];
+    const named = activities.filter(
       (a) => !typed || loose(a.name).includes(typed)
     );
+    // A name no activity has: the closest ones first, before adding it (LOCK-4.11).
+    const matches =
+      typed && !named.length ? closeActivities(text, activities) : named;
     const forGroup = matches.filter((a) => !a.notFor.includes(grp.id));
     const notForGroup = matches.filter((a) => a.notFor.includes(grp.id));
     const options = [];
@@ -1929,29 +1946,170 @@ export default class ShoreshWeekEditor extends LightningElement {
     let activity = option.activity;
     if (option.kind === "add") {
       try {
-        const add = this.addActivityWith || addToManualBuild;
-        activity = await add({
-          scheduleId: this.schedule.schedule.id,
-          name: option.name
-        });
+        activity = await this.addActivity(option.name);
       } catch (e) {
         this.reportError(failed(`"${option.name}" not added.`, e));
         return;
       }
-      // Its record joins the draft's, so the checks know it before the week is read again.
-      const records = this.draft.activityRecords || [];
-      if (!this.draft.activities.some((a) => a.id === activity.id)) {
-        this.draft = {
-          ...this.draft,
-          activities: [...this.draft.activities, activity],
-          activityRecords:
-            activity.record && !records.some((r) => r.Id === activity.id)
-              ? [...records, activity.record]
-              : records
-        };
+    }
+    const stepBefore = this.stepSeq;
+    this.change(cell.slot, cell.key, `A:${activity.id}`, activity.length);
+    // Only one this add made (not the season's own, found by its name) is ever taken off.
+    if (option.kind === "add" && activity.created) {
+      if (this.stepSeq > stepBefore) {
+        // Its Undo takes the activity off again (LOCK-5.5).
+        this.stepAdded.set(this.stepSeq, {
+          id: activity.id,
+          name: activity.name
+        });
+      } else {
+        // Never placed (the cell refused it): it isn't left behind.
+        this.takeOffAdded(activity);
       }
     }
-    this.change(cell.slot, cell.key, `A:${activity.id}`, activity.length);
+  }
+
+  /**
+   * "Add <name> to activities" on the host's draft: the activity, its record joined to the
+   * draft's so the checks know it before the week is read again, and the other screens told
+   * (LOCK-6.3).
+   */
+  async addActivity(name) {
+    const add = this.addActivityWith || addToManualBuild;
+    const activity = await add({
+      scheduleId: this.schedule.schedule.id,
+      name
+    });
+    const records = this.draft.activityRecords || [];
+    if (!this.draft.activities.some((a) => a.id === activity.id)) {
+      this.draft = {
+        ...this.draft,
+        activities: [...this.draft.activities, activity],
+        activityRecords:
+          activity.record && !records.some((r) => r.Id === activity.id)
+            ? [...records, activity.record]
+            : records
+      };
+    }
+    this.dispatchEvent(new CustomEvent("activitieschanged"));
+    return activity;
+  }
+
+  /**
+   * LOCK-5.5: the activity a step added, taken off the season while nothing else uses it (the
+   * host's removeActivityWith; none, nothing is taken off). Resolves to whether it was.
+   */
+  async takeOffAdded(added) {
+    if (!this.removeActivityWith) {
+      return false;
+    }
+    let removed = false;
+    try {
+      removed = await this.removeActivityWith({
+        scheduleId: this.schedule.schedule.id,
+        activityId: added.id
+      });
+    } catch {
+      // Left on Activities, where it can still be deleted: the cell's Undo was made, and this is
+      // said, never left silent.
+      this.sayOnce(`"${added.name}" is still on ${this.t.p("Activity")}.`);
+      return false;
+    }
+    if (removed) {
+      this.draft = {
+        ...this.draft,
+        activities: this.draft.activities.filter((a) => a.id !== added.id),
+        activityRecords: (this.draft.activityRecords || []).filter(
+          (r) => r.Id !== added.id
+        )
+      };
+      this.dispatchEvent(new CustomEvent("activitieschanged"));
+    }
+    return removed;
+  }
+
+  /** After an Undo of a step that added an activity is saved: it goes too, when unused, and is said. */
+  async undoAdded(stepId) {
+    const added = this.stepAdded.get(stepId);
+    if (!added || added.removed) {
+      return;
+    }
+    // Undo and Redo wait until it is known whether the activity went (addedBusy).
+    this.addedPending = true;
+    try {
+      if (await this.takeOffAdded(added)) {
+        this.stepAdded.set(stepId, { ...added, removed: true });
+        this.sayOnce(`"${added.name}" taken off ${this.t.p("Activity")}.`);
+      }
+    } finally {
+      this.addedPending = false;
+    }
+  }
+
+  /**
+   * An activity is being taken off or added again for an Undo or Redo, or an Undo that will take
+   * one off is still saving: Undo and Redo wait, so no step names an activity that is going.
+   */
+  get addedBusy() {
+    return (
+      this.addedPending ||
+      this.queue.some((waiting) => {
+        const added =
+          waiting.kind === "undo" && this.stepAdded.get(waiting.stepId);
+        return !!added && !added.removed;
+      })
+    );
+  }
+
+  /**
+   * Redo of a step whose activity its Undo took off: the activity is added again by its name
+   * first, and every step naming it (Undo and Redo alike) names the new one.
+   */
+  async redoAdded(step, added) {
+    let activity;
+    this.addedPending = true;
+    try {
+      activity = await this.addActivity(added.name);
+    } catch (e) {
+      this.history.forget(step.id);
+      this.historyVersion += 1;
+      this.reportError(failed(`Can't redo ${step.label}.`, e));
+      return;
+    } finally {
+      this.addedPending = false;
+    }
+    if (activity.created) {
+      this.stepAdded.set(step.id, { id: activity.id, name: activity.name });
+    } else {
+      // Found by its name (made meanwhile): never this step's to take off again.
+      this.stepAdded.delete(step.id);
+    }
+    const names = {
+      [`A:${added.id}`]: `A:${activity.id}`,
+      [`^A:${added.id}`]: `^A:${activity.id}`
+    };
+    const swap = (item) => names[item] || item;
+    const renamed = (s) => ({
+      ...s,
+      runs: s.runs.map((run) => ({
+        ...run,
+        before: (run.before || []).map(swap),
+        after: (run.after || []).map(swap)
+      }))
+    });
+    [...this.history.undos, ...this.history.redos].forEach((s) =>
+      this.history.replace(s.id, renamed(s))
+    );
+    const again = renamed(step);
+    this.send(
+      again.runs,
+      `Redone: ${step.label}`,
+      null,
+      step.id,
+      null,
+      "redo",
+      step.label
+    );
   }
 
   // ---------- saving ----------
@@ -2343,6 +2501,9 @@ export default class ShoreshWeekEditor extends LightningElement {
             .filter(Boolean)
             .join(". ")
         );
+        if (entry.kind === "undo") {
+          this.undoAdded(entry.stepId);
+        }
       }
     } catch (e) {
       const dropped = this.queue.length - 1;
@@ -2380,13 +2541,17 @@ export default class ShoreshWeekEditor extends LightningElement {
   // ---------- undo and redo ----------
 
   get canUndo() {
-    return this.historyVersion >= 0 && this.history.canUndo;
+    return this.historyVersion >= 0 && this.history.canUndo && !this.addedBusy;
   }
   get cannotUndo() {
     return !this.canUndo;
   }
   get cannotRedo() {
-    return !(this.historyVersion >= 0 && this.history.canRedo);
+    return !(
+      this.historyVersion >= 0 &&
+      this.history.canRedo &&
+      !this.addedBusy
+    );
   }
   get undoTitle() {
     return this.canUndo ? `Undo: ${this.history.undoLabel}` : "Undo";
@@ -2548,6 +2713,11 @@ export default class ShoreshWeekEditor extends LightningElement {
     }
     const { step, runs } = this.history.redo();
     this.historyVersion += 1;
+    const added = this.stepAdded.get(step.id);
+    if (added && added.removed) {
+      this.redoAdded(step, added);
+      return;
+    }
     this.send(
       runs,
       `Redone: ${step.label}`,

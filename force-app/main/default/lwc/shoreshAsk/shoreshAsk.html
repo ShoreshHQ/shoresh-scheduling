@@ -23,7 +23,19 @@
         data-id="lines"
       >
         <template for:each={lineItems} for:item="line">
-          <p key={line.key} class="slds-m-bottom_x-small">{line.text}</p>
+          <p key={line.key} class={line.className}>
+            <template lwc:if={line.go}>
+              <button
+                type="button"
+                class="ask-link"
+                data-index={line.index}
+                onclick={handleGo}
+              >
+                {line.text}
+              </button>
+            </template>
+            <template lwc:else>{line.text}</template>
+          </p>
         </template>
       </div>
       <div class="slds-modal__footer">

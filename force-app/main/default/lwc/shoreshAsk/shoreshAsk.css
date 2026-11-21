@@ -14,3 +14,30 @@
   background: var(--shoresh-danger-text);
   border-color: var(--shoresh-danger-text);
 }
+
+/* A line under a count (Publish: what the count is). */
+.ask-sub {
+  padding-left: var(--shoresh-s4);
+}
+
+/* A line that goes to what it names: quiet words in the highlight, as the Versions list's links. */
+.ask-link {
+  /* A target at least 24px tall (WCAG 2.5.8). */
+  min-height: 24px;
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--shoresh-color-highlight);
+  font-weight: 500;
+  text-align: left;
+  cursor: pointer;
+}
+
+.ask-link:hover {
+  text-decoration: underline;
+}
+
+.ask-link:focus-visible {
+  outline: none;
+  box-shadow: var(--shoresh-focus-ring);
+}

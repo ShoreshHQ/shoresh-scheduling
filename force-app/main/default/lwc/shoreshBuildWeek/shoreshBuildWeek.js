@@ -344,6 +344,7 @@ export class BuildWeek {
         checked: screen.checked,
         counts: null,
         measure: screen.measure,
+        specials: screen.weekEditor ? screen.weekEditor.specials : null,
         weekName: screen.weekName,
         t: screen.t,
         origin: adapter.origin

@@ -82,6 +82,10 @@ public with sharing class ManualBuildViews {
     // checks know it at once, before the draft is read again.
     @AuraEnabled
     public Activity__c record;
+    // Only from "Add <name>": true when this add made it (no activity had the name), so its Undo
+    // may take it off again (LOCK-5.5); false when it found the season's own.
+    @AuraEnabled
+    public Boolean created = false;
   }
 
   /**

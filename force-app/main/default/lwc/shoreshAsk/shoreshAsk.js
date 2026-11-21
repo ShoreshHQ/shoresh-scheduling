@@ -7,7 +7,10 @@ import { LightningElement, api } from "lwc";
  * lines (focusable so a long list scrolls with the keyboard) and the two buttons, and Escape
  * cancels.
  *
- * Fires: answer { yes }
+ * A line may be a link to what it names (Publish's problems, PUB-6.4): choosing it is no, and says
+ * where to go.
+ *
+ * Fires: answer { yes, go } (go only from a line's link)
  */
 export default class ShoreshAsk extends LightningElement {
   @api heading;
@@ -26,8 +29,23 @@ export default class ShoreshAsk extends LightningElement {
       : "slds-button slds-button_brand";
   }
 
+  /**
+   * A line is its words, or { text, go, sub }: sub sits under the line before it; go makes it a
+   * link that answers no, with where to go (answer { yes: false, go }).
+   */
   get lineItems() {
-    return (this.lines || []).map((text, i) => ({ key: `l${i}`, text }));
+    return (this.lines || []).map((line, i) => {
+      const item = typeof line === "string" ? { text: line } : line;
+      return {
+        key: `l${i}`,
+        index: i,
+        text: item.text,
+        go: !!item.go,
+        className: item.sub
+          ? "slds-m-bottom_x-small ask-sub"
+          : "slds-m-bottom_x-small"
+      };
+    });
   }
 
   renderedCallback() {
@@ -66,6 +84,14 @@ export default class ShoreshAsk extends LightningElement {
 
   handleYes() {
     this.answer(true);
+  }
+
+  /** A line that goes somewhere: no, and where to go. */
+  handleGo(event) {
+    const line = this.lines[Number(event.currentTarget.dataset.index)];
+    this.dispatchEvent(
+      new CustomEvent("answer", { detail: { yes: false, go: line.go } })
+    );
   }
 
   answer(yes) {
