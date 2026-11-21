@@ -329,6 +329,50 @@ private class SchedulesTest {
     }
   }
 
+  // PUB-6.9
+  @IsTest
+  static void theSavedVersionsPageListsTheWeeksPublishedScheduleWithItsVersions() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      Camp c = camp();
+      Schedule__c version = ShoreshTestData.version(
+        c.program.Id,
+        c.weeks[0].Id,
+        'Before my changes'
+      );
+      Test.setCreatedDate(version.Id, Datetime.now().addDays(-1));
+      Schedule__c published = new Schedule__c(
+        Program__c = c.program.Id,
+        Week__c = c.weeks[0].Id,
+        Name = 'Week 1',
+        Status__c = SchedulePublish.PUBLISHED,
+        Origin__c = 'Manual',
+        PublishedAt__c = Datetime.now()
+      );
+      Database.insert(published, AccessLevel.SYSTEM_MODE);
+      Test.startTest();
+      List<ScheduleViews.VersionRow> saved = SchedulesController.getSavedSchedules(
+        c.program.Id,
+        c.weeks[0].Id
+      );
+      List<ScheduleViews.VersionRow> versions = SchedulesController.getVersions(
+        c.program.Id,
+        c.weeks[0].Id
+      );
+      Test.stopTest();
+      Assert.areEqual(
+        2,
+        saved.size(),
+        'the published schedule and the version'
+      );
+      Assert.areEqual(published.Id, saved[0].id, 'newest first');
+      Assert.isNotNull(saved[0].publishedAt);
+      Assert.areEqual(version.Id, saved[1].id);
+      // The build screens' Versions keep to versions: no published schedule to restore or delete.
+      Assert.areEqual(1, versions.size());
+      Assert.areEqual(version.Id, versions[0].id);
+    }
+  }
+
   @IsTest
   static void anOpenedVersionShowsWhatWasSavedAndWhatIsGoneSince() {
     System.runAs(ShoreshTestData.scheduler()) {

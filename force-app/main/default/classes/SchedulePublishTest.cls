@@ -239,46 +239,6 @@ private class SchedulePublishTest {
     }
   }
 
-  // PUB-6.9
-  @IsTest
-  static void theSavedVersionsPageListsTheWeeksPublishedScheduleWithItsVersions() {
-    System.runAs(ShoreshTestData.scheduler()) {
-      Map<String, Id> ids = camp();
-      Id draftId = startWeek(ids);
-      placeOver(draftId, '', 'Swim');
-      Id firstId = publishNow(draftId).published.id;
-      placeOver(draftId, 'A:' + ids.get('Swim'), 'Gym games');
-      Test.startTest();
-      Id publishedId = publishNow(draftId).published.id;
-      List<ScheduleViews.VersionRow> saved = SchedulesController.getSavedSchedules(
-        ids.get('Main'),
-        ids.get('Week 1')
-      );
-      List<ScheduleViews.VersionRow> versions = SchedulesController.getVersions(
-        ids.get('Main'),
-        ids.get('Week 1')
-      );
-      Test.stopTest();
-      Set<Id> savedIds = new Set<Id>();
-      for (ScheduleViews.VersionRow row : saved) {
-        savedIds.add(row.id);
-      }
-      // The published schedule and the one it replaced, marked as published.
-      Assert.isTrue(savedIds.contains(publishedId));
-      Assert.isTrue(savedIds.contains(firstId));
-      for (ScheduleViews.VersionRow row : saved) {
-        if (row.id == publishedId) {
-          Assert.isNotNull(row.publishedAt);
-        }
-      }
-      // The build screens' Versions keep to versions: no published schedule to restore or delete.
-      for (ScheduleViews.VersionRow row : versions) {
-        Assert.areNotEqual(publishedId, row.id);
-      }
-      Assert.areEqual(versions.size() + 1, saved.size());
-    }
-  }
-
   // PUB-6.1
   @IsTest
   static void aReplacedPublishedScheduleIsKeptAsHistory() {
