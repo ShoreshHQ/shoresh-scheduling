@@ -2517,10 +2517,12 @@ const ASKS_FIRST = [
   "add_to_setup",
   "change_in_setup"
 ];
+// For the command line and code mode; over MCP the person's own screen asks (mcp.js, API-1.153).
+const ASKS_FIRST_SAID =
+  " Shoresh asks first: sent without confirm, nothing is done and the answer says in plain words what it would do, with a confirm. Show the person exactly that and wait for their yes; only then send the same request again with that confirm. Never confirm on your own, and if the answer comes back different, show the person the new one.";
 for (const c of CAPABILITIES.filter((each) => ASKS_FIRST.includes(each.name))) {
   c.asksFirst = true;
-  c.description +=
-    " Shoresh asks first: sent without confirm, nothing is done and the answer says in plain words what it would do, with a confirm. Show the person exactly that and wait for their yes; only then send the same request again with that confirm. Never confirm on your own, and if the answer comes back different, show the person the new one.";
+  c.description += ASKS_FIRST_SAID;
   c.inputSchema.properties.confirm = {
     type: "string",
     description:
@@ -2536,4 +2538,4 @@ for (const c of CAPABILITIES) {
 
 const byName = (name) => CAPABILITIES.find((c) => c.name === name);
 
-module.exports = { CAPABILITIES, byName };
+module.exports = { CAPABILITIES, byName, ASKS_FIRST_SAID };

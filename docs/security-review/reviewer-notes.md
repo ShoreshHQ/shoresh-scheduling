@@ -118,6 +118,13 @@ the screens do, as that person.
 - **Code mode** runs an AI's script in a `vm` context holding only Shoresh's calls, with code
   generation from strings off and call, memory and time limits. It is not a security boundary and
   isn't presented as one: the script runs as the person, as the CLI does.
+- **Ask first (API-1.106, API-1.153):** a change that deletes, clears or replaces is done only with
+  the confirm its own preview gave. Over MCP the AI never sees that confirm: the connector shows the
+  preview in a macOS dialog (`osascript` started without a shell; the AppleScript is fixed and the
+  words are passed as an argument, never as script) and sends the confirm only on the person's click
+  on Yes, so text in camp data can't talk an AI into it. Elsewhere nothing is done over MCP; the
+  person does it on Shoresh's own screen. An AI that can run commands or control the screen has the
+  person's own sign-in and isn't stopped by this.
 
 ## Register of system-mode use
 
