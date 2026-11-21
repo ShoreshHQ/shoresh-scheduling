@@ -311,8 +311,10 @@ describe("print and Excel by choice", () => {
 
     it("splits a wide day by division, small divisions sharing a page", () => {
       // 23 bunks: Juniors 4, Inters 5, Seniors 14.
-      const division = (i) =>
-        i < 4 ? "Juniors" : i < 9 ? "Inters" : "Seniors";
+      const division = (i) => {
+        if (i < 4) return "Juniors";
+        return i < 9 ? "Inters" : "Seniors";
+      };
       const { view, setup } = bigCamp(23, division);
       const pages = pagesFor(
         view,

@@ -139,8 +139,11 @@ export function printChoices(view, catalogue, setup, t) {
     return [];
   }
   const places = campPlaces(setup);
-  const every = (word, list) =>
-    list.length > 1 ? [{ key: EVERY, label: `Every ${word}` }, ...list] : list;
+  const every = (word, list) => {
+    return list.length > 1
+      ? [{ key: EVERY, label: `Every ${word}` }, ...list]
+      : list;
+  };
   const dayOptions = days(view)
     .filter((d) => !d.problem)
     .map((d) => ({ key: d.key, label: `${d.label}, ${d.sub}` }));
@@ -244,10 +247,11 @@ export function dayPieces(day, places) {
       runs.push({ division, indexes: [i] });
     }
   });
-  const range = (indexes) =>
-    indexes.length === 1
-      ? day.groups[indexes[0]].name
-      : `${day.groups[indexes[0]].name} – ${day.groups[indexes[indexes.length - 1]].name}`;
+  const range = (indexes) => {
+    const first = day.groups[indexes[0]].name;
+    const last = day.groups[indexes[indexes.length - 1]].name;
+    return indexes.length === 1 ? first : `${first} – ${last}`;
+  };
   const pieces = [];
   let open = null;
   const close = () => {

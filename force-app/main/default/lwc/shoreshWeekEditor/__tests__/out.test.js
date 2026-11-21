@@ -128,7 +128,7 @@ describe("c-shoresh-week-editor: Excel and Print", () => {
 
   it("is not on a special day's own schedule, nor on a screen that doesn't name itself", async () => {
     expect(out(await render({ planName: "Visiting Day" }))).toBeNull();
-    document.body.innerHTML = "";
+    document.body.removeChild(document.body.firstChild);
     expect(out(await render({ printName: undefined }))).toBeNull();
   });
 });
