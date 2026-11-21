@@ -352,6 +352,11 @@ private class AgentReadTest {
       }
     }
     Assert.isNotNull(refused, 'the list was given: ' + JSON.serialize(answer));
+    Assert.isTrue(
+      refused.getMessage()
+        .contains(Season__c.ShrinkShortWeek__c.getDescribe().getName()),
+      refused.getMessage()
+    );
   }
 
   // API-1.26: the week's view is exactly what the Schedules screen opens for its published week.

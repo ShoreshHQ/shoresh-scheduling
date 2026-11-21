@@ -86,7 +86,7 @@ global with sharing class AgentSeasons implements AgentRequest.Read {
     for (Season__c season : seen) {
       Map<String, Object> said = new Map<String, Object>{
         'season' => season.Name,
-        'camp' => season.Camp__r.Name,
+        'camp' => season.Camp__r?.Name,
         'start_date' => season.StartDate__c,
         'end_date' => season.EndDate__c,
         'short_week' => shortWeekOf(season),
