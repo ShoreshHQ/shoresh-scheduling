@@ -155,6 +155,10 @@ describe("print and Excel by choice", () => {
       expect(choiceLabel(choices, { kind: "day", key: "1" })).toBe(
         "Tuesday, Jun 30"
       );
+      // Every day has no row of its own (Whole Week is that), but an AI may ask for it.
+      expect(choiceLabel(choices, { kind: "day", key: EVERY })).toBe(
+        "Every Day"
+      );
     });
 
     it("skips the No division holder and reads every place a thing can run", () => {

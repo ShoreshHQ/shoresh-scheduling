@@ -1,11 +1,13 @@
 <template>
   <c-shoresh-rail-pop
     label={label}
+    alternative-text={alternativeText}
     menu
     primary={primary}
     align="right"
     disabled={off}
     onselect={handleSelect}
+    ontoggle={handleToggle}
     data-id="menu"
   >
     <template for:each={rows} for:item="row">

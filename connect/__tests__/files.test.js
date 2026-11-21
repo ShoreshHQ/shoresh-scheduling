@@ -220,6 +220,15 @@ describe("the screens' files, made on this computer", () => {
     expect(
       sheetsIn(path.join(monday.folder, monday.saved[0])).map((x) => x.name)
     ).toEqual(["Monday"]);
+    // Every day (the menu has no row for it): named so, never a bare " - ".
+    const days = await make(
+      "download_schedule",
+      { week: "Week 1", what: "day" },
+      read
+    );
+    expect(days.saved).toEqual([
+      "Week 1 - Imported from sample-week.xlsx - Every Day.xlsx"
+    ]);
     // Excel without what is the whole week, whatever view says (view is for printing).
     const viewed = await make(
       "download_schedule",

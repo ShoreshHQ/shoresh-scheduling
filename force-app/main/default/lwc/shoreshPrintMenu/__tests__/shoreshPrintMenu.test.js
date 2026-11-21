@@ -107,6 +107,39 @@ describe("c-shoresh-print-menu", () => {
     ).toBe("false");
   });
 
+  it("opens again with every kind closed after Escape, though focus stays on its word", async () => {
+    const element = render();
+    await flush();
+    word(element).click();
+    await flush();
+    q(element, '[data-kind="group"]').click();
+    await flush();
+    q(element, '[data-kind="group"]').dispatchEvent(
+      new KeyboardEvent("keydown", {
+        key: "Escape",
+        bubbles: true,
+        composed: true
+      })
+    );
+    await flush();
+    word(element).click();
+    await flush();
+    expect(
+      all(element, ".kind-row").map((row) => row.getAttribute("aria-expanded"))
+    ).toEqual(["false", "false"]);
+    expect(q(element, '[data-id="options"]')).toBeNull();
+  });
+
+  it("is named by its alternative text when it has one", async () => {
+    const element = render({
+      label: "Excel",
+      alternativeText: "Download Excel"
+    });
+    await flush();
+    expect(word(element).getAttribute("aria-label")).toBe("Download Excel");
+    expect(word(element).textContent.trim()).toBe("Excel");
+  });
+
   it("chooses the whole week with no key", async () => {
     const element = render();
     const chosen = jest.fn();

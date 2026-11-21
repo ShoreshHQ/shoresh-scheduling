@@ -204,7 +204,9 @@ export function choiceLabel(choices, choice) {
   if (!kind) return "";
   if (choice.kind === "week") return kind.label;
   const option = kind.options.find((o) => o.key === choice.key);
-  return option ? option.label : "";
+  if (option) return option.label;
+  // Every one of a kind the menu offers no "Every" row for (the days; or a kind with one).
+  return choice.key === EVERY ? `Every ${kind.label}` : "";
 }
 
 /** A day with only some of its groups (by position), for a page or a division. */

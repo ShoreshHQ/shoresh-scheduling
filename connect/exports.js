@@ -97,16 +97,18 @@ function choiceOf(m, choices, input, t) {
   const which = String(input.which || "")
     .trim()
     .toLowerCase();
+  const named = found.options.filter((o) => o.key !== m.EVERY);
   if (!which || which === "every" || which === "all") {
-    return { kind, key: m.EVERY };
+    // Only one of the kind: that one, named as itself.
+    return { kind, key: named.length === 1 ? named[0].key : m.EVERY };
   }
-  // As the menu names it, "(removed)" left off as a person says it; a day by its name alone.
+  // As the menu names it, "(removed)" left off as a person says it; a day by its name alone,
+  // unless something is called exactly what was said.
   const said = (label) => label.toLowerCase().replace(/ \(removed\)$/, "");
-  const matching = found.options.filter(
-    (o) =>
-      o.key !== m.EVERY &&
-      (said(o.label) === which || said(o.label).split(",")[0] === which)
-  );
+  const exact = named.filter((o) => said(o.label) === which);
+  const matching = exact.length
+    ? exact
+    : named.filter((o) => said(o.label).split(",")[0] === which);
   if (matching.length > 1) {
     return {
       problem: `${matching.length} choices are called ${which}: ${matching.map((o) => o.label).join("; ")}. Say which.`
@@ -114,11 +116,8 @@ function choiceOf(m, choices, input, t) {
   }
   const option = matching[0];
   if (!option) {
-    const named = found.options
-      .filter((o) => o.key !== m.EVERY)
-      .map((o) => o.label);
     return {
-      problem: `There is no ${which} to choose. The choices: ${named.join("; ")}.`
+      problem: `There is no ${which} to choose. The choices: ${named.map((o) => o.label).join("; ")}.`
     };
   }
   return { kind, key: option.key };

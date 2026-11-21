@@ -6,19 +6,28 @@ import { LightningElement, api } from "lwc";
  * several), one open at a time. The same menu on the Schedules page, Generated Schedule and
  * Manual Build.
  *
- * label: "Print" or "Excel". choices: c/shoreshScheduleExport printChoices. primary: the
+ * label: "Print" or "Excel". alternativeText: its name when the word alone isn't ("Download
+ * Excel", Greg 2026-11-12). choices: c/shoreshScheduleExport printChoices. primary: the
  * screen's main button (the Schedules page's Print). disabled: nothing to print. busy: a file or
  * printout under way: a choice then does nothing (the menu stays usable, so focus never drops).
  * Fires: choose { kind, key } (no key for the whole week).
  */
 export default class ShoreshPrintMenu extends LightningElement {
   @api label;
+  @api alternativeText;
   @api choices = [];
   @api primary = false;
   @api disabled = false;
   @api busy = false;
 
   openKind = null;
+
+  /** Closed by any way (Escape, its word, a choice), it opens again with every kind closed. */
+  handleToggle(event) {
+    if (!event.detail.open) {
+      this.openKind = null;
+    }
+  }
 
   connectedCallback() {
     // Focus leaving the menu altogether closes it: it opens again with every kind closed.
