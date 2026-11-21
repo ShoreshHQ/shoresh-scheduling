@@ -32,7 +32,8 @@
                     class="slds-input"
                     value={renameValue}
                     maxlength="80"
-                    aria-label="New name"
+                    aria-label={row.newNameLabel}
+                    placeholder="Version name…"
                     oninput={handleRenameInput}
                     onkeydown={handleRenameKey}
                     data-id="rename-input"
@@ -62,11 +63,13 @@
                         data-id="saved-at"
                       ></lightning-formatted-date-time>
                     </template>
+                    <!-- Under the name, not beside it, so the name keeps the row's width: these rows
+                         carry Rename, Delete and the action, where the desktop's carry fewer. -->
+                    <template lwc:if={row.onScreen}>
+                      <span class="on-screen">on screen now</span>
+                    </template>
                   </div>
                 </div>
-                <template lwc:if={row.onScreen}>
-                  <span class="on-screen">on screen now</span>
-                </template>
                 <template lwc:if={editable}>
                   <button
                     type="button"
