@@ -41,7 +41,7 @@ function scriptTool(actions = CAPABILITIES) {
       "Runs one short JavaScript script that makes many calls to Shoresh at once, on the person's computer, as the person. Use it instead of calling tools one at a time when a task needs several calls (read many weeks, change many cells).",
       "The script is the body of an async function. It can use only `shoresh` and `print(...)`, and `return` a value; nothing else (no require, process, files, network or timers).",
       `Each call answers { ok, status, text, season, asksFirst } exactly as its own tool would, and has the same fields as that tool (read the tool's own description for them). At most ${CALL_LIMIT} calls and ${TIME_LIMIT_MS / 1000} seconds per script.`,
-      "A refusal (ok false) is for the person to decide: don't change anything to work around it. An answer with asksFirst true did nothing yet: show its text to the person and send its confirm only after they say yes. The answer lists every call the script made, in order, with what each answered.",
+      "A refusal (ok false) is for the person to decide: don't change anything to work around it. An answer with asksFirst true did nothing yet: nobody is asked in a script, so call that tool on its own, and Shoresh asks the person on their screen. The answer lists every call the script made, in order, with what each answered.",
       'Example: const r = await shoresh.read_group_schedule({ week: "Week 1" }); print(r.text);',
       "Functions:",
       ...actions.map(signature)
