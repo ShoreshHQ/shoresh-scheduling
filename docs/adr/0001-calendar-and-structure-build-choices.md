@@ -48,9 +48,10 @@ Status: accepted (2026-10-15). Design source: wiki `projects/shoresh-scheduling-
    purpose, so a check never depends on the saver's object and field access: duplicate checks,
    season matches, delete protection, and the fixed and recurring activity clash check
    (`SetTimeGuard`, `SetTimePlanReader`), which also runs at the end of screen saves. Their
-   refusal messages name a value read this way (for example a location's "groups that fit") only
-   when the person can read that field. (Audit, 2026-10-17; value left out otherwise since the
-   2026-11-20 audit, #450.)
+   refusal messages print a field value read this way (a location's "groups that fit", an
+   activity's length, a recurring activity's day, a special date's weekday) only when the person
+   can read that field. (Audit, 2026-10-17; the value is left out otherwise since the 2026-11-20
+   audit, #450.)
    - **Record sharing still applies.** Every class is `with sharing`, and with that keyword system
      mode skips object and field permissions but not sharing. So these checks see only records
      the person can see, not "records the user cannot see" as this point first said. Nothing is

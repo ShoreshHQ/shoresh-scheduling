@@ -6,7 +6,7 @@ It is internal: it records findings, open items and what was not checked. What g
 reviewer is [reviewer-notes.md](reviewer-notes.md): the false-positive notes and the register of
 system-mode reads and writes.
 
-Code on `main` at e4b489ee (through #445). Done by reading and searching the code, independently
+Code on `main` at e4b489ee (through #445); counts updated after the fixes (#447, #449, #450). Done by reading and searching the code, independently
 reviewed, plus Code Analyzer scans. Nothing here was tried against an installed package; that
 waits for the first package version.
 
@@ -40,7 +40,7 @@ known-vulnerable library. Both are explained in the reviewer notes.
 `inherited sharing` and are called only from their `with sharing` outer class; none is
 `without sharing`. The 30 triggers only hand off to `with sharing` classes.
 
-**CRUD/FLS.** 641 static queries: 530 `WITH USER_MODE`, 111 `WITH SYSTEM_MODE`, none without a
+**CRUD/FLS.** 642 static queries: 531 `WITH USER_MODE`, 111 `WITH SYSTEM_MODE`, none without a
 mode. No plain DML: the 108 writes are all `Database.*` with an access level (94 user mode, 14
 system mode); `Database.emptyRecycleBin`, which takes no access level, follows a user-mode delete.
 Every system-mode use is in the reviewer notes' register, with its reason.
@@ -105,8 +105,10 @@ older than the camp's copy.
 
 - An installed, namespaced package: field-level security, the Named Credential resolution from a
   namespaced package, and Lightning Web Security behaviour. Waits for the first package version.
-- Values only implied by a refusal, not printed (a clash's group count and its block, day and
-  week; whether a version is or was published): left as they are (A-4, #450).
+- What a refusal says about the other record beyond the four values #450 guards: a clash names
+  the block, day and week where the two meet, which is the saver's own choice, so the other
+  record's day ticks show only through the clash existing; a clash's group count and whether a
+  version is or was published are implied the same way. Left as they are (A-4).
 - Live calls to the web addresses, and attempts to break out of the connector's code mode.
 - Graph Engine (Salesforce's data-flow scan, a developer preview, recommended but not part of the
   required selection).
