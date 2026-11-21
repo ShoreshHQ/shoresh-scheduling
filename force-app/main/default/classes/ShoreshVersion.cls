@@ -12,13 +12,29 @@ public with sharing class ShoreshVersion {
   public static String installedVersion() {
     Version shown = installed;
     if (shown == null) {
-      try {
-        shown = System.requestVersion();
-      } catch (Exception e) {
-        // Not in an installed package: Salesforce has no version to give.
+      if (!isInstalled()) {
         return null;
       }
+      shown = System.requestVersion();
     }
     return shown == null ? null : shown.major() + '.' + shown.minor();
+  }
+
+  /**
+   * Whether Shoresh runs as an installed package. Outside one, System.requestVersion() stops the
+   * request with an error no catch can stop, so it is never asked there.
+   */
+  private static Boolean isInstalled() {
+    String namespace = ShoreshSchema.namespace();
+    if (namespace == null) {
+      return false;
+    }
+    try {
+      UserInfo.isCurrentUserLicensed(namespace);
+      return true;
+    } catch (TypeException notInstalled) {
+      // The namespace is this org's own code, not a package installed in it.
+      return false;
+    }
   }
 }

@@ -50,4 +50,7 @@ the director's computer, so support saw what the director saw.
    quiet text, as the desktop's version sits beside About. It is Salesforce's own answer for the
    installed package (`System.requestVersion()`, major and minor; Salesforce gives no patch
    number). Outside an installed package (the test org) there is none, and nothing is shown.
+   Salesforce stops a request that asks there with an error no catch can stop, so Shoresh first
+   checks it is installed (`UserInfo.isCurrentUserLicensed` on its namespace, which refuses a
+   namespace no package installed) and asks only then.
    The About page is unchanged.
