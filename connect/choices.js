@@ -241,10 +241,9 @@ async function bringInChoices(capability, input, { read, send, answer, load }) {
     request: request(null)
   });
   if (checked.status !== 200) return answer(checked);
-  const check = JSON.parse(answer(checked).text);
-  const seen = check.runRevision == null ? "none" : String(check.runRevision);
+  const first = JSON.parse(answer(checked).text);
   // "Which camper?" (ELECT-2.7), as the screen asks it on card 3: by row, a choice's words or
-  // "new". The check is asked without the answers, so its questions are all there.
+  // "new". With answers the check is asked again, as the screen does, so the count says them.
   const keys = m.camperKeys(sheet, groups);
   const said =
     input.which_camper && typeof input.which_camper === "object"
@@ -252,10 +251,11 @@ async function bringInChoices(capability, input, { read, send, answer, load }) {
       : {};
   const which = {};
   const questions = m.whichRows({
-    check,
+    check: first,
     request: request(null),
     keys,
-    which: {}
+    which: {},
+    t
   });
   const whichLeft = [];
   for (const q of questions) {
@@ -281,6 +281,16 @@ async function bringInChoices(capability, input, { read, send, answer, load }) {
         )
       ]
     : [];
+  let check = first;
+  if (Object.keys(which).length) {
+    const again = await send(capability.api, {
+      season: input.season,
+      request: request(null, which)
+    });
+    if (again.status !== 200) return answer(again);
+    check = JSON.parse(answer(again).text);
+  }
+  const seen = check.runRevision == null ? "none" : String(check.runRevision);
   if (check.isFinal) {
     return refused(
       `${check.runName || set.item.name} is final, so it can't take new choices.`

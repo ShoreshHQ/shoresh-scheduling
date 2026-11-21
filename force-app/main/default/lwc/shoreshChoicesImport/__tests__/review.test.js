@@ -650,9 +650,10 @@ describe("two campers with one name", () => {
     expect(request.campers[1].newCamper).toBeUndefined();
     expect(request.campers[2].newCamper).toBe(true);
     expect(request.campers[2].camperId).toBeUndefined();
-    // The count says the answers: Maya new, one Noa already here, the other new.
-    const [count] = countLines({ request, check, set: null, t, activities: [] });
-    expect(count.text).toBe("3 campers: 2 new, 1 already here");
+    // Answered or not, each question stays listed, so an answer can be changed.
+    expect(
+      whichRows({ check, request, keys, which }).map((r) => r.value)
+    ).toEqual(["c7", NEW_CAMPER]);
   });
 });
 

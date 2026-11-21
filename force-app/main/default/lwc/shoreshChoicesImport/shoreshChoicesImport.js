@@ -491,7 +491,7 @@ export default class ShoreshChoicesImport extends LightningElement {
           differentClass: row.different
             ? "shoresh-item choice shoresh-raised"
             : "shoresh-item choice",
-          differentLabel: `${row.name}, ${row.where}: different campers`,
+          differentLabel: `${row.name}, ${row.where}: ${this.differentWords}`,
           waiting: !row.different,
           className: row.different
             ? "row shoresh-raised"
@@ -583,13 +583,9 @@ export default class ShoreshChoicesImport extends LightningElement {
     return !!(this.check && this.check.isFinal);
   }
   get request() {
-    return this.requestWith(this.which);
-  }
-  /** The request; which: the "which camper?" answers it carries ({} for the check's). */
-  requestWith(which) {
     if (!this.reading) return null;
     return buildRequest({
-      which,
+      which: this.which,
       reading: this.read,
       activities: this.activities,
       linked: this.linked,
@@ -629,8 +625,19 @@ export default class ShoreshChoicesImport extends LightningElement {
       check: this.check,
       request,
       keys: camperKeys(this.read, this.groups),
-      which: this.which
-    }).map((row) => ({ ...row, label: `Which camper is ${row.where}?` }));
+      which: this.which,
+      t: this.t
+    }).map((row) => ({
+      ...row,
+      label: `Which ${this.t.sIn("Camper")} is ${row.where}?`
+    }));
+  }
+  /** "Different campers" and "Which camper?", in the camp's words. */
+  get differentWords() {
+    return `Different ${this.t.pIn("Camper")}`;
+  }
+  get whichHead() {
+    return `Which ${this.t.sIn("Camper")}?`;
   }
   get hasWhich() {
     return this.whichList.length > 0;
@@ -642,9 +649,17 @@ export default class ShoreshChoicesImport extends LightningElement {
     const left = this.whichList.filter((row) => !row.value).length;
     return left ? String(left) : "";
   }
-  handleWhich(event) {
+  /** An answer counts again with it (hand changes kept, who is on the sheet), in place. */
+  async handleWhich(event) {
     const key = event.currentTarget.dataset.key;
     this.which = { ...this.which, [key]: event.detail.value };
+    try {
+      this.check = await checkChoices({
+        request: JSON.stringify(this.request)
+      });
+    } catch (e) {
+      this.error = failed("Couldn't count what this sheet imports.", e);
+    }
   }
   handleDifferent(event) {
     const key = event.currentTarget.dataset.key;
@@ -727,8 +742,7 @@ export default class ShoreshChoicesImport extends LightningElement {
   /** What bringing the sheet in would do (the count, hand changes kept), asked of the server. */
   async runCheck() {
     if (this.refused) return;
-    // Asked without the "which camper?" answers, so each question stays on the card to change.
-    const request = this.requestWith({});
+    const request = this.request;
     if (!request) return;
     this.phase = "checking";
     try {

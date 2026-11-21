@@ -67,7 +67,11 @@ suppressions:
   "main/default/objects/Camper__c/fields/Key__c.field-meta.xml":
     - rule_selector: "pmd:ProtectSensitiveData"
       max_suppressed_violations: 1
-      reason: "Season and camper number (else a hash of the name), to stop duplicate campers; not a secret."
+      reason: "Season and camper number, to stop a duplicate camper number; not a secret."
+  "main/default/objects/Camper__c/fields/NameKey__c.field-meta.xml":
+    - rule_selector: "pmd:ProtectSensitiveData"
+      max_suppressed_violations: 1
+      reason: "Season and a hash of the name, so imports find campers by name without reading it; not a secret."
   "main/default/objects/Preference__c/fields/Key__c.field-meta.xml":
     - rule_selector: "pmd:ProtectSensitiveData"
       max_suppressed_violations: 1

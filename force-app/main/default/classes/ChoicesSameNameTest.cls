@@ -166,7 +166,10 @@ private class ChoicesSameNameTest {
       bringIn(camp.noas(groups, true));
       List<Camper__c> saved = camp.noasSaved();
       // One row now: still two Noas here, so it is asked.
-      ChoicesImport.Request one = camp.noas(new List<String>{ 'Group B' }, false);
+      ChoicesImport.Request one = camp.noas(
+        new List<String>{ 'Group B' },
+        false
+      );
 
       Test.startTest();
       Integer before = Limits.getQueries();
@@ -188,7 +191,7 @@ private class ChoicesSameNameTest {
       Assert.areEqual('Noa Oakhollow, Group A', which.choices[0].label);
       Assert.areEqual('Noa Oakhollow, Group B', which.choices[1].label);
       Assert.areEqual(
-        'Row 2: more than one camper in this season has this name. Say which this is, or a new camper.',
+        'Row 2: more than one camper in this season has this name. Choose which, or a new one.',
         unanswered
       );
       Assert.areEqual(1, answered.known);

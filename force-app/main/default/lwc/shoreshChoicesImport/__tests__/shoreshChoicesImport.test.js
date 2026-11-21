@@ -588,7 +588,7 @@ describe("c-shoresh-choices-import", () => {
 
   // ELECT-2.7 (Greg 2026-11-21): two campers may share a name; the director says so, and which.
   it("brings in two campers with one name once the director says they are different, asking which camper each is", async () => {
-    checkChoices.mockResolvedValue({
+    const asking = {
       ...CHECK,
       added: 0,
       whichCamper: [
@@ -609,7 +609,8 @@ describe("c-shoresh-choices-import", () => {
           ]
         }
       ]
-    });
+    };
+    checkChoices.mockResolvedValue(asking);
     const element = await render();
     await choose(element, "same.csv", SAME_NAME);
     await click(element, '[data-id="primary"]');
@@ -645,10 +646,17 @@ describe("c-shoresh-choices-import", () => {
     );
     await flush();
     expect($(element, '[data-id="primary"]')).toBeNull();
+    // Each answer counts again with it, as the server says it.
+    checkChoices.mockResolvedValue({ ...asking, added: 1, known: 1 });
     which[1].dispatchEvent(
       new CustomEvent("change", { detail: { value: "new" } })
     );
     await flush();
+    const recount = JSON.parse(checkChoices.mock.calls.at(-1)[0].request);
+    expect(recount.campers.map((c) => [c.camperId, c.newCamper])).toEqual([
+      ["c7", undefined],
+      [undefined, true]
+    ]);
     expect($(element, '[data-line="count"]').textContent).toContain(
       "2 campers: 1 new, 1 already here"
     );

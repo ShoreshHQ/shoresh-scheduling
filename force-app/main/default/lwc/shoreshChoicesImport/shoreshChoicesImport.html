@@ -383,7 +383,7 @@
                       data-answer="different"
                       onclick={handleDifferent}
                     >
-                      Different campers
+                      {differentWords}
                     </button>
                   </span>
                 </template>
@@ -493,7 +493,7 @@
           <template lwc:if={hasWhich}>
             <section class="section" data-section="which">
               <h4 class="section-head">
-                Which camper?
+                {whichHead}
                 <span class="shoresh-num" data-id="which-count"
                   >{whichCount}</span
                 >
@@ -511,7 +511,7 @@
                       class="same-as"
                       label={row.label}
                       variant="label-hidden"
-                      placeholder="Which camper…"
+                      placeholder={whichHead}
                       value={row.value}
                       options={row.options}
                       data-key={row.key}

@@ -703,6 +703,9 @@ function settledChoice(c, known, answers, linked) {
   return base;
 }
 
+/** "Which camper?"'s answer for a new camper (the others are a saved camper's Id). */
+export const NEW_CAMPER = "new";
+
 /** Whether every name Shoresh doesn't know has an answer. */
 export function allSettled(newNames, answers) {
   return (newNames || []).every((item) => answers[foldName(item.name)]);
@@ -784,9 +787,6 @@ export function buildRequest({
 
 // ---------- card 3: the count ----------
 
-/** "Which camper?"'s answer for a new camper (the others are a saved camper's Id). */
-export const NEW_CAMPER = "new";
-
 /** Each request camper's reading key, in the request's order (buildRequest's campers). */
 export function camperKeys(reading, groups) {
   return reading.campers
@@ -795,11 +795,12 @@ export function camperKeys(reading, groups) {
 }
 
 /**
- * The server's "which camper?" questions (ChoicesImport.Check.whichCamper; ELECT-2.7), each with
+ * The server's "which camper?" questions (ChoicesImport.Check.whichCamper; ELECT-2.7), answered
+ * or not, each with
  * the season's campers of that name and "A new camper": [{ key, name, where, options, value }].
  * key is the camper's reading key, which the answers (which) are kept by.
  */
-export function whichRows({ check, request, keys, which }) {
+export function whichRows({ check, request, keys, which, t = buildTerms([]) }) {
   return ((check && check.whichCamper) || []).map((question) => {
     const key = keys[question.index];
     return {
@@ -808,7 +809,7 @@ export function whichRows({ check, request, keys, which }) {
       where: `Row ${question.row}`,
       options: [
         ...question.choices.map((c) => ({ label: c.label, value: c.id })),
-        { label: "A new camper", value: NEW_CAMPER }
+        { label: `A new ${t.sIn("Camper")}`, value: NEW_CAMPER }
       ],
       value: (which && which[key]) || null
     };
@@ -825,14 +826,7 @@ export function countLines({ request, check, set, t, activities }) {
   const lines = [];
   const camperWords = (n) =>
     `${n} ${n === 1 ? t.sIn("Camper") : t.pIn("Camper")}`;
-  // A row the director said which camper it is counts as they said (ELECT-2.7).
-  let added = check.added;
-  let known = check.known;
-  for (const question of check.whichCamper || []) {
-    const camper = request.campers[question.index] || {};
-    if (camper.newCamper) added += 1;
-    else if (camper.camperId) known += 1;
-  }
+  const { added, known } = check;
   // No "0 new" or "0 already here": a zero is left out (CORE-6.13).
   const parts = [
     added ? `${added} new` : "",

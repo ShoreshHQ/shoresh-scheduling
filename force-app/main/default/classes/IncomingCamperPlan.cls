@@ -58,7 +58,7 @@ public with sharing class IncomingCamperPlan {
       batch.problem(i, FUTURE);
     } else if (campers.doubt(i)) {
       batch.problem(i, campers.doubtWords(i));
-      batch.ask('camper|' + campers.likely(i).Id, doubtQuestion(i));
+      batch.ask('camper|' + campers.doubtKey(i), doubtQuestion(i));
     } else if (found == null) {
       add(i, record);
     } else if (found.Id == null || !seen.add(found.Id)) {

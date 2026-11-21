@@ -330,7 +330,7 @@ private class ElectivesDataTest {
       }
       Assert.areEqual(
         2,
-        ElectiveRunTriggers.savedByKey(
+        CamperKeys.savedIn(
             camp.season.Id,
             new Set<String>{ unnumbered[0].NameKey__c }
           )

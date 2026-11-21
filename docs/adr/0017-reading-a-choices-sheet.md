@@ -152,7 +152,7 @@ name). Flow and words follow the desktop's choices-sheet import (`AssignmentPane
     `ChoicesImportChoices`, each small enough for Code Analyzer's complexity rules): names added as
     activities, each offered in the set as **proposed** (confirmed on the Electives screen before
     it gets campers, plan §2); the campers; the run; the choices; the remembered answers. A
-    camper is found by its key (`ElectiveRunTriggers.camperKey`: camper number, else a hash of the
+    camper is found by its key (`CamperKeys.of`: camper number, else a hash of the
     name), never by querying a name; new ones are made. The key is hidden (no one is granted it), so
     it alone is matched in system mode, inside the season already read in user mode; the campers
     found are then read in user mode by Id. Two rows of one request with one key (a

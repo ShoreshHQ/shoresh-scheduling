@@ -3497,6 +3497,7 @@ describe("Shoresh for AI tools and the command line", () => {
           [
             ok(JSON.stringify(read)),
             message(asking),
+            message({ ...asking, added: 1, known: 1 }),
             message({
               campers: 2,
               added: 1,
@@ -3511,7 +3512,7 @@ describe("Shoresh for AI tools and the command line", () => {
     );
     expect(done.ok).toBe(true);
     expect(
-      JSON.parse(savedSeen[2].stdin).request.campers.map((c) => [
+      JSON.parse(savedSeen[3].stdin).request.campers.map((c) => [
         c.camperId,
         c.newCamper
       ])

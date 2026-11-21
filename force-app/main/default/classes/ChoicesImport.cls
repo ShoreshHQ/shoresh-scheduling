@@ -7,7 +7,7 @@
  * and says where the sheet now differs; campers not on the new sheet keep theirs.
  *
  * Everything runs in user mode (queries WITH USER_MODE, writes AccessLevel.USER_MODE). Campers
- * are found by their key (ElectiveRunTriggers.camperKey), never by querying a name, and no
+ * are found by their key (CamperKeys.of), never by querying a name, and no
  * message names a camper: refusals give the sheet's row instead. A name two saved campers share
  * is a question for the director, never a guess (ELECT-2.7).
  *
@@ -142,8 +142,8 @@ public with sharing class ChoicesImport {
     // The run's campers that are not on this sheet: their choices stay.
     @AuraEnabled
     public Integer notOnSheet = 0;
-    // Rows Shoresh can't match to one camper by name: a person says which (ELECT-2.7). Neither
-    // known nor added until then.
+    // Rows Shoresh can't match to one camper by name: a person says which (ELECT-2.7), listed
+    // answered or not; an unanswered one is neither known nor added.
     @AuraEnabled
     public List<Which> whichCamper = new List<Which>();
   }
@@ -249,58 +249,8 @@ public with sharing class ChoicesImport {
     ChoicesImportCampers campers = new ChoicesImportCampers(request);
     ChoicesImportChoices choices = new ChoicesImportChoices(request, place);
     choices.readSaved();
-    result.whichCamper = campers.questions();
-    Set<Id> onSheet = new Set<Id>();
-    for (Integer i = 0; i < request.campers.size(); i++) {
-      if (campers.unsettled(i)) {
-        continue;
-      }
-      Camper__c saved = campers.at(i);
-      if (saved == null) {
-        result.added++;
-        continue;
-      }
-      result.known++;
-      onSheet.add(saved.Id);
-      Renamed renamed = renamedAt(i, request.campers[i], saved);
-      if (renamed != null) {
-        result.renamed.add(renamed);
-      }
-      Preference__c had = choices.savedFor(saved.Id);
-      if (had != null && CamperChoices.handChanged(had)) {
-        result.handChanged.add(i);
-        if (differs(had, request.campers[i])) {
-          result.differs.add(i);
-        }
-      }
-    }
-    result.notOnSheet = choices.savedCount() - choices.savedAmong(onSheet);
+    new ChoicesCheckCount(request, campers, choices).into(result);
     return result;
-  }
-
-  /** A camper number saved under another name (Shoresh's name is kept, and said), or null. */
-  private static Renamed renamedAt(
-    Integer index,
-    SheetCamper sheetCamper,
-    Camper__c saved
-  ) {
-    if (
-      String.isBlank(sheetCamper.camperNumber) ||
-      String.isBlank(sheetCamper.name) ||
-      sheetCamper.name.normalizeSpace().toLowerCase() ==
-      saved.Name.normalizeSpace().toLowerCase()
-    ) {
-      return null;
-    }
-    Renamed renamed = new Renamed();
-    renamed.index = index;
-    renamed.savedName = saved.Name;
-    return renamed;
-  }
-
-  /** Whether the sheet now gives other choices than the ones changed by hand. */
-  private static Boolean differs(Preference__c had, SheetCamper sheetCamper) {
-    return !CamperChoices.same(had.Choices__c, sheetCamper.choices);
   }
 
   /** The answers about names to remember for the camp (only those about names). */
