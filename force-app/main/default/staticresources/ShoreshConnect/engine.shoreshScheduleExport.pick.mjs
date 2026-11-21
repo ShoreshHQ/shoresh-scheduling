@@ -284,7 +284,7 @@ export function dayPieces(day, places) {
   close();
   return pieces.map((piece) => ({
     indexes: piece.indexes,
-    label: piece.names.join(", ")
+    label: [...new Set(piece.names)].join(", ")
   }));
 }
 
@@ -326,6 +326,10 @@ function dayPagesOf(view, dayIndex, t, places, keep = null, head = null) {
   const indexes = keep
     ? shown.groups.map((grp, i) => (keep(grp) ? i : -1)).filter((i) => i >= 0)
     : shown.groups.map((grp, i) => i);
+  // A division with no group on the day prints nothing for it.
+  if (keep && !indexes.length) {
+    return [];
+  }
   const day = withGroups(shown, indexes);
   const pieces = dayPieces(day, places);
   return pieces.map((piece, n) => {
@@ -509,8 +513,20 @@ export function sheetsFor(view, choice, catalogue, setup, t, offerings) {
     const indexes = shown.groups
       .map((grp, g) => (!keep || keep(grp) ? g : -1))
       .filter((g) => g >= 0);
+    if (keep && !indexes.length) return null;
     const one = { ...view, days: [withGroups(shown, indexes)] };
-    return sheet(name, dailyGrid(one, 0, t), corner, offerings);
+    const out = sheet(name, dailyGrid(one, 0, t), corner, offerings);
+    // Under a special day's grid, its name and notes, as the whole week's file has them.
+    if (shown.special) {
+      out.rows.push(
+        [],
+        [sanitizeCell(`${shown.special.name} (${t.s("SpecialDay")})`)]
+      );
+      if (shown.special.notes) {
+        out.rows.push([sanitizeCell(shown.special.notes)]);
+      }
+    }
+    return out;
   };
   let sheets;
   switch (choice.kind) {
@@ -562,5 +578,5 @@ export function sheetsFor(view, choice, catalogue, setup, t, offerings) {
     default:
       sheets = [];
   }
-  return oneEach(sheets);
+  return oneEach(sheets.filter(Boolean));
 }

@@ -91,6 +91,22 @@ describe("c-shoresh-print-menu", () => {
     await expect(element).toBeAccessible();
   });
 
+  it("opens again with every kind closed once focus has left it", async () => {
+    const element = render();
+    await flush();
+    word(element).click();
+    await flush();
+    q(element, '[data-kind="group"]').click();
+    await flush();
+    q(element, '[data-kind="group"]').dispatchEvent(
+      new FocusEvent("focusout", { bubbles: true, composed: true })
+    );
+    await flush();
+    expect(
+      q(element, '[data-kind="group"]').getAttribute("aria-expanded")
+    ).toBe("false");
+  });
+
   it("chooses the whole week with no key", async () => {
     const element = render();
     const chosen = jest.fn();

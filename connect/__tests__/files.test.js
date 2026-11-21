@@ -220,6 +220,24 @@ describe("the screens' files, made on this computer", () => {
     expect(
       sheetsIn(path.join(monday.folder, monday.saved[0])).map((x) => x.name)
     ).toEqual(["Monday"]);
+    // Excel without what is the whole week, whatever view says (view is for printing).
+    const viewed = await make(
+      "download_schedule",
+      { week: "Week 1", view: "group" },
+      read
+    );
+    expect(viewed.saved).toEqual([
+      "Week 1 - Imported from sample-week.xlsx.xlsx"
+    ]);
+    // A removed one is chosen by its name, as a person says it.
+    const removed = await make(
+      "download_schedule",
+      { week: "Week 1", what: "activity", which: "Pottery" },
+      read
+    );
+    expect(removed.saved).toEqual([
+      "Week 1 - Imported from sample-week.xlsx - Pottery (removed).xlsx"
+    ]);
     const unknown = await make(
       "download_schedule",
       { week: "Week 1", what: "group", which: "Cedar" },

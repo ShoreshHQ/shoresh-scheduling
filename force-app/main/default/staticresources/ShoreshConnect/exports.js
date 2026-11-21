@@ -78,9 +78,12 @@ function htmlName(m, title) {
  * "Monday"), or every one (left out, or "every").
  */
 function choiceOf(m, choices, input, t) {
+  // The older view says what a printout holds; Excel without what is the whole week, as before.
   const kind = input.what
     ? WHAT[input.what]
-    : VIEWS[input.view || (input.as === "print" ? "daily" : "")] || "week";
+    : input.as === "print"
+      ? VIEWS[input.view || "daily"]
+      : "week";
   if (!kind) {
     return {
       problem: "what is week, day, group, activity, location or division."
@@ -89,7 +92,7 @@ function choiceOf(m, choices, input, t) {
   if (kind === "week") return { kind };
   const found = choices.find((c) => c.kind === kind);
   if (!found) {
-    return { problem: `This ${t.sIn("Week")} has no ${input.what} to print.` };
+    return { problem: `This ${t.sIn("Week")} has no ${kind} to choose.` };
   }
   const which = String(input.which || "")
     .trim()
@@ -97,10 +100,19 @@ function choiceOf(m, choices, input, t) {
   if (!which || which === "every" || which === "all") {
     return { kind, key: m.EVERY };
   }
-  const option = found.options.find((o) => {
-    const label = o.label.toLowerCase();
-    return label === which || label.split(",")[0] === which;
-  });
+  // As the menu names it, "(removed)" left off as a person says it; a day by its name alone.
+  const said = (label) => label.toLowerCase().replace(/ \(removed\)$/, "");
+  const matching = found.options.filter(
+    (o) =>
+      o.key !== m.EVERY &&
+      (said(o.label) === which || said(o.label).split(",")[0] === which)
+  );
+  if (matching.length > 1) {
+    return {
+      problem: `${matching.length} choices are called ${which}: ${matching.map((o) => o.label).join("; ")}. Say which.`
+    };
+  }
+  const option = matching[0];
   if (!option) {
     const named = found.options
       .filter((o) => o.key !== m.EVERY)

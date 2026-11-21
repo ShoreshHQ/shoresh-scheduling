@@ -407,6 +407,53 @@ describe("print and Excel by choice", () => {
       expect(out[2].rows).toEqual([["Can't be shown"]]);
     });
 
+    it("puts a special day's name and notes under its sheet, as the whole week's file", () => {
+      const view = opened();
+      view.specials = {
+        days: [
+          {
+            dateValue: "2026-06-30",
+            specialDayId: "sd1",
+            name: "Field Day",
+            notes: "Bring water",
+            plan: { blocks: [], groups: [], items: [], rows: [] }
+          }
+        ],
+        events: []
+      };
+      const [tuesday] = sheetsFor(
+        withSpecials(view),
+        { kind: "day", key: "1" },
+        CATALOGUE,
+        SETUP,
+        t,
+        offerings
+      );
+      expect(tuesday.rows.slice(-3)).toEqual([
+        [],
+        ["Field Day (Special day)"],
+        ["Bring water"]
+      ]);
+    });
+
+    it("leaves out a day a division has no group on", () => {
+      const view = opened();
+      view.days[1] = {
+        ...view.days[1],
+        groups: [view.days[1].groups[0]],
+        rows: [view.days[1].rows[0]]
+      };
+      const choice = { kind: "division", key: "d2" };
+      expect(
+        sheetsFor(view, choice, CATALOGUE, SETUP, t, offerings).map(
+          (x) => x.name
+        )
+      ).toEqual(["Seniors Monday", "Seniors Wednesday"]);
+      expect(
+        pagesFor(view, choice, CATALOGUE, SETUP, t).map((p) => p.title)
+      ).toEqual(["Seniors · Monday, Jun 29", "Seniors · Wednesday, Jul 1"]);
+    });
+
     it("keeps sheet names apart once shortened to Excel's 31 characters", () => {
       const long = "The Very Long Senior Division Name";
       const setup = JSON.parse(JSON.stringify(SETUP));

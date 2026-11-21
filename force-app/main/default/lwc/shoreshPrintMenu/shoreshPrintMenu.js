@@ -20,6 +20,23 @@ export default class ShoreshPrintMenu extends LightningElement {
 
   openKind = null;
 
+  connectedCallback() {
+    // Focus leaving the menu altogether closes it: it opens again with every kind closed.
+    this.onFocusOut = (event) => {
+      if (
+        !event.relatedTarget ||
+        !this.template.contains(event.relatedTarget)
+      ) {
+        this.openKind = null;
+      }
+    };
+    this.template.addEventListener("focusout", this.onFocusOut);
+  }
+
+  disconnectedCallback() {
+    this.template.removeEventListener("focusout", this.onFocusOut);
+  }
+
   get rows() {
     return (this.choices || []).map((kind) => {
       const open = kind.kind === this.openKind;
