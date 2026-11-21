@@ -6,9 +6,10 @@
  */
 const fs = require("fs");
 const path = require("path");
-const { CAPABILITIES } = require("./capabilities");
+const { CAPABILITIES, byName, ASKS_FIRST_SAID } = require("./capabilities");
 const { call, sfInstalled, signIn, toAgent } = require("./client");
 const script = require("./script");
+const { askPerson, withPersonsYes, ASKS_ON_SCREEN } = require("./yes");
 
 /**
  * Shoresh's own view of a week (API-1.26), as an MCP App (the MCP Apps extension,
@@ -25,19 +26,35 @@ function weekViewPage() {
   return fs.readFileSync(path.join(__dirname, "week-view.html"), "utf8");
 }
 
+/** An ask-first tool as the AI sees it: no confirm to send, the person's screen asks (API-1.153). */
+function forTheAi(capability) {
+  if (!capability.asksFirst) return capability;
+  const { confirm, ...properties } = capability.inputSchema.properties;
+  return {
+    ...capability,
+    description: capability.description.replace(
+      ASKS_FIRST_SAID,
+      ASKS_ON_SCREEN
+    ),
+    inputSchema: { ...capability.inputSchema, properties }
+  };
+}
+
 /**
  * The tool list an AI tool sees; a schedule read names Shoresh's view of the week. Last, code mode
  * for the AI (API-1.118): one script making many of these calls.
  */
 function tools() {
   return [
-    ...CAPABILITIES.map(({ name, description, inputSchema, showsWeek }) => ({
-      name,
-      description,
-      inputSchema,
-      ...(showsWeek ? { _meta: { ui: { resourceUri: WEEK_VIEW.uri } } } : {})
-    })),
-    script.scriptTool()
+    ...CAPABILITIES.map(forTheAi).map(
+      ({ name, description, inputSchema, showsWeek }) => ({
+        name,
+        description,
+        inputSchema,
+        ...(showsWeek ? { _meta: { ui: { resourceUri: WEEK_VIEW.uri } } } : {})
+      })
+    ),
+    script.scriptTool(CAPABILITIES.map(forTheAi))
   ];
 }
 
@@ -121,10 +138,20 @@ async function act(name, input, { org, browserSignIn, host, callFn, sf }) {
   }
 }
 
-/** One tool call answered as MCP answers it, with what was said (`said`) as code mode has it. */
-async function answerTool(name, input, { log, ...options }) {
+/**
+ * One tool call answered as MCP answers it, with what was said (`said`) as code mode has it. An
+ * ask-first action is done only on the person's own Yes on their screen (API-1.153).
+ */
+async function answerTool(name, input, { log, ask, inScript, ...options }) {
   try {
-    const answer = await act(name, input, options);
+    const answer = byName(name)?.asksFirst
+      ? await withPersonsYes(name, input, {
+          act: (sent) => act(name, sent, options),
+          ask,
+          inScript,
+          log
+        })
+      : await act(name, input, options);
     const result = toolResult(answer);
     if (result.structuredContent) {
       log(`Shoresh: answered ${name} with the week view attached`);
@@ -153,6 +180,7 @@ async function handle(
     host,
     callFn = call,
     sf = { installed: () => sfInstalled(), signIn },
+    ask = askPerson,
     // One line to standard error, which Claude desktop keeps in mcp-server-Shoresh.log (API-1.29).
     log = (line) => process.stderr.write(`${line}\n`)
   } = {}
@@ -190,12 +218,15 @@ async function handle(
         contents: [{ ...WEEK_VIEW, text: weekViewPage() }]
       });
     case "tools/call": {
-      const options = { org, browserSignIn, host, callFn, sf, log };
+      const options = { org, browserSignIn, host, callFn, sf, log, ask };
       if (params?.name === script.NAME) {
         // Each call the script makes is answered as the same tool call would be (API-1.120).
         const ran = await script.runScript(params?.arguments?.script, {
           callAction: async (name, input) => {
-            const result = await answerTool(name, input, options);
+            const result = await answerTool(name, input, {
+              ...options,
+              inScript: true
+            });
             return {
               answer: forScript(result.said),
               lines: result.content.map((c) => c.text)
@@ -280,6 +311,7 @@ if (require.main === module) serve(orgFrom(process.argv, process.env));
 
 module.exports = {
   tools,
+  forTheAi,
   handle,
   orgFrom,
   serve,
