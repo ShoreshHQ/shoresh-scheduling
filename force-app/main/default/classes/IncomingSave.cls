@@ -79,10 +79,7 @@ public with sharing class IncomingSave {
   ) {
     for (Integer i = 0; i < attempt.size(); i++) {
       if (attempt[i].row === e.record) {
-        batch.problem(
-          attempt[i].index,
-          'Not saved: ' + ScreenErrors.of(e).getMessage()
-        );
+        batch.problem(attempt[i].index, 'Not saved: ' + ScreenErrors.words(e));
         batch.staged.remove(i);
         return;
       }
