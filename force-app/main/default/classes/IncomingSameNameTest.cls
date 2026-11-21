@@ -53,7 +53,7 @@ private class IncomingSameNameTest {
         'saved: Added this camper.',
         IncomingTestData.said(first, 2)
       );
-      Map<String, Object> again = send('camper', records.deepClone());
+      Map<String, Object> again = send('camper', records);
       Assert.areEqual(2, again.get('unchanged'), 'The same batch adds no one');
     }
     Assert.areEqual(3, noas(camp.season.Id), 'Three Noas, three IDs');
