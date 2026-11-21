@@ -1,7 +1,9 @@
 /**
  * Code mode for an AI in a chat: run_shoresh_script (docs/protocol/api.md, API-1.118 to API-1.122).
  */
-const { handle } = require("../mcp");
+const mcp = require("../mcp");
+
+const { handle } = mcp;
 const { CAPABILITIES } = require("../capabilities");
 const {
   scriptTool,
@@ -14,8 +16,8 @@ const {
 } = require("../script");
 const { PERSON_DECIDES } = require("../client");
 
-const PREVIEW =
-  "Nothing has been done yet. Delete Try 2 from Week 1? Show this to the person; send confirm abc123 when they say yes.";
+const QUESTION = "Nothing has been done yet. Delete Try 2 from Week 1?";
+const PREVIEW = `${QUESTION} Show the person exactly this and ask. Only if they say yes, send the same request again with confirm: "abc123".`;
 
 /** Shoresh as a stub: what each call is answered, and the calls it was asked. */
 function shoresh(asked = []) {
@@ -89,8 +91,9 @@ describe("Code mode for an AI: run_shoresh_script", () => {
     const tool = listed.result.tools.find(
       (t) => t.name === "run_shoresh_script"
     );
-    expect(tool).toEqual(scriptTool(CAPABILITIES));
-    for (const action of CAPABILITIES) {
+    const forTheAi = CAPABILITIES.map(mcp.forTheAi);
+    expect(tool).toEqual(scriptTool(forTheAi));
+    for (const action of forTheAi) {
       expect(tool.description).toContain(signature(action));
     }
     expect(
@@ -189,22 +192,30 @@ describe("Code mode for an AI: run_shoresh_script", () => {
   });
 
   // API-1.122
-  it("askFirstAndErrorsArePlain: a preview's text is in the answer with no confirm added, a confirm the script got may be sent, errors are said plainly", async () => {
+  it("askFirstAndErrorsArePlain: a preview's question is in the answer with no confirm, a confirm the script sends is left out, errors are said plainly", async () => {
     const asked = [];
     const said = await runs(
       `const p = await shoresh.delete_version({ week: "Week 1", version: "Try 2" });
        return p.asksFirst;`,
       shoresh(asked)
     );
-    expect(lines(said)[0]).toContain(PREVIEW);
+    // API-1.153: nobody is asked in a script and the AI never holds a confirm.
+    expect(lines(said)[0]).toContain(QUESTION);
+    expect(lines(said)[0]).not.toContain("abc123");
+    expect(lines(said)[0]).toMatch(/call delete_version on its own/);
     expect(lines(said)[0]).toMatch(/Returned: true$/);
     expect(asked).toEqual([
       { name: "delete_version", input: { week: "Week 1", version: "Try 2" } }
     ]);
+    const tried = [];
     const sent = await runs(
-      `await shoresh.delete_version({ week: "Week 1", version: "Try 2", confirm: "abc123" });`
+      `await shoresh.delete_version({ week: "Week 1", version: "Try 2", confirm: "abc123" });`,
+      shoresh(tried)
     );
-    expect(lines(sent)[0]).toContain("Deleted Try 2.");
+    expect(lines(sent)[0]).not.toContain("Deleted Try 2.");
+    expect(tried).toEqual([
+      { name: "delete_version", input: { week: "Week 1", version: "Try 2" } }
+    ]);
     expect(lines(await runs("this is not ("))[0]).toMatch(
       /^The script made no calls to Shoresh\.\nThe script didn't finish: The script can't be read: /
     );

@@ -4406,10 +4406,12 @@ describe("Shoresh for AI tools and the command line", () => {
     const { ACTIONS } = require("../code");
     expect(ACTIONS).toBe(CAPABILITIES);
     const listed = tools();
+    // As the AI sees them: an ask-first action has no confirm for it to send (API-1.153).
+    const forTheAi = ACTIONS.map(require("../mcp").forTheAi);
     // Last, the AI's code mode, its function list made from the same ACTIONS (API-1.119).
-    expect(listed.pop()).toEqual(require("../script").scriptTool(ACTIONS));
+    expect(listed.pop()).toEqual(require("../script").scriptTool(forTheAi));
     expect(listed.map(({ _meta, ...tool }) => tool)).toEqual(
-      ACTIONS.map(({ name, description, inputSchema }) => ({
+      forTheAi.map(({ name, description, inputSchema }) => ({
         name,
         description,
         inputSchema
