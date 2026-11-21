@@ -83,6 +83,8 @@ describe("c-shoresh-versions", () => {
     ).toEqual(["Before my changes", "Imported from summer.xlsx"]);
     expect(rows[0].textContent).toContain("Manual Build");
     expect(rows[1].textContent).toContain("on screen now");
+    // Under the name, in its column, so the name and date are never squeezed beside it.
+    expect(rows[1].querySelector(".version-text .on-screen")).not.toBeNull();
     expect(rows[0].textContent).not.toContain("on screen now");
     // The Schedules page only looks: Open, never Restore, delete or Save version.
     expect(element.shadowRoot.textContent).not.toMatch(/Restore|delete/i);
@@ -129,7 +131,7 @@ describe("c-shoresh-versions", () => {
     expect(q(element, '[data-id="versions-panel"]')).toBeNull();
   });
 
-  it("renames a version: starts from its name, saves with Enter or Save", async () => {
+  it("renames a version: starts empty, as the desktop's, saves with Enter or Save", async () => {
     const element = await render();
     const handler = jest.fn((event) => event.detail.onDone(true));
     element.addEventListener("rename", handler);
@@ -141,7 +143,12 @@ describe("c-shoresh-versions", () => {
     q(element, '[data-id="s2"][data-action="rename"]').click();
     await flush();
     const input = q(element, '[data-id="rename-input"]');
-    expect(input.value).toBe("Before my changes");
+    expect(input.value).toBe("");
+    // Empty, so its label says which version it renames.
+    expect(input.getAttribute("aria-label")).toBe(
+      "New name for Before my changes"
+    );
+    expect(q(element, '[data-id="rename-save"]').disabled).toBe(true);
     // The rename button it was started from is gone: focus goes into the box (the desktop's
     // autoFocus), not the page (real-browser check, 2026-10-20).
     expect(element.shadowRoot.activeElement).toBe(input);

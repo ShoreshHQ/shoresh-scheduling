@@ -372,9 +372,9 @@ save one), so first add a made-up one.
 8. **Activity View** (where one activity runs): a card per activity with its location, how
    many groups do it, and how many times this week (for example _6 groups · 7 times this
    week_). Click **Swim**: a grid of the week with the bunks swimming in each block. **← All Activities** goes back.
-9. **Rename it.** Open **Versions**, click **rename**, type _Last summer_, press Return (or
-   **Save**). The list and the blue strip both say _Last summer_. A blank name is refused:
-   _Give the version a name._
+9. **Rename it.** Open **Versions**, click **Rename**: the box opens empty. Type _Last summer_,
+   press Return (or **Save**). The list and the blue strip both say _Last summer_. **Save**
+   stays greyed out until a name is typed.
 10. **Cells cannot be changed here**, on purpose: placing and moving things comes with Manual
     Build.
 11. **Something deleted since the version was saved** still shows under its saved name, marked
