@@ -6,16 +6,20 @@
  *   or same name with none) is already there: a question, since Shoresh can't tell whether they
  *   are one child (two systems, or a sheet and a system, disagreeing is a flag: API-6.1).
  * - With no ID: as the choices sheet matches (ElectiveRunTriggers.camperKey), never by querying
- *   a name.
+ *   a name. Two campers may share a name (ELECT-2.7): a name more than one camper has is a
+ *   question (SAME_NAME), never a guess; a camper with another ID from the same system is
+ *   another child, so two children of one name with their own IDs are both added.
  *
  * Keys are hidden fields, so they are matched in system mode inside the one season the sender was
  * already checked to see; the campers themselves are then read in user mode, by Id.
  */
 public with sharing class IncomingCampers {
   public static final String DOUBT = 'A camper the import would match is already in Shoresh without this ID. A person needs to say whether they are the same child; nothing was changed.';
+  public static final String SAME_NAME = 'More than one camper in this season has this name. Send their ID (camper_id) or camper number so Shoresh can tell which; nothing was changed.';
   private List<Camper__c> asSent = new List<Camper__c>();
   private Map<String, Camper__c> byOutside = new Map<String, Camper__c>();
-  private Map<String, Camper__c> byKey = new Map<String, Camper__c>();
+  // The season's campers by key, oldest first: several when campers share a name (ELECT-2.7).
+  private Map<String, List<Camper__c>> byKey = new Map<String, List<Camper__c>>();
 
   /** As sent, in order: each a camper with only its system, ID, name and number (asSent). */
   public IncomingCampers(Id seasonId, List<Camper__c> sent) {
@@ -32,29 +36,48 @@ public with sharing class IncomingCampers {
         keys.add(keyOf(camper));
       }
     }
-    Map<Id, Camper__c> matched = new Map<Id, Camper__c>(
+    Map<String, List<Id>> idsByKey = ElectiveRunTriggers.savedByKey(
+      seasonId,
+      keys
+    );
+    Set<Id> ids = new Set<Id>();
+    for (List<Id> each : idsByKey.values()) {
+      ids.addAll(each);
+    }
+    Map<Id, Camper__c> hidden = new Map<Id, Camper__c>(
       [
-        SELECT Id, OutsideMatch__c, Key__c
+        SELECT Id, OutsideMatch__c
         FROM Camper__c
         WHERE
           Season__c = :seasonId
           AND (OutsideMatch__c IN :outsideKeys
-          OR Key__c IN :keys)
+          OR Id IN :ids)
         WITH SYSTEM_MODE
       ]
     );
-    Set<Id> ids = matched.keySet();
-    for (Camper__c saved : [
+    Set<Id> all = hidden.keySet();
+    Map<Id, Camper__c> saved = new Map<Id, Camper__c>();
+    for (Camper__c camper : [
       SELECT Id, Name, OutsideId__c, SourceSystem__c
       FROM Camper__c
-      WHERE Id IN :ids
+      WHERE Id IN :all
       WITH USER_MODE
     ]) {
-      Camper__c hidden = matched.get(saved.Id);
-      if (hidden.OutsideMatch__c != null) {
-        byOutside.put(hidden.OutsideMatch__c, saved);
+      saved.put(camper.Id, camper);
+      // The hidden match goes with the camper, to tell a doubt (doubt()).
+      camper.OutsideMatch__c = hidden.get(camper.Id).OutsideMatch__c;
+      if (camper.OutsideMatch__c != null) {
+        byOutside.put(camper.OutsideMatch__c, camper);
       }
-      byKey.put(hidden.Key__c, saved);
+    }
+    for (String key : idsByKey.keySet()) {
+      List<Camper__c> found = new List<Camper__c>();
+      for (Id camperId : idsByKey.get(key)) {
+        if (saved.containsKey(camperId)) {
+          found.add(saved.get(camperId));
+        }
+      }
+      byKey.put(key, found);
     }
   }
 
@@ -74,8 +97,10 @@ public with sharing class IncomingCampers {
   /** Every saved camper some record is about. */
   public Set<Id> found() {
     Set<Id> ids = new Set<Id>();
-    for (Camper__c camper : byKey.values()) {
-      ids.add(camper.Id);
+    for (List<Camper__c> campers : byKey.values()) {
+      for (Camper__c camper : campers) {
+        ids.add(camper.Id);
+      }
     }
     for (Camper__c camper : byOutside.values()) {
       ids.add(camper.Id);
@@ -95,23 +120,65 @@ public with sharing class IncomingCampers {
     if (outside != null) {
       return byOutside.get(outside);
     }
-    return byKey.get(keyOf(sent));
+    List<Camper__c> found = candidates(sent);
+    return found.size() == 1 ? found[0] : null;
   }
 
   /**
-   * Whether Shoresh can't tell (API-2.2): the record carries an ID no camper has, and a camper
-   * the import would match is already there.
+   * Whether Shoresh can't tell (API-2.2, ELECT-2.7): the record carries an ID no camper has, and
+   * a camper the import would match is already there; or it carries no ID and more than one
+   * camper has its name. A camper that already has another ID from the same system is another
+   * child (API-2.1), never a doubt.
    */
   public Boolean doubt(Integer index) {
     Camper__c sent = asSent[index];
-    return OutsideOwned.outsideKey(sent) != null &&
-      byOutside.get(OutsideOwned.outsideKey(sent)) == null &&
-      byKey.containsKey(keyOf(sent));
+    String outside = OutsideOwned.outsideKey(sent);
+    if (outside == null) {
+      return candidates(sent).size() > 1;
+    }
+    return byOutside.get(outside) == null && likely(index) != null;
+  }
+
+  /** Whether the doubt is a name several campers share, sent with no ID (SAME_NAME). */
+  public Boolean sharedName(Integer index) {
+    return OutsideOwned.outsideKey(asSent[index]) == null && doubt(index);
+  }
+
+  /** The problem a doubt gives its record. */
+  public String doubtWords(Integer index) {
+    return sharedName(index) ? SAME_NAME : DOUBT;
   }
 
   /** The camper the import would match, for a doubt's question (null for none). */
   public Camper__c likely(Integer index) {
-    return byKey.get(keyOf(asSent[index]));
+    Camper__c sent = asSent[index];
+    String outside = OutsideOwned.outsideKey(sent);
+    for (Camper__c candidate : candidates(sent)) {
+      if (outside == null || !fromSameSystem(candidate, sent)) {
+        return candidate;
+      }
+    }
+    return null;
+  }
+
+  /** Whether a saved camper already has an ID from the system this record is from. */
+  private static Boolean fromSameSystem(Camper__c saved, Camper__c sent) {
+    // OutsideOwned.outsideKey with the ID left off: season|system|.
+    String systemPrefix = OutsideOwned.outsideKey(
+        new Camper__c(
+          Season__c = sent.Season__c,
+          SourceSystem__c = sent.SourceSystem__c,
+          OutsideId__c = '-'
+        )
+      )
+      .removeEnd('-');
+    return saved.OutsideMatch__c != null &&
+      saved.OutsideMatch__c.startsWith(systemPrefix);
+  }
+
+  private List<Camper__c> candidates(Camper__c sent) {
+    List<Camper__c> found = keyOf(sent) == null ? null : byKey.get(keyOf(sent));
+    return found == null ? new List<Camper__c>() : found;
   }
 
   private static String keyOf(Camper__c sent) {
@@ -126,10 +193,14 @@ public with sharing class IncomingCampers {
     Camper__c sent = asSent[index];
     String outside = OutsideOwned.outsideKey(sent);
     if (outside != null) {
+      camper.OutsideMatch__c = outside;
       byOutside.put(outside, camper);
     }
     if (keyOf(sent) != null) {
-      byKey.put(keyOf(sent), camper);
+      if (!byKey.containsKey(keyOf(sent))) {
+        byKey.put(keyOf(sent), new List<Camper__c>());
+      }
+      byKey.get(keyOf(sent)).add(camper);
     }
   }
 

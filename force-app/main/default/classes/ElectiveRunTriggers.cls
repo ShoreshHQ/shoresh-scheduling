@@ -1,7 +1,8 @@
 /**
  * Campers, elective runs, preferences and seats (repo ADR 0018). Fills the hidden keys that make
- * "a camper once in a season", "one set of choices per camper in a run" and "one seat per camper
- * at a time in a run" impossible to break, and keeps a run inside its season.
+ * "a camper number once in a season", "one set of choices per camper in a run" and "one seat per
+ * camper at a time in a run" impossible to break, and keeps a run inside its season. Two campers
+ * may share a name (ELECT-2.7): their name key only finds them.
  *
  * Preferences and seats are written hundreds at a time by Shoresh's own saves, which check what
  * they save; their triggers only fill keys and read nothing, so a big save stays within its query
@@ -24,12 +25,22 @@ public with sharing class ElectiveRunTriggers {
     Set<String> keys = new Set<String>();
     Set<Id> savingIds = new Set<Id>();
     for (Camper__c camper : campers) {
-      camper.Key__c = camperKey(camper);
-      keys.add(camper.Key__c);
-      seasonIds.add(camper.Season__c);
+      // A number is a camper once in a season (unique Key__c); a name is not (ELECT-2.7,
+      // Greg 2026-11-21): two children may share one, so a name key is only for finding them.
+      String key = camperKey(camper);
+      Boolean numbered = String.isNotBlank(camper.CamperNumber__c);
+      camper.Key__c = numbered ? key : null;
+      camper.NameKey__c = numbered ? null : key;
+      if (numbered) {
+        keys.add(key);
+        seasonIds.add(camper.Season__c);
+      }
       if (camper.Id != null) {
         savingIds.add(camper.Id);
       }
+    }
+    if (keys.isEmpty()) {
+      return;
     }
     Set<String> taken = new Set<String>();
     for (Camper__c existing : [
@@ -44,35 +55,26 @@ public with sharing class ElectiveRunTriggers {
       seasonIds
     );
     for (Camper__c camper : campers) {
-      if (taken.add(camper.Key__c)) {
+      if (camper.Key__c == null || taken.add(camper.Key__c)) {
         continue;
       }
       CampLabels labels = labelsBySeason.get(camper.Season__c);
-      if (String.isNotBlank(camper.CamperNumber__c)) {
-        camper.CamperNumber__c.addError(
-          'Another ' +
-            labels.singularInSentence('Camper') +
-            ' in this ' +
-            labels.singularInSentence('Season') +
-            ' has this number.'
-        );
-      } else {
-        camper.Name.addError(
-          'Another ' +
-            labels.singularInSentence('Camper') +
-            ' in this ' +
-            labels.singularInSentence('Season') +
-            ' has this name and no number. Give each a number to tell them apart.'
-        );
-      }
+      camper.CamperNumber__c.addError(
+        'Another ' +
+          labels.singularInSentence('Camper') +
+          ' in this ' +
+          labels.singularInSentence('Season') +
+          ' has this number.'
+      );
     }
   }
 
   /**
    * Season and camper number; with no number, season and a SHA-256 of the name (spacing and
-   * capitals aside), so the name is not stored twice. Two campers with one name and no number
-   * share a key, which is the one refusal the desktop makes. Bringing in choices (ChoicesImport)
-   * finds a sheet's campers already in the season by this key, so the name is never queried.
+   * capitals aside), so the name is not stored twice. A number's key is unique (Key__c); a
+   * name's is not (NameKey__c), since two campers may share a name (ELECT-2.7). Imports find a
+   * sheet's or a system's campers already in the season by this key (savedByKey), so the name is
+   * never queried.
    */
   public static String camperKey(Camper__c camper) {
     if (String.isNotBlank(camper.CamperNumber__c)) {
@@ -88,6 +90,33 @@ public with sharing class ElectiveRunTriggers {
       EncodingUtil.convertToHex(
         Crypto.generateDigest('SHA-256', Blob.valueOf(name))
       );
+  }
+
+  /**
+   * The season's campers with each of these keys, in the order they were added (one key may
+   * have several: a name two campers share). Keys are hidden (no one is granted them), so they
+   * are read in system mode inside a season the caller already checked; only Ids come back.
+   * A camper saved before ELECT-2.7 may hold its name key in Key__c, so both are read.
+   */
+  public static Map<String, List<Id>> savedByKey(
+    Id seasonId,
+    Set<String> keys
+  ) {
+    Map<String, List<Id>> result = new Map<String, List<Id>>();
+    for (Camper__c saved : [
+      SELECT Id, Key__c, NameKey__c
+      FROM Camper__c
+      WHERE Season__c = :seasonId AND (Key__c IN :keys OR NameKey__c IN :keys)
+      WITH SYSTEM_MODE
+      ORDER BY CreatedDate, Id
+    ]) {
+      String key = saved.NameKey__c != null ? saved.NameKey__c : saved.Key__c;
+      if (!result.containsKey(key)) {
+        result.put(key, new List<Id>());
+      }
+      result.get(key).add(saved.Id);
+    }
+    return result;
   }
 
   // ---------------------------------------------------------------- runs

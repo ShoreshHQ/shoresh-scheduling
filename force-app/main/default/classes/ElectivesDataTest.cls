@@ -276,8 +276,9 @@ private class ElectivesDataTest {
     }
   }
 
+  // ELECT-2.7 (Greg 2026-11-21): a number is a camper once in a season; a name is not.
   @IsTest
-  static void campersAreToldApartByNumberElseByName() {
+  static void aNumberIsOneCamperButTwoCampersMayShareAName() {
     System.runAs(ShoreshTestData.scheduler()) {
       ElectiveCamp camp = new ElectiveCamp().withRun();
       Assert.areEqual(
@@ -294,9 +295,10 @@ private class ElectivesDataTest {
         new Camper__c(Season__c = camp.season.Id, Name = 'Noa  Levi'),
         AccessLevel.USER_MODE
       );
-      Assert.areEqual(
-        'Another camper in this season has this name and no number. Give each a number to tell them apart.',
-        refusal(new Camper__c(Season__c = camp.season.Id, Name = 'noa levi'))
+      // Two children with one name and no number are both kept.
+      Database.insert(
+        new Camper__c(Season__c = camp.season.Id, Name = 'noa levi'),
+        AccessLevel.USER_MODE
       );
       // The same name with a number is someone else.
       Database.insert(
@@ -307,17 +309,35 @@ private class ElectivesDataTest {
         ),
         AccessLevel.USER_MODE
       );
-      for (Camper__c camper : [
-        SELECT Key__c
+      List<Camper__c> unnumbered = [
+        SELECT Key__c, NameKey__c
         FROM Camper__c
-        WHERE CamperNumber__c = NULL
+        WHERE CamperNumber__c = NULL AND Season__c = :camp.season.Id
         WITH SYSTEM_MODE
-      ]) {
+      ];
+      Assert.areEqual(2, unnumbered.size(), 'Both Noa Levis are kept');
+      Assert.areEqual(
+        unnumbered[0].NameKey__c,
+        unnumbered[1].NameKey__c,
+        'One name, one name key'
+      );
+      for (Camper__c camper : unnumbered) {
+        Assert.isNull(camper.Key__c, 'A name is not unique');
         Assert.isFalse(
-          camper.Key__c.containsIgnoreCase('noa'),
+          camper.NameKey__c.containsIgnoreCase('noa'),
           'The key holds no copy of the name'
         );
       }
+      Assert.areEqual(
+        2,
+        ElectiveRunTriggers.savedByKey(
+            camp.season.Id,
+            new Set<String>{ unnumbered[0].NameKey__c }
+          )
+          .get(unnumbered[0].NameKey__c)
+          .size(),
+        'An import finds both'
+      );
     }
   }
 
