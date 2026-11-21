@@ -573,6 +573,10 @@ export default class ShoreshCampSetup extends LightningElement {
     } finally {
       if (this.readingTicket === ticket) {
         this.readingTicket = null;
+        // Not read: a click held for it is let go, never opened later by another read.
+        if (!setup) {
+          this.askedWhileLoading = null;
+        }
       }
     }
     if (ticket !== this.loadTicket) {

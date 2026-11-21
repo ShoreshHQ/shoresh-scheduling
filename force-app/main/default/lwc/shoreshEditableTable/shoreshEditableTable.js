@@ -1802,6 +1802,11 @@ export default class ShoreshEditableTable extends LightningElement {
     if (column) {
       value = fromInput(column, value);
     }
+    // Handed over (WEEK-6.10): from now on the value itself says whether Add is ready.
+    if (draft.typed && draft.typed.has(field)) {
+      draft.typed = new Set(draft.typed);
+      draft.typed.delete(field);
+    }
     this.setValue(draft, field, value);
     draft.dirty = true;
     this.touch(draft);
@@ -1861,10 +1866,21 @@ export default class ShoreshEditableTable extends LightningElement {
   handleTyping(event) {
     const { rowKey, field } = event.currentTarget.dataset;
     const draft = this.rowFor(rowKey);
-    if (!draft || !draft.isNew || draft.typed.has(field)) {
+    if (!draft || !draft.isNew) {
       return;
     }
-    draft.typed = new Set(draft.typed).add(field);
+    // The words in the box itself, where the browser shows them; typed all away, Add waits again.
+    const box = event.composedPath ? event.composedPath()[0] : null;
+    const empty = !!box && typeof box.value === "string" && !box.value.trim();
+    if (empty === !draft.typed.has(field)) {
+      return;
+    }
+    draft.typed = new Set(draft.typed);
+    if (empty) {
+      draft.typed.delete(field);
+    } else {
+      draft.typed.add(field);
+    }
     this.touch(draft);
   }
 
@@ -2012,6 +2028,11 @@ export default class ShoreshEditableTable extends LightningElement {
     if (draft.isNew) {
       // Not filled in yet: nothing happens, and the + stays greyed out (desktop InlineAddRow).
       if (!draft.dirty || draft.adding || !this.complete(draft)) {
+        // A date typed that turned out not to be one, pressed for: its field says why
+        // (WEEK-6.10), never nothing at all.
+        if (pressed && draft.dirty && !draft.adding) {
+          this.valid(key, true);
+        }
         return;
       }
       if (!this.valid(key, pressed)) {

@@ -339,6 +339,38 @@ describe("c-shoresh-editable-table", () => {
         });
       });
 
+      it("typed all away, Add waits again; one that isn't a time, pressed, says why in its field", async () => {
+        const element = render({ columns: COLUMNS, rows: ROWS });
+        const sent = listen(element);
+        await flush();
+        change(field(element, 2, "Name"), "Swim");
+        const start = field(element, 2, "StartTime__c");
+        typeWithoutLeaving(start, "13:30:00.000");
+        await flush();
+        expect(addButton(element).disabled).toBe(false);
+        // The box emptied while the cursor is still in it.
+        const box = document.createElement("input");
+        box.value = "";
+        start.dispatchEvent(
+          Object.assign(new CustomEvent("input"), {
+            composedPath: () => [box, start]
+          })
+        );
+        await flush();
+        expect(addButton(element).disabled).toBe(true);
+        // Something not a time, handed over as no value: Add waits, and Enter shows why.
+        typeWithoutLeaving(start, null);
+        await flush();
+        expect(addButton(element).disabled).toBe(false);
+        allValid(element);
+        start.reportValidity = jest.fn(() => false);
+        press(start, "Enter");
+        await flush();
+        expect(sent.length).toBe(0);
+        expect(start.reportValidity).toHaveBeenCalled();
+        expect(addButton(element).disabled).toBe(true);
+      });
+
       it("a saved row's Enter saves the time typed into it", async () => {
         const element = render({ columns: COLUMNS, rows: ROWS });
         const sent = listen(element);

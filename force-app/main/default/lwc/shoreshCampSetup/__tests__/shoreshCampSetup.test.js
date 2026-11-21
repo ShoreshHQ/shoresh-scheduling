@@ -5472,14 +5472,34 @@ describe("a reload stays where you were", () => {
 
   it("WEEK-6.9: a season that couldn't be read leaves its screens greyed, holding no click", async () => {
     window.sessionStorage.removeItem("shoresh.place");
-    getSeasonSetup.mockRejectedValueOnce(new Error("offline"));
+    let failRead;
+    getSeasonSetup.mockReturnValueOnce(
+      new Promise((resolve, reject) => {
+        failRead = reject;
+      })
+    );
     const element = await open();
-    await flush();
     const menu = element.shadowRoot.querySelector("c-shoresh-menu");
+    menu.dispatchEvent(
+      new CustomEvent("navigate", { detail: { screen: "activities" } })
+    );
+    failRead(new Error("offline"));
+    await flush();
+    await flush();
     const activities = menu.sections
       .flatMap((section) => section.items)
       .find((item) => item.key === "activities");
     expect(activities.disabled).toBe(true);
+    // A later read of the season doesn't open the click let go.
+    const shown = shownScreens(element);
+    expect(shown).not.toContain("activities");
+    const season = element.shadowRoot.querySelector(
+      '[data-id="season-picker"]'
+    );
+    season.dispatchEvent(new CustomEvent("change", { detail: { value: "s2" } }));
+    await flush();
+    await flush();
+    expect(shownScreens(element)).not.toContain("activities");
   });
 
   // WEEK-6.3

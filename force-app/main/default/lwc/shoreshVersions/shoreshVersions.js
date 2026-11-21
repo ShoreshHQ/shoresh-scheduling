@@ -109,12 +109,14 @@ export default class ShoreshVersions extends LightningElement {
     if (this.focusUnfoldedAfterRender) {
       const id = this.focusUnfoldedAfterRender;
       this.focusUnfoldedAfterRender = null;
+      // Its Restore, or (while it waits on a save) the row's first button that can take focus.
       const action = this.template.querySelector(
-        `[data-action="open"][data-id="${id}"]`
+        `[data-version="${id}"] button:not([disabled])`
       );
-      if (action) {
-        action.focus();
-      }
+      const restore = this.template.querySelector(
+        `[data-action="open"][data-id="${id}"]:not([disabled])`
+      );
+      (restore || action)?.focus();
     }
     if (this.focusAfterDelete && !this.busy) {
       this.focusAfterDeleted();

@@ -172,6 +172,20 @@ describe("c-shoresh-versions", () => {
       expect(names(element)).toEqual(["a5", "n1", "a3"]);
     });
 
+    it("unfolded while an edit is saving (Restore waits), the cursor goes to the row's first ready button", async () => {
+      const element = await render(MANY);
+      element.openId = "none";
+      element.restore = true;
+      element.busy = true;
+      await flush();
+      await openList(element);
+      q(element, '[data-id="versions-unfold"]').click();
+      await flush();
+      expect(element.shadowRoot.activeElement).toBe(
+        q(element, '[data-action="rename"][data-id="a4"]')
+      );
+    });
+
     it("one automatic copy, or none, has nothing to fold", async () => {
       const element = await render([MANY[0], MANY[1]]);
       await openList(element);
