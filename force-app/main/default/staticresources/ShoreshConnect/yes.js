@@ -7,9 +7,11 @@
 const { execFile } = require("child_process");
 const { NOT_YET } = require("./client");
 
-// Under the 60 seconds an AI app waits for one answer, so a late Yes never does what the AI was
-// told didn't happen.
-const WAIT_SECONDS = 50;
+// The dialog closes this many seconds after the tool call came in, at the latest: the Yes's own
+// call still fits in the 60 seconds an AI app waits for one answer, so a late Yes never does what
+// the AI was told didn't happen. Under SHORTEST seconds left, nobody is asked.
+const WAIT_SECONDS = 45;
+const SHORTEST = 10;
 
 // How Shoresh hands back the confirm, at the very end of its answer (AgentAskFirst.question).
 const CONFIRM_AT_END = /confirm: "([^"\s]+)"\.$/;
@@ -25,24 +27,32 @@ function split(text) {
 }
 
 /**
- * Asks the person in a dialog of the computer's own (macOS) with Shoresh's words: "yes", "no", or
- * "no answer" after WAIT_SECONDS; "unasked" where there is no such dialog yet. The words go in as
- * an argument, never as AppleScript, so camp data can't change the dialog.
+ * Asks the person in a dialog of the computer's own (macOS), brought to the front, with Shoresh's
+ * words: "yes", "no" (Cancel, or closed), "no answer" after seconds, "unshown" when the dialog
+ * couldn't be shown, "unasked" where there is no such dialog yet. The words go in as an argument
+ * after --, never as AppleScript, so camp data can't change the dialog.
  */
 function askPerson(
   words,
+  seconds = WAIT_SECONDS,
   { run = execFile, platform = process.platform } = {}
 ) {
   if (platform !== "darwin") return Promise.resolve("unasked");
-  const dialog = `display dialog (item 1 of argv) with title "Shoresh" buttons {"Cancel", "Yes"} default button "Cancel" cancel button "Cancel" with icon caution giving up after ${WAIT_SECONDS}`;
+  const dialog = `display dialog (item 1 of argv) with title "Shoresh" buttons {"Cancel", "Yes"} default button "Cancel" cancel button "Cancel" with icon caution giving up after ${seconds}`;
   return new Promise((resolve) => {
     run(
       "osascript",
-      ["-e", "on run argv", "-e", dialog, "-e", "end run", words],
-      { timeout: (WAIT_SECONDS + 10) * 1000 },
-      (error, stdout) => {
-        if (error) resolve(error.killed ? "no answer" : "no");
-        else if (/gave up:true/.test(stdout)) resolve("no answer");
+      [
+        ...["-e", "on run argv", "-e", "activate", "-e", dialog],
+        ...["-e", "end run", "--", words]
+      ],
+      { timeout: (seconds + 2) * 1000 },
+      (error, stdout, stderr) => {
+        // Cancel is AppleScript's "User canceled" (-128); any other failure asked nobody.
+        if (error) {
+          if (error.killed) resolve("no answer");
+          else resolve(/\(-128\)/.test(String(stderr)) ? "no" : "unshown");
+        } else if (/gave up:true/.test(stdout)) resolve("no answer");
         else resolve(/button returned:Yes\b/.test(stdout) ? "yes" : "no");
       }
     );
@@ -54,7 +64,11 @@ const AGAIN =
 
 const NOT_ASKED = {
   no: "Nothing was done: the person said no on their screen to:",
-  "no answer": `Nothing was done: the person didn't answer on their screen within ${WAIT_SECONDS} seconds. It was:`,
+  "no answer":
+    "Nothing was done: the person didn't answer on their screen in time. It was:",
+  unshown:
+    "Nothing was done: Shoresh couldn't show the person the question on their screen. It was:",
+  late: "Nothing was done: reading the camp took too long to leave the person time to answer on their screen. It was:",
   unasked:
     "Nothing was done: Shoresh can't ask the person for their yes on this computer yet, so they can do it on Shoresh's own screen in Salesforce. It was:"
 };
@@ -73,8 +87,9 @@ function withoutConfirm(said, then = AGAIN) {
 async function withPersonsYes(
   name,
   input,
-  { act, ask = askPerson, inScript = false, log = () => {} }
+  { act, ask = askPerson, inScript = false, log = () => {}, now = Date.now }
 ) {
+  const started = now();
   const { confirm: dropped, ...asked } = input ?? {};
   if (dropped !== undefined)
     log(`Shoresh: left out the confirm the AI sent with ${name}`);
@@ -90,7 +105,8 @@ async function withPersonsYes(
   const shown = words.startsWith(NOT_YET)
     ? words.slice(NOT_YET.length).trim()
     : words;
-  const answer = await ask(shown);
+  const left = Math.floor(WAIT_SECONDS - (now() - started) / 1000);
+  const answer = left < SHORTEST ? "late" : await ask(shown, left);
   log(`Shoresh: the person's answer to ${name}: ${answer}`);
   if (answer !== "yes") {
     return { ok: false, text: `${NOT_ASKED[answer]} ${shown}` };
@@ -108,5 +124,6 @@ module.exports = {
   withPersonsYes,
   withoutConfirm,
   ASKS_ON_SCREEN,
-  WAIT_SECONDS
+  WAIT_SECONDS,
+  SHORTEST
 };

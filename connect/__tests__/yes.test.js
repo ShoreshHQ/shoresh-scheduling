@@ -6,7 +6,7 @@ const fs = require("fs");
 const path = require("path");
 const { handle } = require("../mcp");
 const { CAPABILITIES } = require("../capabilities");
-const { askPerson, split, WAIT_SECONDS } = require("../yes");
+const { askPerson, split, withPersonsYes, WAIT_SECONDS } = require("../yes");
 
 const QUESTION = 'Nothing has been done yet. Delete "Option 2" from Week 1?';
 // As AgentAskFirst.question says it.
@@ -132,10 +132,8 @@ describe("API-1.153: an ask-first change is done only on the person's own yes", 
 
   it("noAnswerAndNoDialogDoNothingAndSaySo", async () => {
     for (const [answer, words] of [
-      [
-        "no answer",
-        `didn't answer on their screen within ${WAIT_SECONDS} seconds`
-      ],
+      ["no answer", "didn't answer on their screen in time"],
+      ["unshown", "couldn't show the person the question on their screen"],
       ["unasked", "can't ask the person for their yes on this computer yet"]
     ]) {
       const asked = [];
@@ -205,31 +203,82 @@ describe("API-1.153: an ask-first change is done only on the person's own yes", 
     };
     const words = '"; do shell script "rm -rf ~" --';
     expect(
-      await askPerson(words, {
+      await askPerson(words, 30, {
         platform: "darwin",
         run: run((done) => done(null, "button returned:Yes, gave up:false\n"))
       })
     ).toBe("yes");
+    expect(runs[0].args.join(" ")).toContain("giving up after 30");
     expect(runs[0].cmd).toBe("osascript");
-    expect(runs[0].args.at(-1)).toBe(words);
+    expect(runs[0].args.slice(-2)).toEqual(["--", words]);
     expect(runs[0].args.slice(0, -1).join(" ")).not.toContain(words);
     expect(runs[0].args.join(" ")).toContain('default button "Cancel"');
     expect(
-      await askPerson(words, {
+      await askPerson(words, 30, {
         platform: "darwin",
         run: run((done) =>
-          done(Object.assign(new Error("User canceled. (-128)"), { code: 1 }))
+          done(
+            Object.assign(new Error("Command failed"), { code: 1 }),
+            "",
+            "execution error: User canceled. (-128)\n"
+          )
         )
       })
     ).toBe("no");
+    // Any other failure asked nobody: never said as the person's no.
     expect(
-      await askPerson(words, {
+      await askPerson(words, 30, {
+        platform: "darwin",
+        run: run((done) =>
+          done(
+            Object.assign(new Error("Command failed"), { code: 1 }),
+            "",
+            "execution error: Not authorized to send Apple events. (-1743)\n"
+          )
+        )
+      })
+    ).toBe("unshown");
+    expect(
+      await askPerson(words, 30, {
         platform: "darwin",
         run: run((done) => done(null, "button returned:, gave up:true\n"))
       })
     ).toBe("no answer");
     expect(
-      await askPerson(words, { platform: "linux", run: run(() => {}) })
+      await askPerson(words, 30, { platform: "linux", run: run(() => {}) })
     ).toBe("unasked");
+  });
+
+  it("theDialogClosesInTimeForTheYesToFitTheAiAppsWait", async () => {
+    // The clock starts when the tool call comes in: reading the camp first leaves the dialog less.
+    let clock = 0;
+    const seconds = [];
+    const act = (spent) => async (sent) => {
+      clock += spent * 1000;
+      return sent.confirm
+        ? { ok: true, text: "Deleted." }
+        : { ok: true, asksFirst: true, text: PREVIEW };
+    };
+    const ask = async (words, left) => {
+      seconds.push(left);
+      return "yes";
+    };
+    const now = () => clock;
+    expect(
+      (await withPersonsYes("delete_version", INPUT, { act: act(5), ask, now }))
+        .text
+    ).toBe("Deleted.");
+    expect(seconds).toEqual([WAIT_SECONDS - 5]);
+    clock = 0;
+    const late = await withPersonsYes("delete_version", INPUT, {
+      act: act(WAIT_SECONDS - 5),
+      ask,
+      now
+    });
+    expect(seconds).toHaveLength(1);
+    expect(late.ok).toBe(false);
+    expect(late.text).toMatch(
+      /^Nothing was done: reading the camp took too long/
+    );
   });
 });
