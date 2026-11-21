@@ -131,6 +131,9 @@ export default class ShoreshChoicesImport extends LightningElement {
   // ELECT-2.7: "Different campers" by cantTellApartRows key, and "which camper?" by camper key.
   apart = {};
   which = {};
+  // Counts asked again after an answer (handleWhich): the latest one's number, and while it runs.
+  recounts = 0;
+  recounting = false;
   check = null;
   done = null;
   // A selector that takes the cursor at the next render.
@@ -649,16 +652,26 @@ export default class ShoreshChoicesImport extends LightningElement {
     const left = this.whichList.filter((row) => !row.value).length;
     return left ? String(left) : "";
   }
-  /** An answer counts again with it (hand changes kept, who is on the sheet), in place. */
+  /**
+   * An answer counts again with it (hand changes kept, who is on the sheet), in place. Only the
+   * latest count is kept, and Import waits for it.
+   */
   async handleWhich(event) {
     const key = event.currentTarget.dataset.key;
     this.which = { ...this.which, [key]: event.detail.value };
+    const mine = ++this.recounts;
+    this.recounting = true;
     try {
-      this.check = await checkChoices({
+      const check = await checkChoices({
         request: JSON.stringify(this.request)
       });
+      if (mine === this.recounts) this.check = check;
     } catch (e) {
-      this.error = failed("Couldn't count what this sheet imports.", e);
+      if (mine === this.recounts) {
+        this.error = failed("Couldn't count what this sheet imports.", e);
+      }
+    } finally {
+      if (mine === this.recounts) this.recounting = false;
     }
   }
   handleDifferent(event) {
@@ -687,7 +700,7 @@ export default class ShoreshChoicesImport extends LightningElement {
     return !!this.check && !this.refused && !this.isFinal && !this.whichLeft;
   }
   get primaryDisabled() {
-    return this.isBusy || !this.canGoOn;
+    return this.isBusy || this.recounting || !this.canGoOn;
   }
 
   handlePrimary() {
@@ -759,7 +772,14 @@ export default class ShoreshChoicesImport extends LightningElement {
 
   async save() {
     const request = this.request;
-    if (!request || this.refused || this.isFinal || this.whichLeft) return;
+    if (
+      !request ||
+      this.refused ||
+      this.isFinal ||
+      this.whichLeft ||
+      this.recounting
+    )
+      return;
     this.phase = "saving";
     this.status = "Importing";
     try {
