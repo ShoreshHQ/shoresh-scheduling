@@ -71,8 +71,8 @@ private class ReadableRefusalsTest {
     }
   }
 
-  // A special day on Tuesday of Week 2 and Thursday of Week 5: someone who can't read the day
-  // hears only the weeks.
+  // A special day on Tuesday and Wednesday of Week 2 and Thursday of Week 5: someone who can't
+  // read the day hears only the weeks, each once.
   @IsTest
   static void aSpecialDaysDeleteLeavesOutTheDaysWhenThoseAreHidden() {
     Id seasonId;
@@ -90,6 +90,7 @@ private class ReadableRefusalsTest {
       fieldDay = day.Id;
       SpecialDates.place(fieldDay, ids.get('Week 5'), 'Thursday');
       SpecialDates.place(fieldDay, ids.get('Week 2'), 'Tuesday');
+      SpecialDates.place(fieldDay, ids.get('Week 2'), 'Wednesday');
     }
     User hidden = shownTheSeason(
       FieldAccessTestData.schedulerWithout(SpecialDate__c.Day__c),
@@ -100,6 +101,37 @@ private class ReadableRefusalsTest {
         'This special day can\'t be deleted yet: it is on Week 2 and Week 5. First take it off those days, then delete it.',
         Database.delete(fieldDay, false, AccessLevel.USER_MODE).getErrors()[0]
           .getMessage()
+      );
+    }
+  }
+
+  // Swim is ticked for Thursday: someone who can't read that tick, unticking Main's Thursday,
+  // hears the clash without the day.
+  @IsTest
+  static void aClosedDayLeavesOutTheDayWhenItsTickIsHidden() {
+    Map<String, Id> ids;
+    System.runAs(ShoreshTestData.scheduler()) {
+      ids = SetTimeTestData.camp();
+      RecurringActivity__c swim = SetTimeTestData.recurring(
+        ids,
+        'Swim',
+        'Period 1'
+      );
+      swim.Thursday__c = true;
+      SetTimeTestData.save(new List<SObject>{ swim });
+    }
+    User hidden = shownTheSeason(
+      FieldAccessTestData.schedulerWithout(RecurringActivity__c.Thursday__c),
+      ids.get('Season')
+    );
+    System.runAs(hidden) {
+      Assert.areEqual(
+        '"Swim" is ticked for a day Main does not run on. Change "Swim" first, then try again.',
+        SetTimeTestData.refusal(
+          new List<SObject>{
+            new Program__c(Id = ids.get('Main'), Thursday__c = false)
+          }
+        )
       );
     }
   }

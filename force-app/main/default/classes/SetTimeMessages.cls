@@ -53,6 +53,12 @@ public with sharing class SetTimeMessages {
           '.';
       }
       when CLOSED_DAY {
+        if (!dayShown()) {
+          return quoted(clash.item.name) +
+            ' is ticked for a day ' +
+            clash.item.program.program.Name +
+            ' does not run on.';
+        }
         return quoted(clash.item.name) +
           ' is ticked for ' +
           clash.day +
@@ -146,7 +152,7 @@ public with sharing class SetTimeMessages {
           '.';
       }
       when CLOSED_DAY {
-        return 'Untick ' + clash.day + '.';
+        return 'Untick ' + (dayShown() ? clash.day : 'that day') + '.';
       }
       when SAME_GROUP {
         return sameGroupFix();
@@ -217,6 +223,13 @@ public with sharing class SetTimeMessages {
    */
   private static Boolean readable(Schema.SObjectField field) {
     return field.getDescribe().isAccessible();
+  }
+
+  /** Whether the person may read the day's tick on both the item and its program. */
+  private Boolean dayShown() {
+    return readable(
+        SetTimePlan.dayField(clash.item.record.getSObjectType(), clash.day)
+      ) && readable(SetTimePlan.dayField(Program__c.SObjectType, clash.day));
   }
 
   private static String quoted(String name) {
