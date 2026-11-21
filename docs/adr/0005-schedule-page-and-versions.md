@@ -173,10 +173,8 @@ schedule), decisions 0002 and 0005. Shoresh desktop for look and behaviour:
       export", as the desktop groups them), after one rail line: **Export to Excel** and
       **Print** as rail items (ADR 0015's `.shoresh-item`, with a glyph each), shown once a
       version is open and held while a version with no days is open. _Since 2026-10-23 (§14):
-      **Excel** (named "Export to Excel") and **Print**, the page's one filled button._ Not on Manual Build or
-      Generated Schedule yet: their rails belong to the week editor's own PRs, and the Schedules
-      page already opens every version of every week (a published one included, from Versions),
-      so nothing is out of reach meanwhile.
+      **Excel** (named "Export to Excel") and **Print**, the page's one filled button._ _Since
+      2026-11-21 (choice 15): on Manual Build and Generated Schedule too, each a menu._
     - **Which schedule.** The version on screen. The desktop asks "Export which?" every time
       because its button sits on a screen that can hold two schedules, and remembering would be
       the app picking a winner. Here the director has already picked by opening one, and the
@@ -195,8 +193,8 @@ schedule), decisions 0002 and 0005. Shoresh desktop for look and behaviour:
       and is left out of the flat sheets. Every text cell goes through the formula guard.
       Column widths are the desktop's (`shoreshDownload` now takes them per sheet). The file is
       named "Week 1 - <version>.xlsx".
-    - **Print** (`c/shoreshSchedulePrint`, static resource `ShoreshPrint`) follows the view on
-      screen: Daily View prints a page per day, Group View a page per group, Activity View a page
+    - **Print** (`c/shoreshSchedulePrint`, static resource `ShoreshPrint`) followed the view on
+      screen (until choice 15's menu): Daily View prints a page per day, Group View a page per group, Activity View a page
       per activity that runs this week (none for one that doesn't). Each page is a plain
       black-on-white table, landscape, titled ("Monday, Jun 29", "Bunk 1"), with the week and the
       version's name, time blocks down the side and a long activity one cell over its blocks;
@@ -267,6 +265,48 @@ schedule), decisions 0002 and 0005. Shoresh desktop for look and behaviour:
       View's bunk on the rail, a card's grid with focus on the rail's choice, axe on each view;
       all passed on 2026-10-23, `docs/a11y-browser-check-2026-10-23-schedules-rail.md`;
       screenshots in `docs/design/screens/schedules-*.png`).
+
+15. **Print and Excel by what the director asks for** (2026-11-21, Greg: "build in the print
+    option", "we should be able to print the whole day. by bunk. by activity. etc. go beyond the
+    desktop"; PUB-6.6 to PUB-6.11). The desktop has Export to Excel only; this goes beyond it.
+    - **Where.** The Saved versions page, Generated Schedule and Manual Build, the same piece on
+      each (`c/shoreshScheduleOut`): **Excel** and **Print** on the rail, each a menu
+      (`c/shoreshPrintMenu`, ADR 0015's rail menu). On the build screens they sit before Versions
+      and Publish (the week editor draws them, named for the screen: "Week 1 · Manual Build");
+      on Saved versions where Excel and Print were, Print still the filled button. Not on a
+      special day's or event's own schedule page, which has its own Download.
+    - **The menu.** **Whole week**, then **Day**, the camp's Bunk, Activity, Location and
+      Division words, each opening its choices under it ("Every Bunk" first where there are
+      several). The choices are the week's own: days that can be read, activities placed,
+      locations something runs at, divisions with a group in the week. A kind with none is left
+      out. Print no longer follows the view on screen (choice 13): the menu says what prints, so
+      nothing depends on which view was open. The view on screen and the menu are separate.
+    - **What prints** (`c/shoreshScheduleExport` `pick.js`): the week, a page per day then each
+      special event's own schedule; a day for the whole camp; a group's week; an activity's
+      week (the groups at it); a location's week (what runs there and which groups, "Swim
+      (Cedar, Oak)", from the activity's, fixed or recurring activity's or special event's
+      location); a division, a page per day with only its groups.
+    - **Readable at 40 bunks** (PUB-6.7). A day prints at most 10 groups a page. Wider, its
+      divisions go a page each, divisions side by side sharing a page while they fit, one wider
+      than a page split evenly; groups in no division form their own run. Each page's title
+      names its groups: "Monday, Jun 29 · Juniors, Inters", "· Seniors (1 of 2)", "· Bunk 1 –
+      Bunk 10". Ten keeps a landscape page's columns about 2 cm wide at 10 pt, wide enough for
+      an activity's name on two lines.
+    - **The same look** (PUB-6.9): every page is `c-shoresh-schedule-print` as before.
+    - **Excel** (PUB-6.10): the whole week is the desktop's file as before (`scheduleSheets`).
+      Any other choice is a sheet per thing chosen (a division's, a sheet per day; a day's holds
+      the whole camp, as a sheet has no pages), time blocks down and the columns as printed,
+      named "Week 1 - <version> - Cedar.xlsx", elective offerings listed, formula guard.
+    - **The published schedule** (PUB-6.11). Saved versions listed only rows with Status Version,
+      so the week's published schedule could be opened only once replaced. Its list
+      (`SchedulesController.getSavedSchedules`) now holds the published schedule too, newest
+      first, marked Published as replaced ones are. The build screens' Versions keep to
+      `getVersions`: a published schedule is not restored or deleted from there (PUB-4.3).
+    - **An AI makes the same files** (API-1.86): `download_schedule` takes `what` and `which`
+      as the menu names them; the older `view` still works.
+    - Checked by `pick.test.js`, `shoreshPrintMenu.test.js`, `shoreshWeekEditor` `out.test.js`,
+      `shoreshSchedules.test.js`, `SchedulesTest`, connector `files.test.js`; in the test
+      org's print preview (see the PR).
 
 ## Choices that are hard to undo after release
 

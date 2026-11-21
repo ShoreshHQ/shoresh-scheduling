@@ -18,8 +18,20 @@ const path = require("path");
 const { queryFields } = require("./camp");
 const { refused, asTheScreenReads } = require("./imports");
 
-/** The views Print prints, as the Schedules screen names them. */
-const VIEWS = { daily: "day", group: "group", activity: "activity" };
+/**
+ * What a file holds, as the screens' Excel and Print menus offer it (PUB-6.6): the menu's kinds
+ * by the words a person says. The old view (daily, group, activity) is the whole week, every
+ * group or every activity.
+ */
+const WHAT = {
+  week: "week",
+  day: "day",
+  group: "group",
+  activity: "activity",
+  location: "location",
+  division: "division"
+};
+const VIEWS = { daily: "week", group: "group", activity: "activity" };
 
 /** The Downloads folder, as a browser saves into it. */
 function downloadsFolder(env = process.env) {
@@ -60,7 +72,58 @@ function htmlName(m, title) {
   return m.fileNameOf(title).replace(/\.xlsx$/, ".html");
 }
 
-/** The schedule's file, as the Schedules screen's Excel or Print makes it. */
+/**
+ * The menu's choice a person asked for ({ kind, key }), or { problem }: what (or the old view)
+ * names the kind; which names one of its choices as the menu says it ("Cedar", "Monday, Jun 29",
+ * "Monday"), or every one (left out, or "every").
+ */
+function choiceOf(m, choices, input, t) {
+  // The older view says what a printout holds; Excel without what is the whole week, as before.
+  const kind = input.what
+    ? WHAT[input.what]
+    : input.as === "print"
+      ? VIEWS[input.view || "daily"]
+      : "week";
+  if (!kind) {
+    return {
+      problem: "what is week, day, group, activity, location or division."
+    };
+  }
+  if (kind === "week") return { kind };
+  const found = choices.find((c) => c.kind === kind);
+  if (!found) {
+    return { problem: `This ${t.sIn("Week")} has no ${kind} to choose.` };
+  }
+  const which = String(input.which || "")
+    .trim()
+    .toLowerCase();
+  const named = found.options.filter((o) => o.key !== m.EVERY);
+  if (!which || which === "every" || which === "all") {
+    // Only one of the kind: that one, named as itself.
+    return { kind, key: named.length === 1 ? named[0].key : m.EVERY };
+  }
+  // As the menu names it, "(removed)" left off as a person says it; a day by its name alone,
+  // unless something is called exactly what was said.
+  const said = (label) => label.toLowerCase().replace(/ \(removed\)$/, "");
+  const exact = named.filter((o) => said(o.label) === which);
+  const matching = exact.length
+    ? exact
+    : named.filter((o) => said(o.label).split(",")[0] === which);
+  if (matching.length > 1) {
+    return {
+      problem: `${matching.length} choices are called ${which}: ${matching.map((o) => o.label).join("; ")}. Say which.`
+    };
+  }
+  const option = matching[0];
+  if (!option) {
+    return {
+      problem: `There is no ${which} to choose. The choices: ${named.map((o) => o.label).join("; ")}.`
+    };
+  }
+  return { kind, key: option.key };
+}
+
+/** The schedule's file, as the Schedules screen's Excel or Print menu makes it. */
 function scheduleFile(m, body, input, t) {
   const { opened, setup, week } = body;
   // As the screen names the version on screen: the opened schedule's own name.
@@ -68,20 +131,26 @@ function scheduleFile(m, body, input, t) {
   if (!opened.days || !opened.days.length) {
     return { problem: `This ${t.sIn("Version")} has no days saved.` };
   }
+  if (input.view && !VIEWS[input.view]) {
+    return { problem: "view is daily, group or activity." };
+  }
   const shown = m.withRaindrops(m.withSpecials(opened));
   const catalogue = setup.activities || [];
-  const title = `${week} - ${version}`;
+  const choices = m.printChoices(shown, catalogue, setup, t);
+  const choice = choiceOf(m, choices, input, t);
+  if (choice.problem) return choice;
+  const base = `${week} - ${version}`;
+  const title =
+    choice.kind === "week"
+      ? base
+      : `${base} - ${m.choiceLabel(choices, choice)}`;
   if (input.as === "print") {
-    const view = VIEWS[input.view || "daily"];
-    if (!view) {
-      return { problem: "view is daily, group or activity." };
-    }
     return {
       print: {
         kind: "schedule",
         title,
         props: {
-          pages: m.printPages(shown, view, catalogue, t),
+          pages: m.pagesFor(shown, choice, catalogue, setup, t),
           week,
           version,
           corner: t.s("TimeBlock")
@@ -90,8 +159,12 @@ function scheduleFile(m, body, input, t) {
       name: htmlName(m, title)
     };
   }
+  const offerings = m.offeringNames(setup);
   return {
-    sheets: m.scheduleSheets(shown, catalogue, t, m.offeringNames(setup)),
+    sheets:
+      choice.kind === "week"
+        ? m.scheduleSheets(shown, catalogue, t, offerings)
+        : m.sheetsFor(shown, choice, catalogue, setup, t, offerings),
     name: m.fileNameOf(title)
   };
 }

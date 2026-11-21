@@ -5,7 +5,7 @@
 // Synthetic data only.
 import { createElement } from "lwc";
 import ShoreshSchedules from "c/shoreshSchedules";
-import getVersions from "@salesforce/apex/SchedulesController.getVersions";
+import getVersions from "@salesforce/apex/SchedulesController.getSavedSchedules";
 import openSchedule from "@salesforce/apex/SchedulesController.openSchedule";
 import { buildTerms } from "c/shoreshTerms";
 import { downloadWorkbook } from "c/shoreshDownload";
@@ -17,9 +17,13 @@ import {
 } from "../../shoreshScheduleViews/__tests__/data/scheduleFixture";
 
 const apex = () => ({ default: jest.fn() });
-jest.mock("@salesforce/apex/SchedulesController.getVersions", () => apex(), {
-  virtual: true
-});
+jest.mock(
+  "@salesforce/apex/SchedulesController.getSavedSchedules",
+  () => apex(),
+  {
+    virtual: true
+  }
+);
 jest.mock("@salesforce/apex/SchedulesController.openSchedule", () => apex(), {
   virtual: true
 });
@@ -82,6 +86,21 @@ async function render() {
 }
 
 const q = (element, selector) => element.shadowRoot.querySelector(selector);
+
+/** The Excel or Print menu (c-shoresh-print-menu), inside c-shoresh-schedule-out. */
+function menuOf(element, id) {
+  const out = q(element, '[data-id="out"]');
+  return out ? out.shadowRoot.querySelector(`[data-id="${id}"]`) : null;
+}
+/** Chooses from the Excel or Print menu, as a director's click does. */
+function choose(element, id, detail = { kind: "week" }) {
+  menuOf(element, id).dispatchEvent(new CustomEvent("choose", { detail }));
+}
+/** The printout while it is on the page, else null. */
+function printoutOf(element) {
+  const out = q(element, '[data-id="out"]');
+  return out ? out.shadowRoot.querySelector("c-shoresh-schedule-print") : null;
+}
 const qa = (element, selector) => [
   ...element.shadowRoot.querySelectorAll(selector)
 ];
@@ -169,9 +188,9 @@ describe("c-shoresh-schedules: a rainy day's raindrop", () => {
   it("prints it as the screen shows it; Excel has the names alone, as the desktop's workbook", async () => {
     const element = await render();
     window.print = jest.fn();
-    q(element, '[data-id="print"]').click();
+    choose(element, "print");
     await flush();
-    const printout = q(element, "c-shoresh-schedule-print");
+    const printout = printoutOf(element);
     const tuesday = printout.pages[1].table;
     const parts = tuesday.rows
       .flatMap((row) => row.cells)
@@ -184,7 +203,7 @@ describe("c-shoresh-schedules: a rainy day's raindrop", () => {
     window.dispatchEvent(new CustomEvent("afterprint"));
     await flush();
 
-    q(element, '[data-id="export"]').click();
+    choose(element, "export");
     await flush();
     const sheets = downloadWorkbook.mock.calls[0][1];
     expect(JSON.stringify(sheets)).not.toContain("rain");

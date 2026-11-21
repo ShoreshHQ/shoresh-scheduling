@@ -96,17 +96,6 @@
   }
 }
 
-/* Print, the main button: Publish's filled item (ADR 0015's .shoresh-item_primary). */
-.print {
-  margin-left: var(--shoresh-space-in-group);
-}
-
-/* Excel or Print under way: held, but still focusable (see exportBusy). */
-.shoresh-item[aria-disabled="true"] {
-  cursor: default;
-  opacity: 0.55;
-}
-
 /* The grid's zone, inset on every side; with many bunks it scrolls sideways, never the page. */
 .below {
   overflow-x: auto;
