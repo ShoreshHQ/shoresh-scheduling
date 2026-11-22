@@ -769,7 +769,7 @@ const CAPABILITIES = [
     ...change(
       "take_out_cell",
       "take_out_cell",
-      "Take what a cell of a week's Generated Schedule or Manual Build holds out of the week, as dragging it back to the activity list on the screen does: the whole placement goes, every time block it runs, leaving Open. As on the screen, undo_last_change takes it back while this conversation lasts.",
+      "Take what a cell of a week's Generated Schedule or Manual Build holds out of the week, as dragging it back to the activity list on the screen does: the whole placement goes, every time block it runs, leaving Open. A special event or elective set, which isn't dragged, goes as Delete takes it out on the screen's Daily View: from every group side by side it is drawn across as one cell. To take only one group out of it, change that group's cell to Open with change_schedule_cell. As on the screen, undo_last_change takes it back while this conversation lasts.",
       {
         day: CELL.day,
         group: CELL.group,
@@ -823,7 +823,7 @@ const CAPABILITIES = [
     ...change(
       "clear_day",
       "copy_cells",
-      "Clear a day of a week's Manual Build, as Clear day in its Edit menu does: every activity that day is taken out, for every group, or for one group; fixed and recurring activities, special events, elective sets and a group's away times stay. Manual Build only. As on the screen, undo_last_change takes it back while this conversation lasts.",
+      "Clear a day of a week's Manual Build, as Clear day in its Edit menu does: every activity, special event and elective set that day is taken out, for every group, or for one group; fixed and recurring activities and a group's away times stay. Manual Build only. As on the screen, undo_last_change takes it back while this conversation lasts.",
       {
         day: CELL.day,
         group: {
@@ -843,7 +843,7 @@ const CAPABILITIES = [
     ...change(
       "clear_week",
       "copy_cells",
-      "Clear a week's Manual Build, as Clear week in its Edit menu does: every activity of the week is taken out, for every group; fixed and recurring activities, special events, elective sets and away times stay. Manual Build only. As on the screen, undo_last_change takes it back while this conversation lasts.",
+      "Clear a week's Manual Build, as Clear week in its Edit menu does: every activity, special event and elective set of the week is taken out, for every group; fixed and recurring activities and away times stay. Manual Build only. As on the screen, undo_last_change takes it back while this conversation lasts.",
       { seen: CELL.seen },
       [],
       ON_EITHER,

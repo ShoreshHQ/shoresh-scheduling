@@ -499,6 +499,59 @@ function lengthStep(ctx, m, from, input) {
   return { runs: step.runs, label: step.label, said: null };
 }
 
+/**
+ * take_out_cell on what has no move of its own (a special event or elective set, API-1.154), as
+ * Delete on the screen's Daily View (handleClearCell, clearRange): a locked cell is refused; a
+ * placed event or set drawn as one with groups side by side (the same over the same blocks,
+ * unlocked: specials.js mergedWith) goes from all of them as one step (clearAllStep); anything
+ * else is that cell cleared (placeStep with Open). Null on an Open cell.
+ */
+function clearedStep(ctx, m, from) {
+  const day = ctx.week[from.day];
+  const at = m.placement(day, from.group, from.block);
+  if (at.slot === m.OPEN) {
+    return null;
+  }
+  const first = { ...from, block: at.first };
+  if (ctx.isLocked(first)) {
+    return { refused: m.lockedWords(ctx, first), locked: first };
+  }
+  const drawnWith = (g) => {
+    if (g < 0 || g >= day.groups.length) return false;
+    const there = m.placement(day, g, at.first);
+    return (
+      there.slot === at.slot &&
+      there.first === at.first &&
+      there.length === at.length &&
+      !ctx.isLocked({ ...first, group: g })
+    );
+  };
+  let top = from.group;
+  let bottom = from.group;
+  if (m.isPlacedOverlay(at.slot)) {
+    while (drawnWith(top - 1)) top -= 1;
+    while (drawnWith(bottom + 1)) bottom += 1;
+  }
+  if (top === bottom) {
+    return m.placeStep(ctx, first, m.OPEN, 1);
+  }
+  const cells = [];
+  for (let g = top; g <= bottom; g++) {
+    cells.push({ slot: { ...first, group: g } });
+  }
+  const step = m.clearAllStep(
+    ctx,
+    cells.map((c) => c.slot)
+  );
+  if (!step || step.refused) {
+    return step;
+  }
+  return {
+    runs: step.runs,
+    label: `Cleared ${ctx.nameOf(at.slot, day)} · ${m.rangeName(ctx, m.rowsCovered(ctx.week, cells))}`
+  };
+}
+
 /** The edit asked for, worked out by the screen's own module: { runs, label, said } or a refusal. */
 function stepOf(capability, ctx, m, input, weekName) {
   if (capability.name === "place_special_event") {
@@ -528,7 +581,7 @@ function stepOf(capability, ctx, m, input, weekName) {
   const step =
     capability.name === "move_cell"
       ? m.moveStep(ctx, from, cellOf(ctx, m, input, weekName, "to_"))
-      : m.takeOutStep(ctx, from);
+      : m.takeOutStep(ctx, from) || clearedStep(ctx, m, from);
   if (!step || (step.runs && !step.runs.length)) {
     return {
       nothing:

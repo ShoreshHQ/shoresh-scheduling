@@ -2083,6 +2083,129 @@ describe("Shoresh for AI tools and the command line", () => {
     ownWords.forEach((sent) => expect(sent.seen).toHaveLength(1));
   });
 
+  // API-1.154
+  it("takeOutASpecialEvent: take_out_cell on a special event clears the cell drawn as one with it, every bunk side by side, as Delete on the screen's Daily View does", async () => {
+    const LWC = "../../force-app/main/default/lwc";
+    const edits = async () =>
+      Object.assign(
+        {},
+        ...[
+          "shoreshGeneratedWeek/build.js",
+          "shoreshTerms/shoreshTerms.js",
+          "shoreshGeneratedSchedule/counter.js",
+          "shoreshGeneratedSchedule/locks.js",
+          "shoreshWeekEditor/measure.js",
+          "shoreshWeekEditor/specials.js",
+          "shoreshWeekEditor/slotEdits.js",
+          "shoreshWeekEditor/locks.js",
+          "shoreshWeekEditor/handEdits.js"
+        ].map((f) => require(`${LWC}/${f}`))
+      );
+    const { camp, SMALL } = require(
+      `${LWC}/shoreshGeneratedSchedule/__tests__/data/camp.js`
+    );
+    // Flag, Period 1 to 3. A Zoo trip over both bunks, Period 2 to 3, every day (Bunk 2's
+    // Monday Period 2 locked).
+    const inputs = camp({ ...SMALL, scheduleId: "a0S000000000001AAA" });
+    const trip = "a0E000000000001AAA";
+    inputs.days = inputs.days.map((day) => {
+      const items = [
+        ...day.items,
+        { id: trip, name: "Zoo trip", kind: "S", gone: false }
+      ];
+      const row = `1,,${items.length},^`;
+      return {
+        ...day,
+        items,
+        rows: [row, row],
+        locks: day.dateValue === "2026-06-29" ? ["", ",,1,1"] : ["", ""]
+      };
+    });
+    const read = { inputs, setup: {}, labels: [] };
+    const asked = { season: "Summer 2026", week: "Week 1", program: "Main" };
+    const send = async (more) => {
+      const seen = [];
+      const queue = [
+        `HTTP/1.1 200\n\n${JSON.stringify(read)}`,
+        `HTTP/1.1 200\n\n${JSON.stringify({ message: "Done." })}`
+      ];
+      const done = await call(
+        "take_out_cell",
+        { ...asked, was: "Zoo trip", ...more },
+        {
+          run: async (args, stdin) => {
+            seen.push({ args, stdin });
+            return queue.shift();
+          },
+          edits
+        }
+      );
+      return { done, seen, sent: seen[1] && JSON.parse(seen[1].stdin) };
+    };
+
+    // From its last block too: the cell drawn as one goes from both bunks, as one step.
+    const out = await send({
+      day: "Tuesday",
+      group: "Bunk 2",
+      time: "Period 3"
+    });
+    expect(out.seen[1].args[3]).toBe("/services/apexrest/v1/take_out_cell");
+    expect(out.sent.change).toBe(
+      "Cleared Zoo trip · Bunk 1 to Bunk 2 · Tuesday · Period 2 to Period 3"
+    );
+    expect(out.sent.runs).toEqual(
+      inputs.groups.slice(0, 2).map((g) =>
+        expect.objectContaining({
+          day: "2026-06-30",
+          groupId: g.Id,
+          before: [`S:${trip}`, `^S:${trip}`],
+          after: ["", ""]
+        })
+      )
+    );
+    expect(out.done.ok).toBe(true);
+
+    // A name noted from a file (no record) is never drawn as one: Bunk 2 goes alone.
+    const tuesday = inputs.days[1];
+    inputs.days[1] = {
+      ...tuesday,
+      items: tuesday.items.map((item) =>
+        item.id === trip ? { name: "Zoo trip", kind: "S", gone: false } : item
+      )
+    };
+    const noted = await send({
+      day: "Tuesday",
+      group: "Bunk 2",
+      time: "Period 2"
+    });
+    expect(noted.sent.change).toBe("Cleared Bunk 2 · Tuesday · Period 2");
+    expect(noted.sent.runs).toHaveLength(1);
+    inputs.days[1] = tuesday;
+
+    // Not drawn as one with a locked cell (specials.js mergedWith): Monday's Bunk 1 goes alone,
+    // said as the screen says one cell cleared.
+    const alone = await send({
+      day: "Monday",
+      group: "Bunk 1",
+      time: "Period 2"
+    });
+    expect(alone.sent.change).toBe("Cleared Bunk 1 · Monday · Period 2");
+    expect(alone.sent.runs).toHaveLength(1);
+
+    // A Lock beats it, in the screen's words; nothing is sent.
+    const locked = await send({
+      day: "Monday",
+      group: "Bunk 2",
+      time: "Period 2"
+    });
+    expect(locked.done).toEqual({
+      ok: false,
+      status: 400,
+      text: "Bunk 2 · Monday · Period 2 is locked."
+    });
+    expect(locked.seen).toHaveLength(1);
+  });
+
   // API-1.76, API-1.77, API-1.78, API-1.79
   it("specialSchedulesWithWhatWasSeen: a special schedule is read by name in the web address, a cell needs what it held, a frame change sends the seen and says ask first before taking cells away, and Set it up sends the noted name", async () => {
     expect(
