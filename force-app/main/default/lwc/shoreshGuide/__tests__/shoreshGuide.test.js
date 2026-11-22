@@ -223,6 +223,18 @@ describe("c-shoresh-guide (CORE-6.17)", () => {
     await expect(element).toBeAccessible();
   });
 
+  it("its static resource's description fits Salesforce's 255 characters", () => {
+    const meta = readFileSync(
+      join(
+        ROOT,
+        "force-app/main/default/staticresources/ShoreshSampleCamp.resource-meta.xml"
+      ),
+      "utf8"
+    );
+    const description = /<description>([\s\S]*)<\/description>/.exec(meta)[1];
+    expect(description.length).toBeLessThanOrEqual(255);
+  });
+
   it("the downloads are the docs' sample files, byte for byte", () => {
     const pairs = [
       [
