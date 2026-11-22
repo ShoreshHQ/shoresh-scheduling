@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<StaticResource xmlns="http://soap.sforce.com/2006/04/metadata">
+    <cacheControl>Private</cacheControl>
+    <contentType>application/zip</contentType>
+    <description>The made-up sample camp in Settings' Getting started: copies of docs/samples/import/maple-grove-2026-all-camp.xlsx and docs/samples/electives/chugim-electives.csv and chugim-choices.csv.</description>
+</StaticResource>

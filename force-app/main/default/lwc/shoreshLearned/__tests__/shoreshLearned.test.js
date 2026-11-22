@@ -853,6 +853,20 @@ describe("c-shoresh-learned: Help", () => {
     expect($(element, '[data-id="version"]')).toBeNull();
   });
 
+  it("CORE-6.17: Getting started sits after Help and before About", async () => {
+    const element = await mount([]);
+    const guide = $(element, "c-shoresh-guide");
+    const about = $(element, "c-shoresh-about");
+    expect(guide).not.toBeNull();
+    expect(
+      $(element, '[data-id="help"]').compareDocumentPosition(guide) &
+        Node.DOCUMENT_POSITION_FOLLOWING
+    ).toBeTruthy();
+    expect(
+      guide.compareDocumentPosition(about) & Node.DOCUMENT_POSITION_FOLLOWING
+    ).toBeTruthy();
+  });
+
   it("has About and Legal after Help", async () => {
     const element = await mount([]);
     const about = $(element, "c-shoresh-about");

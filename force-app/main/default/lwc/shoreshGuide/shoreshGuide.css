@@ -1,0 +1,153 @@
+@import "c/shoreshTokens";
+
+/*
+ * Getting started in Settings' rail grammar (as Help and About): the rail title, here a button
+ * that opens the steps. Each step a numbered row; its clicks drawn as quiet raised chips, the
+ * look of the buttons they name, with a chevron between them.
+ */
+:host {
+  display: block;
+  font-family: var(--shoresh-font-sans);
+  font-size: var(--shoresh-font-size);
+  color: var(--shoresh-text-1);
+}
+
+.guide {
+  padding: var(--shoresh-space-pad);
+}
+
+.rail-title {
+  margin: 0;
+  font-size: var(--shoresh-font-size);
+  font-weight: 600;
+  line-height: var(--shoresh-control-h);
+}
+
+.toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--shoresh-s2);
+  padding: 0 var(--shoresh-space-control-x);
+  border: none;
+  border-radius: var(--shoresh-radius);
+  background: none;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+
+.toggle:hover {
+  background: var(--shoresh-surface-hover);
+}
+
+.toggle:focus-visible {
+  outline: none;
+  box-shadow: var(--shoresh-focus-ring);
+}
+
+.chevron {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  transition: transform 140ms ease-out;
+}
+
+.chevron_open {
+  transform: rotate(90deg);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .chevron {
+    transition: none;
+  }
+}
+
+.steps {
+  max-width: 760px;
+  margin: var(--shoresh-s3) 0 0;
+  padding: 0 var(--shoresh-space-control-x);
+  list-style: none;
+}
+
+.step {
+  display: flex;
+  gap: var(--shoresh-s4);
+  padding: var(--shoresh-s3) 0;
+  border-top: 1px solid var(--shoresh-rule);
+}
+
+.step:first-child {
+  border-top: none;
+}
+
+.number {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--shoresh-primary);
+  color: var(--shoresh-color-primary-50);
+  font-size: var(--shoresh-font-size-label);
+  font-weight: 600;
+}
+
+.body {
+  flex: 1;
+  min-width: 0;
+}
+
+.step-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--shoresh-s2);
+  margin: 2px 0 var(--shoresh-s2);
+}
+
+.step-title {
+  margin: 0;
+  font-size: var(--shoresh-font-size);
+  font-weight: 600;
+}
+
+.who {
+  color: var(--shoresh-text-2);
+}
+
+.path {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--shoresh-s1) 0;
+  margin: 0 0 var(--shoresh-s2);
+}
+
+.click-wrap {
+  display: inline-flex;
+  align-items: center;
+}
+
+.click {
+  padding: 2px var(--shoresh-s2);
+  border: 1px solid var(--shoresh-edge);
+  border-radius: var(--shoresh-radius);
+  background: var(--shoresh-surface-grid);
+  box-shadow: var(--shoresh-raise);
+  white-space: nowrap;
+}
+
+.arrow {
+  padding: 0 var(--shoresh-s2);
+  color: var(--shoresh-text-2);
+}
+
+.downloads {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--shoresh-s2);
+}
