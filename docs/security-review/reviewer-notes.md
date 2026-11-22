@@ -120,10 +120,12 @@ the screens do, as that person.
   isn't presented as one: the script runs as the person, as the CLI does.
 - **Ask first (API-1.106, API-1.153):** a change that deletes, clears or replaces is done only with
   the confirm its own preview gave. Over MCP the AI never sees that confirm: the connector shows the
-  preview in a macOS dialog (`osascript` started without a shell; the AppleScript is fixed and the
-  words are passed as an argument, never as script) and sends the confirm only on the person's click
-  on Yes, so text in camp data can't talk an AI into it. Elsewhere nothing is done over MCP; the
-  person does it on Shoresh's own screen. An AI that can run commands or control the screen has the
+  preview in a dialog of the computer's own, started without a shell, with fixed script and the
+  words never passed as script (macOS: `osascript`, the words an argument; Windows: PowerShell's
+  `WScript.Shell` Popup, the words in an environment variable; Linux: `zenity` with markup off, the
+  words an argument) and sends the confirm only on the person's click on Yes, so text in camp data
+  can't talk an AI into it. Where there is no such dialog (Linux without zenity) nothing is done
+  over MCP; the person does it on Shoresh's own screen. An AI that can run commands or control the screen has the
   person's own sign-in and isn't stopped by this.
 
 ## Register of system-mode use

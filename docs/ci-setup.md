@@ -62,8 +62,9 @@ require 75%: classes it didn't run would count as 0%. The nightly run checks cov
 ### The nightly full run on main (the safety net)
 
 Merges to main run only the quick check ("LWC Jest and Code Analyzer"). That check is a summary:
-it passes only when its three jobs, run side by side, pass ("LWC Jest", "LWC Jest, as if the
-package had its namespace", "Code Analyzer and Apex file checks"); open the red one to see why. Every night at 07:15 UTC
+it passes only when its jobs, run side by side, pass ("LWC Jest", "LWC Jest, as if the
+package had its namespace", "Code Analyzer and Apex file checks", and "Connector on ..." for each
+system); open the red one to see why. Every night at 07:15 UTC
 (03:15 New York time in summer, 02:15 in winter) the full check runs on main: deploy and every
 Apex test. Whatever a pull request skipped (all Apex tests for `docs` and `screen`, the ones its
 change can't reach for `full`) is tested by the next morning. It
@@ -156,6 +157,15 @@ Recommended:Security`), and fails on moderate (3) or worse. A second step runs t
 
 Not covered: anything else only the org's compiler knows (types, method signatures), and
 sharing and query limits at run time.
+
+## The AI connector on macOS, Windows and Linux ("Connector on ...")
+
+The connector (`connect/`) runs on the director's own computer, so its Jest suite also runs on
+Windows and macOS runners, besides Linux: one check per system ("Connector on ubuntu-24.04",
+"windows-2025", "macos-15"), all counted in "LWC Jest and Code Analyzer". Each then installs the Salesforce command line with npm and has the
+connector find and start it, as it does on a director's computer. Not covered: the Salesforce
+installer's Windows layout and its updates (unit-tested only, from Salesforce's own Windows files), the Yes dialogs (nobody can click them in CI), and
+a real sign-in.
 
 ## Real-browser accessibility check (by hand, not in CI)
 

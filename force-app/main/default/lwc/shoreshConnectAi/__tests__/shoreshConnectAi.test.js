@@ -93,6 +93,29 @@ describe("Connect your AI", () => {
   });
 
   // API-1.15
+  it("worksOnMacWindowsAndLinux: Windows unzips with PowerShell, Linux keeps the sign-in in its keyring", () => {
+    const prompt = connectPrompt(HOST);
+    expect(prompt).not.toMatch(
+      /works on a Mac|stop and tell me: "Shoresh's connector/
+    );
+    const unzip = prompt.indexOf("unzip -o");
+    // PowerShell's own unzip: Claude Code on Windows runs commands in Git Bash, whose tar
+    // can't open a zip file.
+    const tar = prompt.indexOf(
+      `powershell -NoProfile -Command "Expand-Archive -Force -Path '<your home folder>/.shoresh/connect.zip' -DestinationPath '<your home folder>/.shoresh/connect'"`
+    );
+    expect(tar).toBeGreaterThan(unzip);
+    expect(tar).toBeLessThan(prompt.indexOf(`node ${SERVER} check`));
+    // The keyring tool before the sign-in, so the sign-in never lands in a file.
+    const keyring = prompt.indexOf("On Linux only, run: secret-tool --version");
+    expect(keyring).toBeGreaterThan(0);
+    expect(keyring).toBeLessThan(prompt.indexOf("sf org login web"));
+    expect(prompt).toContain("Your computer needs its keyring tool first");
+    expect(prompt).toContain('"where node" on Windows');
+    expect(prompt).toContain("with forward slashes (on Windows too)");
+  });
+
+  // API-1.15
   it("copiesThePromptWithOneButton", async () => {
     const writeText = jest.fn().mockResolvedValue();
     Object.assign(navigator, { clipboard: { writeText } });
