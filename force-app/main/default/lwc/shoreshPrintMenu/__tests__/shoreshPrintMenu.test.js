@@ -106,6 +106,7 @@ describe("c-shoresh-print-menu", () => {
       })
     );
     await flush();
+    expect(pop(element).opened).toBe(false);
     word(element).click();
     await flush();
     expect(
@@ -147,6 +148,7 @@ describe("c-shoresh-print-menu", () => {
       })
     );
     await flush();
+    expect(pop(element).opened).toBe(false);
     word(element).click();
     await flush();
     expect(
