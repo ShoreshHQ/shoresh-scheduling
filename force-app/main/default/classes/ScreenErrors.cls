@@ -10,6 +10,10 @@
 public with sharing class ScreenErrors {
   private static final String COULD_NOT_SAVE = 'Shoresh couldn\'t tell why. Try again.';
   private static final String COULD_NOT_OPEN = 'Shoresh couldn\'t tell why. Reload the page to try again.';
+  // Two saves at once: a record of the season was held by another save past Salesforce's wait.
+  private static final String BUSY = 'Another save in this season is still going. Try again in a moment.';
+  // How Salesforce words a held record when a read for a save (FOR UPDATE) waits too long.
+  private static final String HELD_READ = 'Record Currently Unavailable';
   // Plain words for the platform's refusals that are not Shoresh's own.
   private static final Map<StatusCode, String> PLAIN = new Map<StatusCode, String>{
     StatusCode.DELETE_FAILED => 'This can\'t be deleted while something else still uses it.',
@@ -18,7 +22,8 @@ public with sharing class ScreenErrors {
     StatusCode.INVALID_FIELD_FOR_INSERT_UPDATE => 'You don\'t have access to change that.',
     StatusCode.ENTITY_IS_DELETED => 'That was removed.',
     StatusCode.REQUIRED_FIELD_MISSING => 'Something required is blank. Fill it in and save again.',
-    StatusCode.STRING_TOO_LONG => 'Something typed is too long.'
+    StatusCode.STRING_TOO_LONG => 'Something typed is too long.',
+    StatusCode.UNABLE_TO_LOCK_ROW => BUSY
   };
   // Whether this request came through a web address; a test sets it, since a test can't be one.
   @TestVisible
@@ -86,7 +91,20 @@ public with sharing class ScreenErrors {
     if (e instanceof DmlException) {
       return dmlMessage((DmlException) e, null, fallback);
     }
+    if (e instanceof QueryException && isHeldRead(e.getMessage())) {
+      return BUSY;
+    }
     return ErrorCodes.said(fallback, ErrorCodes.detailOf(e));
+  }
+
+  private static Boolean isHeldRead(String message) {
+    return message != null && message.startsWith(HELD_READ);
+  }
+
+  /** The plain words for a platform refusal, or null when it has none. */
+  @TestVisible
+  private static String plainOrNull(StatusCode code) {
+    return PLAIN.containsKey(code) ? plain(code) : null;
   }
 
   /** '"Archery": Must be 1 or more.' unless the message already names the row. */

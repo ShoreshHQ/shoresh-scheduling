@@ -6,8 +6,10 @@
  * nothing pointing at a removed item is ever cleared.
  */
 public with sharing class ImportItemUses {
-  // Schedule days read for cells, at most: far more than a season holds.
-  private static final Integer MAX_DAYS = 5000;
+  // Schedule days read for cells, at most: far more than a season holds. Past it, an item not
+  // already found in use is said to be in use, never offered for removal unchecked.
+  @TestVisible
+  private static Integer maxDays = 5000;
   // Where cells in imports' own versions are collected during one reasons() call, or null.
   private static Map<Id, List<VersionUse>> collecting;
 
@@ -98,6 +100,7 @@ public with sharing class ImportItemUses {
     Map<Id, String> names,
     Map<Id, String> result
   ) {
+    Integer read = 0;
     for (ScheduleDay__c day : [
       SELECT
         Id,
@@ -111,8 +114,13 @@ public with sharing class ImportItemUses {
       FROM ScheduleDay__c
       WHERE Schedule__r.Program__r.Season__c = :seasonId
       WITH USER_MODE
-      LIMIT :MAX_DAYS
+      ORDER BY Id
+      LIMIT :maxDays + 1
     ]) {
+      if (++read > maxDays) {
+        uncheckedInUse(names, result);
+        return;
+      }
       Boolean imported =
         collecting != null && ImportedWeekGuard.isImported(day.Schedule__r);
       for (Id item : names.keySet()) {
@@ -125,6 +133,20 @@ public with sharing class ImportItemUses {
           add(result, item, names.get(item) + ' is on ' + day.Schedule__r.Name);
         }
       }
+    }
+  }
+
+  /** More days than are read: whatever isn't already in use may be on one not read. */
+  private static void uncheckedInUse(
+    Map<Id, String> names,
+    Map<Id, String> result
+  ) {
+    for (Id item : names.keySet()) {
+      add(
+        result,
+        item,
+        names.get(item) + ' may be on one of the season\'s many schedules'
+      );
     }
   }
 
