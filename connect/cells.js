@@ -499,6 +499,27 @@ function lengthStep(ctx, m, from, input) {
   return { runs: step.runs, label: step.label, said: null };
 }
 
+/**
+ * take_out_cell on what has no move of its own (a special event or elective set, API-1.154): that
+ * group's cell cleared as the screen's Delete clears a cell (placeStep with Open), never another
+ * group's it is drawn across; null on an Open cell.
+ */
+function clearedStep(ctx, m, from) {
+  const day = ctx.week[from.day];
+  const at = m.placement(day, from.group, from.block);
+  if (at.slot === m.OPEN) {
+    return null;
+  }
+  const step = m.placeStep(ctx, from, m.OPEN, 1);
+  if (!step || step.refused) {
+    return step;
+  }
+  return {
+    runs: step.runs,
+    label: `Cleared ${ctx.nameOf(at.slot, day)} · ${m.slotName(ctx, from)}`
+  };
+}
+
 /** The edit asked for, worked out by the screen's own module: { runs, label, said } or a refusal. */
 function stepOf(capability, ctx, m, input, weekName) {
   if (capability.name === "place_special_event") {
@@ -528,7 +549,7 @@ function stepOf(capability, ctx, m, input, weekName) {
   const step =
     capability.name === "move_cell"
       ? m.moveStep(ctx, from, cellOf(ctx, m, input, weekName, "to_"))
-      : m.takeOutStep(ctx, from);
+      : m.takeOutStep(ctx, from) || clearedStep(ctx, m, from);
   if (!step || (step.runs && !step.runs.length)) {
     return {
       nothing:
