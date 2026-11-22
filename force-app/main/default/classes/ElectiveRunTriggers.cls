@@ -23,6 +23,23 @@ public with sharing class ElectiveRunTriggers {
 
   // ---------------------------------------------------------------- runs
 
+  /** The runs made, or whose set, week or schedules changed; none for a delete (no new rows). */
+  private static List<ElectiveRun__c> toCheck(
+    List<ElectiveRun__c> rows,
+    Map<Id, ElectiveRun__c> before
+  ) {
+    List<ElectiveRun__c> runs = new List<ElectiveRun__c>();
+    // A delete is only checked for an archived season (ArchivedSeasons).
+    for (
+      ElectiveRun__c run : rows == null ? new List<ElectiveRun__c>() : rows
+    ) {
+      if (before == null || namesChanged(run, before.get(run.Id))) {
+        runs.add(run);
+      }
+    }
+    return runs;
+  }
+
   /**
    * The set, week and schedules a run names are in its season, and its schedule is of its week.
    * Checked when a run is made or one of them changes: Salesforce saves a run again each time its
@@ -32,16 +49,7 @@ public with sharing class ElectiveRunTriggers {
     List<ElectiveRun__c> rows,
     Map<Id, ElectiveRun__c> before
   ) {
-    // A delete (no new rows) is only checked for an archived season (ArchivedSeasons).
-    if (rows == null) {
-      return;
-    }
-    List<ElectiveRun__c> runs = new List<ElectiveRun__c>();
-    for (ElectiveRun__c run : rows) {
-      if (before == null || namesChanged(run, before.get(run.Id))) {
-        runs.add(run);
-      }
-    }
+    List<ElectiveRun__c> runs = toCheck(rows, before);
     if (runs.isEmpty()) {
       return;
     }

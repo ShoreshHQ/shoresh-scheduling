@@ -83,7 +83,11 @@ public with sharing class ElectiveClearReading {
       WITH USER_MODE
       ORDER BY Id
     ];
-    ElectiveBigSave.settle(runs);
+    ElectiveSaveJobs.settle(runs);
+    ElectiveRun__c clearing = ElectiveSaveJobs.clearing(runs);
+    picture.saveDone = clearing?.SaveDone__c;
+    picture.saveTotal = clearing?.SaveTotal__c;
+    picture.saveProblem = clearing?.SaveProblem__c;
     for (ElectiveRun__c run : runs) {
       weekOfRun.put(run.Id, run.Week__c);
       setOfRun.put(run.Id, run.ElectiveSet__c);
@@ -94,17 +98,6 @@ public with sharing class ElectiveClearReading {
         : run.SeatCount__c.intValue();
       week.seats += seats;
       rowsOfRun.put(run.Id, seats);
-      if (
-        run.SaveTotal__c != null &&
-        run.Status__c != ElectiveClear.COMMITTED &&
-        picture.saveTotal == null
-      ) {
-        // A Clear in parts under way, or stopped: every run it clears carries the same count.
-        // Only Clear saves a final run in parts (a committed run's is its own Assign or Finalize).
-        picture.saveDone = run.SaveDone__c;
-        picture.saveTotal = run.SaveTotal__c;
-        picture.saveProblem = run.SaveProblem__c;
-      }
       if (run.Status__c == ElectiveClear.COMMITTED) {
         week.working.add(run.Name);
       } else {

@@ -79,7 +79,7 @@ global with sharing class AgentFinalize implements AgentRequest.Change, AgentAsk
         ' in ' +
         week.Name +
         ': ' +
-        AgentElectives.stillSaving();
+        AgentSaveProgress.stillSaving();
     }
     return 'Finalized ' + electiveSet.Name + ' in ' + week.Name + '.';
   }

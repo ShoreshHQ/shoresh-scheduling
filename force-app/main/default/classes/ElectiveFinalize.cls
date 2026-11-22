@@ -49,46 +49,16 @@ public with sharing class ElectiveFinalize {
         )
       ) {
         // ADR 0018 choice 59: the names go on in the background; Final once every seat has them.
-        ElectiveBigSave.begin(new FinalizeRows(runId, named, versionId), false);
+        new ElectiveFinalizeRows(runId, named, versionId).begin();
         return ElectiveSeats.open(runId);
       }
       Database.update(named, true, AccessLevel.USER_MODE);
-      state.bump(finalFields(versionId));
+      state.bump(ElectiveFinalizeRows.finalFields(versionId));
     } catch (Exception e) {
       Database.rollback(before);
       throw e;
     }
     return ElectiveSeats.open(runId);
-  }
-
-  private static ElectiveRun__c finalFields(Id versionId) {
-    return new ElectiveRun__c(
-      Status__c = ElectiveRunState.FINAL_STATUS,
-      FinalizedAt__c = System.now(),
-      FinalizedBy__c = UserInfo.getUserId(),
-      FinalSchedule__c = versionId
-    );
-  }
-
-  /**
-   * Finalize's names in the background; the last part makes the run Final. Stopped, the version
-   * kept for it goes again, so no "finalized" version stands for a run that isn't.
-   */
-  public class FinalizeRows extends ElectiveBigSave.GivenRows {
-    private Id versionId;
-
-    public FinalizeRows(Id runId, List<Assignment__c> named, Id versionId) {
-      super(runId, new List<Id>(), named, new List<SObject>());
-      this.versionId = versionId;
-    }
-
-    public override void finish() {
-      ElectiveRunState.bumpHeld(runIds[0], finalFields(versionId));
-    }
-
-    public override void stopped() {
-      Database.delete(new Schedule__c(Id = versionId), AccessLevel.USER_MODE);
-    }
   }
 
   /**

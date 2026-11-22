@@ -84,7 +84,7 @@ public with sharing class ElectiveRunState {
   }
 
   /** A save too big for one request is being written in the background (ElectiveBigSave). */
-  public Boolean isSaving() {
+  private Boolean isSaving() {
     return run.SaveTotal__c != null && run.SaveProblem__c == null;
   }
 
@@ -129,7 +129,7 @@ public with sharing class ElectiveRunState {
     if (found.isEmpty()) {
       throw notThere();
     }
-    ElectiveBigSave.settle(found);
+    ElectiveSaveJobs.settle(found);
     return found[0];
   }
 
@@ -323,19 +323,5 @@ public with sharing class ElectiveRunState {
     changes.Revision__c = (run.Revision__c == null ? 0 : run.Revision__c) + 1;
     Database.update(ElectiveBigSave.ended(changes), AccessLevel.USER_MODE);
     run.Revision__c = changes.Revision__c;
-  }
-
-  /** The same, at the end of a big save, with the run already held by it. */
-  public static void bumpHeld(Id runId, ElectiveRun__c changes) {
-    Decimal revision = [
-      SELECT Revision__c
-      FROM ElectiveRun__c
-      WHERE Id = :runId
-      WITH USER_MODE
-    ]
-    .Revision__c;
-    changes.Id = runId;
-    changes.Revision__c = (revision == null ? 0 : revision) + 1;
-    Database.update(ElectiveBigSave.ended(changes), AccessLevel.USER_MODE);
   }
 }

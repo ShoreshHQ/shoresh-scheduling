@@ -86,6 +86,12 @@ suppressions:
     - rule_selector: "pmd:TooManyFields"
       max_suppressed_violations: 1
       reason: "One answer carrying everything the engine and screen need for a week."
+  # The same for ElectiveSeats.RunView: one answer carrying a run as the screen and the AI show it,
+  # with a large camp's save progress (repo ADR 0018 choice 59).
+  "main/default/classes/ElectiveSeats.cls":
+    - rule_selector: "pmd:TooManyFields"
+      max_suppressed_violations: 1
+      reason: "One answer carrying a run as the screen and the AI show it."
   # Design rule, not security: SetupMatch.Ask.versionKept is a property ({ get; set; }) because
   # Salesforce fills only properties of a class a screen sends (scripts/apex-aura-inputs.js); PMD
   # counts its setter as a method taking a Boolean.
@@ -113,6 +119,12 @@ suppressions:
     - rule_selector: "eslint:@lwc/lwc/no-async-operation"
       max_suppressed_violations: 2
       reason: "requestAnimationFrame and cancelAnimationFrame for the motion engine's frames."
+  # Elective seats waits between reads while a large camp's save goes on in the background (repo
+  # ADR 0018 choice 59): one setTimeout, in its pause.
+  "main/default/lwc/shoreshElectiveSeats/shoreshElectiveSeats.js":
+    - rule_selector: "eslint:@lwc/lwc/no-async-operation"
+      max_suppressed_violations: 1
+      reason: "The pause between reads of a save in the background, one call."
   # Jest tests fake real browser keyboard and mouse events, which are bubbling and composed in a
   # browser; components themselves never fire composed events.
   "main/default/lwc/shoreshAsk/__tests__":

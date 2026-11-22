@@ -59,9 +59,8 @@ const CLEAR_HEADING = '[data-id="clear-heading"]';
 const FOLLOW_MS = 3000;
 // Reads in a row that may fail while following before it is said.
 const FAILED_READS = 5;
-const pause = (ms) =>
-  // eslint-disable-next-line @lwc/lwc/no-async-operation
-  new Promise((resolve) => setTimeout(resolve, ms));
+// The one timer: eslint.config.js and code-analyzer.yml allow it in this file only.
+const pause = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 const count = (n) => Number(n || 0).toLocaleString("en-US");
 /** "Saving stopped after 9,000 of 12,000. Why." for a save that stopped in the background. */
 const stoppedWords = (verb, done, total, problem) =>
@@ -728,22 +727,27 @@ export default class ShoreshElectiveSeats extends LightningElement {
    * run as it ended (null when the screen moved on to another run or was left).
    */
   async followSave(view) {
-    let now = view;
     const runId = view.run.id;
-    while (now && now.saveTotal != null && !now.saveProblem) {
-      this.saveProgress = { done: now.saveDone, total: now.saveTotal };
-      // eslint-disable-next-line no-await-in-loop
-      await pause(FOLLOW_MS);
-      if (!this.connected || this.runId !== runId) {
-        now = null;
-        break;
-      }
-      // eslint-disable-next-line no-await-in-loop
-      now = await this.readAgain(() => openRun({ runId }), now);
-    }
+    const now = await this.follow(
+      view,
+      () => this.runId === runId,
+      () => openRun({ runId })
+    );
     this.saveProgress = null;
     if (now) this.view = now;
     return now;
+  }
+
+  /**
+   * Reads a save in the background again after a pause, its progress on the button, until it is
+   * done or stopped (returned as it ended), or the screen moved on (null).
+   */
+  async follow(now, stillHere, read) {
+    if (!now || now.saveTotal == null || now.saveProblem) return now;
+    this.saveProgress = { done: now.saveDone, total: now.saveTotal };
+    await pause(FOLLOW_MS);
+    if (!this.connected || !stillHere()) return null;
+    return this.follow(await this.readAgain(read, now), stillHere, read);
   }
 
   /**
@@ -1392,22 +1396,13 @@ export default class ShoreshElectiveSeats extends LightningElement {
    * as it ended (stopped: shown with why), or null when Clear was left.
    */
   async followClear(picture) {
-    let now = picture;
-    while (now.saveTotal != null && !now.saveProblem) {
-      this.saveProgress = { done: now.saveDone, total: now.saveTotal };
-      // eslint-disable-next-line no-await-in-loop
-      await pause(FOLLOW_MS);
-      if (!this.connected || !this.clearing) {
-        this.saveProgress = null;
-        return null;
-      }
-      // eslint-disable-next-line no-await-in-loop
-      now = await this.readAgain(
-        () => clearPicture({ seasonId: this._setup.season.Id }),
-        now
-      );
-    }
+    const now = await this.follow(
+      picture,
+      () => this.clearing,
+      () => clearPicture({ seasonId: this._setup.season.Id })
+    );
     this.saveProgress = null;
+    if (!now) return null;
     if (now.saveProblem) {
       this.clearData = now;
       this.clearError = this.clearStopped(now);

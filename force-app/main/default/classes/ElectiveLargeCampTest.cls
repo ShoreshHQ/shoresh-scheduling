@@ -64,6 +64,7 @@ private class ElectiveLargeCampTest {
 
   // ---------------------------------------------------------------- full size
 
+  // ELECT-5.8: a full-size week is written in parts, its progress shown, other saves refused meanwhile.
   @IsTest
   static void aWeekOfTwelveThousandSeatsIsAssignedInParts() {
     System.runAs(ShoreshTestData.scheduler()) {
@@ -107,6 +108,7 @@ private class ElectiveLargeCampTest {
 
   // ---------------------------------------------------------------- in small parts
 
+  // ELECT-5.8, ELECT-5.10: Assign again in parts writes the same seats, and empties what goes.
   @IsTest
   static void assignAgainInPartsWritesTheSameSeatsAndEmptiesWhatGoes() {
     System.runAs(ShoreshTestData.scheduler()) {
@@ -146,6 +148,7 @@ private class ElectiveLargeCampTest {
     }
   }
 
+  // ELECT-5.9: a part that fails stops the save, keeping how far it got and why.
   @IsTest
   static void aPartThatFailsStopsTheSaveWithWhy() {
     System.runAs(ShoreshTestData.scheduler()) {
@@ -394,6 +397,7 @@ private class ElectiveLargeCampTest {
     }
   }
 
+  // ELECT-5.9: a job Salesforce ended is shown stopped, never saving for ever.
   @IsTest
   static void aSaveSalesforceStoppedWithoutAWordIsShownStoppedNotSavingForEver() {
     System.runAs(ShoreshTestData.scheduler()) {

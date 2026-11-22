@@ -128,7 +128,7 @@ public with sharing class ElectiveClear {
       )
     ) {
       // ADR 0018 choice 59: the choices and seats go in the background, then the runs and campers.
-      ElectiveBigSave.begin(new ClearRows(going, campers, under), true);
+      ElectiveBigSave.begin(new ClearRows(going, campers, under));
       Result started = new Result();
       started.picture = picture(request.seasonId);
       return started;
@@ -174,7 +174,7 @@ public with sharing class ElectiveClear {
    * runs going and empties them from the Recycle Bin at once, so none are left there; the last
    * part removes the runs and campers as a small Clear does.
    */
-  public class ClearRows extends ElectiveBigSave.Work {
+  public with sharing class ClearRows extends ElectiveBigSave.Work {
     private List<Id> camperIds = new List<Id>();
 
     public ClearRows(
@@ -189,6 +189,7 @@ public with sharing class ElectiveClear {
         camperIds.add(camper.Id);
       }
       total = under;
+      emptiesRecycleBin = true;
     }
 
     public override Integer write(Integer most) {

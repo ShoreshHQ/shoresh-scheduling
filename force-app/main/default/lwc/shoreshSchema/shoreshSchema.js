@@ -90,8 +90,13 @@ import electiveRunFinalizedAt from "@salesforce/schema/ElectiveRun__c.FinalizedA
 import electiveRunFinalizedBy from "@salesforce/schema/ElectiveRun__c.FinalizedBy__c";
 import electiveRunNewVersionOf from "@salesforce/schema/ElectiveRun__c.NewVersionOf__c";
 import electiveRunRevision from "@salesforce/schema/ElectiveRun__c.Revision__c";
+import electiveRunSaveDone from "@salesforce/schema/ElectiveRun__c.SaveDone__c";
+import electiveRunSaveJob from "@salesforce/schema/ElectiveRun__c.SaveJob__c";
+import electiveRunSaveProblem from "@salesforce/schema/ElectiveRun__c.SaveProblem__c";
+import electiveRunSaveTotal from "@salesforce/schema/ElectiveRun__c.SaveTotal__c";
 import electiveRunSchedule from "@salesforce/schema/ElectiveRun__c.Schedule__c";
 import electiveRunSeason from "@salesforce/schema/ElectiveRun__c.Season__c";
+import electiveRunSeatCount from "@salesforce/schema/ElectiveRun__c.SeatCount__c";
 import electiveRunSourceFile from "@salesforce/schema/ElectiveRun__c.SourceFile__c";
 import electiveRunSourceFingerprint from "@salesforce/schema/ElectiveRun__c.SourceFingerprint__c";
 import electiveRunStatus from "@salesforce/schema/ElectiveRun__c.Status__c";
@@ -467,8 +472,13 @@ export const FIELD = Object.freeze({
     FinalizedBy: electiveRunFinalizedBy.fieldApiName,
     NewVersionOf: electiveRunNewVersionOf.fieldApiName,
     Revision: electiveRunRevision.fieldApiName,
+    SaveDone: electiveRunSaveDone.fieldApiName,
+    SaveJob: electiveRunSaveJob.fieldApiName,
+    SaveProblem: electiveRunSaveProblem.fieldApiName,
+    SaveTotal: electiveRunSaveTotal.fieldApiName,
     Schedule: electiveRunSchedule.fieldApiName,
     Season: electiveRunSeason.fieldApiName,
+    SeatCount: electiveRunSeatCount.fieldApiName,
     SourceFile: electiveRunSourceFile.fieldApiName,
     SourceFingerprint: electiveRunSourceFingerprint.fieldApiName,
     Status: electiveRunStatus.fieldApiName,

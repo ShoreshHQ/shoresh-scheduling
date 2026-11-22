@@ -156,14 +156,11 @@ public with sharing class ElectiveSeatSaves {
       !fitsOneSave(inserts.size() + updates.size() + 2 * deletes.size() + 1)
     ) {
       // More than one request can write: in the background, a part at a time (ADR 0018 choice 59).
-      List<Id> gone = new List<Id>();
-      for (Assignment__c seat : deletes) {
-        gone.add(seat.Id);
-      }
-      ElectiveBigSave.begin(
-        new AssignRows(state.run.Id, gone, updates, inserts, finished),
-        !gone.isEmpty()
-      );
+      AssignRows rows = new AssignRows(state.run.Id, finished);
+      rows.deleting(deletes);
+      rows.updates = updates;
+      rows.inserts = inserts;
+      rows.begin();
       return;
     }
     Savepoint before = Database.setSavepoint();
@@ -179,22 +176,16 @@ public with sharing class ElectiveSeatSaves {
   }
 
   /** Assign's rows in the background; the last part sets what the run was assigned with. */
-  public class AssignRows extends ElectiveBigSave.GivenRows {
+  public with sharing class AssignRows extends ElectiveGivenRows {
     private ElectiveRun__c finished;
 
-    public AssignRows(
-      Id runId,
-      List<Id> deletes,
-      List<Assignment__c> updates,
-      List<Assignment__c> inserts,
-      ElectiveRun__c finished
-    ) {
-      super(runId, deletes, updates, inserts);
+    public AssignRows(Id runId, ElectiveRun__c finished) {
+      super(runId);
       this.finished = finished;
     }
 
     public override void finish() {
-      ElectiveRunState.bumpHeld(runIds[0], finished.clone(false));
+      finishRun(finished.clone(false));
     }
   }
 

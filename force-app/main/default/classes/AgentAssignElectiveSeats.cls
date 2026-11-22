@@ -234,7 +234,7 @@ global with sharing class AgentAssignElectiveSeats implements AgentRequest.Chang
         ' in ' +
         held.weekName +
         ' are being saved: ' +
-        AgentElectives.stillSaving();
+        AgentSaveProgress.stillSaving();
     }
     return held.labels().plural('Seats') +
       ' assigned in ' +

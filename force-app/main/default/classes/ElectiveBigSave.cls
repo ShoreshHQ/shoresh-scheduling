@@ -11,12 +11,12 @@
  * stops the save: the run keeps how far it got and why (SaveProblem__c), shown to the person, and
  * nothing after it is written. A part that died without a word (a Salesforce limit can't be caught)
  * is undone whole, so the end finds fewer rows written than the save had and stops it the same
- * way; a job Salesforce ends outright is found when the run is read (settle). In user
+ * way; a job Salesforce ends outright is found when the run is read (ElectiveSaveJobs). In user
  * mode, as the person who saved.
  */
 public with sharing class ElectiveBigSave implements Database.Batchable<Object>, Database.Stateful {
-  // Rows one part writes: under 10,000 with room for the run's own updates. Clear's rows count
-  // twice (deleted, then emptied from the Recycle Bin), so its parts write half as many.
+  // Rows one part writes: under 10,000 with room for the run's own updates. Rows emptied from the
+  // Recycle Bin count twice (deleted, then emptied), so those parts write half as many.
   @TestVisible
   private static Integer part = 9000;
   // A test holds the save here instead of starting it, and runs its parts itself (a test can run
@@ -26,21 +26,6 @@ public with sharing class ElectiveBigSave implements Database.Batchable<Object>,
   @TestVisible
   private static ElectiveBigSave held;
 
-  /** What a big save writes. Each method runs inside one part's transaction. */
-  public abstract class Work {
-    /** The runs that carry the progress. */
-    public List<Id> runIds = new List<Id>();
-    /** How many rows in all. */
-    public Integer total = 0;
-    /** Writes up to most rows, the next in order; returns how many it wrote. */
-    public abstract Integer write(Integer most);
-    /** After every row is written, in the last part: the run's own fields, the save cleared. */
-    public abstract void finish();
-    /** A part failed and the save stopped (best effort: undo what the start made). */
-    public virtual void stopped() {
-    }
-  }
-
   private static final String PART_LOST = 'A part of it couldn\'t be saved, so the rest wasn\'t.';
 
   private Work work;
@@ -49,26 +34,36 @@ public with sharing class ElectiveBigSave implements Database.Batchable<Object>,
   private Integer done = 0;
   private Boolean stopped = false;
 
-  private ElectiveBigSave(Work work, Integer most) {
-    this.work = work;
-    this.most = most;
-    this.parts = Math.max(1, (Integer) Math.ceil(work.total / (Decimal) most));
+  /** What a big save writes. Each method runs inside one part's transaction. */
+  public abstract class Work {
+    /** The runs that carry the progress. */
+    public List<Id> runIds = new List<Id>();
+    /** How many rows in all. */
+    public Integer total = 0;
+    /** Its deletes are emptied from the Recycle Bin too, so its parts write half as many. */
+    public Boolean emptiesRecycleBin = false;
+    /** Writes up to most rows, the next in order; returns how many it wrote. */
+    public abstract Integer write(Integer most);
+    /** After every row is written, in the last part: the run's own fields, the save cleared. */
+    public abstract void finish();
+    /** A part failed and the save stopped (best effort: undo what the start made). */
+    public virtual void stopped() {
+      return;
+    }
   }
 
-  /** How many rows one part of this kind of save writes. */
-  public static Integer partSize(Boolean emptiesRecycleBin) {
-    return emptiesRecycleBin ? part / 2 : part;
+  private ElectiveBigSave(Work work) {
+    this.work = work;
+    this.most = work.emptiesRecycleBin ? part / 2 : part;
+    this.parts = Math.max(1, (Integer) Math.ceil(work.total / (Decimal) most));
   }
 
   /**
    * Marks the runs as saving (0 of total, no problem) and starts the background save. The caller
    * has checked everything and holds the runs.
    */
-  public static void begin(Work work, Boolean emptiesRecycleBin) {
-    ElectiveBigSave save = new ElectiveBigSave(
-      work,
-      partSize(emptiesRecycleBin)
-    );
+  public static void begin(Work work) {
+    ElectiveBigSave save = new ElectiveBigSave(work);
     Id jobId;
     if (Test.isRunningTest() && holdInTest) {
       held = save;
@@ -89,65 +84,6 @@ public with sharing class ElectiveBigSave implements Database.Batchable<Object>,
       );
     }
     Database.update(marks, AccessLevel.USER_MODE);
-  }
-
-  // Salesforce's own word for a background job that is over, however it ended.
-  private static final Set<String> JOB_OVER = new Set<String>{
-    'Completed',
-    'Failed',
-    'Aborted'
-  };
-
-  /**
-   * Runs read as saving whose background job Salesforce has already ended (cancelled in Setup, or
-   * stopped by a limit before it could say so): shown as stopped (SaveProblem__c, in memory), so
-   * the run is never "still saving" for ever and the next save goes ahead and clears it. A run is
-   * read again first, so a save that just finished is never taken for one that stopped.
-   */
-  public static void settle(List<ElectiveRun__c> runs) {
-    Set<String> jobIds = new Set<String>();
-    for (ElectiveRun__c run : runs) {
-      if (isSaving(run) && run.SaveJob__c != null) {
-        jobIds.add(run.SaveJob__c);
-      }
-    }
-    if (jobIds.isEmpty()) {
-      return;
-    }
-    // System mode: a job's status only, by the Id this save kept; AsyncApexJob has no user-mode
-    // access a scheduler is granted.
-    Set<String> over = new Set<String>();
-    for (AsyncApexJob job : [
-      SELECT Id, Status
-      FROM AsyncApexJob
-      WHERE Id IN :jobIds
-      WITH SYSTEM_MODE
-    ]) {
-      if (JOB_OVER.contains(job.Status)) {
-        over.add(String.valueOf(job.Id).left(18));
-      }
-    }
-    if (over.isEmpty()) {
-      return;
-    }
-    Map<Id, ElectiveRun__c> now = new Map<Id, ElectiveRun__c>(
-      [
-        SELECT Id, SaveTotal__c, SaveProblem__c, SaveJob__c
-        FROM ElectiveRun__c
-        WHERE SaveJob__c IN :over
-        WITH USER_MODE
-      ]
-    );
-    for (ElectiveRun__c run : runs) {
-      ElectiveRun__c fresh = now.get(run.Id);
-      if (fresh != null && isSaving(fresh) && over.contains(fresh.SaveJob__c)) {
-        run.SaveProblem__c = 'Salesforce stopped it before the end.';
-      }
-    }
-  }
-
-  private static Boolean isSaving(ElectiveRun__c run) {
-    return run.SaveTotal__c != null && run.SaveProblem__c == null;
   }
 
   /** One item per part: a part's rows are the next ones in order, whichever item it is. */
@@ -209,7 +145,6 @@ public with sharing class ElectiveBigSave implements Database.Batchable<Object>,
       FROM ElectiveRun__c
       WHERE Id IN :work.runIds
       WITH USER_MODE
-      ORDER BY Id
       FOR UPDATE
     ];
     if (runs.isEmpty()) {
@@ -279,53 +214,5 @@ public with sharing class ElectiveBigSave implements Database.Batchable<Object>,
     changes.SaveJob__c = null;
     changes.SaveProblem__c = null;
     return changes;
-  }
-
-  // ---------------------------------------------------------------- rows given in advance
-
-  /**
-   * Rows known before it starts (Assign's difference, Finalize's names): deletes (emptied from the
-   * Recycle Bin too), then updates, then inserts, each in the order given.
-   */
-  public abstract class GivenRows extends Work {
-    private List<Id> deletes;
-    private List<SObject> updates;
-    private List<SObject> inserts;
-    private Integer next = 0;
-
-    public GivenRows(
-      Id runId,
-      List<Id> deletes,
-      List<SObject> updates,
-      List<SObject> inserts
-    ) {
-      runIds.add(runId);
-      this.deletes = deletes;
-      this.updates = updates;
-      this.inserts = inserts;
-      total = deletes.size() + updates.size() + inserts.size();
-    }
-
-    public override Integer write(Integer most) {
-      Integer upTo = Math.min(next + most, total);
-      List<SObject> gone = new List<SObject>();
-      List<SObject> changed = new List<SObject>();
-      List<SObject> added = new List<SObject>();
-      for (Integer i = next; i < upTo; i++) {
-        if (i < deletes.size()) {
-          gone.add(deletes[i].getSObjectType().newSObject(deletes[i]));
-        } else if (i < deletes.size() + updates.size()) {
-          changed.add(updates[i - deletes.size()]);
-        } else {
-          added.add(inserts[i - deletes.size() - updates.size()].clone(false));
-        }
-      }
-      ElectiveSeatSaves.deleteForGood(gone);
-      Database.update(changed, true, AccessLevel.USER_MODE);
-      Database.insert(added, true, AccessLevel.USER_MODE);
-      Integer wrote = upTo - next;
-      next = upTo;
-      return wrote;
-    }
   }
 }
