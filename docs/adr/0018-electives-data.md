@@ -875,8 +875,9 @@ screen, and other programs' electives.
       (`SaveProblem__c`, in ScreenErrors' words), nothing after it is written, and the screen
       says "Saving stopped after 6 of 8. That was removed. Reload the page." with Assign again
       (Assign again then goes ahead and clears it). A part Salesforce stops without a word (a
-      limit can't be caught) is found by the next, whose count isn't what was written, and stops
-      the save the same way; a job Salesforce ends without a word (cancelled in Setup, or its last
+      limit can't be caught) is undone whole, rows and count, so the end finds fewer rows written
+      than the save had and stops it the same way ("A part of it couldn't be saved, so the rest
+      wasn't."); a part whose run's count isn't this save's (another save took over) stops it too; a job Salesforce ends without a word (cancelled in Setup, or its last
       step stopped by a limit) is found when the run is read (`SaveJob__c`, its status), shown as
       "Salesforce stopped it before the end.", and the next save goes ahead. A stop moves the
       run's revision on, so a screen opened before can't save over the rows already written. A

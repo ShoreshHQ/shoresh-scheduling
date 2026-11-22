@@ -57,6 +57,8 @@ const CLEAR_HEADING = '[data-id="clear-heading"]';
 // A large camp's save goes on in the background (repo ADR 0018 choice 59): the screen reads it
 // again this often, its button saying how far it got, until it is done or stopped.
 const FOLLOW_MS = 3000;
+// Reads in a row that may fail while following before it is said.
+const FAILED_READS = 5;
 const pause = (ms) =>
   // eslint-disable-next-line @lwc/lwc/no-async-operation
   new Promise((resolve) => setTimeout(resolve, ms));
@@ -161,6 +163,7 @@ export default class ShoreshElectiveSeats extends LightningElement {
   clearFrom = null;
   // A save going on in the background: { done, total }, shown on the button that started it.
   saveProgress = null;
+  failedReads = 0;
   connected = false;
 
   /** The screen's heading takes the cursor when it opens (the page asks). */
@@ -349,7 +352,8 @@ export default class ShoreshElectiveSeats extends LightningElement {
         // Opened while a large save goes on (by this person or another): its buttons wait for it.
         this.busy = true;
         try {
-          await this.followSave(view);
+          const ended = await this.followSave(view);
+          if (ended && ended.saveProblem) this.sayStopped(ended);
         } finally {
           this.busy = false;
         }
@@ -735,11 +739,31 @@ export default class ShoreshElectiveSeats extends LightningElement {
         break;
       }
       // eslint-disable-next-line no-await-in-loop
-      now = await openRun({ runId });
+      now = await this.readAgain(() => openRun({ runId }), now);
     }
     this.saveProgress = null;
     if (now) this.view = now;
     return now;
+  }
+
+  /**
+   * One read while a save goes on in the background. A read that fails (the network for a moment)
+   * keeps what was last read and tries again on the next turn; it says nothing about the save,
+   * which goes on. Only several in a row are said, as a read that failed.
+   */
+  async readAgain(read, last) {
+    try {
+      const fresh = await read();
+      this.failedReads = 0;
+      return fresh;
+    } catch (e) {
+      this.failedReads = (this.failedReads || 0) + 1;
+      if (this.failedReads >= FAILED_READS) {
+        this.failedReads = 0;
+        throw e;
+      }
+      return last;
+    }
   }
 
   /** Why a save in the background stopped, said as a refusal is, with Assign again beside it. */
@@ -800,7 +824,9 @@ export default class ShoreshElectiveSeats extends LightningElement {
         revision: this.view.revision
       });
       const ended = await this.followSave(this.view);
-      if (ended && ended.saveProblem) {
+      // Another run or week was opened meanwhile: that one's screen is shown, not this one's end.
+      if (!ended) return;
+      if (ended.saveProblem) {
         this.error = stoppedWords(
           "Finalizing",
           ended.saveDone,
@@ -1376,7 +1402,10 @@ export default class ShoreshElectiveSeats extends LightningElement {
         return null;
       }
       // eslint-disable-next-line no-await-in-loop
-      now = await clearPicture({ seasonId: this._setup.season.Id });
+      now = await this.readAgain(
+        () => clearPicture({ seasonId: this._setup.season.Id }),
+        now
+      );
     }
     this.saveProgress = null;
     if (now.saveProblem) {
@@ -1518,8 +1547,13 @@ export default class ShoreshElectiveSeats extends LightningElement {
       if (result.picture && result.picture.saveTotal != null) {
         const ended = await this.followClear(result.picture);
         if (!ended) {
-          // Cancel was pressed while it cleared: the cursor goes where Cancel sent it.
+          // Cancel was pressed while it cleared: the cursor goes where Cancel sent it, and the
+          // screen is read again (the seats on it are going).
           focusAfter = this.focusAfter;
+          this.runId = null;
+          this.view = null;
+          this.downloadHeld = null;
+          await this.loadSituation();
           return;
         }
         if (ended.saveProblem) {

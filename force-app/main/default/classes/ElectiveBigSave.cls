@@ -10,7 +10,8 @@
  * The rows are written in a fixed order, so the same save writes the same rows. A part that fails
  * stops the save: the run keeps how far it got and why (SaveProblem__c), shown to the person, and
  * nothing after it is written. A part that died without a word (a Salesforce limit can't be caught)
- * is found by the next one, whose count no longer matches, and stops the save the same way. In user
+ * is undone whole, so the end finds fewer rows written than the save had and stops it the same
+ * way; a job Salesforce ends outright is found when the run is read (settle). In user
  * mode, as the person who saved.
  */
 public with sharing class ElectiveBigSave implements Database.Batchable<Object>, Database.Stateful {
@@ -39,6 +40,8 @@ public with sharing class ElectiveBigSave implements Database.Batchable<Object>,
     public virtual void stopped() {
     }
   }
+
+  private static final String PART_LOST = 'A part of it couldn\'t be saved, so the rest wasn\'t.';
 
   private Work work;
   private Integer most;
@@ -185,8 +188,9 @@ public with sharing class ElectiveBigSave implements Database.Batchable<Object>,
         return;
       }
       if (done < work.total) {
-        // The rows ran out early: something changed under the save. Never finished quietly.
-        throw new ShoreshException('Something changed while it was saving.');
+        // A part died without a word (a limit can't be caught): Salesforce undid its rows and
+        // its count, so the parts ran out before the rows did. Never finished quietly.
+        throw new ShoreshException(PART_LOST);
       }
       work.finish();
     } catch (Exception e) {
@@ -218,9 +222,7 @@ public with sharing class ElectiveBigSave implements Database.Batchable<Object>,
         run.SaveDone__c != done ||
         run.SaveProblem__c != null
       ) {
-        throw new ShoreshException(
-          'A part of it couldn\'t be saved, so the rest wasn\'t.'
-        );
+        throw new ShoreshException(PART_LOST);
       }
     }
     return runs;

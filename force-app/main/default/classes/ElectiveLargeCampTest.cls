@@ -208,7 +208,7 @@ private class ElectiveLargeCampTest {
   }
 
   @IsTest
-  static void aPartThatDiedWithoutAWordIsFoundByTheNext() {
+  static void aPartThatDiedWithoutAWordStopsTheSaveAtTheEnd() {
     System.runAs(ShoreshTestData.scheduler()) {
       ElectiveSeatsCamp camp = new ElectiveSeatsCamp(4);
       ElectiveSeatSaves.rowBound = 5;
@@ -219,14 +219,8 @@ private class ElectiveLargeCampTest {
 
       Test.startTest();
       save.execute(null, new List<Object>{ 0 });
-      // As if the next part ran out of time: its rows and count never landed. The one after
-      // finds the count isn't what it wrote, and stops.
-      ElectiveBigSave.held = null;
-      Database.update(
-        new ElectiveRun__c(Id = camp.runId, SaveDone__c = 2),
-        AccessLevel.USER_MODE
-      );
-      save.execute(null, new List<Object>{ 1 });
+      // The second part ran out of time: Salesforce undid it whole, its rows and its count.
+      save.execute(null, new List<Object>{ 2 });
       save.finish(null);
       Test.stopTest();
 
@@ -235,8 +229,35 @@ private class ElectiveLargeCampTest {
         'A part of it couldn\'t be saved, so the rest wasn\'t.',
         run.SaveProblem__c
       );
+      Assert.areEqual(6, run.SaveDone__c.intValue());
+      Assert.areEqual(6, seatsOf(camp.runId));
+      Assert.isNull(run.TimesFingerprint__c, 'Never shown as assigned');
+    }
+  }
+
+  @IsTest
+  static void aCountThatIsNotThisSavesStopsIt() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      ElectiveSeatsCamp camp = new ElectiveSeatsCamp(4);
+      ElectiveSeatSaves.rowBound = 5;
+      ElectiveBigSave.part = 3;
+      ElectiveBigSave.holdInTest = true;
+      camp.assign(camp.everyoneInDrama(1));
+      ElectiveBigSave save = ElectiveBigSave.held;
+
+      Test.startTest();
+      save.execute(null, new List<Object>{ 0 });
+      // Another save took over the run meanwhile: this one writes nothing more.
+      Database.update(
+        new ElectiveRun__c(Id = camp.runId, SaveDone__c = 2),
+        AccessLevel.USER_MODE
+      );
+      save.execute(null, new List<Object>{ 1 });
+      save.finish(null);
+      Test.stopTest();
+
       Assert.areEqual(3, seatsOf(camp.runId));
-      Assert.isNull(run.TimesFingerprint__c);
+      Assert.isNotNull(runOf(camp.runId).SaveProblem__c);
     }
   }
 
@@ -289,11 +310,9 @@ private class ElectiveLargeCampTest {
       Test.startTest();
       ElectiveSeatsController.finalizeRun(camp.runId, view.revision);
       ElectiveBigSave save = ElectiveBigSave.held;
-      Database.update(
-        new ElectiveRun__c(Id = camp.runId, SaveDone__c = 4),
-        AccessLevel.USER_MODE
-      );
+      // Its later parts were lost: the end comes up short and stops it.
       save.execute(null, new List<Object>{ 0 });
+      save.finish(null);
       Test.stopTest();
 
       ElectiveRun__c run = runOf(camp.runId);

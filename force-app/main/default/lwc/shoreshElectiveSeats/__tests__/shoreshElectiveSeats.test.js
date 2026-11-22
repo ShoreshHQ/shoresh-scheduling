@@ -797,6 +797,56 @@ describe("Assign seats", () => {
     }
   });
 
+  it("a read that fails once while following says nothing and keeps following", async () => {
+    const element = await render();
+    jest.useFakeTimers();
+    try {
+      assignSeats.mockResolvedValue(runView({ saveDone: 0, saveTotal: 12000 }));
+      openRun
+        .mockRejectedValueOnce({
+          body: { message: "Disconnected or Canceled" }
+        })
+        .mockResolvedValueOnce(assignedView());
+      $(element, '[data-id="primary"]').click();
+      await flush();
+      jest.advanceTimersByTime(3000);
+      await flush();
+      expect($(element, '[data-id="error"]')).toBeNull();
+      expect(text($(element, '[data-id="primary"]'))).toBe(
+        "Saving 0 of 12,000"
+      );
+      jest.advanceTimersByTime(3000);
+      await flush();
+      expect(text($(element, '[data-id="status"]'))).toBe("3 of 4 placed.");
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  it("opened mid-save, a save that then stops says why", async () => {
+    jest.useFakeTimers();
+    try {
+      const element = await render({
+        view: runView({ saveDone: 4500, saveTotal: 12000 })
+      });
+      openRun.mockResolvedValueOnce(
+        runView({
+          saveDone: 4500,
+          saveTotal: 12000,
+          saveProblem: "Salesforce stopped it before the end."
+        })
+      );
+      jest.advanceTimersByTime(3000);
+      await flush();
+      expect(text($(element, '[data-id="error"]'))).toBe(
+        "Saving stopped after 4,500 of 12,000. Salesforce stopped it before the end."
+      );
+      expect($(element, '[data-id="primary"]').disabled).toBe(false);
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
   it("Assign again, from the Build menu, puts the cursor back on the menu once saved", async () => {
     const element = await render({ view: assignedView() });
     assignSeats.mockResolvedValue(assignedView({ revision: 3 }));
