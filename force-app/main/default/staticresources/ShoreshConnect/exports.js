@@ -33,9 +33,12 @@ const WHAT = {
 };
 const VIEWS = { daily: "week", group: "group", activity: "activity" };
 
-/** The Downloads folder, as a browser saves into it. */
-function downloadsFolder(env = process.env) {
-  return path.join(env.HOME || env.USERPROFILE || ".", "Downloads");
+/** The Downloads folder, as a browser saves into it: in the Windows profile folder on Windows. */
+function downloadsFolder(env = process.env, platform = process.platform) {
+  if (platform === "win32") {
+    return path.win32.join(env.USERPROFILE || env.HOME || ".", "Downloads");
+  }
+  return path.posix.join(env.HOME || env.USERPROFILE || ".", "Downloads");
 }
 
 /**

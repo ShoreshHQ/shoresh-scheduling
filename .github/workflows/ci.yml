@@ -115,18 +115,46 @@ jobs:
             appexchange-security-review.html
           if-no-files-found: ignore
 
+  connector:
+    # The AI connector (connect/) runs on the director's own computer: its tests on each system,
+    # then a real Salesforce command line found and started the way the connector starts it.
+    name: Connector on ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, windows-2025, macos-15]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Files as they are in the repository (no Windows line endings)
+        run: git config --global core.autocrlf false
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Connector tests
+        run: npx jest connect/__tests__ --maxWorkers=2
+      - name: Install Salesforce CLI
+        run: npm install --global @salesforce/cli@2.154.4
+      - name: The connector finds and starts the Salesforce command line
+        run: >-
+          node -e "require('./connect/client').sfInstalled().then((ok) => {
+          console.log(ok ? 'sf found and started' : 'sf not found');
+          process.exit(ok ? 0 : 1); })"
+
   static:
-    # The one check the merge procedure looks for: passes only when all three jobs above pass.
+    # The one check the merge procedure looks for: passes only when all the jobs above pass.
     name: LWC Jest and Code Analyzer
     runs-on: ubuntu-24.04
-    needs: [jest, jest-namespaced, code-analyzer]
+    needs: [jest, jest-namespaced, code-analyzer, connector]
     if: ${{ always() }}
     steps:
       - name: All quick checks passed
         env:
-          RESULTS: ${{ needs.jest.result }} ${{ needs.jest-namespaced.result }} ${{ needs.code-analyzer.result }}
+          RESULTS: ${{ needs.jest.result }} ${{ needs.jest-namespaced.result }} ${{ needs.code-analyzer.result }} ${{ needs.connector.result }}
         run: |
-          echo "LWC Jest / namespaced Jest / Code Analyzer: $RESULTS"
+          echo "LWC Jest / namespaced Jest / Code Analyzer / Connector on each system: $RESULTS"
           for r in $RESULTS; do
             if [ "$r" != "success" ]; then
               echo "::error::A quick check did not pass ($RESULTS). Open the failed job above."
