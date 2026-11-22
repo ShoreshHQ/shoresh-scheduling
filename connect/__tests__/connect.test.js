@@ -12,6 +12,8 @@ const {
   call: callAs,
   check,
   sfPath,
+  sfCommand,
+  sfEnv,
   signIn,
   importModules,
   TOO_BIG,
@@ -4503,8 +4505,9 @@ describe("Shoresh for AI tools and the command line", () => {
     expect(
       sfPath(
         { PATH: "/usr/bin", HOME: "/Users/dana" },
-        "/apps/node/bin/node"
-      ).split(path.delimiter)
+        "/apps/node/bin/node",
+        "darwin"
+      ).split(":")
     ).toEqual([
       "/usr/bin",
       "/apps/node/bin",
@@ -4514,6 +4517,108 @@ describe("Shoresh for AI tools and the command line", () => {
       "/usr/bin",
       "/bin"
     ]);
+  });
+
+  // API-1.15
+  it("findsSfOnWindowsWithoutAShell: sf.cmd's own node script is started directly, never through cmd.exe", () => {
+    const env = {
+      Path: "C:\\Windows\\system32",
+      ProgramFiles: "C:\\Program Files",
+      APPDATA: "C:\\Users\\dana\\AppData\\Roaming",
+      LOCALAPPDATA: "C:\\Users\\dana\\AppData\\Local"
+    };
+    const dirs = sfPath(env, "C:\\node\\node.exe", "win32");
+    expect(dirs.split(";")).toEqual([
+      "C:\\Windows\\system32",
+      "C:\\node",
+      "C:\\Program Files\\sf\\bin",
+      "C:\\Users\\dana\\AppData\\Roaming\\npm"
+    ]);
+    const on = (...files) => ({
+      platform: "win32",
+      env,
+      dirs,
+      node: "C:\\claude\\node.exe",
+      exists: (f) => files.includes(f),
+      read: () => ""
+    });
+    // The Salesforce installer: bin\sf.cmd, its own node and script under client\bin.
+    expect(
+      sfCommand(
+        ["--version"],
+        on(
+          "C:\\Program Files\\sf\\bin\\sf.cmd",
+          "C:\\Program Files\\sf\\client\\bin\\node.exe",
+          "C:\\Program Files\\sf\\client\\bin\\run.js"
+        )
+      )
+    ).toEqual({
+      file: "C:\\Program Files\\sf\\client\\bin\\node.exe",
+      args: [
+        "--no-deprecation",
+        "C:\\Program Files\\sf\\client\\bin\\run.js",
+        "--version"
+      ]
+    });
+    // After sf update: the version its client\bin\sf.cmd hands over to, as Salesforce's sf.cmd does.
+    const client = "C:\\Users\\dana\\AppData\\Local\\sf\\client";
+    const updated = {
+      ...on(
+        `${client}\\bin\\sf.cmd`,
+        `${client}\\2.160.1\\bin\\node.exe`,
+        `${client}\\2.160.1\\bin\\run.js`,
+        "C:\\Program Files\\sf\\bin\\sf.cmd",
+        "C:\\Program Files\\sf\\client\\bin\\node.exe",
+        "C:\\Program Files\\sf\\client\\bin\\run.js"
+      ),
+      read: () =>
+        '@echo off\r\nset SF_BINPATH=%~dp0sf\r\n"%~dp0..\\2.160.1\\bin\\sf.cmd" %*\r\n'
+    };
+    expect(sfCommand(["--version"], updated)).toEqual({
+      file: `${client}\\2.160.1\\bin\\node.exe`,
+      args: ["--no-deprecation", `${client}\\2.160.1\\bin\\run.js`, "--version"]
+    });
+    // An update whose sf.cmd can't be read: the installed copy.
+    expect(
+      sfCommand(["--version"], {
+        ...updated,
+        read: () => {
+          throw new Error("EACCES");
+        }
+      }).file
+    ).toBe("C:\\Program Files\\sf\\client\\bin\\node.exe");
+    // npm's: the CLI's script, with the node on the PATH.
+    const npm = "C:\\Users\\dana\\AppData\\Roaming\\npm";
+    const run = `${npm}\\node_modules\\@salesforce\\cli\\bin\\run.js`;
+    expect(
+      sfCommand(
+        ["org", "list"],
+        on(`${npm}\\sf.cmd`, run, "C:\\node\\node.exe")
+      )
+    ).toEqual({
+      file: "C:\\node\\node.exe",
+      args: ["--no-deprecation", run, "org", "list"]
+    });
+    expect(sfCommand(["org", "list"], on(`${npm}\\sf.cmd`, run))).toEqual({
+      file: "C:\\claude\\node.exe",
+      args: ["--no-deprecation", run, "org", "list"]
+    });
+    // Not installed: sf, which isn't found, so the person is told to install it.
+    expect(sfCommand(["--version"], on())).toEqual({
+      file: "sf",
+      args: ["--version"]
+    });
+    // Elsewhere, sf itself.
+    expect(
+      sfCommand(["--version"], { platform: "linux", exists: () => true })
+    ).toEqual({ file: "sf", args: ["--version"] });
+    // One PATH for sf, however Windows spells it, and sf never updates itself mid-call.
+    const given = sfEnv({ ...env, HOME: "x" }, "win32");
+    expect(Object.keys(given).filter((k) => /^path$/i.test(k))).toEqual([
+      "PATH"
+    ]);
+    expect(given.PATH.split(";")).toContain("C:\\Program Files\\sf\\bin");
+    expect(given.SF_DISABLE_AUTOUPDATE).toBe("true");
   });
 
   // API-1.17

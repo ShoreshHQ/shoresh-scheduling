@@ -245,8 +245,91 @@ describe("API-1.153: an ask-first change is done only on the person's own yes", 
       })
     ).toBe("no answer");
     expect(
-      await askPerson(words, 30, { platform: "linux", run: run(() => {}) })
+      await askPerson(words, 30, { platform: "freebsd", run: run(() => {}) })
     ).toBe("unasked");
+  });
+
+  it("onWindowsTheWordsGoInAnEnvironmentVariableNeverAsScript", async () => {
+    const runs = [];
+    const run = (answer) => (cmd, args, options, done) => {
+      runs.push({ cmd, args, options });
+      answer(done);
+    };
+    const words = "'; Remove-Item -Recurse ~ #";
+    const env = { SystemRoot: "C:\\Windows" };
+    const ask = (answer) =>
+      askPerson(words, 30, { platform: "win32", env, run: run(answer) });
+    expect(await ask((done) => done(null, "6\r\n"))).toBe("yes");
+    expect(runs[0].cmd).toBe(
+      "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe"
+    );
+    expect(runs[0].args.join(" ")).not.toContain(words);
+    expect(runs[0].options.env.SHORESH_QUESTION).toBe(words);
+    // Started shown, or Windows starts the dialog hidden; only PowerShell's console hides.
+    expect(runs[0].options.windowsHide).toBeUndefined();
+    expect(runs[0].args.slice(0, 4)).toEqual([
+      "-NoProfile",
+      "-NonInteractive",
+      "-WindowStyle",
+      "Hidden"
+    ]);
+    // Yes and No, a warning, No the default, in front; it gives up after the seconds left.
+    expect(runs[0].args.at(-1)).toBe(
+      "(New-Object -ComObject WScript.Shell).Popup($env:SHORESH_QUESTION, 30, 'Shoresh', 4404)"
+    );
+    expect(await ask((done) => done(null, "7\r\n"))).toBe("no");
+    expect(await ask((done) => done(null, "-1\r\n"))).toBe("no answer");
+    // A failure, or an answer that isn't the dialog's, asked nobody: never said as a no.
+    expect(
+      await ask((done) => done(Object.assign(new Error("x"), { code: 1 }), ""))
+    ).toBe("unshown");
+    expect(await ask((done) => done(null, ""))).toBe("unshown");
+    expect(
+      await ask((done) =>
+        done(Object.assign(new Error("x"), { killed: true }), "")
+      )
+    ).toBe("no answer");
+  });
+
+  it("onLinuxZenityAsksWithItsMarkupOffAndCancelTheDefault", async () => {
+    const runs = [];
+    const run = (answer) => (cmd, args, options, done) => {
+      runs.push({ cmd, args });
+      answer(done);
+    };
+    const words = '<b>Delete</b> "Option 2"? --text=no';
+    const failed =
+      (code, stderr = "") =>
+      (done) =>
+        done(Object.assign(new Error("x"), { code }), "", stderr);
+    const ask = (answer, env = { DISPLAY: ":0" }) =>
+      askPerson(words, 30, { platform: "linux", env, run: run(answer) });
+    expect(await ask((done) => done(null, "", ""))).toBe("yes");
+    expect(runs[0].cmd).toBe("zenity");
+    expect(runs[0].args).toEqual([
+      "--question",
+      "--title=Shoresh",
+      "--no-markup",
+      "--ok-label=Yes",
+      "--cancel-label=Cancel",
+      "--default-cancel",
+      "--timeout=30",
+      `--text=${words}`
+    ]);
+    expect(await ask(failed(1, "Gtk-Message: mapped without a parent"))).toBe(
+      "no"
+    );
+    expect(await ask(failed(5))).toBe("no answer");
+    // No zenity: no such dialog here. No screen, or zenity failing: nobody was asked.
+    expect(await ask(failed("ENOENT"))).toBe("unasked");
+    expect(await ask(failed(1, "cannot open display: :0"))).toBe("unshown");
+    expect(await ask(failed(255))).toBe("unshown");
+    runs.length = 0;
+    expect(await ask(() => {}, {})).toBe("unshown");
+    expect(runs).toHaveLength(0);
+    expect(
+      await ask((done) => done(null, ""), { WAYLAND_DISPLAY: "wayland-0" })
+    ).toBe("yes");
   });
 
   it("theDialogClosesInTimeForTheYesToFitTheAiAppsWait", async () => {
