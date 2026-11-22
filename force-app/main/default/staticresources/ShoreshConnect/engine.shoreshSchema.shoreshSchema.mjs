@@ -62,6 +62,7 @@ const campTimeZone = schemaName("Camp__c.TimeZone__c");
 const camperObject = schemaName("Camper__c");
 const camperCamperNumber = schemaName("Camper__c.CamperNumber__c");
 const camperKey = schemaName("Camper__c.Key__c");
+const camperNameKey = schemaName("Camper__c.NameKey__c");
 const camperOutsideChangedAt = schemaName("Camper__c.OutsideChangedAt__c");
 const camperOutsideId = schemaName("Camper__c.OutsideId__c");
 const camperOutsideMatch = schemaName("Camper__c.OutsideMatch__c");
@@ -435,6 +436,7 @@ export const FIELD = Object.freeze({
   Camper: Object.freeze({
     CamperNumber: camperCamperNumber.fieldApiName,
     Key: camperKey.fieldApiName,
+    NameKey: camperNameKey.fieldApiName,
     OutsideChangedAt: camperOutsideChangedAt.fieldApiName,
     OutsideId: camperOutsideId.fieldApiName,
     OutsideMatch: camperOutsideMatch.fieldApiName,

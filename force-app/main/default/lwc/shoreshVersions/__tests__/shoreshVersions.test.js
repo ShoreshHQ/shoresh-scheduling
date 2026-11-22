@@ -114,6 +114,86 @@ describe("c-shoresh-versions", () => {
     await expect(element).toBeAccessible();
   });
 
+  describe("WEEK-6.8: older automatic copies fold into one row", () => {
+    const auto = (id, name, extra) => ({
+      id,
+      name,
+      origin: "Generated",
+      reason: "AutoSaved",
+      savedAt: "2026-10-16T15:00:00.000Z",
+      ...extra
+    });
+    const MANY = [
+      auto("a5", "Before Rebuild"),
+      { id: "n1", name: "Tuesday plan", origin: "Generated", reason: "SavedByHand" },
+      auto("a4", "Before rainy Monday"),
+      auto("a3", "Before Rebuild", { publishedAt: "2026-10-15T10:00:00.000Z" }),
+      auto("a2", "Before Restore"),
+      auto("a1", "Before Try another", { reason: "ThroughAgent" })
+    ];
+    const names = (element) =>
+      qa(element, ".version").map((row) => row.dataset.version);
+
+    it("shows what a person kept, the published and the newest automatic copy; the rest wait behind one row", async () => {
+      const element = await render(MANY);
+      element.openId = "none";
+      await openList(element);
+      expect(names(element)).toEqual(["a5", "n1", "a3"]);
+      const fold = q(element, '[data-id="versions-unfold"]');
+      expect(fold.textContent.trim()).toBe("3 more auto-saved");
+      expect(fold.tagName).toBe("BUTTON");
+    });
+
+    it("the version on screen always shows, folded or not", async () => {
+      const element = await render(MANY);
+      element.openId = "a2";
+      await openList(element);
+      expect(names(element)).toEqual(["a5", "n1", "a3", "a2"]);
+      expect(
+        q(element, '[data-id="versions-unfold"]').textContent.trim()
+      ).toBe("2 more auto-saved");
+    });
+
+    it("pressing it shows every copy, newest first, with the cursor on the first it showed; closing folds them again", async () => {
+      const element = await render(MANY);
+      element.openId = "none";
+      await openList(element);
+      q(element, '[data-id="versions-unfold"]').click();
+      await flush();
+      expect(names(element)).toEqual(["a5", "n1", "a4", "a3", "a2", "a1"]);
+      expect(q(element, '[data-id="versions-unfold"]')).toBeNull();
+      expect(element.shadowRoot.activeElement).toBe(
+        q(element, '[data-action="open"][data-id="a4"]')
+      );
+      // Each one shown is a version like any other: it can be restored.
+      q(element, '[data-action="open"][data-id="a1"]').click();
+      await flush();
+      await openList(element);
+      expect(names(element)).toEqual(["a5", "n1", "a3"]);
+    });
+
+    it("unfolded while an edit is saving (Restore waits), the cursor goes to the row's first ready button", async () => {
+      const element = await render(MANY);
+      element.openId = "none";
+      element.restore = true;
+      element.busy = true;
+      await flush();
+      await openList(element);
+      q(element, '[data-id="versions-unfold"]').click();
+      await flush();
+      expect(element.shadowRoot.activeElement).toBe(
+        q(element, '[data-action="rename"][data-id="a4"]')
+      );
+    });
+
+    it("one automatic copy, or none, has nothing to fold", async () => {
+      const element = await render([MANY[0], MANY[1]]);
+      await openList(element);
+      expect(names(element)).toEqual(["a5", "n1"]);
+      expect(q(element, '[data-id="versions-unfold"]')).toBeNull();
+    });
+  });
+
   it("says when there are none", async () => {
     const element = await render([]);
     await openList(element);
