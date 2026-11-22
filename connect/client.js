@@ -62,21 +62,98 @@ function sfArgs(request, org) {
 /**
  * Where sf is looked for: the PATH it was given, then the folders the Salesforce installer,
  * Homebrew and npm use, since a desktop app starts the connector with a short PATH. Node's own
- * folder too, for an sf installed with npm.
+ * folder too, for an sf installed with npm. On Windows, the Salesforce installer's folder and
+ * npm's.
  */
-function sfPath(env = process.env, node = process.execPath) {
+function sfPath(
+  env = process.env,
+  node = process.execPath,
+  platform = process.platform
+) {
+  if (platform === "win32") {
+    const win = path.win32;
+    return [
+      env.PATH ?? env.Path,
+      win.dirname(node),
+      env.ProgramFiles && win.join(env.ProgramFiles, "sf", "bin"),
+      env.APPDATA && win.join(env.APPDATA, "npm")
+    ]
+      .filter(Boolean)
+      .join(win.delimiter);
+  }
   const home = env.HOME || env.USERPROFILE || "";
   return [
     env.PATH,
     path.dirname(node),
     "/usr/local/bin",
     "/opt/homebrew/bin",
-    home && path.join(home, ".npm-global", "bin"),
+    home && path.posix.join(home, ".npm-global", "bin"),
     "/usr/bin",
     "/bin"
   ]
     .filter(Boolean)
-    .join(path.delimiter);
+    .join(path.posix.delimiter);
+}
+
+/**
+ * The program to start for sf, and its words. On Windows sf is a .cmd file, which Node can only
+ * start through cmd.exe, where camp data in a request could be read as commands. So the node
+ * script that sf.cmd starts is started directly instead, with the node it would use: the
+ * Salesforce installer's own (bin\sf.cmd, then client\bin\node.exe and run.js; or node.exe and
+ * run.js beside sf.cmd, as in its updates), or for npm's
+ * (sf.cmd beside node_modules\@salesforce\cli) the node.exe beside it or on the PATH, else this
+ * one. Elsewhere, sf itself. Not found: sf, which then isn't there (ENOENT).
+ */
+function sfCommand(
+  args,
+  {
+    platform = process.platform,
+    dirs = sfPath(process.env, process.execPath, platform),
+    exists = require("fs").existsSync,
+    node = process.execPath
+  } = {}
+) {
+  if (platform !== "win32") return { file: "sf", args };
+  const win = path.win32;
+  const folders = dirs.split(win.delimiter).filter(Boolean);
+  const nodeOnPath =
+    folders.map((d) => win.join(d, "node.exe")).find((f) => exists(f)) || node;
+  for (const dir of folders) {
+    if (!exists(win.join(dir, "sf.cmd"))) continue;
+    for (const client of [win.join(dir, "..", "client", "bin"), dir]) {
+      const run = win.join(client, "run.js");
+      if (exists(run) && exists(win.join(client, "node.exe"))) {
+        return { file: win.join(client, "node.exe"), args: [run, ...args] };
+      }
+    }
+    const npm = win.join(
+      dir,
+      "node_modules",
+      "@salesforce",
+      "cli",
+      "bin",
+      "run.js"
+    );
+    if (exists(npm)) {
+      const beside = win.join(dir, "node.exe");
+      return {
+        file: exists(beside) ? beside : nodeOnPath,
+        args: [npm, ...args]
+      };
+    }
+  }
+  return { file: "sf", args };
+}
+
+/** The environment sf runs in: this one, with the PATH it is looked for on (one, on Windows). */
+function sfEnv(env = process.env, platform = process.platform) {
+  const out = {};
+  for (const [k, v] of Object.entries(env)) {
+    if (k.toUpperCase() !== "PATH") out[k] = v;
+  }
+  out.PATH = sfPath(env, process.execPath, platform);
+  out.SF_DISABLE_AUTOUPDATE = "true";
+  return out;
 }
 
 /**
@@ -85,17 +162,16 @@ function sfPath(env = process.env, node = process.execPath) {
  */
 function runSf(args, stdin, timeout = 0) {
   return new Promise((resolve) => {
+    const env = sfEnv();
+    const sf = sfCommand(args, { dirs: env.PATH });
     const child = execFile(
-      "sf",
-      args,
+      sf.file,
+      sf.args,
       {
         maxBuffer: 16 * 1024 * 1024,
         timeout,
-        env: {
-          ...process.env,
-          PATH: sfPath(),
-          SF_DISABLE_AUTOUPDATE: "true"
-        }
+        env,
+        windowsHide: true
       },
       (error, stdout, stderr) =>
         resolve(
@@ -1267,6 +1343,8 @@ module.exports = {
   call,
   check,
   sfPath,
+  sfCommand,
+  sfEnv,
   sfInstalled,
   signIn
 };

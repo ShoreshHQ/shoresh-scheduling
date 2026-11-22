@@ -25,7 +25,6 @@ export function connectPrompt(host) {
 
 My camp's Salesforce: ${host}
 
-If this computer runs Windows, stop and tell me: "Shoresh's connector works on a Mac for now."
 If you can't run commands on this computer, stop and tell me: "I can't set this up from here. In Shoresh's Settings, use the Claude desktop button instead, or paste the same message into Claude Code or Cursor."
 Never use sudo or ask for my computer's password; if a step needs that, use the message for that step instead.
 
@@ -35,6 +34,8 @@ Never use sudo or ask for my computer's password; if a step needs that, use the 
 2. Run: sf --version
    If the Salesforce command line is missing, install it: npm install --global @salesforce/cli
    If that fails, stop and tell me: "Your computer needs the Salesforce command line. Install it from https://developer.salesforce.com/tools/salesforcecli, then paste the same message to me again."
+   On Linux only, run: secret-tool --version
+   If it is missing, stop and tell me: "Your computer needs its keyring tool first, so your Salesforce sign-in is kept in your computer's keyring and not in a file. Install the libsecret-tools package (on Fedora: libsecret), then paste the same message to me again."
 
 3. Tell me: "A Salesforce page will open in your browser. Sign in as you usually do, then click Allow."
    Then run: sf org login web --instance-url https://${host} --alias shoresh
@@ -46,17 +47,18 @@ Never use sudo or ask for my computer's password; if a step needs that, use the 
    If it finds more than one, stop and tell me: "Your camp's Salesforce has more than one Shoresh connector. Ask your Salesforce admin which is Shoresh's."
    Make the folder <your home folder>/.shoresh/connect, then run: sf api request rest <the record's attributes.url>/Body --target-org shoresh --stream-to-file <your home folder>/.shoresh/connect.zip
    Unzip it into that folder, replacing what is there: unzip -o <your home folder>/.shoresh/connect.zip -d <your home folder>/.shoresh/connect
+   On Windows, unzip it with: tar -xf <your home folder>/.shoresh/connect.zip -C <your home folder>/.shoresh/connect
 
 5. Test it: node ${server} check --org shoresh
    It prints one sentence. Tell me that sentence, in plain words.
    If it says I'm not signed in, do step 3 again once.
    If it says I need a permission set, tell me to ask my Salesforce admin for the "Shoresh Scheduler" permission set.
 
-6. Add Shoresh to the AI app you are running in, as a local MCP server named "shoresh" whose command is node (its full path, from "which node") with the arguments: ${server} --org shoresh
+6. Add Shoresh to the AI app you are running in, as a local MCP server named "shoresh" whose command is node (its full path, from "which node", or "where node" on Windows) with the arguments: ${server} --org shoresh
    - Claude Code: run: claude mcp add --scope user shoresh -- node ${server} --org shoresh
    - Cursor: in ~/.cursor/mcp.json, under "mcpServers": "shoresh": {"command": "<full path of node>", "args": ["${server}", "--org", "shoresh"]}
    - Any other app: its own way of adding a local MCP server.
-   Write <your home folder> out in full. Keep everything already in a settings file, and check it is still valid JSON afterwards.
+   Write <your home folder> out in full, with forward slashes (on Windows too). Keep everything already in a settings file, and check it is still valid JSON afterwards.
    If this app can't add a local MCP server, tell me: "This AI app can't run Shoresh's connector yet. Claude Code and Cursor can, and Claude's desktop app can with the Claude desktop button in Shoresh's Settings."
 
 7. Finish with one plain sentence: whether Shoresh is connected, and that I should restart this AI app once so Shoresh shows up.`;

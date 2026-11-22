@@ -157,6 +157,15 @@ Recommended:Security`), and fails on moderate (3) or worse. A second step runs t
 Not covered: anything else only the org's compiler knows (types, method signatures), and
 sharing and query limits at run time.
 
+## The AI connector on macOS, Windows and Linux ("Connector on ...")
+
+The connector (`connect/`) runs on the director's own computer, so its Jest suite also runs on
+Windows and macOS runners, besides Linux: one check per system ("Connector on ubuntu-24.04",
+"windows-2025", "macos-15"). Each then installs the Salesforce command line with npm and has the
+connector find and start it, as it does on a director's computer. Not covered: the Salesforce
+installer's Windows layout (unit-tested only), the Yes dialogs (nobody can click them in CI), and
+a real sign-in.
+
 ## Real-browser accessibility check (by hand, not in CI)
 
 `node scripts/a11y-browser-check.mjs` drives the Shoresh tab in the test org in Google Chrome

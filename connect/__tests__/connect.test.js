@@ -12,6 +12,8 @@ const {
   call: callAs,
   check,
   sfPath,
+  sfCommand,
+  sfEnv,
   signIn,
   importModules,
   TOO_BIG,
@@ -4503,8 +4505,9 @@ describe("Shoresh for AI tools and the command line", () => {
     expect(
       sfPath(
         { PATH: "/usr/bin", HOME: "/Users/dana" },
-        "/apps/node/bin/node"
-      ).split(path.delimiter)
+        "/apps/node/bin/node",
+        "darwin"
+      ).split(":")
     ).toEqual([
       "/usr/bin",
       "/apps/node/bin",
@@ -4514,6 +4517,71 @@ describe("Shoresh for AI tools and the command line", () => {
       "/usr/bin",
       "/bin"
     ]);
+  });
+
+  // API-1.15
+  it("findsSfOnWindowsWithoutAShell: sf.cmd's own node script is started directly, never through cmd.exe", () => {
+    const env = {
+      Path: "C:\\Windows\\system32",
+      ProgramFiles: "C:\\Program Files",
+      APPDATA: "C:\\Users\\dana\\AppData\\Roaming"
+    };
+    const dirs = sfPath(env, "C:\\node\\node.exe", "win32");
+    expect(dirs.split(";")).toEqual([
+      "C:\\Windows\\system32",
+      "C:\\node",
+      "C:\\Program Files\\sf\\bin",
+      "C:\\Users\\dana\\AppData\\Roaming\\npm"
+    ]);
+    const on = (...files) => ({
+      platform: "win32",
+      dirs,
+      node: "C:\\claude\\node.exe",
+      exists: (f) => files.includes(f)
+    });
+    // The Salesforce installer: bin\sf.cmd, its own node and script under client\bin.
+    expect(
+      sfCommand(
+        ["--version"],
+        on(
+          "C:\\Program Files\\sf\\bin\\sf.cmd",
+          "C:\\Program Files\\sf\\client\\bin\\node.exe",
+          "C:\\Program Files\\sf\\client\\bin\\run.js"
+        )
+      )
+    ).toEqual({
+      file: "C:\\Program Files\\sf\\client\\bin\\node.exe",
+      args: ["C:\\Program Files\\sf\\client\\bin\\run.js", "--version"]
+    });
+    // npm's: the CLI's script, with the node on the PATH.
+    const npm = "C:\\Users\\dana\\AppData\\Roaming\\npm";
+    const run = `${npm}\\node_modules\\@salesforce\\cli\\bin\\run.js`;
+    expect(
+      sfCommand(
+        ["org", "list"],
+        on(`${npm}\\sf.cmd`, run, "C:\\node\\node.exe")
+      )
+    ).toEqual({ file: "C:\\node\\node.exe", args: [run, "org", "list"] });
+    expect(sfCommand(["org", "list"], on(`${npm}\\sf.cmd`, run))).toEqual({
+      file: "C:\\claude\\node.exe",
+      args: [run, "org", "list"]
+    });
+    // Not installed: sf, which isn't found, so the person is told to install it.
+    expect(sfCommand(["--version"], on())).toEqual({
+      file: "sf",
+      args: ["--version"]
+    });
+    // Elsewhere, sf itself.
+    expect(
+      sfCommand(["--version"], { platform: "linux", exists: () => true })
+    ).toEqual({ file: "sf", args: ["--version"] });
+    // One PATH for sf, however Windows spells it, and sf never updates itself mid-call.
+    const given = sfEnv({ ...env, HOME: "x" }, "win32");
+    expect(Object.keys(given).filter((k) => /^path$/i.test(k))).toEqual([
+      "PATH"
+    ]);
+    expect(given.PATH.split(";")).toContain("C:\\Program Files\\sf\\bin");
+    expect(given.SF_DISABLE_AUTOUPDATE).toBe("true");
   });
 
   // API-1.17
