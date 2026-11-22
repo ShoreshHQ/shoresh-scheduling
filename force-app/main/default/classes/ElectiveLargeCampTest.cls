@@ -51,6 +51,7 @@ private class ElectiveLargeCampTest {
         SaveDone__c,
         SaveTotal__c,
         SaveProblem__c,
+        SaveJob__c,
         SeatCount__c
       FROM ElectiveRun__c
       WHERE Id = :runId
@@ -181,8 +182,17 @@ private class ElectiveLargeCampTest {
         'Nothing from the part that failed'
       );
       Assert.isNull(run.TimesFingerprint__c, 'Never shown as assigned');
+      Assert.areEqual(
+        2,
+        run.Revision__c.intValue(),
+        'A screen opened before is stale'
+      );
       ElectiveSeats.RunView view = ElectiveSeatsController.openRun(camp.runId);
       Assert.areEqual(run.SaveProblem__c, view.saveProblem);
+      Assert.isNull(
+        ElectiveSeatsController.clearPicture(camp.ids.get('Season')).saveTotal,
+        'An Assign is never taken for a Clear'
+      );
       // Assign again goes ahead, and puts the stop behind it.
       ElectiveSeatSaves.rowBound = 9500;
       ElectiveSeatSaves.AssignRequest again = camp.everyoneInDrama(
@@ -362,6 +372,34 @@ private class ElectiveLargeCampTest {
         [SELECT COUNT() FROM ElectiveSet__c WHERE Id = :camp.setId],
         'The set stays'
       );
+    }
+  }
+
+  @IsTest
+  static void aSaveSalesforceStoppedWithoutAWordIsShownStoppedNotSavingForEver() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      ElectiveSeatsCamp camp = new ElectiveSeatsCamp(4);
+      ElectiveSeatSaves.rowBound = 5;
+      ElectiveBigSave.part = 3;
+
+      Test.startTest();
+      ElectiveSeats.RunView view = camp.assign(camp.everyoneInDrama(1));
+      Id jobId = runOf(camp.runId).SaveJob__c;
+      Assert.isNotNull(jobId, 'The background job is kept with the run');
+      // Cancelled in Setup before any part ran.
+      System.abortJob(jobId);
+      Test.stopTest();
+
+      view = ElectiveSeatsController.openRun(camp.runId);
+      Assert.areEqual(
+        'Salesforce stopped it before the end.',
+        view.saveProblem
+      );
+      // Not "still being saved": the next save goes ahead and puts the stop behind it.
+      ElectiveSeatSaves.rowBound = 9500;
+      view = camp.assign(camp.everyoneInDrama(view.revision));
+      Assert.areEqual(8, view.seats.size());
+      Assert.isNull(view.saveTotal);
     }
   }
 }

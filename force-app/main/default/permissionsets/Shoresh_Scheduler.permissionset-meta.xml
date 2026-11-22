@@ -1365,6 +1365,11 @@
     </fieldPermissions>
     <fieldPermissions>
         <editable>true</editable>
+        <field>ElectiveRun__c.SaveJob__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>true</editable>
         <field>ElectiveRun__c.SaveProblem__c</field>
         <readable>true</readable>
     </fieldPermissions>

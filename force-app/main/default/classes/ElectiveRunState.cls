@@ -120,6 +120,7 @@ public with sharing class ElectiveRunState {
         SaveDone__c,
         SaveTotal__c,
         SaveProblem__c,
+        SaveJob__c,
         CreatedDate
       FROM ElectiveRun__c
       WHERE Id = :runId
@@ -128,6 +129,7 @@ public with sharing class ElectiveRunState {
     if (found.isEmpty()) {
       throw notThere();
     }
+    ElectiveBigSave.settle(found);
     return found[0];
   }
 

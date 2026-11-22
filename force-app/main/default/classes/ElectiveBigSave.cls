@@ -62,6 +62,17 @@ public with sharing class ElectiveBigSave implements Database.Batchable<Object>,
    * has checked everything and holds the runs.
    */
   public static void begin(Work work, Boolean emptiesRecycleBin) {
+    ElectiveBigSave save = new ElectiveBigSave(
+      work,
+      partSize(emptiesRecycleBin)
+    );
+    Id jobId;
+    if (Test.isRunningTest() && holdInTest) {
+      held = save;
+    } else {
+      // It starts once this request is saved, so it sees the marks below.
+      jobId = Database.executeBatch(save, 1);
+    }
     List<ElectiveRun__c> marks = new List<ElectiveRun__c>();
     for (Id runId : work.runIds) {
       marks.add(
@@ -69,20 +80,71 @@ public with sharing class ElectiveBigSave implements Database.Batchable<Object>,
           Id = runId,
           SaveDone__c = 0,
           SaveTotal__c = work.total,
-          SaveProblem__c = null
+          SaveProblem__c = null,
+          SaveJob__c = jobId
         )
       );
     }
     Database.update(marks, AccessLevel.USER_MODE);
-    ElectiveBigSave save = new ElectiveBigSave(
-      work,
-      partSize(emptiesRecycleBin)
-    );
-    if (Test.isRunningTest() && holdInTest) {
-      held = save;
-    } else {
-      Database.executeBatch(save, 1);
+  }
+
+  // Salesforce's own word for a background job that is over, however it ended.
+  private static final Set<String> JOB_OVER = new Set<String>{
+    'Completed',
+    'Failed',
+    'Aborted'
+  };
+
+  /**
+   * Runs read as saving whose background job Salesforce has already ended (cancelled in Setup, or
+   * stopped by a limit before it could say so): shown as stopped (SaveProblem__c, in memory), so
+   * the run is never "still saving" for ever and the next save goes ahead and clears it. A run is
+   * read again first, so a save that just finished is never taken for one that stopped.
+   */
+  public static void settle(List<ElectiveRun__c> runs) {
+    Set<String> jobIds = new Set<String>();
+    for (ElectiveRun__c run : runs) {
+      if (isSaving(run) && run.SaveJob__c != null) {
+        jobIds.add(run.SaveJob__c);
+      }
     }
+    if (jobIds.isEmpty()) {
+      return;
+    }
+    // System mode: a job's status only, by the Id this save kept; AsyncApexJob has no user-mode
+    // access a scheduler is granted.
+    Set<String> over = new Set<String>();
+    for (AsyncApexJob job : [
+      SELECT Id, Status
+      FROM AsyncApexJob
+      WHERE Id IN :jobIds
+      WITH SYSTEM_MODE
+    ]) {
+      if (JOB_OVER.contains(job.Status)) {
+        over.add(String.valueOf(job.Id).left(18));
+      }
+    }
+    if (over.isEmpty()) {
+      return;
+    }
+    Map<Id, ElectiveRun__c> now = new Map<Id, ElectiveRun__c>(
+      [
+        SELECT Id, SaveTotal__c, SaveProblem__c, SaveJob__c
+        FROM ElectiveRun__c
+        WHERE SaveJob__c IN :over
+        WITH USER_MODE
+      ]
+    );
+    for (ElectiveRun__c run : runs) {
+      ElectiveRun__c fresh = now.get(run.Id);
+      if (fresh != null && isSaving(fresh) && over.contains(fresh.SaveJob__c)) {
+        run.SaveProblem__c = 'Salesforce stopped it before the end.';
+      }
+    }
+  }
+
+  private static Boolean isSaving(ElectiveRun__c run) {
+    return run.SaveTotal__c != null && run.SaveProblem__c == null;
   }
 
   /** One item per part: a part's rows are the next ones in order, whichever item it is. */
@@ -173,12 +235,25 @@ public with sharing class ElectiveBigSave implements Database.Batchable<Object>,
       ErrorCodes.said('', ErrorCodes.detailOf(e));
     }
     List<ElectiveRun__c> runs = [
-      SELECT Id
+      SELECT Id, Revision__c
       FROM ElectiveRun__c
       WHERE Id IN :work.runIds
       WITH USER_MODE
     ];
-    mark(runs, done, why.left(255));
+    List<ElectiveRun__c> marks = new List<ElectiveRun__c>();
+    for (ElectiveRun__c run : runs) {
+      // The rows written so far stay: the revision moves on, so a screen opened before can't
+      // save over them unseen (SeenSaves).
+      marks.add(
+        new ElectiveRun__c(
+          Id = run.Id,
+          SaveDone__c = done,
+          SaveProblem__c = why.left(255),
+          Revision__c = (run.Revision__c == null ? 0 : run.Revision__c) + 1
+        )
+      );
+    }
+    Database.update(marks, AccessLevel.USER_MODE);
   }
 
   private void mark(List<ElectiveRun__c> runs, Integer count, String problem) {
@@ -199,6 +274,7 @@ public with sharing class ElectiveBigSave implements Database.Batchable<Object>,
   public static ElectiveRun__c ended(ElectiveRun__c changes) {
     changes.SaveDone__c = null;
     changes.SaveTotal__c = null;
+    changes.SaveJob__c = null;
     changes.SaveProblem__c = null;
     return changes;
   }

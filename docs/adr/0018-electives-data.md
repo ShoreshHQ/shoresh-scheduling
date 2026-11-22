@@ -876,8 +876,13 @@ screen, and other programs' electives.
       says "Saving stopped after 6 of 8. That was removed. Reload the page." with Assign again
       (Assign again then goes ahead and clears it). A part Salesforce stops without a word (a
       limit can't be caught) is found by the next, whose count isn't what was written, and stops
-      the save the same way. A Finalize that stops deletes the version it kept, so no
-      "Electives finalized" version stands for a run that isn't.
+      the save the same way; a job Salesforce ends without a word (cancelled in Setup, or its last
+      step stopped by a limit) is found when the run is read (`SaveJob__c`, its status), shown as
+      "Salesforce stopped it before the end.", and the next save goes ahead. A stop moves the
+      run's revision on, so a screen opened before can't save over the rows already written. A
+      Finalize that stops deletes the version it kept, so no "Electives finalized" version stands
+      for a run that isn't. Clear's picture takes a save in parts only from final runs (only
+      Clear saves those), never an Assign or Finalize of a draft.
     - **Clear in parts** deletes the runs' seats, then their choices, each part emptied from the
       Recycle Bin at once, then the runs and campers as a small Clear does. Its picture counts
       seats from each run (`SeatCount__c`, a roll-up), never reading them: a season of a large camp
