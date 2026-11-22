@@ -368,17 +368,33 @@
               <span class="shoresh-num">{apartCount}</span>
             </h4>
             <template for:each={apartRows} for:item="row">
-              <div
-                key={row.key}
-                class="row row_look shoresh-raised"
-                data-apart={row.key}
-              >
+              <div key={row.key} class={row.className} data-apart={row.key}>
                 <span class="n">{row.name}</span>
                 <span class="d">{row.where}</span>
-                <span class="text">{row.why}</span>
-                <span class="corner" role="img" aria-label="Needs a look"
-                  ><i class="shoresh-look-mark"></i
-                ></span>
+                <template lwc:if={row.canSplit}>
+                  <span class="options">
+                    <span class="d">{row.why}</span>
+                    <button
+                      type="button"
+                      class={row.differentClass}
+                      aria-pressed={row.differentPressed}
+                      aria-label={row.differentLabel}
+                      data-key={row.key}
+                      data-answer="different"
+                      onclick={handleDifferent}
+                    >
+                      {differentWords}
+                    </button>
+                  </span>
+                </template>
+                <template lwc:else>
+                  <span class="text">{row.why}</span>
+                </template>
+                <template lwc:if={row.waiting}>
+                  <span class="corner" role="img" aria-label="Needs a look"
+                    ><i class="shoresh-look-mark"></i
+                  ></span>
+                </template>
               </div>
             </template>
           </section>
@@ -455,8 +471,8 @@
               </p>
             </template>
             <p class="quiet">
-              Give each a camper number in the sheet, or fix the duplicate, then
-              choose the file again.
+              If they are different campers, say so on the card before. Else fix
+              the duplicate, then choose the file again.
             </p>
           </div>
         </template>
@@ -474,6 +490,38 @@
           </div>
         </template>
         <template lwc:else>
+          <template lwc:if={hasWhich}>
+            <section class="section" data-section="which">
+              <h4 class="section-head">
+                {whichHead}
+                <span class="shoresh-num" data-id="which-count"
+                  >{whichCount}</span
+                >
+              </h4>
+              <template for:each={whichList} for:item="row">
+                <div
+                  key={row.key}
+                  class="row row_look shoresh-raised"
+                  data-which={row.key}
+                >
+                  <span class="n">{row.name}</span>
+                  <span class="d">{row.where}</span>
+                  <span class="options">
+                    <lightning-combobox
+                      class="same-as"
+                      label={row.label}
+                      variant="label-hidden"
+                      placeholder={whichHead}
+                      value={row.value}
+                      options={row.options}
+                      data-key={row.key}
+                      onchange={handleWhich}
+                    ></lightning-combobox>
+                  </span>
+                </div>
+              </template>
+            </section>
+          </template>
           <div class="lines" data-id="lines">
             <template for:each={lines} for:item="line">
               <p key={line.key} class={line.className} data-line={line.key}>

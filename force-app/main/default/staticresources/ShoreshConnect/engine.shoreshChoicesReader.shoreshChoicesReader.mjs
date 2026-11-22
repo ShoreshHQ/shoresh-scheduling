@@ -333,6 +333,13 @@ function camperFrom(key, rowsOfOne, out) {
   return camper;
 }
 
+/** One row of a name the director may call different campers: { camper, notes }. */
+function splitCamper(key, row) {
+  const own = { notKept: [], toCheck: [] };
+  const camper = camperFrom(`${key}|row:${row.sheet}!${row.row}`, [row], own);
+  return { camper, notes: own.notKept };
+}
+
 function campersFrom(rows, out) {
   const groups = new Map();
   for (const row of rows) {
@@ -392,7 +399,12 @@ function campersFrom(rows, out) {
           row: r.row,
           division: r.division,
           bunk: r.bunk
-        }))
+        })),
+        // On a sheet with one row per camper each row is a whole camper, so the director may
+        // say they are different campers (ELECT-2.7): each row then comes in as its own.
+        split: rowsOfOne.every((r) => r.oneRowEach)
+          ? rowsOfOne.map((r) => splitCamper(key, r))
+          : null
       });
       for (const row of rowsOfOne) {
         for (const note of row.notes)
@@ -504,8 +516,10 @@ function newNames(campers, activities) {
  *   sheet, row, column }). Kept apart from the campers, so only a save that means to can carry
  *   them: the review screen (slice E6) shows them and saves each one with its camper (Greg's
  *   decision 48.3); a comment whose camper is not brought in (camper null) is shown, not saved.
- * - cantTellApart: campers sharing a name with no camper number ({ name, rows }); not in campers.
- *   On a sheet with one row per camper, any name on two rows without a number is here.
+ * - cantTellApart: campers sharing a name with no camper number ({ name, rows, split }); not in
+ *   campers. On a sheet with one row per camper, any name on two rows without a number is here,
+ *   and split holds each row as its own camper ({ camper, notes }) for when the director says
+ *   they are different campers (ELECT-2.7); elsewhere split is null.
  * - notRead: what was not read ({ kind, sheet, row?, column?, ... }): aboveTable, column (a
  *   heading the reader does not use; its contents are never copied), noName, noChoices,
  *   notAChoice, sheet (no choices on it), menu (a list of what is offered), outsideTable.
@@ -539,12 +553,16 @@ export function readChoices(file, { activities } = {}) {
     }
   }
   const campers = campersFrom(out.rows, out);
+  // A name only rows the director may call different campers have is still asked about.
+  const splits = out.cantTellApart.flatMap((item) =>
+    (item.split || []).map((s) => s.camper)
+  );
   return {
     campers,
     notKept: out.notKept,
     cantTellApart: out.cantTellApart,
     notRead: out.notRead,
     toCheck: out.toCheck,
-    newNames: newNames(campers, activities)
+    newNames: newNames([...campers, ...splits], activities)
   };
 }

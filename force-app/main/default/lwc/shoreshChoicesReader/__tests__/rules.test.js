@@ -191,15 +191,41 @@ describe("reading", () => {
       )
     );
     expect(reading.campers).toEqual([]);
-    expect(reading.cantTellApart).toEqual([
-      {
-        name: "Maya Fernwood",
-        rows: [
-          { sheet: "choices.csv", row: 2, division: "Juniors", bunk: null },
-          { sheet: "choices.csv", row: 3, division: "Seniors", bunk: null }
-        ]
-      }
+    const [apart] = reading.cantTellApart;
+    expect(reading.cantTellApart).toHaveLength(1);
+    expect(apart.name).toBe("Maya Fernwood");
+    expect(apart.rows).toEqual([
+      { sheet: "choices.csv", row: 2, division: "Juniors", bunk: null },
+      { sheet: "choices.csv", row: 3, division: "Seniors", bunk: null }
     ]);
+  });
+
+  // ELECT-2.7 (Greg 2026-11-21): one row per camper, so each row may come in as its own camper.
+  it("offers each row of a name it can't tell apart as its own camper, with its own comment", () => {
+    const reading = read(
+      lines(
+        "Camper Name,Division,#1,#2,Comments",
+        "Maya Fernwood,Juniors,Archery,Drama,Likes the lake",
+        "Maya Fernwood,Seniors,Drama,Swim,"
+      ),
+      { activities: ["Archery", "Drama", "Swim"] }
+    );
+    const [apart] = reading.cantTellApart;
+    expect(apart.split.map((s) => s.camper.division)).toEqual([
+      "Juniors",
+      "Seniors"
+    ]);
+    expect(apart.split.map((s) => s.camper.choices.map((c) => c.name))).toEqual(
+      [
+        ["Archery", "Drama"],
+        ["Drama", "Swim"]
+      ]
+    );
+    expect(new Set(apart.split.map((s) => s.camper.key)).size).toBe(2);
+    expect(apart.split[0].notes.map((n) => [n.camper, n.text])).toEqual([
+      [apart.split[0].camper.key, "Likes the lake"]
+    ]);
+    expect(apart.split[1].notes).toEqual([]);
   });
 
   it.each([
@@ -218,6 +244,7 @@ describe("reading", () => {
         )
       );
       expect(reading.campers).toEqual([]);
+      // One row per choice: which rows are one camper can't be said, so never split.
       expect(reading.cantTellApart).toEqual([
         {
           name: "Maya Fernwood",
@@ -226,7 +253,8 @@ describe("reading", () => {
             row: i + 2,
             division: null,
             bunk
-          }))
+          })),
+          split: null
         }
       ]);
     }

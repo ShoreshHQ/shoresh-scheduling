@@ -61,6 +61,13 @@ review screens and the save on it.
    still shown, with no camper), and when one camper's rows name different activities for the
    same rank, the first row's choice is kept and the clash is marked to check, so a camper never
    holds another child's choices or two choices of one rank (desktop §4.1).
+   _Amended 2026-11-21 (Greg; ELECT-2.7):_ on a sheet with one row per camper, the director may
+   say rows Shoresh can't tell apart are **different campers** (card 2); each row then comes in
+   as its own camper with its own bunk, choices and comment. Rows that are one camper's several
+   choices are never split. A row whose name more than one camper in the season has is asked on
+   card 3, **Which camper?** (each by their bunk, or the order they were added, or "A new
+   camper"); Import waits for the answers. The same goes through the AI (`different_campers`,
+   `which_camper`).
 6. **Comments are read and shown, and saved with their camper; opt-outs are not read at all.**
    Parent comments come back in their own list, `notKept`, apart from the campers, so only a save
    that means to can carry them. _Amended by slice E6 (Greg's decision 48.3, "SAVED with the
@@ -145,7 +152,7 @@ name). Flow and words follow the desktop's choices-sheet import (`AssignmentPane
     `ChoicesImportChoices`, each small enough for Code Analyzer's complexity rules): names added as
     activities, each offered in the set as **proposed** (confirmed on the Electives screen before
     it gets campers, plan §2); the campers; the run; the choices; the remembered answers. A
-    camper is found by its key (`ElectiveRunTriggers.camperKey`: camper number, else a hash of the
+    camper is found by its key (`CamperKeys.of`: camper number, else a hash of the
     name), never by querying a name; new ones are made. The key is hidden (no one is granted it), so
     it alone is matched in system mode, inside the season already read in user mode; the campers
     found are then read in user mode by Id. Two rows of one request with one key (a

@@ -52,7 +52,7 @@ public with sharing class IncomingCamperGroupPlan {
     } else if (String.isBlank(record.bunk)) {
       batch.problem(i, 'Say which ' + groupWord + ' (bunk).');
     } else if (campers.doubt(i)) {
-      batch.problem(i, IncomingCampers.DOUBT);
+      batch.problem(i, campers.doubtWords(i));
     } else if (campers.at(i) == null) {
       batch.problem(i, IncomingCampers.notFound());
     } else if (runs.groupNamed(record.bunk) == null) {
