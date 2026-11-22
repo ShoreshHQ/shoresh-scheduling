@@ -284,4 +284,27 @@ private class ScreenErrorsTest {
       ScreenErrors.messageOf(outcome.getErrors()[0])
     );
   }
+
+  @IsTest
+  static void twoSavesAtOnceSayAnotherSaveIsStillGoing() {
+    String busy = 'Another save in this season is still going. Try again in a moment.';
+    Assert.areEqual(
+      busy,
+      ScreenErrors.plainOrNull(StatusCode.UNABLE_TO_LOCK_ROW)
+    );
+    Assert.areEqual(
+      busy,
+      ScreenErrors.words(
+        new QueryException(
+          'Record Currently Unavailable: The record you are attempting to edit, or one of its related records, is currently being modified by another user. Please try again later.'
+        )
+      ),
+      'Salesforce\'s own wording for a held record is never shown'
+    );
+    Assert.isTrue(
+      ScreenErrors.words(new QueryException('List has no rows'))
+        .startsWith('Shoresh couldn\'t tell why.'),
+      'Any other read problem is still unknown'
+    );
+  }
 }

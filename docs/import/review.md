@@ -142,7 +142,9 @@ Each rule is clue, meaning, example, test.
    takes its cells out of those weeks (`ImportSupersededCells`), and Undo puts the item and those
    days back exactly (a day changed since is kept and named). Any other imported week, a draft,
    or a published schedule keeps it ("Arhcery is on Imported from maple.xlsx"). The save
-   checks the same.
+   checks the same. A season with more schedule days than are read (5,000) keeps every item not
+   already found in use ("Arhcery may be on one of the season's many schedules"), never offered
+   for removal unchecked (Apex `ingest58AnItemPastTheDaysReadIsInUseAndNeverRemoved`).
    Meaning: listed under "Not in these files" with **Keep** (pressed, the default) and
    **Remove**; nothing is removed unasked. Removed ones go in the same all-or-none save, in user
    mode, after the server checks each is still the import's and nothing uses it

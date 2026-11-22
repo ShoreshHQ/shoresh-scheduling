@@ -689,4 +689,47 @@ private class ImportReviewTest {
       Assert.isTrue(refusal.contains('Swim is on Week 1 by hand'), refusal);
     }
   }
+
+  @IsTest
+  static void ingest58AnItemPastTheDaysReadIsInUseAndNeverRemoved() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      Season__c season = newSeason();
+      Week__c week = importedWeek(season);
+      Activity__c swim = activityNamed(season.Id, 'Swim');
+      List<ScheduleDay__c> imported = [
+        SELECT Date__c, GridFormatVersion__c, Grid__c, Schedule__r.Program__c
+        FROM ScheduleDay__c
+        WHERE Schedule__r.Program__r.Season__c = :season.Id
+        WITH USER_MODE
+        ORDER BY Id
+      ];
+      Schedule__c manual = ShoreshTestData.savedVersion(
+        imported[0].Schedule__r.Program__c,
+        week.Id,
+        'Week 1 by hand'
+      );
+      Database.insert(
+        new ScheduleDay__c(
+          Schedule__c = manual.Id,
+          Date__c = imported[0].Date__c,
+          GridFormatVersion__c = imported[0].GridFormatVersion__c,
+          Grid__c = imported[0].Grid__c
+        ),
+        AccessLevel.SYSTEM_MODE
+      );
+      // A season with more schedule days than are read: the by-hand day is past them.
+      ImportItemUses.maxDays = imported.size();
+      Test.startTest();
+      ImportProvenance.Standing standing = ImportController.getImported(
+        season.Id
+      );
+      String refusal = refusalOf(removingSwim(season, week, true));
+      Test.stopTest();
+      Assert.areEqual(
+        'Swim may be on one of the season\'s many schedules',
+        standing.inUse.get(swim.Id)
+      );
+      Assert.isTrue(refusal.contains('can\'t be removed'), refusal);
+    }
+  }
 }
