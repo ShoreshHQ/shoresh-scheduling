@@ -400,20 +400,25 @@ private class ElectiveLargeCampTest {
   // ELECT-5.9: a job Salesforce ended is shown stopped, never saving for ever.
   @IsTest
   static void aSaveSalesforceStoppedWithoutAWordIsShownStoppedNotSavingForEver() {
-    System.runAs(ShoreshTestData.scheduler()) {
-      ElectiveSeatsCamp camp = new ElectiveSeatsCamp(4);
+    User scheduler = ShoreshTestData.scheduler();
+    ElectiveSeatsCamp camp;
+    Id jobId;
+    System.runAs(scheduler) {
+      camp = new ElectiveSeatsCamp(4);
       ElectiveSeatSaves.rowBound = 5;
       ElectiveBigSave.part = 3;
 
       Test.startTest();
-      ElectiveSeats.RunView view = camp.assign(camp.everyoneInDrama(1));
-      Id jobId = runOf(camp.runId).SaveJob__c;
+      camp.assign(camp.everyoneInDrama(1));
+      jobId = runOf(camp.runId).SaveJob__c;
       Assert.isNotNull(jobId, 'The background job is kept with the run');
-      // Cancelled in Setup before any part ran.
-      System.abortJob(jobId);
-      Test.stopTest();
+    }
+    // Cancelled in Setup, by an admin, before any part ran.
+    System.abortJob(jobId);
+    Test.stopTest();
 
-      view = ElectiveSeatsController.openRun(camp.runId);
+    System.runAs(scheduler) {
+      ElectiveSeats.RunView view = ElectiveSeatsController.openRun(camp.runId);
       Assert.areEqual(
         'Salesforce stopped it before the end.',
         view.saveProblem

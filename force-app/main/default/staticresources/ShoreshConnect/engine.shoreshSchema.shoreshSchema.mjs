@@ -91,8 +91,13 @@ const electiveRunFinalizedAt = schemaName("ElectiveRun__c.FinalizedAt__c");
 const electiveRunFinalizedBy = schemaName("ElectiveRun__c.FinalizedBy__c");
 const electiveRunNewVersionOf = schemaName("ElectiveRun__c.NewVersionOf__c");
 const electiveRunRevision = schemaName("ElectiveRun__c.Revision__c");
+const electiveRunSaveDone = schemaName("ElectiveRun__c.SaveDone__c");
+const electiveRunSaveJob = schemaName("ElectiveRun__c.SaveJob__c");
+const electiveRunSaveProblem = schemaName("ElectiveRun__c.SaveProblem__c");
+const electiveRunSaveTotal = schemaName("ElectiveRun__c.SaveTotal__c");
 const electiveRunSchedule = schemaName("ElectiveRun__c.Schedule__c");
 const electiveRunSeason = schemaName("ElectiveRun__c.Season__c");
+const electiveRunSeatCount = schemaName("ElectiveRun__c.SeatCount__c");
 const electiveRunSourceFile = schemaName("ElectiveRun__c.SourceFile__c");
 const electiveRunSourceFingerprint = schemaName("ElectiveRun__c.SourceFingerprint__c");
 const electiveRunStatus = schemaName("ElectiveRun__c.Status__c");
@@ -468,8 +473,13 @@ export const FIELD = Object.freeze({
     FinalizedBy: electiveRunFinalizedBy.fieldApiName,
     NewVersionOf: electiveRunNewVersionOf.fieldApiName,
     Revision: electiveRunRevision.fieldApiName,
+    SaveDone: electiveRunSaveDone.fieldApiName,
+    SaveJob: electiveRunSaveJob.fieldApiName,
+    SaveProblem: electiveRunSaveProblem.fieldApiName,
+    SaveTotal: electiveRunSaveTotal.fieldApiName,
     Schedule: electiveRunSchedule.fieldApiName,
     Season: electiveRunSeason.fieldApiName,
+    SeatCount: electiveRunSeatCount.fieldApiName,
     SourceFile: electiveRunSourceFile.fieldApiName,
     SourceFingerprint: electiveRunSourceFingerprint.fieldApiName,
     Status: electiveRunStatus.fieldApiName,
