@@ -489,9 +489,15 @@ describe("the screens' files, made on this computer", () => {
 
   // API-1.90
   it("filesStayOnThisComputer: one read, the file saved only in the Downloads folder, nothing there replaced", async () => {
-    expect(downloadsFolder({ HOME: "/Users/someone" })).toBe(
+    expect(downloadsFolder({ HOME: "/Users/someone" }, "darwin")).toBe(
       "/Users/someone/Downloads"
     );
+    expect(
+      downloadsFolder(
+        { HOME: "/c/Users/someone", USERPROFILE: "C:\\Users\\someone" },
+        "win32"
+      )
+    ).toBe("C:\\Users\\someone\\Downloads");
     const setup = camp();
     const folder = fs.mkdtempSync(path.join(os.tmpdir(), "shoresh-files-"));
     const name = workbook.fileNameOf(`${setup.season.Name} - worksheet`);
