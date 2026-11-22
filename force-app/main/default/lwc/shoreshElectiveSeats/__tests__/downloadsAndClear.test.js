@@ -311,6 +311,72 @@ describe("end-of-season Clear", () => {
     expect(text($(element, '[data-id="status"]'))).toBe("");
   });
 
+  it("a large season clears in the background: the Clear button counts up, then it says what went (ADR 0018 choice 59)", async () => {
+    const element = await openClear();
+    jest.useFakeTimers();
+    try {
+      clearElectives.mockResolvedValue({
+        runs: 0,
+        campers: 0,
+        picture: { ...PICTURE, saveDone: 0, saveTotal: 91200 }
+      });
+      clearPicture
+        .mockResolvedValueOnce({
+          ...PICTURE,
+          saveDone: 45000,
+          saveTotal: 91200
+        })
+        .mockResolvedValueOnce({ ...PICTURE, weeks: [] });
+      seatsSetup.mockResolvedValue({ runs: [] });
+      const go = () => $(element, '[data-id="clear-go"]');
+      go().click();
+      await flush();
+      expect(text(go())).toBe("Clearing 0 of 91,200");
+      expect(go().disabled).toBe(true);
+      jest.advanceTimersByTime(3000);
+      await flush();
+      expect(text(go())).toBe("Clearing 45,000 of 91,200");
+      jest.advanceTimersByTime(3000);
+      await flush();
+      expect($(element, '[data-id="clear-heading"]')).toBeNull();
+      expect(text($(element, '[data-id="status"]'))).toBe(
+        "Cleared these seats."
+      );
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  it("a large Clear that stopped says how far it got and why, on the Clear screen", async () => {
+    const element = await openClear();
+    jest.useFakeTimers();
+    try {
+      clearElectives.mockResolvedValue({
+        runs: 0,
+        campers: 0,
+        picture: { ...PICTURE, saveDone: 0, saveTotal: 91200 }
+      });
+      clearPicture.mockResolvedValueOnce({
+        ...PICTURE,
+        saveDone: 4500,
+        saveTotal: 91200,
+        saveProblem:
+          "Another save in this season is still going. Try again in a moment."
+      });
+      $(element, '[data-id="clear-go"]').click();
+      await flush();
+      jest.advanceTimersByTime(3000);
+      await flush();
+      expect($(element, '[data-id="clear-heading"]')).not.toBeNull();
+      expect(text($(element, '[data-id="clear-error"]'))).toBe(
+        "Clearing stopped after 4,500 of 91,200. Another save in this season is still going. Try again in a moment."
+      );
+      expect(text($(element, '[data-id="clear-go"]'))).toBe("Clear");
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
   it("refused, it says why and draws the season again as it now is", async () => {
     const element = await openClear();
     clearElectives.mockRejectedValue({

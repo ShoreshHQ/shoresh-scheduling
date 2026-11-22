@@ -1,8 +1,10 @@
 /**
  * The season read once for end-of-season Clear (electives slice E10; repo ADR 0018 choices 55 to
- * 58): its weeks, runs, campers, choices and seats as ElectiveClear's picture, what the whole
+ * 59): its weeks, runs, campers, choices and seats as ElectiveClear's picture, what the whole
  * season's or one week's Clear removes, and the stamp Clear checks. In user mode, in a fixed
- * number of queries whatever the season's size; never sorted or filtered on a camper's name.
+ * number of queries whatever the season's size; never sorted or filtered on a camper's name. The
+ * seats are counted by each run (SeatCount__c), never read: a large camp's season holds more seats
+ * than one request may read.
  */
 public with sharing class ElectiveClearReading {
   public ElectiveClear.Picture picture = new ElectiveClear.Picture();
@@ -17,6 +19,8 @@ public with sharing class ElectiveClearReading {
   // imported against two schedules of a week is one camper's choices, counted once.
   private Map<Id, Id> setOfRun = new Map<Id, Id>();
   private Map<String, Integer> countedChoices = new Map<String, Integer>();
+  // Each run's rows under it: its choices and seats, what a Clear in parts deletes before it.
+  private Map<Id, Integer> rowsOfRun = new Map<Id, Integer>();
 
   public ElectiveClearReading(Id seasonId) {
     this.seasonId = seasonId;
@@ -39,7 +43,6 @@ public with sharing class ElectiveClearReading {
     readRuns();
     readCampers();
     readChoices();
-    readSeats();
     picture.stamp = stampOf();
   }
 
@@ -69,17 +72,32 @@ public with sharing class ElectiveClearReading {
         ElectiveSet__c,
         Status__c,
         Revision__c,
-        FinalizedAt__c
+        FinalizedAt__c,
+        SeatCount__c,
+        SaveDone__c,
+        SaveTotal__c,
+        SaveProblem__c,
+        SaveJob__c
       FROM ElectiveRun__c
       WHERE Season__c = :seasonId
       WITH USER_MODE
       ORDER BY Id
     ];
+    ElectiveSaveJobs.settle(runs);
+    ElectiveRun__c clearing = ElectiveSaveJobs.clearing(runs);
+    picture.saveDone = clearing?.SaveDone__c;
+    picture.saveTotal = clearing?.SaveTotal__c;
+    picture.saveProblem = clearing?.SaveProblem__c;
     for (ElectiveRun__c run : runs) {
       weekOfRun.put(run.Id, run.Week__c);
       setOfRun.put(run.Id, run.ElectiveSet__c);
       ElectiveClear.WeekCounts week = weeks.get(run.Week__c);
       week.runs++;
+      Integer seats = run.SeatCount__c == null
+        ? 0
+        : run.SeatCount__c.intValue();
+      week.seats += seats;
+      rowsOfRun.put(run.Id, seats);
       if (run.Status__c == ElectiveClear.COMMITTED) {
         week.working.add(run.Name);
       } else {
@@ -120,6 +138,10 @@ public with sharing class ElectiveClearReading {
     ]) {
       Id weekId = weekOfRun.get(pref.ElectiveRun__c);
       ElectiveClear.WeekCounts week = weeks.get(weekId);
+      rowsOfRun.put(
+        pref.ElectiveRun__c,
+        rowsOfRun.get(pref.ElectiveRun__c) + 1
+      );
       countChoices(week, pref);
       if (campersByWeek.get(weekId).add(pref.Camper__c)) {
         week.campers++;
@@ -151,19 +173,6 @@ public with sharing class ElectiveClearReading {
     }
   }
 
-  private void readSeats() {
-    for (AggregateResult row : [
-      SELECT ElectiveRun__c runId, COUNT(Id) seatCount
-      FROM Assignment__c
-      WHERE ElectiveRun__r.Season__c = :seasonId
-      WITH USER_MODE
-      GROUP BY ElectiveRun__c
-    ]) {
-      weeks.get(weekOfRun.get((Id) row.get('runId')))
-        .seats += (Integer) row.get('seatCount');
-    }
-  }
-
   /** A week's campers that no other week's run has. */
   private Set<Id> onlyIn(Id weekId) {
     Set<Id> result = campersByWeek.get(weekId).clone();
@@ -182,6 +191,15 @@ public with sharing class ElectiveClearReading {
       if (weekId == null || run.Week__c == weekId) {
         result.add(new ElectiveRun__c(Id = run.Id));
       }
+    }
+    return result;
+  }
+
+  /** The choices and seats under the runs Clear removes (runsIn). */
+  public Integer rowsUnder(List<ElectiveRun__c> going) {
+    Integer result = 0;
+    for (ElectiveRun__c run : going) {
+      result += rowsOfRun.get(run.Id);
     }
     return result;
   }

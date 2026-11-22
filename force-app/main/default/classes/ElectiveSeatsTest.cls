@@ -272,21 +272,21 @@ private class ElectiveSeatsTest {
   }
 
   @IsTest
-  static void assignRefusesCalmlyWhenTooManyRowsWouldChange() {
+  static void assignPastTheRowBoundIsSavedInTheBackground() {
     System.runAs(ShoreshTestData.scheduler()) {
       ElectiveSeatsCamp camp = new ElectiveSeatsCamp(4);
       ElectiveSeatSaves.rowBound = 5;
+      ElectiveBigSave.holdInTest = true;
       Test.startTest();
-      // Eight new seats and the run: nine rows, past the bound.
-      String refusal = refusalOf(new Assigning(camp, camp.everyoneInDrama(1)));
+      // Eight new seats and the run: nine rows, past the bound (ElectiveLargeCampTest).
+      ElectiveSeats.RunView view = camp.assign(camp.everyoneInDrama(1));
       Test.stopTest();
-      Assert.areEqual(
-        'Too many seats change to save at once (9; the most is 5). Nothing was changed.',
-        refusal
-      );
+      Assert.areEqual(8, view.saveTotal.intValue());
+      Assert.isNotNull(ElectiveBigSave.held, 'Started in the background');
       Assert.areEqual(
         0,
-        [SELECT COUNT() FROM Assignment__c WHERE ElectiveRun__c = :camp.runId]
+        [SELECT COUNT() FROM Assignment__c WHERE ElectiveRun__c = :camp.runId],
+        'Nothing written in the request'
       );
     }
   }

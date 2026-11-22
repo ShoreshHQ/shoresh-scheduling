@@ -41,15 +41,19 @@ public with sharing class ElectiveFinalize {
     Savepoint before = Database.setSavepoint();
     try {
       Id versionId = keepSchedule(state);
-      Database.update(namedSeats(state), true, AccessLevel.USER_MODE);
-      state.bump(
-        new ElectiveRun__c(
-          Status__c = ElectiveRunState.FINAL_STATUS,
-          FinalizedAt__c = System.now(),
-          FinalizedBy__c = UserInfo.getUserId(),
-          FinalSchedule__c = versionId
+      List<Assignment__c> named = namedSeats(state);
+      // The version kept is a few rows (its days); the seats and the run are the rest.
+      if (
+        !ElectiveSeatSaves.fitsOneSave(
+          named.size() + state.days.stored.size() + 3
         )
-      );
+      ) {
+        // ADR 0018 choice 59: the names go on in the background; Final once every seat has them.
+        new ElectiveFinalizeRows(runId, named, versionId).begin();
+        return ElectiveSeats.open(runId);
+      }
+      Database.update(named, true, AccessLevel.USER_MODE);
+      state.bump(ElectiveFinalizeRows.finalFields(versionId));
     } catch (Exception e) {
       Database.rollback(before);
       throw e;

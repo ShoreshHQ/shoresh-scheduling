@@ -23,10 +23,34 @@ public with sharing class ElectiveRunTriggers {
 
   // ---------------------------------------------------------------- runs
 
-  /** The set, week and schedules a run names are in its season, and its schedule is of its week. */
-  public static void runsSaving(List<ElectiveRun__c> runs) {
-    // A delete (no new rows) is only checked for an archived season (ArchivedSeasons).
-    if (runs == null) {
+  /** The runs made, or whose set, week or schedules changed; none for a delete (no new rows). */
+  private static List<ElectiveRun__c> toCheck(
+    List<ElectiveRun__c> rows,
+    Map<Id, ElectiveRun__c> before
+  ) {
+    List<ElectiveRun__c> runs = new List<ElectiveRun__c>();
+    // A delete is only checked for an archived season (ArchivedSeasons).
+    for (
+      ElectiveRun__c run : rows == null ? new List<ElectiveRun__c>() : rows
+    ) {
+      if (before == null || namesChanged(run, before.get(run.Id))) {
+        runs.add(run);
+      }
+    }
+    return runs;
+  }
+
+  /**
+   * The set, week and schedules a run names are in its season, and its schedule is of its week.
+   * Checked when a run is made or one of them changes: Salesforce saves a run again each time its
+   * seat count (a roll-up) changes, 200 seats at a time, and a large camp's save writes thousands.
+   */
+  public static void runsSaving(
+    List<ElectiveRun__c> rows,
+    Map<Id, ElectiveRun__c> before
+  ) {
+    List<ElectiveRun__c> runs = toCheck(rows, before);
+    if (runs.isEmpty()) {
       return;
     }
     Set<Id> ids = new Set<Id>();
@@ -73,6 +97,14 @@ public with sharing class ElectiveRunTriggers {
     for (ElectiveRun__c run : runs) {
       refuseRun(run, found, labelsBySeason);
     }
+  }
+
+  private static Boolean namesChanged(ElectiveRun__c run, ElectiveRun__c was) {
+    return run.Season__c != was.Season__c ||
+      run.ElectiveSet__c != was.ElectiveSet__c ||
+      run.Week__c != was.Week__c ||
+      run.Schedule__c != was.Schedule__c ||
+      run.FinalSchedule__c != was.FinalSchedule__c;
   }
 
   /** The season of each set, week and schedule a run names, and the week of each schedule. */

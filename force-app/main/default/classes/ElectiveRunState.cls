@@ -83,6 +83,11 @@ public with sharing class ElectiveRunState {
     return run.Status__c == FINAL_STATUS;
   }
 
+  /** A save too big for one request is being written in the background (ElectiveBigSave). */
+  private Boolean isSaving() {
+    return run.SaveTotal__c != null && run.SaveProblem__c == null;
+  }
+
   private static ElectiveRun__c readRun(Id runId) {
     List<ElectiveRun__c> found = [
       SELECT
@@ -112,6 +117,10 @@ public with sharing class ElectiveRunState {
         NewVersionOf__c,
         SourceFile__c,
         SourceFingerprint__c,
+        SaveDone__c,
+        SaveTotal__c,
+        SaveProblem__c,
+        SaveJob__c,
         CreatedDate
       FROM ElectiveRun__c
       WHERE Id = :runId
@@ -120,6 +129,7 @@ public with sharing class ElectiveRunState {
     if (found.isEmpty()) {
       throw notThere();
     }
+    ElectiveSaveJobs.settle(found);
     return found[0];
   }
 
@@ -265,6 +275,19 @@ public with sharing class ElectiveRunState {
           )
       );
     }
+    if (isSaving()) {
+      throw new ShoreshException(
+        AgentRefusal.withFix(
+          labels().plural('Seats') +
+            ' are still being saved (' +
+            run.SaveDone__c.intValue().format() +
+            ' of ' +
+            run.SaveTotal__c.intValue().format() +
+            ').',
+          'Try again when that\'s done.'
+        )
+      );
+    }
     if (!SeenSaves.revision(run.Revision__c, seenRevision)) {
       throw new ShoreshException(
         AgentRefusal.withFix(
@@ -291,11 +314,14 @@ public with sharing class ElectiveRunState {
     return pref.Group__c;
   }
 
-  /** The run moved on: its revision goes up by one, with whatever else the save sets. */
+  /**
+   * The run moved on: its revision goes up by one, with whatever else the save sets; a big save's
+   * progress, or why it stopped, is cleared with it.
+   */
   public void bump(ElectiveRun__c changes) {
     changes.Id = run.Id;
     changes.Revision__c = (run.Revision__c == null ? 0 : run.Revision__c) + 1;
-    Database.update(changes, AccessLevel.USER_MODE);
+    Database.update(ElectiveBigSave.ended(changes), AccessLevel.USER_MODE);
     run.Revision__c = changes.Revision__c;
   }
 }

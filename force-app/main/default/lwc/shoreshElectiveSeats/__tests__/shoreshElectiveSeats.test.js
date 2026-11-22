@@ -731,6 +731,122 @@ describe("Assign seats", () => {
     );
   });
 
+  it("a large camp's seats are saved in the background: the main button counts up, then the board shows them (ADR 0018 choice 59)", async () => {
+    const element = await render();
+    jest.useFakeTimers();
+    try {
+      assignSeats.mockResolvedValue(runView({ saveDone: 0, saveTotal: 12000 }));
+      openRun
+        .mockResolvedValueOnce(runView({ saveDone: 9000, saveTotal: 12000 }))
+        .mockResolvedValueOnce(assignedView());
+      const primary = () => $(element, '[data-id="primary"]');
+      primary().click();
+      await flush();
+      expect(text(primary())).toBe("Saving 0 of 12,000");
+      expect(primary().disabled).toBe(true);
+      jest.advanceTimersByTime(3000);
+      await flush();
+      expect(text(primary())).toBe("Saving 9,000 of 12,000");
+      expect($(element, '[data-id="assign-again"]')).toBeNull();
+      jest.advanceTimersByTime(3000);
+      await flush();
+      expect(text($(element, '[data-id="status"]'))).toBe("3 of 4 placed.");
+      expect(text(primary())).toBe("Finalize");
+      expect(primary().disabled).toBe(false);
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  it("a save in the background that stopped says how far it got and why, with Assign again", async () => {
+    const element = await render();
+    jest.useFakeTimers();
+    try {
+      assignSeats.mockResolvedValue(runView({ saveDone: 0, saveTotal: 8 }));
+      openRun.mockResolvedValueOnce(
+        runView({
+          saveDone: 6,
+          saveTotal: 8,
+          saveProblem: "That was removed. Reload the page."
+        })
+      );
+      $(element, '[data-id="primary"]').click();
+      await flush();
+      jest.advanceTimersByTime(3000);
+      await flush();
+      expect(text($(element, '[data-id="error"]'))).toBe(
+        "Saving stopped after 6 of 8. That was removed. Reload the page."
+      );
+      expect(text($(element, '[data-id="error-action"]'))).toBe("Assign again");
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  it("opened while a large save goes on, its buttons wait and it says how far it got", async () => {
+    jest.useFakeTimers();
+    try {
+      const element = await render({
+        view: runView({ saveDone: 4500, saveTotal: 12000 })
+      });
+      const primary = $(element, '[data-id="primary"]');
+      expect(text(primary)).toBe("Saving 4,500 of 12,000");
+      expect(primary.disabled).toBe(true);
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  it("a read that fails once while following says nothing and keeps following", async () => {
+    const element = await render();
+    jest.useFakeTimers();
+    try {
+      assignSeats.mockResolvedValue(runView({ saveDone: 0, saveTotal: 12000 }));
+      openRun
+        .mockRejectedValueOnce({
+          body: { message: "Disconnected or Canceled" }
+        })
+        .mockResolvedValueOnce(assignedView());
+      $(element, '[data-id="primary"]').click();
+      await flush();
+      jest.advanceTimersByTime(3000);
+      await flush();
+      expect($(element, '[data-id="error"]')).toBeNull();
+      expect(text($(element, '[data-id="primary"]'))).toBe(
+        "Saving 0 of 12,000"
+      );
+      jest.advanceTimersByTime(3000);
+      await flush();
+      expect(text($(element, '[data-id="status"]'))).toBe("3 of 4 placed.");
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  it("opened mid-save, a save that then stops says why", async () => {
+    jest.useFakeTimers();
+    try {
+      const element = await render({
+        view: runView({ saveDone: 4500, saveTotal: 12000 })
+      });
+      openRun.mockResolvedValueOnce(
+        runView({
+          saveDone: 4500,
+          saveTotal: 12000,
+          saveProblem: "Salesforce stopped it before the end."
+        })
+      );
+      jest.advanceTimersByTime(3000);
+      await flush();
+      expect(text($(element, '[data-id="error"]'))).toBe(
+        "Saving stopped after 4,500 of 12,000. Salesforce stopped it before the end."
+      );
+      expect($(element, '[data-id="primary"]').disabled).toBe(false);
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
   it("Assign again, from the Build menu, puts the cursor back on the menu once saved", async () => {
     const element = await render({ view: assignedView() });
     assignSeats.mockResolvedValue(assignedView({ revision: 3 }));

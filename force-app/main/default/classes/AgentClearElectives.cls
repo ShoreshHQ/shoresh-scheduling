@@ -73,6 +73,9 @@ global with sharing class AgentClearElectives implements AgentRequest.Change, Ag
         'Nothing was cleared. ' + ScreenErrors.words(e)
       );
     }
+    if (result.picture.saveTotal != null) {
+      return 'Clearing these: ' + AgentSaveProgress.stillSaving();
+    }
     // The screen's own words for it, in the camp's.
     CampLabels words = IncomingSeason.labelsOf(season.Id);
     return 'Cleared these ' +
