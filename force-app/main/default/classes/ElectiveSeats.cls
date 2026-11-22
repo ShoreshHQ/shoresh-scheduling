@@ -69,6 +69,14 @@ public with sharing class ElectiveSeats {
     // Days of the schedule that could not be read, and why.
     @AuraEnabled
     public List<String> unreadable = new List<String>();
+    // A save too big for one request, written in the background (ElectiveBigSave): rows written
+    // of how many; why it stopped, when it did. Blank when there is none.
+    @AuraEnabled
+    public Decimal saveDone;
+    @AuraEnabled
+    public Decimal saveTotal;
+    @AuraEnabled
+    public String saveProblem;
   }
 
   public class OfferingInfo {
@@ -224,6 +232,9 @@ public with sharing class ElectiveSeats {
     view.times = state.shown.periods;
     view.unreadable = state.live.unreadable;
     view.dropped = run.Dropped__c;
+    view.saveDone = run.SaveDone__c;
+    view.saveTotal = run.SaveTotal__c;
+    view.saveProblem = run.SaveProblem__c;
     for (Offering__c offering : state.offerings) {
       view.offerings.add(offeringInfo(offering));
     }

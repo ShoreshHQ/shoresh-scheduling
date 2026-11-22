@@ -128,6 +128,43 @@ public with sharing class AgentElectives {
     return found;
   }
 
+  /**
+   * A large camp's save, going on in the background (ADR 0018 choice 59): reading again shows how
+   * far it got, or why it stopped.
+   */
+  public static String stillSaving() {
+    return 'this takes a few minutes. Read them again to see how far it has got; nothing else can change them until it is done.';
+  }
+  /**
+   * How far a large camp's save has got ("Still saving: 9,000 of 12,000 written."), or why it
+   * stopped; null when there is none. A Clear says "clearing" and "gone".
+   */
+  public static String savingLine(
+    Decimal done,
+    Decimal total,
+    String problem,
+    Boolean clearing
+  ) {
+    if (total == null) {
+      return null;
+    }
+    String count =
+      done.intValue().format() +
+      ' of ' +
+      total.intValue().format();
+    if (problem != null) {
+      return 'The last ' +
+        (clearing ? 'clear' : 'save') +
+        ' stopped after ' +
+        count +
+        ': ' +
+        problem;
+    }
+    return (clearing ? 'Still clearing: ' : 'Still saving: ') +
+      count +
+      (clearing ? ' gone.' : ' written.');
+  }
+
   /** The run as read, as read_elective_seats_now says it: "<run Id>:<revision>". */
   public static String seenText(Id runId, Decimal revision) {
     return String.valueOf(runId) + ':' + revision;

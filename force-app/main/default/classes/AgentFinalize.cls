@@ -64,13 +64,22 @@ global with sharing class AgentFinalize implements AgentRequest.Change, AgentAsk
       AgentFields.text(body, 'elective_set')
     );
     Id runId = committedRun(season, electiveSet, week);
+    ElectiveSeats.RunView view;
     try {
-      ElectiveSeatsController.finalizeRun(
+      view = ElectiveSeatsController.finalizeRun(
         runId,
         ElectiveSeatsController.openRun(runId).revision
       );
     } catch (Exception e) {
       throw new ShoreshException('Not finalized. ' + ScreenErrors.words(e));
+    }
+    if (view.saveTotal != null) {
+      return 'Finalizing ' +
+        electiveSet.Name +
+        ' in ' +
+        week.Name +
+        ': ' +
+        AgentElectives.stillSaving();
     }
     return 'Finalized ' + electiveSet.Name + ' in ' + week.Name + '.';
   }

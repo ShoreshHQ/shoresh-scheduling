@@ -15,9 +15,15 @@ public with sharing class ElectiveSeatSaves {
   // What worked the seats out (ElectiveRun__c.EngineVersion__c): ADR 0016's engine.
   public static final String ENGINE_VERSION = 'shoreshElectiveEngine 1';
 
-  // Below Salesforce's 10,000 rows a request may write, with room for the run's own update.
+  // Below Salesforce's 10,000 rows a request may write, with room for the run's own update; a
+  // save past it is written in the background (ElectiveBigSave).
   @TestVisible
   private static Integer rowBound = 9500;
+
+  /** Whether a save of this many rows fits one request (else ElectiveBigSave writes it). */
+  public static Boolean fitsOneSave(Integer rows) {
+    return rows <= rowBound;
+  }
 
   /** Assign seats: every seat the engine placed, and what did not run. */
   public class AssignRequest {
@@ -94,7 +100,7 @@ public with sharing class ElectiveSeatSaves {
   /**
    * Writes only the difference: a seat already at a camper's day and time is kept (or its
    * offering changed in place), the rest inserted, and unlocked seats nothing was sent for deleted.
-   * Refused before any write when even that is more rows than one save can take.
+   * When even that is more rows than one save can take, it is written in the background.
    */
   private static void save(
     ElectiveRunState state,
@@ -139,22 +145,64 @@ public with sharing class ElectiveSeatSaves {
       }
     }
     List<Assignment__c> deletes = unlocked.values();
-    refuseTooMany(state, inserts.size() + updates.size() + deletes.size() + 1);
+    ElectiveRun__c finished = new ElectiveRun__c(
+      TimesFingerprint__c = state.live.fingerprint(),
+      EngineVersion__c = ENGINE_VERSION,
+      Dropped__c = droppedText(state, dropped)
+    );
+    // A deleted seat counts twice: deleted, then emptied from the Recycle Bin (plan §3, "Real
+    // deletion"), so Assign again at a large camp never fills the camp's Recycle Bin with seats.
+    if (
+      !fitsOneSave(inserts.size() + updates.size() + 2 * deletes.size() + 1)
+    ) {
+      // More than one request can write: in the background, a part at a time (ADR 0018 choice 59).
+      List<Id> gone = new List<Id>();
+      for (Assignment__c seat : deletes) {
+        gone.add(seat.Id);
+      }
+      ElectiveBigSave.begin(
+        new AssignRows(state.run.Id, gone, updates, inserts, finished),
+        !gone.isEmpty()
+      );
+      return;
+    }
     Savepoint before = Database.setSavepoint();
     try {
-      Database.delete(deletes, true, AccessLevel.USER_MODE);
+      deleteForGood(deletes);
       Database.update(updates, true, AccessLevel.USER_MODE);
       Database.insert(inserts, true, AccessLevel.USER_MODE);
-      state.bump(
-        new ElectiveRun__c(
-          TimesFingerprint__c = state.live.fingerprint(),
-          EngineVersion__c = ENGINE_VERSION,
-          Dropped__c = droppedText(state, dropped)
-        )
-      );
+      state.bump(finished);
     } catch (Exception e) {
       Database.rollback(before);
       throw e;
+    }
+  }
+
+  /** Assign's rows in the background; the last part sets what the run was assigned with. */
+  public class AssignRows extends ElectiveBigSave.GivenRows {
+    private ElectiveRun__c finished;
+
+    public AssignRows(
+      Id runId,
+      List<Id> deletes,
+      List<Assignment__c> updates,
+      List<Assignment__c> inserts,
+      ElectiveRun__c finished
+    ) {
+      super(runId, deletes, updates, inserts);
+      this.finished = finished;
+    }
+
+    public override void finish() {
+      ElectiveRunState.bumpHeld(runIds[0], finished.clone(false));
+    }
+  }
+
+  /** Seats no longer wanted, deleted and emptied from the Recycle Bin. */
+  public static void deleteForGood(List<SObject> seats) {
+    if (!seats.isEmpty()) {
+      Database.delete(seats, true, AccessLevel.USER_MODE);
+      Database.emptyRecycleBin(seats);
     }
   }
 
@@ -163,20 +211,6 @@ public with sharing class ElectiveSeatSaves {
       held.Group__c != seat.Group__c ||
       held.LinkedChoice__c != seat.LinkedChoice__c ||
       held.ByHand__c == true;
-  }
-
-  private static void refuseTooMany(ElectiveRunState state, Integer rows) {
-    if (rows > rowBound) {
-      throw new ShoreshException(
-        'Too many ' +
-          state.labels().pluralInSentence('Seats') +
-          ' change to save at once (' +
-          rows +
-          '; the most is ' +
-          rowBound +
-          '). Nothing was changed.'
-      );
-    }
   }
 
   private static void refuseUnreadable(ElectiveRunState state) {

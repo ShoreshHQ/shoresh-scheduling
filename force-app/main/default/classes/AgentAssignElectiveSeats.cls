@@ -215,15 +215,26 @@ global with sharing class AgentAssignElectiveSeats implements AgentRequest.Chang
         ? new List<Object>()
         : body.get('dropped')
     };
+    ElectiveSeats.RunView view;
     try {
       // The screen's own Assign seats.
-      ElectiveSeatsController.assignSeats(JSON.serialize(request));
+      view = ElectiveSeatsController.assignSeats(JSON.serialize(request));
     } catch (Exception e) {
       throw new ShoreshException(
         held.labels().plural('Seats') +
           ' weren\'t assigned. ' +
           ScreenErrors.words(e)
       );
+    }
+    if (view.saveTotal != null) {
+      // A large camp's: written in the background (ADR 0018 choice 59).
+      return held.labels().plural('Seats') +
+        ' in ' +
+        held.setName +
+        ' in ' +
+        held.weekName +
+        ' are being saved: ' +
+        AgentElectives.stillSaving();
     }
     return held.labels().plural('Seats') +
       ' assigned in ' +

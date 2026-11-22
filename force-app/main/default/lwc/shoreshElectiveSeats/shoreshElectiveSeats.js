@@ -54,6 +54,16 @@ const BUILD_MENU = '[data-id="build-menu"]';
 const STATE_MENU = '[data-id="state"]';
 const DOWNLOAD_MENU = '[data-id="download"]';
 const CLEAR_HEADING = '[data-id="clear-heading"]';
+// A large camp's save goes on in the background (repo ADR 0018 choice 59): the screen reads it
+// again this often, its button saying how far it got, until it is done or stopped.
+const FOLLOW_MS = 3000;
+const pause = (ms) =>
+  // eslint-disable-next-line @lwc/lwc/no-async-operation
+  new Promise((resolve) => setTimeout(resolve, ms));
+const count = (n) => Number(n || 0).toLocaleString("en-US");
+/** "Saving stopped after 9,000 of 12,000. Why." for a save that stopped in the background. */
+const stoppedWords = (verb, done, total, problem) =>
+  `${verb} stopped after ${count(done)} of ${count(total)}. ${problem}`;
 
 // The menus' glyphs (the mock-ups' icons), one path each.
 const ICONS = {
@@ -149,6 +159,9 @@ export default class ShoreshElectiveSeats extends LightningElement {
   clearWeekId = null;
   clearError = null;
   clearFrom = null;
+  // A save going on in the background: { done, total }, shown on the button that started it.
+  saveProgress = null;
+  connected = false;
 
   /** The screen's heading takes the cursor when it opens (the page asks). */
   @api
@@ -330,6 +343,17 @@ export default class ShoreshElectiveSeats extends LightningElement {
       const view = await openRun({ runId });
       if (ticket !== this.loadTicket) return;
       this.view = view;
+      if (view.saveProblem) {
+        this.sayStopped(view);
+      } else if (view.saveTotal != null && !this.busy) {
+        // Opened while a large save goes on (by this person or another): its buttons wait for it.
+        this.busy = true;
+        try {
+          await this.followSave(view);
+        } finally {
+          this.busy = false;
+        }
+      }
     } catch (e) {
       this.error = failed(
         `Couldn't open these ${this.t.sIn("Elective")} ${this.t.pIn("Seats")}.`,
@@ -647,6 +671,9 @@ export default class ShoreshElectiveSeats extends LightningElement {
 
   /** Before Finalize: Assign seats, then Finalize. A final run's main button is Download. */
   get primaryLabel() {
+    if (this.saveProgress) {
+      return `Saving ${count(this.saveProgress.done)} of ${count(this.saveProgress.total)}`;
+    }
     return this.isAssigned ? "Finalize" : `Assign ${this.t.pIn("Seats")}`;
   }
   get primaryDisabled() {
@@ -692,6 +719,41 @@ export default class ShoreshElectiveSeats extends LightningElement {
   }
 
   /**
+   * A save too big for one request goes on in the background (repo ADR 0018 choice 59): the run
+   * is read again until it is done or stopped, the main button saying how far it got. Returns the
+   * run as it ended (null when the screen moved on to another run or was left).
+   */
+  async followSave(view) {
+    let now = view;
+    const runId = view.run.id;
+    while (now && now.saveTotal != null && !now.saveProblem) {
+      this.saveProgress = { done: now.saveDone, total: now.saveTotal };
+      // eslint-disable-next-line no-await-in-loop
+      await pause(FOLLOW_MS);
+      if (!this.connected || this.runId !== runId) {
+        now = null;
+        break;
+      }
+      // eslint-disable-next-line no-await-in-loop
+      now = await openRun({ runId });
+    }
+    this.saveProgress = null;
+    if (now) this.view = now;
+    return now;
+  }
+
+  /** Why a save in the background stopped, said as a refusal is, with Assign again beside it. */
+  sayStopped(view) {
+    this.error = stoppedWords(
+      "Saving",
+      view.saveDone,
+      view.saveTotal,
+      view.saveProblem
+    );
+    this.errorAction = view.run.status === COMMITTED ? "assign" : null;
+  }
+
+  /**
    * Assign seats: the engine places everyone it can around the locks, in the browser, and the
    * server checks and saves the seats. Nothing in a setup stops it (engine care PR 8): what the
    * engine couldn't honour is in the problems.
@@ -705,12 +767,18 @@ export default class ShoreshElectiveSeats extends LightningElement {
     this.errorAction = null;
     this.status = `Assigning ${this.t.pIn("Seats")}…`;
     try {
-      const view = await assignSeats({
+      let view = await assignSeats({
         request: JSON.stringify(planSeats(this.view, this.t))
       });
       this.view = view;
-      const board = buildBoard(readRun(view), this.t);
-      this.status = `${board.counter.placed} of ${board.counter.total} placed.`;
+      view = await this.followSave(view);
+      if (view && view.saveProblem) {
+        this.sayStopped(view);
+        this.status = "";
+      } else if (view) {
+        const board = buildBoard(readRun(view), this.t);
+        this.status = `${board.counter.placed} of ${board.counter.total} placed.`;
+      }
       await this.refreshRuns();
     } catch (e) {
       this.error = failed(`${this.t.p("Seats")} weren't assigned.`, e);
@@ -731,6 +799,16 @@ export default class ShoreshElectiveSeats extends LightningElement {
         runId: this.view.run.id,
         revision: this.view.revision
       });
+      const ended = await this.followSave(this.view);
+      if (ended && ended.saveProblem) {
+        this.error = stoppedWords(
+          "Finalizing",
+          ended.saveDone,
+          ended.saveTotal,
+          ended.saveProblem
+        );
+        return;
+      }
       this.status = `Finalized: ${this.stateLabel}.`;
       await this.refreshRuns();
       // Finalize kept the week as a version: every screen's Versions lists it (WEEK-6.7).
@@ -1240,7 +1318,11 @@ export default class ShoreshElectiveSeats extends LightningElement {
     }
     this.printout = null;
   }
+  connectedCallback() {
+    this.connected = true;
+  }
   disconnectedCallback() {
+    this.connected = false;
     this.endPrint();
   }
 
@@ -1261,9 +1343,53 @@ export default class ShoreshElectiveSeats extends LightningElement {
   async readClear() {
     try {
       this.clearData = await clearPicture({ seasonId: this._setup.season.Id });
+      if (this.clearData.saveProblem) {
+        this.clearError = this.clearStopped(this.clearData);
+      }
     } catch (e) {
       this.clearError = failed("Couldn't draw the season.", e);
     }
+  }
+
+  clearStopped(picture) {
+    return stoppedWords(
+      "Clearing",
+      picture.saveDone,
+      picture.saveTotal,
+      picture.saveProblem
+    );
+  }
+
+  /**
+   * A large season's Clear goes on in the background (repo ADR 0018 choice 59): the season is read
+   * again until it is done or stopped, the Clear button saying how far it got. Returns the picture
+   * as it ended (stopped: shown with why), or null when Clear was left.
+   */
+  async followClear(picture) {
+    let now = picture;
+    while (now.saveTotal != null && !now.saveProblem) {
+      this.saveProgress = { done: now.saveDone, total: now.saveTotal };
+      // eslint-disable-next-line no-await-in-loop
+      await pause(FOLLOW_MS);
+      if (!this.connected || !this.clearing) {
+        this.saveProgress = null;
+        return null;
+      }
+      // eslint-disable-next-line no-await-in-loop
+      now = await clearPicture({ seasonId: this._setup.season.Id });
+    }
+    this.saveProgress = null;
+    if (now.saveProblem) {
+      this.clearData = now;
+      this.clearError = this.clearStopped(now);
+    }
+    return now;
+  }
+
+  get clearLabel() {
+    return this.saveProgress
+      ? `Clearing ${count(this.saveProgress.done)} of ${count(this.saveProgress.total)}`
+      : "Clear";
   }
 
   get clearTitle() {
@@ -1389,6 +1515,18 @@ export default class ShoreshElectiveSeats extends LightningElement {
           stamp: this.clearData.stamp
         })
       });
+      if (result.picture && result.picture.saveTotal != null) {
+        const ended = await this.followClear(result.picture);
+        if (!ended) {
+          // Cancel was pressed while it cleared: the cursor goes where Cancel sent it.
+          focusAfter = this.focusAfter;
+          return;
+        }
+        if (ended.saveProblem) {
+          focusAfter = ['[data-id="clear-go"]', '[data-id="clear-cancel"]'];
+          return;
+        }
+      }
       this.clearing = false;
       this.clearData = null;
       // Named, never "runs" (Greg's pick, 2026-11-12): these seats, and the campers that went.

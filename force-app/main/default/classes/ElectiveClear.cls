@@ -36,6 +36,14 @@ public with sharing class ElectiveClear {
     // Every run's revision and the season's camper count: Clear checks nothing moved since.
     @AuraEnabled
     public String stamp;
+    // A Clear too big for one request, going on in the background (ElectiveBigSave): rows gone of
+    // how many, and why it stopped, when it did. Blank when there is none.
+    @AuraEnabled
+    public Decimal saveDone;
+    @AuraEnabled
+    public Decimal saveTotal;
+    @AuraEnabled
+    public String saveProblem;
   }
 
   public class WeekCounts {
@@ -111,6 +119,20 @@ public with sharing class ElectiveClear {
       throw new ShoreshException('Nothing to clear.');
     }
     refuseWorking(now.picture, request.weekId);
+    refuseClearing(now.picture);
+    Integer under = now.rowsUnder(going);
+    // Every row counts twice: deleted, then emptied from the Recycle Bin.
+    if (
+      !ElectiveSeatSaves.fitsOneSave(
+        2 * (under + going.size() + campers.size())
+      )
+    ) {
+      // ADR 0018 choice 59: the choices and seats go in the background, then the runs and campers.
+      ElectiveBigSave.begin(new ClearRows(going, campers, under), true);
+      Result started = new Result();
+      started.picture = picture(request.seasonId);
+      return started;
+    }
     deleteForGood(going, campers);
     Result result = new Result();
     result.runs = going.size();
@@ -129,6 +151,88 @@ public with sharing class ElectiveClear {
       throw new ShoreshException(
         'Something changed since this was drawn. Look again, then clear.'
       );
+    }
+  }
+
+  private static void refuseClearing(Picture picture) {
+    if (picture.saveTotal != null && picture.saveProblem == null) {
+      throw new ShoreshException(
+        AgentRefusal.withFix(
+          'Clearing is still going (' +
+            picture.saveDone.intValue().format() +
+            ' of ' +
+            picture.saveTotal.intValue().format() +
+            ').',
+          'Look again when it\'s done.'
+        )
+      );
+    }
+  }
+
+  /**
+   * A large season's Clear in the background: each part deletes the next choices or seats of the
+   * runs going and empties them from the Recycle Bin at once, so none are left there; the last
+   * part removes the runs and campers as a small Clear does.
+   */
+  public class ClearRows extends ElectiveBigSave.Work {
+    private List<Id> camperIds = new List<Id>();
+
+    public ClearRows(
+      List<ElectiveRun__c> going,
+      List<Camper__c> campers,
+      Integer under
+    ) {
+      for (ElectiveRun__c run : going) {
+        runIds.add(run.Id);
+      }
+      for (Camper__c camper : campers) {
+        camperIds.add(camper.Id);
+      }
+      total = under;
+    }
+
+    public override Integer write(Integer most) {
+      List<SObject> rows = new List<SObject>();
+      rows.addAll(
+        [
+          SELECT Id
+          FROM Assignment__c
+          WHERE ElectiveRun__c IN :runIds
+          WITH USER_MODE
+          ORDER BY Id
+          LIMIT :most
+        ]
+      );
+      if (rows.size() < most) {
+        Integer left = most - rows.size();
+        rows.addAll(
+          [
+            SELECT Id
+            FROM Preference__c
+            WHERE ElectiveRun__c IN :runIds
+            WITH USER_MODE
+            ORDER BY Id
+            LIMIT :left
+          ]
+        );
+      }
+      if (!rows.isEmpty()) {
+        Database.delete(rows, AccessLevel.USER_MODE);
+        Database.emptyRecycleBin(rows);
+      }
+      return rows.size();
+    }
+
+    public override void finish() {
+      List<ElectiveRun__c> runs = new List<ElectiveRun__c>();
+      for (Id runId : runIds) {
+        runs.add(new ElectiveRun__c(Id = runId));
+      }
+      List<Camper__c> campers = new List<Camper__c>();
+      for (Id camperId : camperIds) {
+        campers.add(new Camper__c(Id = camperId));
+      }
+      deleteForGood(runs, campers);
     }
   }
 

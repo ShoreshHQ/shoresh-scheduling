@@ -43,9 +43,7 @@ global with sharing class AgentElectiveSeatsNow implements AgentRequest.Sentence
       run.weekName +
       ': ' +
       (run.isFinal
-        ? 'Final; Change ' +
-          seatWords +
-          ' (change_seats) to change them'
+        ? 'Final; Change ' + seatWords + ' (change_seats) to change them'
         : seatWords +
           (view.assigned ? ' assigned' : ' not assigned yet') +
           ', Draft') +
@@ -54,6 +52,15 @@ global with sharing class AgentElectiveSeatsNow implements AgentRequest.Sentence
     };
     if (view.scheduleChanged) {
       lines.add('Schedule changed since ' + seatWords + ' were assigned.');
+    }
+    String saving = AgentElectives.savingLine(
+      view.saveDone,
+      view.saveTotal,
+      view.saveProblem,
+      false
+    );
+    if (saving != null) {
+      lines.add(saving);
     }
     lines.add('Times:');
     for (ElectivePeriod period : view.times) {
