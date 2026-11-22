@@ -23,10 +23,26 @@ public with sharing class ElectiveRunTriggers {
 
   // ---------------------------------------------------------------- runs
 
-  /** The set, week and schedules a run names are in its season, and its schedule is of its week. */
-  public static void runsSaving(List<ElectiveRun__c> runs) {
+  /**
+   * The set, week and schedules a run names are in its season, and its schedule is of its week.
+   * Checked when a run is made or one of them changes: Salesforce saves a run again each time its
+   * seat count (a roll-up) changes, 200 seats at a time, and a large camp's save writes thousands.
+   */
+  public static void runsSaving(
+    List<ElectiveRun__c> rows,
+    Map<Id, ElectiveRun__c> before
+  ) {
     // A delete (no new rows) is only checked for an archived season (ArchivedSeasons).
-    if (runs == null) {
+    if (rows == null) {
+      return;
+    }
+    List<ElectiveRun__c> runs = new List<ElectiveRun__c>();
+    for (ElectiveRun__c run : rows) {
+      if (before == null || namesChanged(run, before.get(run.Id))) {
+        runs.add(run);
+      }
+    }
+    if (runs.isEmpty()) {
       return;
     }
     Set<Id> ids = new Set<Id>();
@@ -73,6 +89,14 @@ public with sharing class ElectiveRunTriggers {
     for (ElectiveRun__c run : runs) {
       refuseRun(run, found, labelsBySeason);
     }
+  }
+
+  private static Boolean namesChanged(ElectiveRun__c run, ElectiveRun__c was) {
+    return run.Season__c != was.Season__c ||
+      run.ElectiveSet__c != was.ElectiveSet__c ||
+      run.Week__c != was.Week__c ||
+      run.Schedule__c != was.Schedule__c ||
+      run.FinalSchedule__c != was.FinalSchedule__c;
   }
 
   /** The season of each set, week and schedule a run names, and the week of each schedule. */
