@@ -47,7 +47,7 @@ Never use sudo or ask for my computer's password; if a step needs that, use the 
    If it finds more than one, stop and tell me: "Your camp's Salesforce has more than one Shoresh connector. Ask your Salesforce admin which is Shoresh's."
    Make the folder <your home folder>/.shoresh/connect, then run: sf api request rest <the record's attributes.url>/Body --target-org shoresh --stream-to-file <your home folder>/.shoresh/connect.zip
    Unzip it into that folder, replacing what is there: unzip -o <your home folder>/.shoresh/connect.zip -d <your home folder>/.shoresh/connect
-   On Windows, unzip it with: tar -xf <your home folder>/.shoresh/connect.zip -C <your home folder>/.shoresh/connect
+   On Windows, unzip it with: powershell -NoProfile -Command "Expand-Archive -Force -Path '<your home folder>/.shoresh/connect.zip' -DestinationPath '<your home folder>/.shoresh/connect'"
 
 5. Test it: node ${server} check --org shoresh
    It prints one sentence. Tell me that sentence, in plain words.

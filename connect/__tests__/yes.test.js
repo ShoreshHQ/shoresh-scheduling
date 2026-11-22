@@ -265,6 +265,14 @@ describe("API-1.153: an ask-first change is done only on the person's own yes", 
     );
     expect(runs[0].args.join(" ")).not.toContain(words);
     expect(runs[0].options.env.SHORESH_QUESTION).toBe(words);
+    // Started shown, or Windows starts the dialog hidden; only PowerShell's console hides.
+    expect(runs[0].options.windowsHide).toBeUndefined();
+    expect(runs[0].args.slice(0, 4)).toEqual([
+      "-NoProfile",
+      "-NonInteractive",
+      "-WindowStyle",
+      "Hidden"
+    ]);
     // Yes and No, a warning, No the default, in front; it gives up after the seconds left.
     expect(runs[0].args.at(-1)).toBe(
       "(New-Object -ComObject WScript.Shell).Popup($env:SHORESH_QUESTION, 30, 'Shoresh', 4404)"

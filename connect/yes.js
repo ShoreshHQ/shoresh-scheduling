@@ -74,10 +74,14 @@ function askOnWindows(words, seconds, run, env) {
   return new Promise((resolve) => {
     run(
       powershell,
-      ["-NoProfile", "-NonInteractive", "-Command", script],
+      // Not windowsHide: Windows would start the dialog hidden too. PowerShell hides its own
+      // console window instead.
+      [
+        ...["-NoProfile", "-NonInteractive", "-WindowStyle", "Hidden"],
+        ...["-Command", script]
+      ],
       {
         timeout: (seconds + 5) * 1000,
-        windowsHide: true,
         env: { ...env, SHORESH_QUESTION: words }
       },
       (error, stdout) => {

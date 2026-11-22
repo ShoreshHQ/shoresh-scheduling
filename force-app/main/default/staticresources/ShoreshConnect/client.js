@@ -98,34 +98,50 @@ function sfPath(
 /**
  * The program to start for sf, and its words. On Windows sf is a .cmd file, which Node can only
  * start through cmd.exe, where camp data in a request could be read as commands. So the node
- * script that sf.cmd starts is started directly instead, with the node it would use: the
- * Salesforce installer's own (bin\sf.cmd, then client\bin\node.exe and run.js; or node.exe and
- * run.js beside sf.cmd, as in its updates), or for npm's
- * (sf.cmd beside node_modules\@salesforce\cli) the node.exe beside it or on the PATH, else this
- * one. Elsewhere, sf itself. Not found: sf, which then isn't there (ENOENT).
+ * script that sf.cmd starts (bin\run.js) is started directly instead, with the node it would use,
+ * as Salesforce's own sf.cmd picks them: an update `sf update` put in
+ * %LOCALAPPDATA%\sf\client\<version>\bin first; then, for the Salesforce installer
+ * (bin\sf.cmd), its client\bin\node.exe and run.js, or node.exe and run.js beside sf.cmd; or, for
+ * npm (sf.cmd beside node_modules\@salesforce\cli), the node.exe beside it or on the PATH, else
+ * this one. Elsewhere, sf itself. Not found: sf, which then isn't there (ENOENT).
  */
 function sfCommand(
   args,
   {
     platform = process.platform,
-    dirs = sfPath(process.env, process.execPath, platform),
+    env = process.env,
+    dirs = sfPath(env, process.execPath, platform),
     exists = require("fs").existsSync,
+    read = (f) => require("fs").readFileSync(f, "utf8"),
     node = process.execPath
   } = {}
 ) {
   if (platform !== "win32") return { file: "sf", args };
   const win = path.win32;
+  const start = (bin) => {
+    const run = win.join(bin, "run.js");
+    return exists(run) && exists(win.join(bin, "node.exe"))
+      ? {
+          file: win.join(bin, "node.exe"),
+          args: ["--no-deprecation", run, ...args]
+        }
+      : null;
+  };
+  // An update: client\bin\sf.cmd hands over to "%~dp0..\<version>\bin\sf.cmd".
+  const client = env.LOCALAPPDATA && win.join(env.LOCALAPPDATA, "sf", "client");
+  const updated = client && win.join(client, "bin", "sf.cmd");
+  if (updated && exists(updated)) {
+    const version = /%~dp0\.\.\\([\w.-]+)\\bin\\sf\.cmd/.exec(read(updated));
+    const found = version && start(win.join(client, version[1], "bin"));
+    if (found) return found;
+  }
   const folders = dirs.split(win.delimiter).filter(Boolean);
   const nodeOnPath =
     folders.map((d) => win.join(d, "node.exe")).find((f) => exists(f)) || node;
   for (const dir of folders) {
     if (!exists(win.join(dir, "sf.cmd"))) continue;
-    for (const client of [win.join(dir, "..", "client", "bin"), dir]) {
-      const run = win.join(client, "run.js");
-      if (exists(run) && exists(win.join(client, "node.exe"))) {
-        return { file: win.join(client, "node.exe"), args: [run, ...args] };
-      }
-    }
+    const installed = start(win.join(dir, "..", "client", "bin")) || start(dir);
+    if (installed) return installed;
     const npm = win.join(
       dir,
       "node_modules",
@@ -138,7 +154,7 @@ function sfCommand(
       const beside = win.join(dir, "node.exe");
       return {
         file: exists(beside) ? beside : nodeOnPath,
-        args: [npm, ...args]
+        args: ["--no-deprecation", npm, ...args]
       };
     }
   }

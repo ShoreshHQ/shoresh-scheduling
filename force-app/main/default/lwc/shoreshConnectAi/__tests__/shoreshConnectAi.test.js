@@ -93,14 +93,16 @@ describe("Connect your AI", () => {
   });
 
   // API-1.15
-  it("worksOnMacWindowsAndLinux: Windows unzips with tar, Linux keeps the sign-in in its keyring", () => {
+  it("worksOnMacWindowsAndLinux: Windows unzips with PowerShell, Linux keeps the sign-in in its keyring", () => {
     const prompt = connectPrompt(HOST);
     expect(prompt).not.toMatch(
       /works on a Mac|stop and tell me: "Shoresh's connector/
     );
     const unzip = prompt.indexOf("unzip -o");
+    // PowerShell's own unzip: Claude Code on Windows runs commands in Git Bash, whose tar
+    // can't open a zip file.
     const tar = prompt.indexOf(
-      "tar -xf <your home folder>/.shoresh/connect.zip -C <your home folder>/.shoresh/connect"
+      `powershell -NoProfile -Command "Expand-Archive -Force -Path '<your home folder>/.shoresh/connect.zip' -DestinationPath '<your home folder>/.shoresh/connect'"`
     );
     expect(tar).toBeGreaterThan(unzip);
     expect(tar).toBeLessThan(prompt.indexOf(`node ${SERVER} check`));

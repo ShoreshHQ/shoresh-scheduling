@@ -144,17 +144,17 @@ jobs:
           process.exit(ok ? 0 : 1); })"
 
   static:
-    # The one check the merge procedure looks for: passes only when all three jobs above pass.
+    # The one check the merge procedure looks for: passes only when all the jobs above pass.
     name: LWC Jest and Code Analyzer
     runs-on: ubuntu-24.04
-    needs: [jest, jest-namespaced, code-analyzer]
+    needs: [jest, jest-namespaced, code-analyzer, connector]
     if: ${{ always() }}
     steps:
       - name: All quick checks passed
         env:
-          RESULTS: ${{ needs.jest.result }} ${{ needs.jest-namespaced.result }} ${{ needs.code-analyzer.result }}
+          RESULTS: ${{ needs.jest.result }} ${{ needs.jest-namespaced.result }} ${{ needs.code-analyzer.result }} ${{ needs.connector.result }}
         run: |
-          echo "LWC Jest / namespaced Jest / Code Analyzer: $RESULTS"
+          echo "LWC Jest / namespaced Jest / Code Analyzer / Connector on each system: $RESULTS"
           for r in $RESULTS; do
             if [ "$r" != "success" ]; then
               echo "::error::A quick check did not pass ($RESULTS). Open the failed job above."
