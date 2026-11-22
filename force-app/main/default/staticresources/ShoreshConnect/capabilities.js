@@ -247,7 +247,7 @@ function bringInChoicesFile() {
   const c = importFile(
     "import_choices",
     "import_choices",
-    "Import campers' elective choices from a file, as the Elective seats screen's Import choices does: this is how a week's electives start (the first import starts the week's seats), and later sheets import choices again. The file is read with the screen's own code (each camper, their bunk and their choices in order). Send it first without save: the answer is the review (how many campers, new or already here, choices made by hand that are kept, names Shoresh doesn't have yet, each at the answer the screen starts it at) and its seen. Change a new name's answer only when the person wants it otherwise (ask them about anything the file doesn't make plain), then send the same file and answers with save: true and the seen. It is done as you, with your own access, all or none; a camper's choices changed by hand are kept. This is how a person's AI imports campers, their bunks and their choices, from a file or from the person's own words: one camper's new or changed choices go as a sheet of that one camper (csv_text with their camper number when the camp uses them, their name exactly as Shoresh has it, their bunk and their choices in order). Campers not on the sheet keep their choices. A camper is matched by number, or by name when there is none, so if the review counts that camper as new, stop and ask the person: saving would add a second camper.",
+    "Import campers' elective choices from a file, as the Elective seats screen's Import choices does: this is how a week's electives start (the first import starts the week's seats), and later sheets import choices again. The file is read with the screen's own code (each camper, their bunk and their choices in order). Send it first without save: the answer is the review (how many campers, new or already here, choices made by hand that are kept, names Shoresh doesn't have yet, each at the answer the screen starts it at) and its seen. Change a new name's answer only when the person wants it otherwise (ask them about anything the file doesn't make plain), then send the same file and answers with save: true and the seen. It is done as you, with your own access, all or none; a camper's choices changed by hand are kept. This is how a person's AI imports campers, their bunks and their choices, from a file or from the person's own words: one camper's new or changed choices go as a sheet of that one camper (csv_text with their camper number when the camp uses them, their name exactly as Shoresh has it, their bunk and their choices in order). Campers not on the sheet keep their choices. A camper is matched by number, or by name when there is none, so if the review counts that camper as new, stop and ask the person: saving would add a second camper. Two campers may share a name: when the review asks whether rows are different campers, or which camper a row is, ask the person and answer with different_campers or which_camper.",
     {
       elective_set: {
         type: "string",
@@ -269,6 +269,18 @@ function bringInChoicesFile() {
     type: "object",
     description:
       'Only to change what a name on the sheet Shoresh doesn\'t have starts at, by that name: "add" (a new activity), "leave" (leave it out) or "same:<activity>".'
+  };
+  // ELECT-2.7: the screen's "Different campers" and "Which camper?" answers.
+  c.inputSchema.properties.different_campers = {
+    type: "array",
+    items: { type: "string" },
+    description:
+      "Names the review says it can't tell apart that the person says are different campers: each row comes in as its own camper."
+  };
+  c.inputSchema.properties.which_camper = {
+    type: "object",
+    description:
+      'Which camper each row the review asks about is, by row number: one of the review\'s words for a camper already here, or "new".'
   };
   return c;
 }

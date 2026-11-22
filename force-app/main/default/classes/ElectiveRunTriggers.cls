@@ -1,7 +1,8 @@
 /**
  * Campers, elective runs, preferences and seats (repo ADR 0018). Fills the hidden keys that make
- * "a camper once in a season", "one set of choices per camper in a run" and "one seat per camper
- * at a time in a run" impossible to break, and keeps a run inside its season.
+ * "a camper number once in a season", "one set of choices per camper in a run" and "one seat per
+ * camper at a time in a run" impossible to break, and keeps a run inside its season. Two campers
+ * may share a name (ELECT-2.7): their name key only finds them.
  *
  * Preferences and seats are written hundreds at a time by Shoresh's own saves, which check what
  * they save; their triggers only fill keys and read nothing, so a big save stays within its query
@@ -15,79 +16,9 @@
 public with sharing class ElectiveRunTriggers {
   // ---------------------------------------------------------------- campers
 
+  /** A camper's hidden keys: a number once in a season, a name only to find them (CamperKeys). */
   public static void campersSaving(List<Camper__c> campers) {
-    // A delete (no new rows) is only checked for an archived season (ArchivedSeasons).
-    if (campers == null) {
-      return;
-    }
-    Set<Id> seasonIds = new Set<Id>();
-    Set<String> keys = new Set<String>();
-    Set<Id> savingIds = new Set<Id>();
-    for (Camper__c camper : campers) {
-      camper.Key__c = camperKey(camper);
-      keys.add(camper.Key__c);
-      seasonIds.add(camper.Season__c);
-      if (camper.Id != null) {
-        savingIds.add(camper.Id);
-      }
-    }
-    Set<String> taken = new Set<String>();
-    for (Camper__c existing : [
-      SELECT Key__c
-      FROM Camper__c
-      WHERE Key__c IN :keys AND Id NOT IN :savingIds
-      WITH SYSTEM_MODE
-    ]) {
-      taken.add(existing.Key__c);
-    }
-    SetupSeasons.LazyLabels labelsBySeason = SetupSeasons.labelsWhenNeeded(
-      seasonIds
-    );
-    for (Camper__c camper : campers) {
-      if (taken.add(camper.Key__c)) {
-        continue;
-      }
-      CampLabels labels = labelsBySeason.get(camper.Season__c);
-      if (String.isNotBlank(camper.CamperNumber__c)) {
-        camper.CamperNumber__c.addError(
-          'Another ' +
-            labels.singularInSentence('Camper') +
-            ' in this ' +
-            labels.singularInSentence('Season') +
-            ' has this number.'
-        );
-      } else {
-        camper.Name.addError(
-          'Another ' +
-            labels.singularInSentence('Camper') +
-            ' in this ' +
-            labels.singularInSentence('Season') +
-            ' has this name and no number. Give each a number to tell them apart.'
-        );
-      }
-    }
-  }
-
-  /**
-   * Season and camper number; with no number, season and a SHA-256 of the name (spacing and
-   * capitals aside), so the name is not stored twice. Two campers with one name and no number
-   * share a key, which is the one refusal the desktop makes. Bringing in choices (ChoicesImport)
-   * finds a sheet's campers already in the season by this key, so the name is never queried.
-   */
-  public static String camperKey(Camper__c camper) {
-    if (String.isNotBlank(camper.CamperNumber__c)) {
-      return camper.Season__c +
-        '|#|' +
-        camper.CamperNumber__c.deleteWhitespace().toLowerCase();
-    }
-    String name = camper.Name == null
-      ? ''
-      : camper.Name.normalizeSpace().toLowerCase();
-    return camper.Season__c +
-      '|n|' +
-      EncodingUtil.convertToHex(
-        Crypto.generateDigest('SHA-256', Blob.valueOf(name))
-      );
+    CamperKeys.fill(campers);
   }
 
   // ---------------------------------------------------------------- runs

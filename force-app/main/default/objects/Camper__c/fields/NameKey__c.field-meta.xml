@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>NameKey__c</fullName>
+    <description
+  >Season and a hash of the name, for a camper with no number, filled by Shoresh, so an import finds a camper by name without reading names. Not unique: two campers may share a name (ELECT-2.7). Holds no copy of the name.</description>
+    <externalId>false</externalId>
+    <label>Name Key</label>
+    <length>255</length>
+    <required>false</required>
+    <trackTrending>false</trackTrending>
+    <type>Text</type>
+    <unique>false</unique>
+</CustomField>

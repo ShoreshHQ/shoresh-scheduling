@@ -441,14 +441,41 @@ export function noScheduleLine(setup, weekId, t, openedOn) {
     : `Build ${name} first.`;
 }
 
-/** Campers Shoresh can't tell apart (the one refusal): [{ key, name, where, why }]. */
+/**
+ * Campers Shoresh can't tell apart: [{ key, name, where, why, canSplit, different }]. canSplit:
+ * each row is a whole camper, so the director may say they are different campers (ELECT-2.7);
+ * different: they said so (withApart). Until then the sheet is refused.
+ */
 export function cantTellApartRows(reading) {
   return (reading.cantTellApart || []).map((item, i) => ({
     key: `apart-${i}`,
     name: item.name,
     where: rowsText(item.rows),
-    why: ["No camper number.", apartWords(item.rows)].filter(Boolean).join(" ")
+    why: ["No camper number.", apartWords(item.rows)].filter(Boolean).join(" "),
+    canSplit: !!item.split,
+    different: !!item.different
   }));
+}
+
+/**
+ * The reading with the director's "Different campers" answers (by cantTellApartRows key): each
+ * such row comes in as its own camper, marked apart, with its own comments (ELECT-2.7).
+ */
+export function withApart(reading, apart) {
+  if (!reading) return reading;
+  const campers = [...reading.campers];
+  const notKept = [...(reading.notKept || [])];
+  const cantTellApart = (reading.cantTellApart || []).map((item, i) => {
+    const different = !!(apart && apart[`apart-${i}`] && item.split);
+    if (different) {
+      for (const one of item.split) {
+        campers.push({ ...one.camper, apart: true });
+        notKept.push(...one.notes);
+      }
+    }
+    return { ...item, different };
+  });
+  return { ...reading, campers, notKept, cantTellApart };
 }
 
 const NOT_READ_WORDS = {
@@ -676,6 +703,9 @@ function settledChoice(c, known, answers, linked) {
   return base;
 }
 
+/** "Which camper?"'s answer for a new camper (the others are a saved camper's Id). */
+export const NEW_CAMPER = "new";
+
 /** Whether every name Shoresh doesn't know has an answer. */
 export function allSettled(newNames, answers) {
   return (newNames || []).every((item) => answers[foldName(item.name)]);
@@ -694,7 +724,8 @@ export function buildRequest({
   place,
   fileName,
   fingerprint,
-  runRevision
+  runRevision,
+  which = {}
 }) {
   const known = activitiesByFold(activities);
   const byId = new Map((activities || []).map((a) => [a.Id, a.Name]));
@@ -711,6 +742,7 @@ export function buildRequest({
       if (settled) choices.push(settled);
     }
     const bunk = bunkOf(camper, groups);
+    const picked = which[camper.key];
     campers.push({
       row: camper.rows[0] ? camper.rows[0].row : null,
       name: camper.name || camper.number,
@@ -718,7 +750,11 @@ export function buildRequest({
       comment: comments.get(camper.key) || null,
       groupId: bunk.groupId,
       divisionId: bunk.divisionId,
-      choices
+      choices,
+      // ELECT-2.7: rows the director called different campers, and which camper a row is.
+      ...(camper.apart ? { apart: true } : {}),
+      ...(picked === NEW_CAMPER ? { newCamper: true } : {}),
+      ...(picked && picked !== NEW_CAMPER ? { camperId: picked } : {})
     });
   }
   const addActivities = [];
@@ -751,6 +787,35 @@ export function buildRequest({
 
 // ---------- card 3: the count ----------
 
+/** Each request camper's reading key, in the request's order (buildRequest's campers). */
+export function camperKeys(reading, groups) {
+  return reading.campers
+    .filter((camper) => bunkOf(camper, groups).problem !== "unknown")
+    .map((camper) => camper.key);
+}
+
+/**
+ * The server's "which camper?" questions (ChoicesImport.Check.whichCamper; ELECT-2.7), answered
+ * or not, each with
+ * the season's campers of that name and "A new camper": [{ key, name, where, options, value }].
+ * key is the camper's reading key, which the answers (which) are kept by.
+ */
+export function whichRows({ check, request, keys, which, t = buildTerms([]) }) {
+  return ((check && check.whichCamper) || []).map((question) => {
+    const key = keys[question.index];
+    return {
+      key,
+      name: request.campers[question.index].name,
+      where: `Row ${question.row}`,
+      options: [
+        ...question.choices.map((c) => ({ label: c.label, value: c.id })),
+        { label: `A new ${t.sIn("Camper")}`, value: NEW_CAMPER }
+      ],
+      value: (which && which[key]) || null
+    };
+  });
+}
+
 /**
  * What card 3 says before Bring in, from the request and the server's check: [{ key, text, look }].
  * look marks a line that needs a look (the corner mark). Nothing is resolved silently: hand
@@ -761,10 +826,11 @@ export function countLines({ request, check, set, t, activities }) {
   const lines = [];
   const camperWords = (n) =>
     `${n} ${n === 1 ? t.sIn("Camper") : t.pIn("Camper")}`;
+  const { added, known } = check;
   // No "0 new" or "0 already here": a zero is left out (CORE-6.13).
   const parts = [
-    check.added ? `${check.added} new` : "",
-    check.known ? `${check.known} already here` : ""
+    added ? `${added} new` : "",
+    known ? `${known} already here` : ""
   ].filter(Boolean);
   lines.push({
     key: "count",

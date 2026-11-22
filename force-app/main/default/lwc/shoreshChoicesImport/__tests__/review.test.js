@@ -19,7 +19,11 @@ import {
   rememberedAnswers,
   shapeOf,
   sheetPreview,
-  toCheckRows
+  toCheckRows,
+  withApart,
+  camperKeys,
+  whichRows,
+  NEW_CAMPER
 } from "../review";
 
 const t = buildTerms([
@@ -238,7 +242,9 @@ describe("card 2: what needs a person", () => {
         key: "apart-0",
         name: "Noa Oakhollow",
         where: "Rows 5, 6",
-        why: "No camper number. Willow and Oak."
+        why: "No camper number. Willow and Oak.",
+        canSplit: true,
+        different: false
       }
     ]);
   });
@@ -544,6 +550,110 @@ describe("card 3: the count", () => {
       ],
       ["Pottery isn't offered in Chugim: 3 choices", true]
     ]);
+  });
+});
+
+// ELECT-2.7 (Greg 2026-11-21): two campers may share a name; a person says which is which.
+describe("two campers with one name", () => {
+  const place = { seasonId: "s1", setId: "e1", weekId: "w1", scheduleId: "c1" };
+  const groups = groupsOfProgram(SETUP, "p1");
+  const twoNoas = () =>
+    readChoices(
+      csvFile(
+        "noa.csv",
+        lines(
+          "Name,Cabin,#1,#2,Comments",
+          "Maya Fernwood,Aspen,Archery,Drama,",
+          "Noa Oakhollow,Willow,Drama,Pottery,Afraid of heights",
+          "Noa Oakhollow,Aspen,Archery,Drama,"
+        )
+      ),
+      { activities: ACTIVITIES.map((a) => a.Name) }
+    );
+  const build = (read, which = {}) =>
+    buildRequest({
+      reading: read,
+      activities: ACTIVITIES,
+      answers: {},
+      groups,
+      place,
+      fileName: "noa.csv",
+      which
+    });
+
+  it("brings in neither Noa until the director says they are different campers", () => {
+    const read = twoNoas();
+    expect(build(withApart(read, {})).campers.map((c) => c.name)).toEqual([
+      "Maya Fernwood"
+    ]);
+    expect(cantTellApartRows(withApart(read, {}))[0].different).toBe(false);
+  });
+
+  it("brings in each Noa as their own camper, with their own bunk, choices and comment", () => {
+    const read = withApart(twoNoas(), { "apart-0": true });
+    expect(cantTellApartRows(read)[0].different).toBe(true);
+    const [maya, willow, aspen] = build(read).campers;
+    expect(maya.apart).toBeUndefined();
+    expect([willow, aspen]).toMatchObject([
+      {
+        name: "Noa Oakhollow",
+        apart: true,
+        groupId: "g2",
+        comment: "Afraid of heights"
+      },
+      { name: "Noa Oakhollow", apart: true, groupId: "g1", comment: null }
+    ]);
+    expect(willow.choices.map((c) => c.n)).toEqual(["Drama", "Pottery"]);
+    expect(aspen.choices.map((c) => c.n)).toEqual(["Archery", "Drama"]);
+  });
+
+  it("asks which camper a row is, with a new camper as a choice, and carries the answer", () => {
+    const read = withApart(twoNoas(), { "apart-0": true });
+    const keys = camperKeys(read, groups);
+    const check = {
+      added: 1,
+      known: 0,
+      handChanged: [],
+      differs: [],
+      renamed: [],
+      notOnSheet: 0,
+      whichCamper: [
+        {
+          index: 1,
+          row: 3,
+          choices: [{ id: "c7", label: "Noa Oakhollow, Willow" }]
+        },
+        {
+          index: 2,
+          row: 4,
+          choices: [{ id: "c7", label: "Noa Oakhollow, Willow" }]
+        }
+      ]
+    };
+    const unanswered = whichRows({
+      check,
+      request: build(read),
+      keys,
+      which: {}
+    });
+    expect(unanswered.map((r) => [r.name, r.where, r.value])).toEqual([
+      ["Noa Oakhollow", "Row 3", null],
+      ["Noa Oakhollow", "Row 4", null]
+    ]);
+    expect(unanswered[0].options).toEqual([
+      { label: "Noa Oakhollow, Willow", value: "c7" },
+      { label: "A new camper", value: NEW_CAMPER }
+    ]);
+    const which = { [keys[1]]: "c7", [keys[2]]: NEW_CAMPER };
+    const request = build(read, which);
+    expect(request.campers[1].camperId).toBe("c7");
+    expect(request.campers[1].newCamper).toBeUndefined();
+    expect(request.campers[2].newCamper).toBe(true);
+    expect(request.campers[2].camperId).toBeUndefined();
+    // Answered or not, each question stays listed, so an answer can be changed.
+    expect(
+      whichRows({ check, request, keys, which }).map((r) => r.value)
+    ).toEqual(["c7", NEW_CAMPER]);
   });
 });
 

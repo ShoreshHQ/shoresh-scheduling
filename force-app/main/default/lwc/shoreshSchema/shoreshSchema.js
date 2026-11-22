@@ -61,6 +61,7 @@ import campTimeZone from "@salesforce/schema/Camp__c.TimeZone__c";
 import camperObject from "@salesforce/schema/Camper__c";
 import camperCamperNumber from "@salesforce/schema/Camper__c.CamperNumber__c";
 import camperKey from "@salesforce/schema/Camper__c.Key__c";
+import camperNameKey from "@salesforce/schema/Camper__c.NameKey__c";
 import camperOutsideChangedAt from "@salesforce/schema/Camper__c.OutsideChangedAt__c";
 import camperOutsideId from "@salesforce/schema/Camper__c.OutsideId__c";
 import camperOutsideMatch from "@salesforce/schema/Camper__c.OutsideMatch__c";
@@ -430,6 +431,7 @@ export const FIELD = Object.freeze({
   Camper: Object.freeze({
     CamperNumber: camperCamperNumber.fieldApiName,
     Key: camperKey.fieldApiName,
+    NameKey: camperNameKey.fieldApiName,
     OutsideChangedAt: camperOutsideChangedAt.fieldApiName,
     OutsideId: camperOutsideId.fieldApiName,
     OutsideMatch: camperOutsideMatch.fieldApiName,

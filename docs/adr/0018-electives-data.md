@@ -132,10 +132,15 @@ choice 11 (when a screen leaves "Coming", the screen before it gains its next bu
    - a set's name once per season, spaces and capitals aside ("Another elective set in this
      season is called "chu gim".");
    - an activity once per set ("This activity is already offered in this elective set.");
-   - a camper once per season: by camper number (spacing and capitals aside), else by a SHA-256 of
-     the name, so the key holds no second copy of it. Two campers with one name and no number
-     are refused, the desktop's one refusal ("Another camper in this season has this name and no
-     number. Give each a number to tell them apart.");
+   - a camper number once per season (spacing and capitals aside). _Amended 2026-11-21 (Greg:
+     "the two campers is a bug we should fix"; ELECT-2.7):_ two campers may share a name, so a
+     name is no longer unique. A camper with no number keeps a SHA-256 of the name in
+     `NameKey__c` (not unique, hidden), so imports find them without reading names; `Key__c` is
+     blank for them (campers saved before keep their name key there, and both are read). Where
+     more than one camper has a name, an import asks which, never guesses (ChoicesImportCampers,
+     IncomingCampers). This goes beyond the desktop, which refused the second camper ("Another
+     camper in this season has this name and no number. Give each a number to tell them
+     apart.");
    - one set of choices per camper per run; one seat per camper per date and time block per run.
      These two triggers only fill keys and read nothing, because Shoresh's own saves write them
      hundreds at a time and check what they save (plan §5); a duplicate is refused by the key.

@@ -586,6 +586,133 @@ describe("c-shoresh-choices-import", () => {
     await expect(element).toBeAccessible();
   });
 
+  // ELECT-2.7 (Greg 2026-11-21): two campers may share a name; the director says so, and which.
+  it("brings in two campers with one name once the director says they are different, asking which camper each is", async () => {
+    const asking = {
+      ...CHECK,
+      added: 0,
+      whichCamper: [
+        {
+          index: 0,
+          row: 2,
+          choices: [
+            { id: "c7", label: "Noa Oakhollow, Willow" },
+            { id: "c8", label: "Noa Oakhollow, Oak" }
+          ]
+        },
+        {
+          index: 1,
+          row: 3,
+          choices: [
+            { id: "c7", label: "Noa Oakhollow, Willow" },
+            { id: "c8", label: "Noa Oakhollow, Oak" }
+          ]
+        }
+      ]
+    };
+    checkChoices.mockResolvedValue(asking);
+    const element = await render();
+    await choose(element, "same.csv", SAME_NAME);
+    await click(element, '[data-id="primary"]');
+    const different = $(
+      element,
+      '[data-apart="apart-0"] [data-answer="different"]'
+    );
+    expect(different.getAttribute("aria-pressed")).toBe("false");
+    await click(element, '[data-apart="apart-0"] [data-answer="different"]');
+    expect(
+      $(
+        element,
+        '[data-apart="apart-0"] [data-answer="different"]'
+      ).getAttribute("aria-pressed")
+    ).toBe("true");
+    await click(element, '[data-id="primary"]');
+    expect($(element, '[data-id="refusal"]')).toBeNull();
+    // Each Noa is its own camper, asked without the answers so each question stays to change.
+    const checked = JSON.parse(checkChoices.mock.calls[0][0].request);
+    expect(checked.campers.map((c) => [c.name, c.apart, c.groupId])).toEqual([
+      ["Noa Oakhollow", true, "g2"],
+      ["Noa Oakhollow", true, "g3"]
+    ]);
+    const which = $$(element, "[data-which] lightning-combobox");
+    expect(which.map((c) => c.options.map((o) => o.label))).toEqual([
+      ["Noa Oakhollow, Willow", "Noa Oakhollow, Oak", "A new camper"],
+      ["Noa Oakhollow, Willow", "Noa Oakhollow, Oak", "A new camper"]
+    ]);
+    // Import waits for both answers.
+    expect($(element, '[data-id="primary"]')).toBeNull();
+    which[0].dispatchEvent(
+      new CustomEvent("change", { detail: { value: "c7" } })
+    );
+    await flush();
+    expect($(element, '[data-id="primary"]')).toBeNull();
+    // Each answer counts again with it, as the server says it.
+    checkChoices.mockResolvedValue({ ...asking, added: 1, known: 1 });
+    which[1].dispatchEvent(
+      new CustomEvent("change", { detail: { value: "new" } })
+    );
+    await flush();
+    const recount = JSON.parse(checkChoices.mock.calls.at(-1)[0].request);
+    expect(recount.campers.map((c) => [c.camperId, c.newCamper])).toEqual([
+      ["c7", undefined],
+      [undefined, true]
+    ]);
+    expect($(element, '[data-line="count"]').textContent).toContain(
+      "2 campers: 1 new, 1 already here"
+    );
+    await click(element, '[data-id="primary"]');
+    const saved = JSON.parse(bringInChoices.mock.calls[0][0].request);
+    expect(saved.campers.map((c) => [c.camperId, c.newCamper])).toEqual([
+      ["c7", undefined],
+      [undefined, true]
+    ]);
+    await expect(element).toBeAccessible();
+  });
+
+  it("keeps only the latest count when two answers are given quickly, and Import waits for it", async () => {
+    const question = (index) => ({
+      index,
+      row: index + 2,
+      choices: [
+        { id: "c7", label: "Noa Oakhollow, Willow" },
+        { id: "c8", label: "Noa Oakhollow, Oak" }
+      ]
+    });
+    const asking = {
+      ...CHECK,
+      added: 0,
+      whichCamper: [question(0), question(1)]
+    };
+    checkChoices.mockResolvedValue(asking);
+    const element = await render();
+    await choose(element, "same.csv", SAME_NAME);
+    await click(element, '[data-id="primary"]');
+    await click(element, '[data-apart="apart-0"] [data-answer="different"]');
+    await click(element, '[data-id="primary"]');
+    let answerSlow;
+    checkChoices
+      .mockReturnValueOnce(new Promise((done) => (answerSlow = done)))
+      .mockResolvedValueOnce({ ...asking, known: 2 });
+    const which = $$(element, "[data-which] lightning-combobox");
+    which[0].dispatchEvent(
+      new CustomEvent("change", { detail: { value: "c7" } })
+    );
+    which[1].dispatchEvent(
+      new CustomEvent("change", { detail: { value: "c8" } })
+    );
+    await flush();
+    expect($(element, '[data-line="count"]').textContent).toContain(
+      "2 campers: 2 already here"
+    );
+    // The first answer's count comes back last: it is not kept.
+    answerSlow({ ...asking, known: 1, added: 1 });
+    await flush();
+    expect($(element, '[data-line="count"]').textContent).toContain(
+      "2 campers: 2 already here"
+    );
+    expect($(element, '[data-id="primary"]').disabled).toBe(false);
+  });
+
   it("says a final run takes no new choices, with no Bring in", async () => {
     // As the server sends it: no run to bring into (runId null), the final one's name.
     checkChoices.mockResolvedValue({
