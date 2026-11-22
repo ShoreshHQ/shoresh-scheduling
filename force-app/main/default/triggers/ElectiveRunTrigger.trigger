@@ -4,5 +4,5 @@ trigger ElectiveRunTrigger on ElectiveRun__c(
   before delete
 ) {
   ArchivedSeasons.refuseChanges();
-  ElectiveRunTriggers.runsSaving(Trigger.new);
+  ElectiveRunTriggers.runsSaving(Trigger.new, Trigger.oldMap);
 }

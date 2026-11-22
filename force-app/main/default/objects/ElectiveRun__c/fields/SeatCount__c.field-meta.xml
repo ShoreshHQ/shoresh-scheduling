@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>SeatCount__c</fullName>
+    <description
+  >How many seats the run has, counted by Salesforce: end-of-season Clear reads a season's seats from it without reading every seat (a season of a large camp holds more than one request may read).</description>
+    <label>Seat count</label>
+    <summaryForeignKey>Assignment__c.ElectiveRun__c</summaryForeignKey>
+    <summaryOperation>count</summaryOperation>
+    <trackTrending>false</trackTrending>
+    <type>Summary</type>
+</CustomField>

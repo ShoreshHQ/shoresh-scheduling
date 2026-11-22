@@ -126,16 +126,16 @@ describe("electives data", () => {
     }
   });
 
-  it("lets the scheduler read and edit every elective field", () => {
+  it("lets the scheduler read and edit every elective field (a roll-up count only read)", () => {
     const { fields } = granted();
     const missing = ELECTIVE_OBJECTS.flatMap(fieldsOf)
       .filter(needsPermission)
-      .map((f) => f.name)
-      .concat(["Coverage__c.LinkedChoice__c"])
-      .filter((name) => {
-        const p = fields.get(name);
-        return !p || !p.readable || !p.editable;
-      });
+      .concat([{ name: "Coverage__c.LinkedChoice__c" }])
+      .filter((f) => {
+        const p = fields.get(f.name);
+        return !p || !p.readable || (f.type !== "Summary" && !p.editable);
+      })
+      .map((f) => f.name);
     expect(missing).toEqual([]);
   });
 

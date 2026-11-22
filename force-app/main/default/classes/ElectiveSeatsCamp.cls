@@ -105,6 +105,83 @@ public class ElectiveSeatsCamp {
     );
   }
 
+  /**
+   * A large camp's week (repo ADR 0018 choice 37, large camps): Chugim in Periods 1 to 4, Monday to
+   * Friday, for both groups: 20 times, so 600 campers take 12,000 seats, past the 10,000 rows
+   * one Salesforce request may write.
+   */
+  public ElectiveSeatsCamp wholeWeek() {
+    Database.update(
+      new Program__c(Id = ids.get('Main'), Friday__c = true),
+      AccessLevel.USER_MODE
+    );
+    List<TimeBlock__c> more = new List<TimeBlock__c>();
+    for (Integer i = 2; i <= 4; i++) {
+      more.add(
+        new TimeBlock__c(
+          Program__c = ids.get('Main'),
+          Name = 'Period ' + i,
+          StartTime__c = Time.newInstance(8 + i, 0, 0, 0),
+          EndTime__c = Time.newInstance(8 + i, 45, 0, 0),
+          PartOfDay__c = 'Morning',
+          SortOrder__c = 8 + i
+        )
+      );
+    }
+    Database.insert(more, AccessLevel.USER_MODE);
+    for (TimeBlock__c block : more) {
+      ids.put(block.Name, block.Id);
+    }
+    ScheduleGrid week = grid(new List<String>{ '1,1,1,1,', '1,1,1,1,' });
+    week.blocks.clear();
+    for (Integer i = 1; i <= 4; i++) {
+      week.blocks.add(
+        new ScheduleGrid.Block(ids.get('Period ' + i), 'Period ' + i)
+          .at(
+            String.valueOf(8 + i).leftPad(2, '0') + ':00',
+            String.valueOf(8 + i).leftPad(2, '0') + ':45'
+          )
+      );
+    }
+    week.blocks.add(
+      new ScheduleGrid.Block(ids.get('Lunch'), 'Lunch').at('12:00', '12:45')
+    );
+    List<ScheduleDaySaves.DaySave> days = new List<ScheduleDaySaves.DaySave>();
+    for (Integer d = 0; d < 5; d++) {
+      days.add(new ScheduleDaySaves.DaySave(MONDAY.addDays(d), week, null));
+    }
+    Database.delete(
+      [
+        SELECT Id
+        FROM ScheduleDay__c
+        WHERE Schedule__c = :scheduleId
+        WITH USER_MODE
+      ],
+      AccessLevel.USER_MODE
+    );
+    ScheduleDaySaves.write(scheduleId, days);
+    return this;
+  }
+
+  /** Every camper in Drama at every time of the whole week (wholeWeek). */
+  public ElectiveSeatSaves.AssignRequest everyoneInDramaAllWeek(
+    Decimal revision
+  ) {
+    ElectiveSeatSaves.AssignRequest request = new ElectiveSeatSaves.AssignRequest();
+    request.runId = runId;
+    request.revision = revision;
+    for (Integer i = 0; i < campers.size(); i++) {
+      for (Integer d = 0; d < 5; d++) {
+        for (Integer p = 1; p <= 4; p++) {
+          ElectiveSeatSaves.SeatIn seat = seat(i, MONDAY.addDays(d), 'Drama');
+          seat.blockId = ids.get('Period ' + p);
+          request.seats.add(seat);
+        }
+      }
+    }
+    return request;
+  }
+
   /** A day with Chugim in Period 1 for each row given ('1,' holds it; ',' is open). */
   public ScheduleGrid grid(List<String> rows) {
     ScheduleGrid result = new ScheduleGrid();

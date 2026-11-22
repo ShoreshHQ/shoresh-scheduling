@@ -410,8 +410,8 @@ at a place.
     replaces the unlocked seats, writing only the difference (a seat already at a camper's day and
     time is kept or its offering changed in place; the rest are inserted or deleted), so Assign
     again at 500 campers × 10 times stays well under Salesforce's 10,000 rows per save; a save that
-    would still pass 9,500 rows is refused before anything is written ("Too many seats change to
-    save at once (…). Nothing was changed."). It keeps every lock (assigning again fills only what is left), sets
+    would still pass 9,500 rows is written in the background in parts (choice 63; it used to be
+    refused). It keeps every lock (assigning again fills only what is left), sets
     the run's `TimesFingerprint__c` (a SHA-256 of every cell holding the set), `EngineVersion__c`
     and `Dropped__c` (what did not run below its minimum, as time, activity, how many it had and
     needed: the engine's finding, kept so "Dropped had 4 of 6" stays after a reload). The engine
@@ -848,3 +848,53 @@ screen, and other programs' electives.
       `ElectivesDataTest.refusalsNameRunsInTheCampsWordForElectives` (with a query bound),
       `ElectivesOnGridTest.aSetOrEventNotFoundIsNamedInTheCampsWords` and `aNotedSetIsSetUpInTheCampsWord`, `ChoicesImportTest.anIncompleteRequestIsRefusedInTheCampsWords`, `ElectiveSeatsTest.aGoneRunIsRefusedWithoutAFixedWord` (each with a query bound) and
       `ElectiveSeatsTest.finalizeFixesTheSeatsWithAVersionAndNames`.
+
+## Large camps (2026-11-22)
+
+63. **A save too big for one request is checked, then written in parts in the background**
+    (`ElectiveBigSave`; ELECT-5.8 to 5.10). A large camp (600 campers at 18 or 20 elective times a
+    week: 10,800 to 12,000 seats) passes Salesforce's 10,000 rows a request may write on Assign,
+    Assign again, Finalize (its names on every seat) and end-of-season Clear (a season holds
+    86,000 seats). Each is checked in full in the request exactly as a small one is (nothing about
+    its checks changes); only past 9,500 rows does the writing go to Batch Apex, a part of 9,000
+    rows at a time (half that where every row is also emptied from the Recycle Bin), each part its
+    own transaction in user mode as the person. Batch Apex rather than chained jobs, which some
+    orgs (Developer Edition, as the test org) cap at five. Small camps save in one request as
+    before.
+    - **The run carries the progress** (`SaveDone__c` of `SaveTotal__c`), so the screen and an AI
+      show how far it has got: the main button reads "Saving 9,000 of 12,000" (Clear's button
+      "Clearing 45,000 of 91,200"), read again every three seconds, then the board as it ended;
+      the AI is told it is saving and reads `Still saving: 9,000 of 12,000 written.` Every other
+      save of the run waits ("Seats are still being saved (9,000 of 12,000). Try again when that's
+      done."; a second Clear: "Clearing is still going (…)").
+    - **The same rows in the same order**: Assign's difference is worked out once in the request
+      (deletes, then changes, then new seats); the run's revision, fingerprint and engine version
+      are set by the last part only, so the seats never read as assigned, or the run as Final,
+      until every row is written.
+    - **A part that fails stops the save, said**: the run keeps how far it got and why
+      (`SaveProblem__c`, in ScreenErrors' words), nothing after it is written, and the screen
+      says "Saving stopped after 6 of 8. That was removed. Reload the page." with Assign again
+      (Assign again then goes ahead and clears it). A part Salesforce stops without a word (a
+      limit can't be caught) is undone whole, rows and count, so the end finds fewer rows written
+      than the save had and stops it the same way ("A part of it couldn't be saved, so the rest
+      wasn't."); a part whose run's count isn't this save's (another save took over) stops it too; a job Salesforce ends without a word (cancelled in Setup, or its last
+      step stopped by a limit) is found when the run is read (`SaveJob__c`, its status), shown as
+      "Salesforce stopped it before the end.", and the next save goes ahead. A stop moves the
+      run's revision on, so a screen opened before can't save over the rows already written. A
+      Finalize that stops deletes the version it kept, so no "Electives finalized" version stands
+      for a run that isn't. Clear's picture takes a save in parts only from final runs (only
+      Clear saves those), never an Assign or Finalize of a draft.
+    - **Clear in parts** deletes the runs' seats, then their choices, each part emptied from the
+      Recycle Bin at once, then the runs and campers as a small Clear does. Its picture counts
+      seats from each run (`SeatCount__c`, a roll-up), never reading them: a season of a large camp
+      holds more seats than one request may read (50,000), which broke `ElectiveClearReading`.
+    - **Assign again empties what it deletes** from the Recycle Bin too (plan §3, "Real
+      deletion"): a large camp assigning again would otherwise fill the camp's Recycle Bin with
+      thousands of seats, pushing out the camp's own deleted records (the oldest are purged when
+      it is full). A deleted seat counts as two rows toward the bound.
+    - Not the desktop's: the desktop writes one local file and has no such limit.
+    - Tests: Apex `ElectiveLargeCampTest` (full size: 600 campers at 20 times, 12,000 seats
+      assigned end to end; in small parts: Assign again, a part that fails, a part that died
+      without a word, Finalize and its stop, Clear), `ElectiveSeatsTest.assignPastTheRowBoundIsSavedInTheBackground`;
+      Jest `shoreshElectiveSeats.test.js` and `downloadsAndClear.test.js` (the buttons counting,
+      a stop said). The whole camp in the test org: `node scripts/large-camp.js seed|clean`.

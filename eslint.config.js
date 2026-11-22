@@ -27,6 +27,15 @@ module.exports = defineConfig([
     }
   },
 
+  // Elective seats follows a large camp's save in the background (repo ADR 0018 choice 59): one
+  // pause between reads. One file, one rule; the same in code-analyzer.yml.
+  {
+    files: ["**/lwc/shoreshElectiveSeats/shoreshElectiveSeats.js"],
+    rules: {
+      "@lwc/lwc/no-async-operation": "off"
+    }
+  },
+
   // Shoresh's one model of motion (Roots' table, ADR 0020) draws its frames, and counts its short
   // waits, with requestAnimationFrame. One file, one rule; the same in code-analyzer.yml.
   {
