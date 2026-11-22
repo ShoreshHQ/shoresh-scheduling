@@ -141,3 +141,8 @@
 .panel-foot lightning-button {
   flex: none;
 }
+
+/* WEEK-6.8: the older automatic copies, folded into one quiet row at the list's end. */
+.fold {
+  padding: var(--shoresh-s1) var(--shoresh-s3);
+}

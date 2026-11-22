@@ -110,6 +110,18 @@
               </template>
             </div>
           </template>
+          <template lwc:if={foldedCount}>
+            <div class="fold">
+              <button
+                type="button"
+                class="link link_quiet"
+                onclick={handleUnfold}
+                data-id="versions-unfold"
+              >
+                {foldLabel}
+              </button>
+            </div>
+          </template>
         </div>
         <template lwc:if={showsApply}>
           <div class="panel-foot">
