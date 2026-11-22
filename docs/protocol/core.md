@@ -199,3 +199,10 @@ These never bend for Shoresh.
 - **CORE-6.16** Help in Settings MUST show the installed version, "Version 1.4", beside support's
   address; outside an installed package it MUST show none. The About page MUST stay as it is
   (ADR 0030; Greg 2026-11-21). Tests: ShoreshVersionTest; shoreshLearned.test.js "CORE-6.16".
+- **CORE-6.17** Settings MUST have **Getting started** after Help and before About, closed until
+  opened: the first steps (the admin assigns the Shoresh Scheduler permission set, the sample camp,
+  a season, building a week, electives, Publish), each a short name and the exact clicks in the
+  screens' and Salesforce's words, drawn as buttons, with no sentences; it MUST offer the made-up
+  sample camp and its campers' choices to download, the same bytes as `docs/samples`. About MUST
+  stay as it is (Greg's exception to "no help", 2026-11-22). Tests: shoreshGuide.test.js;
+  shoreshLearned.test.js "CORE-6.17".
