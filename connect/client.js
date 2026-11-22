@@ -131,7 +131,13 @@ function sfCommand(
   const client = env.LOCALAPPDATA && win.join(env.LOCALAPPDATA, "sf", "client");
   const updated = client && win.join(client, "bin", "sf.cmd");
   if (updated && exists(updated)) {
-    const version = /%~dp0\.\.\\([\w.-]+)\\bin\\sf\.cmd/.exec(read(updated));
+    let said = "";
+    try {
+      said = read(updated);
+    } catch {
+      // unreadable: the installed copy, as below
+    }
+    const version = /%~dp0\.\.\\([\w.-]+)\\bin\\sf\.cmd/.exec(said);
     const found = version && start(win.join(client, version[1], "bin"));
     if (found) return found;
   }

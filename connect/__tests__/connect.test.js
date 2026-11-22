@@ -4578,6 +4578,15 @@ describe("Shoresh for AI tools and the command line", () => {
       file: `${client}\\2.160.1\\bin\\node.exe`,
       args: ["--no-deprecation", `${client}\\2.160.1\\bin\\run.js`, "--version"]
     });
+    // An update whose sf.cmd can't be read: the installed copy.
+    expect(
+      sfCommand(["--version"], {
+        ...updated,
+        read: () => {
+          throw new Error("EACCES");
+        }
+      }).file
+    ).toBe("C:\\Program Files\\sf\\client\\bin\\node.exe");
     // npm's: the CLI's script, with the node on the PATH.
     const npm = "C:\\Users\\dana\\AppData\\Roaming\\npm";
     const run = `${npm}\\node_modules\\@salesforce\\cli\\bin\\run.js`;
