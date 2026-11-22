@@ -769,7 +769,7 @@ const CAPABILITIES = [
     ...change(
       "take_out_cell",
       "take_out_cell",
-      "Take what a cell of a week's Generated Schedule or Manual Build holds out of the week, as dragging it back to the activity list on the screen does: the whole placement goes, every time block it runs, leaving Open. A special event or elective set, which isn't dragged, is cleared from that group's cell as Delete clears a cell; the other groups it is drawn across keep it. As on the screen, undo_last_change takes it back while this conversation lasts.",
+      "Take what a cell of a week's Generated Schedule or Manual Build holds out of the week, as dragging it back to the activity list on the screen does: the whole placement goes, every time block it runs, leaving Open. A special event or elective set, which isn't dragged, goes as Delete takes it out on the screen's Daily View: from every group side by side it is drawn across as one cell. To take only one group out of it, change that group's cell to Open with change_schedule_cell. As on the screen, undo_last_change takes it back while this conversation lasts.",
       {
         day: CELL.day,
         group: CELL.group,

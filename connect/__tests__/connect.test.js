@@ -2082,7 +2082,7 @@ describe("Shoresh for AI tools and the command line", () => {
   });
 
   // API-1.154
-  it("takeOutASpecialEvent: take_out_cell on a special event clears that group's cell as the screen's Delete does, and leaves the other groups it is drawn across", async () => {
+  it("takeOutASpecialEvent: take_out_cell on a special event clears the cell drawn as one with it, every bunk side by side, as Delete on the screen's Daily View does", async () => {
     const LWC = "../../force-app/main/default/lwc";
     const edits = async () =>
       Object.assign(
@@ -2141,7 +2141,7 @@ describe("Shoresh for AI tools and the command line", () => {
       return { done, seen, sent: seen[1] && JSON.parse(seen[1].stdin) };
     };
 
-    // From its last block too: the whole of Bunk 2's trip goes, Bunk 1's stays.
+    // From its last block too: the cell drawn as one goes from both bunks, as one step.
     const out = await send({
       day: "Tuesday",
       group: "Bunk 2",
@@ -2149,17 +2149,30 @@ describe("Shoresh for AI tools and the command line", () => {
     });
     expect(out.seen[1].args[3]).toBe("/services/apexrest/v1/take_out_cell");
     expect(out.sent.change).toBe(
-      "Cleared Zoo trip · Bunk 2 · Tuesday · Period 3"
+      "Cleared Zoo trip · Bunk 1 to Bunk 2 · Tuesday · Period 2 to Period 3"
     );
-    expect(out.sent.runs).toEqual([
-      expect.objectContaining({
-        day: "2026-06-30",
-        groupId: inputs.groups[1].Id,
-        before: [`S:${trip}`, `^S:${trip}`],
-        after: ["", ""]
-      })
-    ]);
+    expect(out.sent.runs).toEqual(
+      inputs.groups.slice(0, 2).map((g) =>
+        expect.objectContaining({
+          day: "2026-06-30",
+          groupId: g.Id,
+          before: [`S:${trip}`, `^S:${trip}`],
+          after: ["", ""]
+        })
+      )
+    );
     expect(out.done.ok).toBe(true);
+
+    // Locked alike or not drawn as one (specials.js mergedWith): Monday's Bunk 1 goes alone.
+    const alone = await send({
+      day: "Monday",
+      group: "Bunk 1",
+      time: "Period 2"
+    });
+    expect(alone.sent.change).toBe(
+      "Cleared Zoo trip · Bunk 1 · Monday · Period 2 to Period 3"
+    );
+    expect(alone.sent.runs).toHaveLength(1);
 
     // A Lock beats it, in the screen's words; nothing is sent.
     const locked = await send({
