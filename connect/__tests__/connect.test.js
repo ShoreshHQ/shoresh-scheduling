@@ -2163,15 +2163,31 @@ describe("Shoresh for AI tools and the command line", () => {
     );
     expect(out.done.ok).toBe(true);
 
-    // Locked alike or not drawn as one (specials.js mergedWith): Monday's Bunk 1 goes alone.
+    // A name noted from a file (no record) is never drawn as one: Bunk 2 goes alone.
+    const tuesday = inputs.days[1];
+    inputs.days[1] = {
+      ...tuesday,
+      items: tuesday.items.map((item) =>
+        item.id === trip ? { name: "Zoo trip", kind: "S", gone: false } : item
+      )
+    };
+    const noted = await send({
+      day: "Tuesday",
+      group: "Bunk 2",
+      time: "Period 2"
+    });
+    expect(noted.sent.change).toBe("Cleared Bunk 2 · Tuesday · Period 2");
+    expect(noted.sent.runs).toHaveLength(1);
+    inputs.days[1] = tuesday;
+
+    // Not drawn as one with a locked cell (specials.js mergedWith): Monday's Bunk 1 goes alone,
+    // said as the screen says one cell cleared.
     const alone = await send({
       day: "Monday",
       group: "Bunk 1",
       time: "Period 2"
     });
-    expect(alone.sent.change).toBe(
-      "Cleared Zoo trip · Bunk 1 · Monday · Period 2 to Period 3"
-    );
+    expect(alone.sent.change).toBe("Cleared Bunk 1 · Monday · Period 2");
     expect(alone.sent.runs).toHaveLength(1);
 
     // A Lock beats it, in the screen's words; nothing is sent.

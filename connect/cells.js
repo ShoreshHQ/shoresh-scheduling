@@ -500,10 +500,11 @@ function lengthStep(ctx, m, from, input) {
 }
 
 /**
- * take_out_cell on what has no move of its own (a special event or elective set, API-1.154): as
- * Delete on the screen's Daily View, the cell drawn as one with it goes, every group side by side
- * holding the same thing over the same blocks, locked alike (specials.js mergedWith), as one step
- * (clearAllStep); null on an Open cell.
+ * take_out_cell on what has no move of its own (a special event or elective set, API-1.154), as
+ * Delete on the screen's Daily View (handleClearCell, clearRange): a locked cell is refused; a
+ * placed event or set drawn as one with groups side by side (the same over the same blocks,
+ * unlocked: specials.js mergedWith) goes from all of them as one step (clearAllStep); anything
+ * else is that cell cleared (placeStep with Open). Null on an Open cell.
  */
 function clearedStep(ctx, m, from) {
   const day = ctx.week[from.day];
@@ -511,7 +512,10 @@ function clearedStep(ctx, m, from) {
   if (at.slot === m.OPEN) {
     return null;
   }
-  const locked = ctx.isLocked(from);
+  const first = { ...from, block: at.first };
+  if (ctx.isLocked(first)) {
+    return { refused: m.lockedWords(ctx, first), locked: first };
+  }
   const drawnWith = (g) => {
     if (g < 0 || g >= day.groups.length) return false;
     const there = m.placement(day, g, at.first);
@@ -519,16 +523,21 @@ function clearedStep(ctx, m, from) {
       there.slot === at.slot &&
       there.first === at.first &&
       there.length === at.length &&
-      ctx.isLocked({ day: from.day, group: g, block: at.first }) === locked
+      !ctx.isLocked({ ...first, group: g })
     );
   };
   let top = from.group;
   let bottom = from.group;
-  while (drawnWith(top - 1)) top -= 1;
-  while (drawnWith(bottom + 1)) bottom += 1;
+  if (m.isPlacedOverlay(at.slot)) {
+    while (drawnWith(top - 1)) top -= 1;
+    while (drawnWith(bottom + 1)) bottom += 1;
+  }
+  if (top === bottom) {
+    return m.placeStep(ctx, first, m.OPEN, 1);
+  }
   const cells = [];
   for (let g = top; g <= bottom; g++) {
-    cells.push({ slot: { day: from.day, group: g, block: at.first } });
+    cells.push({ slot: { ...first, group: g } });
   }
   const step = m.clearAllStep(
     ctx,
@@ -537,10 +546,9 @@ function clearedStep(ctx, m, from) {
   if (!step || step.refused) {
     return step;
   }
-  const rows = m.rowsCovered(ctx.week, cells);
   return {
     runs: step.runs,
-    label: `Cleared ${ctx.nameOf(at.slot, day)} · ${m.rangeName(ctx, rows)}`
+    label: `Cleared ${ctx.nameOf(at.slot, day)} · ${m.rangeName(ctx, m.rowsCovered(ctx.week, cells))}`
   };
 }
 
