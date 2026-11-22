@@ -205,5 +205,5 @@ These never bend for Shoresh.
   screens' and Salesforce's words, drawn as buttons, with no sentences; it MUST offer the made-up
   sample camp, its Electives list and its campers' choices to download, the same bytes as
   `docs/samples`; every button it names MUST be one the screens have, in the camp's words. About MUST
-  stay as it is (Greg's exception to "no help", 2026-11-22). Tests: shoreshGuide.test.js;
+  stay as it is (Greg's exception to "no help", 2026-11-21: the guide and the sample camp together, as the demo, nothing preloaded). Tests: shoreshGuide.test.js;
   shoreshLearned.test.js "CORE-6.17".
