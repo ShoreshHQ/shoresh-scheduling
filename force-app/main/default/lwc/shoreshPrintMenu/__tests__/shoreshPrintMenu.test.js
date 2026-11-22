@@ -99,12 +99,37 @@ describe("c-shoresh-print-menu", () => {
     q(element, '[data-kind="group"]').click();
     await flush();
     q(element, '[data-kind="group"]').dispatchEvent(
+      new FocusEvent("focusout", {
+        bubbles: true,
+        composed: true,
+        relatedTarget: document.body
+      })
+    );
+    await flush();
+    word(element).click();
+    await flush();
+    expect(
+      all(element, ".kind-row").map((row) => row.getAttribute("aria-expanded"))
+    ).toEqual(["false", "false"]);
+  });
+
+  it("keeps a kind open while a click moves focus to its choice, so the choice is made", async () => {
+    // In Salesforce a click's focus move says nothing of where focus went.
+    const element = render();
+    const chosen = jest.fn();
+    element.addEventListener("choose", (event) => chosen(event.detail));
+    await flush();
+    word(element).click();
+    await flush();
+    q(element, '[data-kind="day"]').click();
+    await flush();
+    q(element, '[data-kind="day"]').dispatchEvent(
       new FocusEvent("focusout", { bubbles: true, composed: true })
     );
     await flush();
-    expect(
-      q(element, '[data-kind="group"]').getAttribute("aria-expanded")
-    ).toBe("false");
+    q(element, '[data-value="day|1"]').click();
+    await flush();
+    expect(chosen).toHaveBeenCalledWith({ kind: "day", key: "1" });
   });
 
   it("opens again with every kind closed after Escape, though focus stays on its word", async () => {
