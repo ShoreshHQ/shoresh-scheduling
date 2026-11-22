@@ -8,6 +8,27 @@ import {
   refusal,
   SUPPORT_EMAIL
 } from "c/shoreshErrors";
+import keepFromScreen from "@salesforce/apex/ErrorCodes.keepFromScreen";
+
+jest.mock(
+  "@salesforce/apex/ErrorCodes.keepFromScreen",
+  () => ({ default: jest.fn(() => Promise.resolve()) }),
+  { virtual: true }
+);
+
+// CORE-6.15: a support code, letters that can't be read as another, as ErrorCodes.cls makes them.
+const CODE =
+  / For support: ([ACDEFGHJKMNPQRTUVWXY34679]{3}-[ACDEFGHJKMNPQRTUVWXY34679]{3})\.$/;
+/** The words without their support code; fails when there is none. */
+function withoutCode(text) {
+  expect(text).toMatch(CODE);
+  return text.replace(CODE, "");
+}
+const flush = () =>
+  [...Array(8)].reduce(
+    (chain) => chain.then(() => undefined),
+    Promise.resolve()
+  );
 
 // Shapes as Lightning delivers them to a screen: an AuraHandledException (our own words), an
 // exception our Apex didn't catch, and the platform's or the browser's own failures.
@@ -32,6 +53,7 @@ beforeEach(() => {
 });
 afterEach(() => {
   consoleError.mockRestore();
+  keepFromScreen.mockClear();
 });
 
 describe("reasonOf", () => {
@@ -80,7 +102,7 @@ describe("reasonOf", () => {
       ""
     ];
     raw.forEach((error) => {
-      expect(reasonOf(error)).toBe("Try again.");
+      expect(withoutCode(reasonOf(error))).toBe("Try again.");
     });
     expect(consoleError).toHaveBeenCalledTimes(raw.length);
     expect(consoleError).toHaveBeenCalledWith(expect.any(String), uncaught);
@@ -98,7 +120,9 @@ describe("reasonOf", () => {
       { body: [{ message: "Too many DML rows: 10001" }] }
     ];
     tooBig.forEach((error) => {
-      expect(failed("That import could not be undone.", error)).toBe(
+      expect(
+        withoutCode(failed("That import could not be undone.", error))
+      ).toBe(
         `That import could not be undone. This camp is bigger than Salesforce lets Shoresh handle in one go, so trying again won't help. Open Help in Settings, or write to ${SUPPORT_EMAIL}.`
       );
     });
@@ -127,15 +151,17 @@ describe("failed", () => {
   });
 
   it("when the reason isn't ours, says what didn't happen and to try again", () => {
-    expect(failed("Swim wasn't saved.", uncaught)).toBe(
+    expect(withoutCode(failed("Swim wasn't saved.", uncaught))).toBe(
       "Swim wasn't saved. Try again."
     );
-    expect(failed("Week 1 couldn't be opened.", null)).toBe(
+    expect(withoutCode(failed("Week 1 couldn't be opened.", null))).toBe(
       "Week 1 couldn't be opened. Try again."
     );
     // A name in quotes may hold a full stop.
     expect(
-      failed('"Week 1." not deleted. Nothing was removed.', uncaught)
+      withoutCode(
+        failed('"Week 1." not deleted. Nothing was removed.', uncaught)
+      )
     ).toBe('"Week 1." not deleted. Try again.');
   });
 
@@ -151,9 +177,10 @@ describe("failed", () => {
   });
 
   it("a fallback passed along from errorMessage isn't said twice", () => {
-    expect(failed("Swim wasn't saved.", refusal(errorMessage(uncaught)))).toBe(
-      "Swim wasn't saved. Try again."
-    );
+    const said = errorMessage(uncaught);
+    const shown = failed("Swim wasn't saved.", refusal(said));
+    expect(withoutCode(shown)).toBe("Swim wasn't saved. Try again.");
+    expect(shown.match(CODE)[1]).toBe(said.match(CODE)[1]);
   });
 });
 
@@ -168,9 +195,18 @@ describe("refusedBecause", () => {
   });
 
   it("otherwise says what didn't happen, as failed() does", () => {
-    expect(refusedBecause("Bunks not saved.", uncaught)).toBe(
+    expect(withoutCode(refusedBecause("Bunks not saved.", uncaught))).toBe(
       "Bunks not saved. Try again."
     );
+    expect(
+      withoutCode(
+        refusedBecause("Bunks not saved.", refusal(errorMessage(uncaught)))
+      )
+    ).toBe("Bunks not saved. Try again.");
+    const limit = { body: { message: "Apex CPU time limit exceeded" } };
+    expect(
+      refusedBecause("Bunks not saved.", refusal(errorMessage(limit)))
+    ).toMatch(/^Bunks not saved\. This camp is bigger than Salesforce/);
     expect(
       refusedBecause(
         "Done, but the screen couldn't show it yet. Reload the page.",
@@ -182,10 +218,64 @@ describe("refusedBecause", () => {
 
 describe("errorMessage", () => {
   it("with no subject to put in front, the fallback says nothing happened", () => {
-    expect(errorMessage(uncaught)).toBe("That didn't work. Try again.");
+    expect(withoutCode(errorMessage(uncaught))).toBe(
+      "That didn't work. Try again."
+    );
     expect(errorMessage(ours("That option can't be built."))).toBe(
       "That option can't be built."
     );
+  });
+});
+
+describe("support codes (CORE-6.15)", () => {
+  it("Shoresh's own words carry no code, and nothing is kept for them", async () => {
+    expect(reasonOf(ours("Group A isn't at camp."))).toBe(
+      "Group A isn't at camp."
+    );
+    await flush();
+    expect(keepFromScreen).not.toHaveBeenCalled();
+  });
+
+  it("a code the server already gave is shown as it came, not given a second one", async () => {
+    const fromServer = ours(
+      "Shoresh couldn't tell why. Try again. For support: K7Q-4MX."
+    );
+    expect(failed("Swim wasn't saved.", fromServer)).toBe(
+      "Swim wasn't saved. Shoresh couldn't tell why. Try again. For support: K7Q-4MX."
+    );
+    await flush();
+    expect(keepFromScreen).not.toHaveBeenCalled();
+  });
+
+  it("a problem the screen met on its own is kept under the code it shows", async () => {
+    const dropped = { body: { message: "Disconnected or Canceled" } };
+    const code = reasonOf(dropped).match(CODE)[1];
+    await flush();
+    expect(keepFromScreen).toHaveBeenCalledTimes(1);
+    const sent = keepFromScreen.mock.calls[0][0];
+    expect(sent.code).toBe(code);
+    expect(sent.detail).toContain("Disconnected or Canceled");
+    expect(consoleError).toHaveBeenCalledWith(
+      expect.stringContaining(code),
+      dropped
+    );
+  });
+
+  it("one error shown twice keeps one code; two errors get two", async () => {
+    const one = new Error("Plain");
+    const first = reasonOf(one).match(CODE)[1];
+    expect(failed("Swim wasn't saved.", one).match(CODE)[1]).toBe(first);
+    expect(reasonOf(new Error("Plain")).match(CODE)[1]).not.toBe(first);
+    await flush();
+    expect(keepFromScreen).toHaveBeenCalledTimes(2);
+  });
+
+  it("the code is still shown when it can't be kept (no connection)", async () => {
+    keepFromScreen.mockImplementationOnce(() =>
+      Promise.reject(new Error("offline"))
+    );
+    expect(withoutCode(reasonOf(new Error("Plain")))).toBe("Try again.");
+    await flush();
   });
 });
 

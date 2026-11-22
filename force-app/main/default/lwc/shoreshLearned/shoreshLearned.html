@@ -245,13 +245,16 @@
       </template>
     </template>
   </div>
-  <!-- Help: how to reach Shoresh support. -->
+  <!-- Help: how to reach Shoresh support, and which Shoresh this is (CORE-6.16). -->
   <div class="shoresh-hairline" role="presentation"></div>
   <section class="help" aria-labelledby="help-title" data-id="help">
     <h3 class="rail-title" id="help-title">Help</h3>
     <a class="shoresh-item link" href={supportHref} data-id="support-email"
       >{supportEmail}</a
     >
+    <template lwc:if={version}>
+      <span class="version" data-id="version">{version}</span>
+    </template>
   </section>
   <!-- About and Legal (Greg's text, aboutText.js), read only. -->
   <div class="shoresh-hairline" role="presentation"></div>

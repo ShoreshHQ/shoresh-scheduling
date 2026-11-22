@@ -114,7 +114,12 @@ public with sharing class ElectiveSeatsController {
     try {
       return JSON.deserialize(request, kind);
     } catch (Exception e) {
-      throw new ShoreshException('The seats could not be sent. Try again.');
+      throw new ShoreshException(
+        ErrorCodes.said(
+          'The seats could not be sent. Try again.',
+          ErrorCodes.detailOf(e)
+        )
+      );
     }
   }
 }

@@ -4,8 +4,8 @@
  * what failed, then the cause; c/shoreshErrors failed()). Shoresh's own messages
  * (ShoreshException, trigger and validation messages) are shown as they are; the platform's own
  * wording never is: it names objects and fields. Unknown problems say Shoresh couldn't tell why,
- * rather than guess, and the detail goes to the debug log (once packaged, readable only through
- * subscriber support login, not by the camp's own admin).
+ * rather than guess, with a support code whose detail is kept in the camp's org (ErrorCodes,
+ * CORE-6.15).
  */
 public with sharing class ScreenErrors {
   private static final String COULD_NOT_SAVE = 'Shoresh couldn\'t tell why. Try again.';
@@ -86,8 +86,7 @@ public with sharing class ScreenErrors {
     if (e instanceof DmlException) {
       return dmlMessage((DmlException) e, null, fallback);
     }
-    logged(e);
-    return fallback;
+    return ErrorCodes.said(fallback, ErrorCodes.detailOf(e));
   }
 
   /** '"Archery": Must be 1 or more.' unless the message already names the row. */
@@ -114,8 +113,7 @@ public with sharing class ScreenErrors {
     if (PLAIN.containsKey(code)) {
       return plain(code);
     }
-    logged(e);
-    return fallback;
+    return ErrorCodes.said(fallback, ErrorCodes.detailOf(e));
   }
 
   /**
@@ -133,11 +131,14 @@ public with sharing class ScreenErrors {
     if (PLAIN.containsKey(code)) {
       return plain(code);
     }
-    System.debug(
-      LoggingLevel.ERROR,
-      'Shoresh: ' + String.valueOf(code) + ': ' + error.getMessage()
+    return ErrorCodes.said(
+      COULD_NOT_SAVE,
+      String.valueOf(code) +
+        ': ' +
+        error.getMessage() +
+        ' ' +
+        String.valueOf(error.getFields())
     );
-    return COULD_NOT_SAVE;
   }
 
   /** Shoresh's own checks catch duplicates first; this is for two saves at the same moment. */
@@ -155,12 +156,5 @@ public with sharing class ScreenErrors {
       return 'Someone else saved at the same time. Try again.';
     }
     return 'That name is already used. Pick another.';
-  }
-
-  private static void logged(Exception e) {
-    System.debug(
-      LoggingLevel.ERROR,
-      'Shoresh: ' + e.getTypeName() + ': ' + e.getMessage()
-    );
   }
 }

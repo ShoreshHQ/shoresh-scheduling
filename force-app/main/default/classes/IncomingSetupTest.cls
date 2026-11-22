@@ -529,7 +529,8 @@ private class IncomingSetupTest {
     Assert.areEqual(500, answer.get('status'), String.valueOf(answer));
     Assert.areEqual(
       'Shoresh couldn\'t tell why. Try again.',
-      answer.get('message')
+      ((String) answer.get('message'))
+        .replaceAll(' For support: [A-Z0-9]{3}-[A-Z0-9]{3}\\.$', '')
     );
   }
 

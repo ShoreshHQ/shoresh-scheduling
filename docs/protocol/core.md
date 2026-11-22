@@ -188,3 +188,14 @@ These never bend for Shoresh.
   hollow bronze ring. A mark carries no words beside it; its words are on hover or focus and in
   assistive text (design guide §3; word walk W3). Marks are drawn in the mark bronze, which reads
   at 3:1 or better on every surface (WCAG 1.4.11).
+- **CORE-6.15** A problem Shoresh can't explain in its own words (and Salesforce's limit
+  stopping a request) MUST end with a support code, "For support: K7Q-4MX.", six characters that
+  can't be read or heard as another; the same code MUST find its detail, who and when in an Error
+  Log record in the camp's own org, kept even when the request is undone, with no outside service.
+  Shoresh's own refusals MUST NOT carry one; one request MUST have one code; a code the server
+  gave MUST NOT be given a second (ADR 0030; Greg 2026-11-21). Tests: ErrorCodesTest;
+  ScreenErrorsTest anythingElseSaysShoreshCouldNotTellWhy; shoreshErrors.test.js "support codes
+  (CORE-6.15)".
+- **CORE-6.16** Help in Settings MUST show the installed version, "Version 1.4", beside support's
+  address; outside an installed package it MUST show none. The About page MUST stay as it is
+  (ADR 0030; Greg 2026-11-21). Tests: ShoreshVersionTest; shoreshLearned.test.js "CORE-6.16".
