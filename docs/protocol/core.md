@@ -203,6 +203,7 @@ These never bend for Shoresh.
   opened: the first steps (the admin assigns the Shoresh Scheduler permission set, the sample camp,
   a season, building a week, electives, Publish), each a short name and the exact clicks in the
   screens' and Salesforce's words, drawn as buttons, with no sentences; it MUST offer the made-up
-  sample camp and its campers' choices to download, the same bytes as `docs/samples`. About MUST
+  sample camp, its Electives list and its campers' choices to download, the same bytes as
+  `docs/samples`; every button it names MUST be one the screens have, in the camp's words. About MUST
   stay as it is (Greg's exception to "no help", 2026-11-22). Tests: shoreshGuide.test.js;
   shoreshLearned.test.js "CORE-6.17".

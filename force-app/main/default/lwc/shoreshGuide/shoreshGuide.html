@@ -24,7 +24,7 @@
       </button>
     </h3>
     <template lwc:if={open}>
-      <ol class="steps" id="guide-steps" data-id="guide-steps">
+      <ol class="steps" id="guide-steps" role="list" data-id="guide-steps">
         <template for:each={steps} for:item="step">
           <li key={step.key} class="step" data-step={step.key}>
             <span class="number shoresh-num" aria-hidden="true"
@@ -63,6 +63,19 @@
                       class="slds-button__icon_left"
                     ></lightning-icon>
                     {campFile}
+                  </a>
+                  <a
+                    class="slds-button slds-button_neutral"
+                    href={electivesUrl}
+                    download={electivesFile}
+                    data-id="download-sample-electives"
+                  >
+                    <lightning-icon
+                      icon-name="utility:download"
+                      size="x-small"
+                      class="slds-button__icon_left"
+                    ></lightning-icon>
+                    {electivesFile}
                   </a>
                   <a
                     class="slds-button slds-button_neutral"

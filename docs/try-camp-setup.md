@@ -1472,6 +1472,9 @@ share only the seasons it needs (section 33, step 4).
    **Build a week**, **Electives** (your camp's word) and **Publish**. No sentences.
 3. Under **Sample camp**, click **Sample camp (made up).xlsx**: the browser saves the made-up
    Maple Grove week (the same file as `docs/samples/import/maple-grove-2026-all-camp.xlsx`).
+   **Sample electives (made up).csv** saves the Chugim list (Archery 3 seats, Drama 3, Pottery No
+   limit; `docs/samples/electives/chugim-electives.csv`): the sample's Chugim comes in empty, so
+   the **Electives** step imports it with **Import a list** before the choices.
    **Sample choices (made up).csv** saves six made-up campers' elective choices
    (`docs/samples/electives/chugim-choices.csv`).
 4. Click **Getting started** again: the steps close.

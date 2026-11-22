@@ -3,8 +3,10 @@
 // Salesforce's own words in November 2026 (docs/try-camp-setup.md section 34). Screen names
 // come from c/shoreshScreens, so a camp that calls electives Chugim reads Chugim here too.
 import { screenLabels } from "c/shoreshScreens";
+import { article, capital } from "c/shoreshTerms";
 
 export const SAMPLE_CAMP_FILE = "Sample camp (made up).xlsx";
+export const SAMPLE_ELECTIVES_FILE = "Sample electives (made up).csv";
 export const SAMPLE_CHOICES_FILE = "Sample choices (made up).csv";
 
 /** The steps, in order: [{ key, title, who, paths: [[click, ...]], sample }]. */
@@ -29,28 +31,30 @@ export function guideSteps(t) {
     { key: "sample", title: "Sample camp", sample: true, paths: [] },
     {
       key: "season",
-      title: "A season",
+      title: capital(article(t.sIn("Season"))),
+      // Season actions is the bare ▾ beside the season picker.
       paths: [
-        ["Season actions ▾", "New season", "Create season"],
+        ["▾", `New ${t.sIn("Season")}`, `Create ${t.sIn("Season")}`],
         [screens.roots, screens.import, SAMPLE_CAMP_FILE]
       ]
     },
     {
       key: "week",
-      title: `Build a ${t.sIn("Week")}`,
+      title: `Build ${article(t.sIn("Week"))}`,
       paths: [[screens.generatedSchedule, "Generate a schedule"]]
     },
     {
       key: "electives",
       title: screens.electives,
       paths: [
-        [screens.electives, "Seats"],
+        // The sample's elective set comes in empty: its list first, then the campers' choices.
+        [screens.electives, "Import a list", SAMPLE_ELECTIVES_FILE],
         [
           screens.electiveSeats,
           "Build",
           "Import choices",
           SAMPLE_CHOICES_FILE,
-          "Assign seats",
+          `Assign ${t.pIn("Seats")}`,
           "Finalize"
         ]
       ]

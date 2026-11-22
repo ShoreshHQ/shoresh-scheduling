@@ -103,8 +103,15 @@ describe("c-shoresh-guide (CORE-6.17)", () => {
     expect(meta).toContain("<label>Shoresh Scheduler</label>");
   });
 
-  it("offers the sample camp and its choices to download", async () => {
+  it("offers the sample camp, its electives and its choices to download", async () => {
     const element = await opened();
+    const electives = $(element, '[data-id="download-sample-electives"]');
+    expect(electives.getAttribute("download")).toBe(
+      "Sample electives (made up).csv"
+    );
+    expect(electives.getAttribute("href")).toMatch(
+      /ShoreshSampleCamp\/sample-electives\.csv$/
+    );
     const camp = $(element, '[data-id="download-sample-camp"]');
     const choices = $(element, '[data-id="download-sample-choices"]');
     expect(camp.getAttribute("download")).toBe("Sample camp (made up).xlsx");
@@ -122,14 +129,14 @@ describe("c-shoresh-guide (CORE-6.17)", () => {
   it("the season, week, electives and publish steps click what the screens say", async () => {
     const element = await opened();
     expect(clicks(element, "season")).toEqual([
-      ["Season actions ▾", "New season", "Create season"],
+      ["▾", "New season", "Create season"],
       ["Roots", "Import last year", "Sample camp (made up).xlsx"]
     ]);
     expect(clicks(element, "week")).toEqual([
       ["Generated Schedule", "Generate a schedule"]
     ]);
     expect(clicks(element, "electives")).toEqual([
-      ["Electives", "Seats"],
+      ["Electives", "Import a list", "Sample electives (made up).csv"],
       [
         "Elective seats",
         "Build",
@@ -144,15 +151,59 @@ describe("c-shoresh-guide (CORE-6.17)", () => {
     ]);
   });
 
-  it("says electives in the camp's own words", async () => {
+  it("says electives, seasons, weeks and seats in the camp's own words", async () => {
     const terms = buildTerms([
-      { term: "Elective", singular: "Chug", plural: "Chugim", isCustom: true }
+      { term: "Elective", singular: "Chug", plural: "Chugim", isCustom: true },
+      { term: "Season", singular: "Summer", plural: "Summers", isCustom: true },
+      { term: "Week", singular: "Session", plural: "Sessions", isCustom: true },
+      { term: "Seats", singular: "Spot", plural: "Spots", isCustom: true }
     ]);
     const element = await opened(terms);
-    expect(text($(element, '[data-step="electives"] .step-title'))).toBe(
-      "Chugim"
-    );
+    const title = (step) =>
+      text($(element, `[data-step="${step}"] .step-title`));
+    expect(title("electives")).toBe("Chugim");
+    expect(title("season")).toBe("A Summer");
+    expect(title("week")).toBe("Build a Session");
+    expect(clicks(element, "season")[0]).toEqual([
+      "▾",
+      "New Summer",
+      "Create Summer"
+    ]);
     expect(clicks(element, "electives")[0][0]).toBe("Chugim");
+    expect(clicks(element, "electives")[1]).toContain("Assign Spots");
+  });
+
+  it("every button it names is a button the screens really have", () => {
+    const read = (file) =>
+      readFileSync(join(ROOT, "force-app/main/default/lwc", file), "utf8");
+    const has = (file, words) => expect(read(file)).toContain(words);
+    has(
+      "shoreshCampSetup/shoreshCampSetup.js",
+      'newSeason: `New ${t.sIn("Season")}`'
+    );
+    has(
+      "shoreshCampSetup/shoreshCampSetup.js",
+      'createSeason: `Create ${t.sIn("Season")}`'
+    );
+    has(
+      "shoreshCampSetup/shoreshCampSetup.html",
+      "alternative-text={labels.seasonActions}"
+    );
+    has(
+      "shoreshGeneratedSchedule/shoreshGeneratedSchedule.js",
+      '[ACTION.GENERATE]: "Generate a schedule"'
+    );
+    has("shoreshListImport/shoreshListImport.js", '"Import a list"');
+    has("shoreshElectiveSeats/shoreshElectiveSeats.html", 'label="Build"');
+    has(
+      "shoreshElectiveSeats/shoreshElectiveSeats.html",
+      "<span>Import choices</span>"
+    );
+    has(
+      "shoreshElectiveSeats/shoreshElectiveSeats.js",
+      '"Finalize" : `Assign ${this.t.pIn("Seats")}`'
+    );
+    has("shoreshPublish/shoreshPublish.js", 'confirmLabel: "Publish"');
   });
 
   it("has no sentences: every step is a short name and its clicks", async () => {
@@ -178,6 +229,7 @@ describe("c-shoresh-guide (CORE-6.17)", () => {
         "docs/samples/import/maple-grove-2026-all-camp.xlsx",
         "sample-camp.xlsx"
       ],
+      ["docs/samples/electives/chugim-electives.csv", "sample-electives.csv"],
       ["docs/samples/electives/chugim-choices.csv", "sample-choices.csv"]
     ];
     pairs.forEach(([doc, resource]) => {

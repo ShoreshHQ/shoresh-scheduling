@@ -4,7 +4,8 @@ import { buildTerms } from "c/shoreshTerms";
 import {
   guideSteps,
   SAMPLE_CAMP_FILE,
-  SAMPLE_CHOICES_FILE
+  SAMPLE_CHOICES_FILE,
+  SAMPLE_ELECTIVES_FILE
 } from "./guideSteps";
 
 /**
@@ -17,8 +18,10 @@ export default class ShoreshGuide extends LightningElement {
   @api terms;
   open = false;
   campUrl = `${SAMPLE}/sample-camp.xlsx`;
+  electivesUrl = `${SAMPLE}/sample-electives.csv`;
   choicesUrl = `${SAMPLE}/sample-choices.csv`;
   campFile = SAMPLE_CAMP_FILE;
+  electivesFile = SAMPLE_ELECTIVES_FILE;
   choicesFile = SAMPLE_CHOICES_FILE;
 
   get t() {

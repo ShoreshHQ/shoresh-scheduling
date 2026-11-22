@@ -91,7 +91,7 @@
   height: 24px;
   border-radius: 50%;
   background: var(--shoresh-primary);
-  color: #fff;
+  color: var(--shoresh-color-primary-50);
   font-size: var(--shoresh-font-size-label);
   font-weight: 600;
 }
