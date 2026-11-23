@@ -2182,7 +2182,7 @@ describe("Shoresh for AI tools and the command line", () => {
     expect(noted.sent.runs).toHaveLength(1);
     inputs.days[1] = tuesday;
 
-    // Not drawn as one with a locked cell (specials.js mergedWith): Monday's Bunk 1 goes alone,
+    // Not drawn as one with a locked cell (handEdits.js deleteStep): Monday's Bunk 1 goes alone,
     // said as the screen says one cell cleared.
     const alone = await send({
       day: "Monday",

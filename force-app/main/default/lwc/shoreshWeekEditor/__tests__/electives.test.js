@@ -312,6 +312,8 @@ describe("c-shoresh-week-editor: elective sets", () => {
       [FLAGPOLE, CHUGIM],
       ["1,2,", "1,2,"]
     );
+    const shown = drawn(grid(element)).find((c) => c.key === "0-1").text;
+    expect(shown).toMatch(/^Chugim \(\d+\)$/);
     await fromGrid(element, "clearcell", { key: "0-1" });
     expect(
       sentRuns(saveRuns, 0).map((r) => [r.groupId, r.before, r.after])
@@ -319,6 +321,12 @@ describe("c-shoresh-week-editor: elective sets", () => {
       ["g1", [`E:${SET_ID}`], [""]],
       ["g2", [`E:${SET_ID}`], [""]]
     ]);
+    // Its Undo names it as its cell showed it, with its open offerings.
+    expect(
+      q(element, '[data-id="undo"]').title.startsWith(
+        `Undo: Cleared ${shown} · Bunk 1 to Bunk 2 · `
+      )
+    ).toBe(true);
   });
 
   it("takes up its offerings' places, and isn't counted as placed", async () => {

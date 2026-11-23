@@ -428,6 +428,20 @@ describe("c-shoresh-week-editor: special days and events", () => {
     ]);
   });
 
+  it("clears an event from the one bunk shown in Group View", async () => {
+    const { element, saveRuns } = await render(
+      [FLAGPOLE, CARNIVAL],
+      ["1,2,", "1,2,"]
+    );
+    q(element, '[data-view="group"]').click();
+    await flush();
+    await fromGrid(element, "clearcell", { key: "0-1" });
+    const runs = sentRuns(saveRuns, 0);
+    expect(runs.map((r) => [r.groupId, r.before, r.after])).toEqual([
+      ["g1", [`S:${EVENT_ID}`], [""]]
+    ]);
+  });
+
   it("puts an event over the cells chosen when its tile is picked", async () => {
     const { element, saveRuns } = await render();
     await fromGrid(element, "cellfocus", { key: "0-1" });

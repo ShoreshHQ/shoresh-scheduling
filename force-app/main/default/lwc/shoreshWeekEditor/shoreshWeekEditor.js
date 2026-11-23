@@ -34,8 +34,8 @@ import {
 import { cellKey as toolCellKey, replan, toolRuns } from "./tools";
 import {
   canMove,
-  clearAllStep,
   copyStep,
+  deleteStep,
   editContextOf,
   isAwayIn,
   lockedText,
@@ -44,7 +44,6 @@ import {
   pasteTool,
   placeOverStep,
   placeStep,
-  rangeName,
   resizeStep,
   serverRunsOf,
   slotName,
@@ -1315,8 +1314,14 @@ export default class ShoreshWeekEditor extends LightningElement {
     const rows = rowsCovered(weekDays, this.rangeFor(cell)).sort(
       (a, b) => a.day - b.day || a.group - b.group
     );
-    const result = placeOverStep(this.editCtx, rows, `E:${setId}`, true);
-    this.commitPlaced(result, rows, found.name, cell);
+    const result = placeOverStep(
+      this.editCtx,
+      rows,
+      `E:${setId}`,
+      found.name,
+      true
+    );
+    this.commitPlaced(result, cell);
   }
 
   /**
@@ -1343,15 +1348,20 @@ export default class ShoreshWeekEditor extends LightningElement {
     const rows = rowsCovered(weekDays, this.rangeFor(cell)).sort(
       (a, b) => a.day - b.day || a.group - b.group
     );
-    const result = placeOverStep(this.editCtx, rows, `S:${eventId}`);
-    this.commitPlaced(result, rows, found.name, cell);
+    const result = placeOverStep(
+      this.editCtx,
+      rows,
+      `S:${eventId}`,
+      found.name
+    );
+    this.commitPlaced(result, cell);
   }
 
   /**
    * An event's or elective set's runs (placeOverStep) made as one Undo step, or why not, said. The
    * cell keeps focus, or the cell it is now drawn as one with.
    */
-  commitPlaced(result, rows, name, cell) {
+  commitPlaced(result, cell) {
     if (result.refused) {
       this.refuse(result.refused);
       return;
@@ -1360,13 +1370,7 @@ export default class ShoreshWeekEditor extends LightningElement {
       this.announce("Put back.");
       return;
     }
-    if (
-      this.commit(
-        result.runs,
-        `Placed ${name} · ${rangeName(this.editCtx, rows)}`,
-        cell.key
-      )
-    ) {
+    if (this.commit(result.runs, result.label, cell.key)) {
       // The cell keeps focus, or the cell it is now drawn as one with (its own may be gone).
       const grid = this.template.querySelector('[data-id="edit-grid"]');
       if (grid) {
@@ -1376,22 +1380,14 @@ export default class ShoreshWeekEditor extends LightningElement {
   }
 
   /**
-   * Clears a cell; an event drawn as one across bunks is cleared from all of them, as one Undo
-   * step (it was placed as one).
+   * Clears a cell (deleteStep); an event drawn as one across bunks (Daily View) is cleared from
+   * all of them, as one Undo step (it was placed as one).
    */
   clearRange(cell) {
-    const merged = mergedWith(
-      ((this.editGrid && this.editGrid.cells) || []).filter((c) => c.slot),
-      cell
-    );
-    if (merged.length < 2) {
-      this.change(cell.slot, cell.key, OPEN, 1);
-      return;
-    }
-    const result = clearAllStep(
-      this.editCtx,
-      merged.map((c) => c.slot)
-    );
+    const result = deleteStep(this.editCtx, cell.slot, {
+      sideBySide: this.isDaily,
+      name: cell.text
+    });
     if (!result) {
       return;
     }
@@ -1399,12 +1395,7 @@ export default class ShoreshWeekEditor extends LightningElement {
       this.refuse(result.refused);
       return;
     }
-    const rows = rowsCovered(this.schedule.days, merged);
-    this.commit(
-      result.runs,
-      `Cleared ${cell.text} · ${rangeName(this.editCtx, rows)}`,
-      cell.key
-    );
+    this.commit(result.runs, result.label, cell.key);
   }
 
   /**
