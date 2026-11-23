@@ -12,6 +12,7 @@
  *
  * undo_import (API-1.83): the screen's own Undo, said in its words (undoMessage).
  */
+const words = require("./screenWords");
 
 /** Something changed since it was read or reviewed: nothing was saved (409). By default, the setup since the review. */
 function changedSince(
@@ -156,17 +157,15 @@ function headingLines(p) {
 }
 
 /**
- * The engine's camelCase words an AI reads and sends in plain words instead: leaveOut as
- * leave_out, a layout (allCamp, byGroup, byActivity) as all_camp, by_group, by_activity.
+ * The engine's camelCase words an AI reads and sends in plain words instead (screenWords.js):
+ * leaveOut as leave_out, a layout (allCamp, byGroup, byActivity) as all_camp, by_group, by_activity.
  */
-const snake = (word) => word.replace(/[A-Z]/g, (c) => `_${c.toLowerCase()}`);
+const engineWords = (m) => [m.LEAVE_OUT, ...m.LAYOUTS];
 function aiWord(m, value) {
-  return value === m.LEAVE_OUT || m.LAYOUTS.includes(value)
-    ? snake(value)
-    : value;
+  return words.aiWord(value, engineWords(m));
 }
 function engineWord(m, value) {
-  return [m.LEAVE_OUT, ...m.LAYOUTS].find((w) => snake(w) === value) ?? value;
+  return words.engineWord(value, engineWords(m));
 }
 
 /** One list's table as the screen lays it out, in lines. */
@@ -337,11 +336,11 @@ async function importFile(capability, given, { read, send, answer, load }) {
   // WEEK-2.6: a list's "Day 3" counts from this season's first day, whatever was read before.
   m.nameDaysFor(setup);
   const t = m.buildTerms(setup.labels || []);
-  const screenKey = input.list;
   const screens = [...m.LIST_SCREENS, "electives", "specialEvents"];
+  const screenKey = words.engineWord(input.list, screens);
   if (!workbook && !screens.includes(screenKey)) {
     return refused(
-      `Say which list: ${screens.map((k) => `"${k}" (${m.screenLabels(t)[k]})`).join(", ")}.`
+      `Say which list: ${screens.map((k) => `"${words.aiWord(k, screens)}" (${m.screenLabels(t)[k]})`).join(", ")}.`
     );
   }
   const { file, problem } = fileOf(input, m);

@@ -13,8 +13,9 @@
  * and changing a cell, undoing, versions, publishing and unpublishing on a Manual Build week as
  * that screen does (API-1.41 to API-1.43), and, on Manual Build, reading and accepting its
  * checks, the grid's edits of several cells and starting a week (API-1.44 to API-1.46), and
- * renaming and deleting setup records as Camp Setup does (API-1.47, API-1.48). Each one is the
- * API's own web address, so it obeys the API's rules and the person's own access (API-1.6).
+ * renaming and deleting setup records as Camp Setup does (API-1.47, API-1.48). Each one reaches
+ * only the API's own web addresses (its api, which may differ from its name), so it obeys the
+ * API's rules and the person's own access (API-1.6).
  */
 
 const SEASON = {
@@ -26,6 +27,13 @@ const SEASON = {
 const WEEK = {
   type: "string",
   description: "The week's name, like Week 2, as list_seasons gives it."
+};
+
+/** A remembered answer, named by its line on "What Shoresh has learned" (API-1.150). */
+const LEARNED_LINE = {
+  type: "string",
+  description:
+    "The answer's line exactly as read_learned_answers lists it before its (how), like lunch is a fixed activity."
 };
 
 /** What every schedule answer is, and is not (API-1.27). */
@@ -51,7 +59,7 @@ function read(name, api, description, about, more = {}) {
         week: WEEK,
         as_csv: {
           type: "boolean",
-          description: "true to get a CSV file instead of JSON."
+          description: "true to get the answer as a CSV file."
         }
       },
       required: ["week"],
@@ -2061,13 +2069,13 @@ const CAPABILITIES = [
           "programs",
           "divisions",
           "groups",
-          "timeBlocks",
+          "time_blocks",
           "locations",
           "activities",
-          "fixedActivities",
-          "recurringActivities",
+          "fixed_activities",
+          "recurring_activities",
           "electives",
-          "specialEvents"
+          "special_events"
         ],
         description:
           "Which screen's list: programs, divisions, groups, time blocks, locations, activities, fixed activities, recurring activities, electives (not camper choices), or special events (special days and events, by Type)."
@@ -2371,13 +2379,13 @@ const CAPABILITIES = [
             "programs",
             "divisions",
             "groups",
-            "timeBlocks",
+            "time_blocks",
             "locations",
             "activities",
-            "fixedActivities",
-            "recurringActivities",
+            "fixed_activities",
+            "recurring_activities",
             "electives",
-            "specialEvents"
+            "special_events"
           ],
           description:
             "worksheet (the default: the whole camp), or one screen's list: programs, divisions, groups, time blocks, locations, activities, fixed activities, recurring activities, electives, or special events (special days and events)."
@@ -2393,7 +2401,7 @@ const CAPABILITIES = [
     method: "GET",
     readsLearned: true,
     description:
-      'Read "What Shoresh has learned" (under Settings) as the screen lists it: the camp\'s remembered import answers and patterns, newest first, each with when and how it was learned, then what Shoresh already knew. Each answer remembered now has its answer_id, seen and (when it can be changed) the answers it can be changed to; each pattern there now has its pattern and seen. Read it right before change_learned_answer, forget_learned_answer or forget_learned_pattern and send those.',
+      'Read "What Shoresh has learned" (under Settings) as the screen lists it: the camp\'s remembered import answers and patterns, newest first, each with when and how it was learned, then what Shoresh already knew. Each answer remembered now has its seen and (when it can be changed) the answers it can be changed to; each pattern there now has its pattern and seen. Read it right before change_learned_answer, forget_learned_answer or forget_learned_pattern and send those.',
     about:
       "What the camp's imports have taught Shoresh, as the screen lists it. It holds no findings or problems.",
     inputSchema: {
@@ -2407,17 +2415,14 @@ const CAPABILITIES = [
     api: "change_learned_answer",
     method: "POST",
     sendsFields: true,
-    givesLearnedUndo: true,
+    changesAnswer: true,
     description:
-      'Change one remembered answer to another of its choices, as Change and Save on "What Shoresh has learned" do: the next import uses the new answer. Only an answer read_learned_answers lists with choices can be changed. Read it first and send its answer_id and seen. It is done as you, with your own access, and the answer gives an undo for undo_learned_answer. If someone changed or forgot it since, nothing is changed and Shoresh says so.',
+      'Change one remembered answer to another of its choices, as Change and Save on "What Shoresh has learned" do: the next import uses the new answer. Only an answer read_learned_answers lists with choices can be changed. Read it first and send its line and seen. It is done as you, with your own access, and the answer gives an undo for undo_learned_answer. If someone changed or forgot it since, nothing is changed and Shoresh says so.',
     inputSchema: {
       type: "object",
       properties: {
         season: SEASON,
-        answer_id: {
-          type: "string",
-          description: "The answer_id read_learned_answers gave it."
-        },
+        line: LEARNED_LINE,
         answer: {
           type: "string",
           description:
@@ -2429,7 +2434,7 @@ const CAPABILITIES = [
             "Its seen exactly as read_learned_answers gave it. If it changed since, nothing is changed and the person should be told."
         }
       },
-      required: ["answer_id", "answer", "seen"],
+      required: ["line", "answer", "seen"],
       additionalProperties: false
     }
   },
@@ -2438,24 +2443,20 @@ const CAPABILITIES = [
     api: "forget_learned_answer",
     method: "POST",
     sendsFields: true,
-    givesLearnedUndo: true,
     forgetsAnswer: true,
     description:
-      'Forget one remembered answer, as Forget on "What Shoresh has learned" does: the next import asks that question again. Ask the person first. Read it first with read_learned_answers and send its answer_id and seen. It is done as you, with your own access, and the answer gives an undo for undo_learned_answer. If someone changed or forgot it since, nothing is changed and Shoresh says so.',
+      'Forget one remembered answer, as Forget on "What Shoresh has learned" does: the next import asks that question again. Ask the person first. Read it first with read_learned_answers and send its line and seen. It is done as you, with your own access, and the answer gives an undo for undo_learned_answer. If someone changed or forgot it since, nothing is changed and Shoresh says so.',
     inputSchema: {
       type: "object",
       properties: {
         season: SEASON,
-        answer_id: {
-          type: "string",
-          description: "The answer_id read_learned_answers gave it."
-        },
+        line: LEARNED_LINE,
         seen: {
           type: "string",
           description: "Its seen exactly as read_learned_answers gave it."
         }
       },
-      required: ["answer_id", "seen"],
+      required: ["line", "seen"],
       additionalProperties: false
     }
   },

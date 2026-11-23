@@ -349,7 +349,8 @@ describe("Shoresh in an AI chat", () => {
     );
     expect(answer.result.content.map((c) => c.text)).toEqual([
       byName("read_activity_schedule").about,
-      '{"records":[]}',
+      // The API's records, said to an AI as rows (screenWords.js, API-1.6).
+      '{"rows":[]}',
       // No view here, so its special days are said to be unread (API-1.149).
       "Which days of this week a special day replaced couldn't be read this time: read_special_days says which days have one."
     ]);
