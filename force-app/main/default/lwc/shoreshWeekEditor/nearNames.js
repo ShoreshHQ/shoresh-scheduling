@@ -8,7 +8,7 @@
 const MOST = 3;
 
 /** Names compared the way people mean them: spaces and capitals aside. */
-function loose(text) {
+export function loose(text) {
   return String(text || "")
     .replace(/\s+/g, "")
     .toLowerCase();

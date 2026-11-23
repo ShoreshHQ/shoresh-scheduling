@@ -3,6 +3,8 @@
  * with its runs (as sent to the server) and its words ("Placed Swim · Bunk 3 · Monday · Period 2").
  * Undoing sends the runs back the other way, so it is checked like any edit: over someone else's
  * newer change it asks "keep theirs or use yours". Older history is in Versions (Greg #10).
+ * A step that added an activity carries it (added: { id, name, removed }, LOCK-5.5): its Undo
+ * takes the activity off, and its Redo adds it again.
  */
 import { inverse } from "./moves";
 
@@ -60,13 +62,50 @@ export class History {
   }
 
   /**
-   * A step whose change was made differently (Use yours): the same place in the list. False
-   * when the step is in neither list.
+   * A step whose change was made differently (Use yours): the same place in the list, still
+   * carrying the activity it added. False when the step is in neither list.
    */
   replace(id, step) {
-    const found = [...this.undos, ...this.redos].some((s) => s.id === id);
-    this.undos = this.undos.map((s) => (s.id === id ? step : s));
-    this.redos = this.redos.map((s) => (s.id === id ? step : s));
+    return this.change(id, (s) => ({ ...step, added: s.added }));
+  }
+
+  /** The step with this Id, in either list, or undefined. */
+  find(id) {
+    return [...this.undos, ...this.redos].find((s) => s.id === id);
+  }
+
+  /** What a step added is now (null: nothing of its own to take off again). */
+  setAdded(id, added) {
+    this.change(id, (s) => ({ ...s, added }));
+  }
+
+  /**
+   * An activity added again under a new Id (a Redo after its Undo took it off): every step, Undo
+   * and Redo alike, names the new one.
+   */
+  renameActivity(fromId, toId) {
+    const names = {
+      [`A:${fromId}`]: `A:${toId}`,
+      [`^A:${fromId}`]: `^A:${toId}`
+    };
+    const swap = (item) => names[item] || item;
+    const renamed = (s) => ({
+      ...s,
+      runs: s.runs.map((run) => ({
+        ...run,
+        before: (run.before || []).map(swap),
+        after: (run.after || []).map(swap)
+      }))
+    });
+    this.undos = this.undos.map(renamed);
+    this.redos = this.redos.map(renamed);
+  }
+
+  /** The step with this Id made anew (how), where it is. False when it is in neither list. */
+  change(id, how) {
+    const found = !!this.find(id);
+    this.undos = this.undos.map((s) => (s.id === id ? how(s) : s));
+    this.redos = this.redos.map((s) => (s.id === id ? how(s) : s));
     return found;
   }
 

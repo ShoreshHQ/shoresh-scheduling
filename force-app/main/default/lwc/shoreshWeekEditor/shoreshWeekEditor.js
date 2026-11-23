@@ -58,7 +58,7 @@ import { intentOf, plan, withSeen } from "./conflicts";
 import { drawerTiles } from "./counts";
 import { dayNameOf, weekMeasure, withPriority } from "./measure";
 import { checkManualDays } from "./manualChecks";
-import { closeActivities } from "./nearNames";
+import { closeActivities, loose } from "./nearNames";
 import {
   alreadySkipped,
   foldRun,
@@ -76,13 +76,6 @@ import {
   reasonFor,
   readElectivePlaces
 } from "c/shoreshEngine";
-
-/** Names compared the way people mean them: spaces and capitals aside. */
-function loose(text) {
-  return String(text || "")
-    .replace(/\s+/g, "")
-    .toLowerCase();
-}
 
 // Inputs that take no typing: Ctrl+Z on them is the schedule's Undo.
 const NOT_TYPED = new Set([
@@ -217,8 +210,6 @@ export default class ShoreshWeekEditor extends LightningElement {
   // Takes an activity a step added off again, when unused: ({ scheduleId, activityId }) =>
   // Promise of whether it was (LOCK-5.5). Left out, Undo leaves it on Activities.
   @api removeActivityWith;
-  // For each Undo step that added an activity: { id, name, removed } (removed: its Undo took it off).
-  stepAdded = new Map();
   // An activity is being taken off or added again for an Undo or Redo (addedBusy).
   addedPending = false;
   // Setup changed since the week started (Manual Build): cell key to its words, or nothing.
@@ -1974,20 +1965,23 @@ export default class ShoreshWeekEditor extends LightningElement {
         return;
       }
     }
+    // Only one this add made (not the season's own, found by its name) is ever taken off: its
+    // step carries it, so its Undo takes the activity off again (LOCK-5.5).
+    const added =
+      option.kind === "add" && activity.created
+        ? { id: activity.id, name: activity.name }
+        : null;
     const stepBefore = this.stepSeq;
-    this.change(cell.slot, cell.key, `A:${activity.id}`, activity.length);
-    // Only one this add made (not the season's own, found by its name) is ever taken off.
-    if (option.kind === "add" && activity.created) {
-      if (this.stepSeq > stepBefore) {
-        // Its Undo takes the activity off again (LOCK-5.5).
-        this.stepAdded.set(this.stepSeq, {
-          id: activity.id,
-          name: activity.name
-        });
-      } else {
-        // Never placed (the cell refused it): it isn't left behind.
-        this.takeOffAdded(activity);
-      }
+    this.change(
+      cell.slot,
+      cell.key,
+      `A:${activity.id}`,
+      activity.length,
+      added
+    );
+    if (added && this.stepSeq === stepBefore) {
+      // Never placed (the cell refused it): it isn't left behind.
+      this.takeOffAdded(activity);
     }
   }
 
@@ -2052,7 +2046,8 @@ export default class ShoreshWeekEditor extends LightningElement {
 
   /** After an Undo of a step that added an activity is saved: it goes too, when unused, and is said. */
   async undoAdded(stepId) {
-    const added = this.stepAdded.get(stepId);
+    const step = this.history.find(stepId);
+    const added = step && step.added;
     if (!added || added.removed) {
       return;
     }
@@ -2060,7 +2055,7 @@ export default class ShoreshWeekEditor extends LightningElement {
     this.addedPending = true;
     try {
       if (await this.takeOffAdded(added)) {
-        this.stepAdded.set(stepId, { ...added, removed: true });
+        this.history.setAdded(stepId, { ...added, removed: true });
         this.sayOnce(`"${added.name}" taken off ${this.t.p("Activity")}.`);
       }
     } finally {
@@ -2076,9 +2071,9 @@ export default class ShoreshWeekEditor extends LightningElement {
     return (
       this.addedPending ||
       this.queue.some((waiting) => {
-        const added =
-          waiting.kind === "undo" && this.stepAdded.get(waiting.stepId);
-        return !!added && !added.removed;
+        const step =
+          waiting.kind === "undo" && this.history.find(waiting.stepId);
+        return !!(step && step.added) && !step.added.removed;
       })
     );
   }
@@ -2100,29 +2095,13 @@ export default class ShoreshWeekEditor extends LightningElement {
     } finally {
       this.addedPending = false;
     }
-    if (activity.created) {
-      this.stepAdded.set(step.id, { id: activity.id, name: activity.name });
-    } else {
-      // Found by its name (made meanwhile): never this step's to take off again.
-      this.stepAdded.delete(step.id);
-    }
-    const names = {
-      [`A:${added.id}`]: `A:${activity.id}`,
-      [`^A:${added.id}`]: `^A:${activity.id}`
-    };
-    const swap = (item) => names[item] || item;
-    const renamed = (s) => ({
-      ...s,
-      runs: s.runs.map((run) => ({
-        ...run,
-        before: (run.before || []).map(swap),
-        after: (run.after || []).map(swap)
-      }))
-    });
-    [...this.history.undos, ...this.history.redos].forEach((s) =>
-      this.history.replace(s.id, renamed(s))
+    // Found by its name (made meanwhile): never this step's to take off again.
+    this.history.setAdded(
+      step.id,
+      activity.created ? { id: activity.id, name: activity.name } : null
     );
-    const again = renamed(step);
+    this.history.renameActivity(added.id, activity.id);
+    const again = this.history.find(step.id);
     this.send(
       again.runs,
       `Redone: ${step.label}`,
@@ -2140,7 +2119,7 @@ export default class ShoreshWeekEditor extends LightningElement {
    * Makes an edit on screen at once and queues it for the server. slot: the day, group, and time
    * block; key: the grid cell to put focus back on; next: what the slot should hold.
    */
-  change(slot, key, next, length) {
+  change(slot, key, next, length, added = null) {
     const result = placeStep(this.editCtx, slot, next, length);
     if (!result) {
       return;
@@ -2149,7 +2128,7 @@ export default class ShoreshWeekEditor extends LightningElement {
       this.refuse(result.refused);
       return;
     }
-    this.commit(result.runs, result.label, key);
+    this.commit(result.runs, result.label, key, null, added);
   }
 
   /** Runs as the server takes them, each noted with its whole row after it (for the locks it brings). */
@@ -2161,13 +2140,13 @@ export default class ShoreshWeekEditor extends LightningElement {
    * A new change ({ day, group, first, before, after } runs): saved, and one Undo step. False
    * when it was refused (edits wait while the host restores or publishes): nothing was made.
    */
-  commit(runs, label, key, rain = null) {
+  commit(runs, label, key, rain = null, added = null) {
     if (this.refuseWhileRestoring()) {
       return false;
     }
     const serverRuns = this.toServerRuns(runs);
     this.stepSeq += 1;
-    const step = { id: this.stepSeq, runs: serverRuns, label };
+    const step = { id: this.stepSeq, runs: serverRuns, label, added };
     this.history.record(step);
     this.historyVersion += 1;
     this.recordLocks(step.id, serverRuns);
@@ -2735,9 +2714,8 @@ export default class ShoreshWeekEditor extends LightningElement {
     }
     const { step, runs } = this.history.redo();
     this.historyVersion += 1;
-    const added = this.stepAdded.get(step.id);
-    if (added && added.removed) {
-      this.redoAdded(step, added);
+    if (step.added && step.added.removed) {
+      this.redoAdded(step, step.added);
       return;
     }
     this.send(
