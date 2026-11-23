@@ -2,8 +2,8 @@
  * Reading a day's rows (ADR 0005's grid format, as Manual Build's DayView has it): what each of a
  * group's cells holds, as an identity: '' (Open), "A:<Id>" for an item starting there (kind and
  * record Id; kind and name for things not set up yet), or '^' and the identity of the item
- * carrying on into it. Manual Build's slotEdits.js reads cells with these rules too, and Apex
- * SlotIds reads them the same way (both pass staticresources/ShoreshCellExamples.json).
+ * carrying on into it. Every screen reads and writes a saved row here (readRow, writeRow), and
+ * Apex SlotIds reads it the same way (both pass staticresources/ShoreshCellExamples.json).
  */
 
 export const OPEN = "";
@@ -50,17 +50,47 @@ export function startsActivity(slot) {
   return slot.startsWith(`${KIND.ACTIVITY}:`);
 }
 
-/** What each of group g's cells holds on a day. */
-export function slots(day, g) {
-  let carrying = OPEN;
-  return String((day.rows || [])[g] || "")
+/**
+ * A saved row (one group's day: a cell per time block, "" Open, a number for an item of the
+ * day's list from 1, "^" the item before carries on), read the one way every screen and the
+ * engine read it: each cell null (Open) or { item, number, carriesOn }. Anything else is Open: a
+ * token that is no item's number, and "^" with nothing before it to carry on.
+ */
+export function readRow(row, items) {
+  let before = null;
+  return String(row || "")
     .split(",")
     .map((token) => {
       if (token === CARRIES_ON) {
-        return carrying ? CARRIES_ON + carrying : OPEN;
+        before = before && { ...before, carriesOn: true };
+        return before;
       }
-      const item = /^\d+$/.test(token) ? day.items[Number(token) - 1] : null;
-      carrying = item ? identity(item) : OPEN;
-      return carrying;
+      const item = /^\d+$/.test(token)
+        ? (items || [])[Number(token) - 1]
+        : null;
+      before = item ? { item, number: Number(token), carriesOn: false } : null;
+      return before;
     });
+}
+
+/** A saved row from its cells (readRow's): "" Open, the item's number, "^" carrying on. */
+export function writeRow(cells) {
+  return cells
+    .map((cell) => {
+      if (!cell) {
+        return OPEN;
+      }
+      return cell.carriesOn ? CARRIES_ON : String(cell.number);
+    })
+    .join(",");
+}
+
+/** What each of group g's cells holds on a day. */
+export function slots(day, g) {
+  return readRow((day.rows || [])[g], day.items).map((cell) => {
+    if (!cell) {
+      return OPEN;
+    }
+    return (cell.carriesOn ? CARRIES_ON : "") + identity(cell.item);
+  });
 }

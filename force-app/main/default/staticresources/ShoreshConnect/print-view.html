@@ -8230,6 +8230,96 @@ const OFF = FIELD.WeekException;
   FixedActivity: OFF.FixedActivity,
   RecurringActivity: OFF.RecurringActivity
 });/**
+ * Reading a day's rows (ADR 0005's grid format, as Manual Build's DayView has it): what each of a
+ * group's cells holds, as an identity: '' (Open), "A:<Id>" for an item starting there (kind and
+ * record Id; kind and name for things not set up yet), or '^' and the identity of the item
+ * carrying on into it. Every screen reads and writes a saved row here (readRow, writeRow), and
+ * Apex SlotIds reads it the same way (both pass staticresources/ShoreshCellExamples.json).
+ */
+
+/** The kinds a cell's identity starts with. */
+const KIND = Object.freeze({
+  ACTIVITY: "A",
+  FIXED: "F",
+  RECURRING: "R",
+  EVENT: "S",
+  SPECIAL_DAY: "D",
+  ELECTIVE_SET: "E"
+});
+new Set([KIND.ACTIVITY, KIND.FIXED, KIND.RECURRING]);
+new Set([KIND.EVENT, KIND.SPECIAL_DAY, KIND.ELECTIVE_SET]);/**
+ * The generator's inputs read into plain shapes, once, in one place: every field name comes from
+ * c/shoreshSchema (ADR 0009), and every list is put in a fixed order (SortOrder, then Id), so the
+ * order records arrive in can never change the week (ADR 0010).
+ */
+
+FIELD.Activity;
+FIELD.ActivityEligibility;
+FIELD.Group;
+FIELD.TimeBlock;
+FIELD.Location;
+FIELD.WeekException;/**
+ * The rules a week build weighs, by name, and the order they give way in (docs/engine/protocol.md).
+ * week.js re-exports them; checks.js and words.js read them from there.
+ */
+
+/** The rules a placement can bend, by name. */
+const RULE = Object.freeze({
+  WEEKLY_MAX: "weeklyMax",
+  ONCE_A_DAY: "onceADay",
+  ELIGIBILITY: "eligibility",
+  GROUPS_AT_ONCE: "groupsAtOnce",
+  SAME_DIVISION: "sameDivision",
+  PLACE_CAPACITY: "placeCapacity"
+});
+
+/**
+ * The order rules give way when nothing fits (Greg and the coordinator, 2026-10-17): weekly max
+ * first, then once a day, then who it's set up for, then groups at once, then the place last.
+ * Same division only gives way just before the place's capacity (Greg, 2026-10-17). Locks, fixed and recurring activities and not-at-camp cells never give way.
+ */
+const RELAX_ORDER = Object.freeze([RULE.WEEKLY_MAX, RULE.ONCE_A_DAY, RULE.ELIGIBILITY, RULE.GROUPS_AT_ONCE, RULE.SAME_DIVISION, RULE.PLACE_CAPACITY]);
+/** What never-blank may bend (care plan step 7, Greg 2026-10-25): the weekly max only. Once a
+ * day, who an activity is set up for, groups at once, same division and groups that fit are
+ * limits and never give way there. */
+Object.freeze([RULE.WEEKLY_MAX]);
+// Most serious first, for comparing two bends.
+[...RELAX_ORDER].reverse();
+
+/** Not rules that bend, but why a cell stays Open: the group holds something at an overlapping
+ * time, or no activity's length fits the gap. */
+const BUSY = "busy";/**
+ * The one rules module for a finished week (ADR 0010), shared by Manual Build (ADR 0008 §23) and
+ * Generated Schedule: worked out from the grid alone, so the same grid always gets the same dots,
+ * whatever order it was filled in. Nothing is stored and nothing is blocked. Written for Manual
+ * Build part 3 and moved here so both schedules use it.
+ *
+ * - Bronze dots on placements, one rule at a time, in the order rules give way (week.js
+ *   RELAX_ORDER), in reasonFor's words (words.js): over its weekly limit, twice in a day, not set
+ *   up for the group, over its limit of groups at once, sharing a place with another division (an
+ *   activity that is for one division at a time), more groups at a place than fit; and a group
+ *   busy in two time blocks that overlap. Over its weekly limit dots only the sessions past the
+ *   limit, the latest in the week (Greg, 2026-10-17); any other rule broken by several placements
+ *   dots all of them (twice in a day dots both). Fixed and recurring activities count toward a
+ *   place but never get a dot; so does an elective set, at each place of its offerings.
+ * - Still needed: each activity and group short of its weekly minimum ("Swim · Bunk 3: 2 still
+ *   needed"). Spread across the week: short of its early-week goal ("… still needed by
+ *   Wednesday"). Overlapping: each group's cell (day, time block) where one of its placements
+ *   breaks a rule that time block shares with other cells (groups at once, same division, place
+ *   capacity, busy at an overlapping time), like the desktop's computeOverlaps; a placement
+ *   running two time blocks that clashes in one is one cell. Filled: cells filled, of the cells to
+ *   fill.
+ *
+ * A placement counts once, however many time blocks it runs. A day that can't be read is left out.
+ */
+
+/** The rules in the order they give way, then the time-overlap check. */
+[...RELAX_ORDER, BUSY];/**
+ * What checkWeek needs from the season's setup (the records every screen gets), read into its
+ * model's shapes. Activities and places are read by the engine's own readers (setup.js), so both
+ * schedules see the same rules. Written for Manual Build part 3; moved here with checks.js.
+ */
+FIELD.Offering;/**
  * Getting one opened schedule out of Shoresh (parity items 9 and 10): the sheets of its Excel file
  * and the pages of its printout. Pure: worked out from the opened version as the server sends it
  * (SchedulesController.openSchedule), in the camp's words, the same week always giving the same

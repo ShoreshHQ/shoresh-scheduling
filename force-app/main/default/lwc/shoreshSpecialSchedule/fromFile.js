@@ -19,8 +19,7 @@ import {
   filesToPages,
   hasClockTime
 } from "c/shoreshImportEngine";
-
-export const CARRIES_ON = "^";
+import { CARRIES_ON } from "c/shoreshEngine";
 
 // Desktop parseGridSchedule.js timeMajority: a side is the times when at least this share of
 // its labels (those with text) hold a clock time.

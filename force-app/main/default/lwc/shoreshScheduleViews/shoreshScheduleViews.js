@@ -22,8 +22,7 @@
  */
 
 import { numberedDay } from "c/shoreshDayNames";
-
-const CARRIES_ON = "^";
+import { readRow } from "c/shoreshEngine";
 const NOT_SET_UP = new Set(["E", "D", "S", "T"]);
 
 /**
@@ -146,18 +145,13 @@ function rainy(drawn) {
  * for nothing placed) and how many blocks it runs. Blocks an item carries on into are left out.
  */
 export function groupCells(day, groupIndex) {
-  const row = (day.rows[groupIndex] || "").split(",");
   const cells = [];
-  row.forEach((token, blockIndex) => {
-    if (token === CARRIES_ON && cells.length) {
+  readRow(day.rows[groupIndex], day.items).forEach((read, blockIndex) => {
+    if (read && read.carriesOn) {
       cells[cells.length - 1].length += 1;
       return;
     }
-    cells.push({
-      blockIndex,
-      length: 1,
-      item: token ? day.items[Number(token) - 1] : null
-    });
+    cells.push({ blockIndex, length: 1, item: read ? read.item : null });
   });
   return cells;
 }

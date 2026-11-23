@@ -13,11 +13,9 @@
  * looked, ADR 0008 §24); both indexes on the day the tool changes.
  */
 import { startsActivity } from "c/shoreshEngine";
-import { OPEN, owner, placementIn, slots } from "./slotEdits";
+import { CARRIES_ON, OPEN, owner, placementIn, slots } from "./slotEdits";
 import { Rows } from "./moves";
 import { markOf, planRain, switchedOf } from "./rain";
-
-const CARRIES_ON = "^";
 
 /** Why something was left as it was (the page puts it into words). */
 export const LEFT_OUT = Object.freeze({

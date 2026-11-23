@@ -1,4 +1,5 @@
 import { FIELD } from "c/shoreshSchema";
+import { readRow } from "./grid";
 
 /**
  * The generator's inputs read into plain shapes, once, in one place: every field name comes from
@@ -263,13 +264,14 @@ export function readDays(days, partsOfDay) {
         end: minutes(block.endTime),
         partOfDay: partsOfDay.has(block.id) ? partsOfDay.get(block.id) : null
       }));
-      const tokens = new Map();
+      // Each group's row as grid.js reads a saved row (readRow): a cell per time block.
+      const cells = new Map();
       (day.groups || []).forEach((group, g) => {
-        const row = String((day.rows || [])[g] || "").split(",");
+        const row = readRow((day.rows || [])[g], day.items);
         while (row.length < blocks.length) {
-          row.push("");
+          row.push(null);
         }
-        tokens.set(group.id, row.slice(0, blocks.length));
+        cells.set(group.id, row.slice(0, blocks.length));
       });
       return {
         index,
@@ -279,7 +281,7 @@ export function readDays(days, partsOfDay) {
         blocks,
         blockIndex: new Map(blocks.map((b, i) => [b.id, i])),
         items: day.items || [],
-        tokens
+        cells
       };
     });
 }
