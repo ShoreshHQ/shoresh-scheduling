@@ -41,6 +41,8 @@ const MACHINE_WORDS = [
   /Script-thrown exception/i,
   /internal server error/i,
   /Disconnected or Canceled/i,
+  // An Apex method by name (a page left open across an upgrade asks for one that is gone).
+  /No apex action available/i,
   /\b(?:undefined|null) is not\b|\bis not a function\b|Cannot read propert/i
 ];
 
