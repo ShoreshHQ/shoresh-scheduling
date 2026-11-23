@@ -236,8 +236,11 @@ describe("The words an AI receives", () => {
         learned
       }
     );
-    expect(read.text).toContain(
-      'lunch is a fixed activity (Answered as before) - remembered now: seen "fixed", can be changed to recurring'
+    const listed = read.text
+      .split("\n")
+      .find((l) => l.includes("remembered now: seen"));
+    expect(listed).toMatch(
+      /^- .+: lunch is a fixed activity \(Answered as before\) - remembered now: seen "fixed", can be changed to recurring/
     );
     expect(read.text).not.toMatch(/a0Learned|answer_id/);
 
@@ -246,7 +249,8 @@ describe("The words an AI receives", () => {
       "change_learned_answer",
       {
         season: "Summer 2031",
-        line: "Lunch is a fixed activity",
+        // The line as listed, its date and all, up to its (how).
+        line: listed.slice(2, listed.indexOf(" (Answered")),
         answer: "recurring",
         seen: "fixed"
       },

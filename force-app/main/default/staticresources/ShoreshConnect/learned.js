@@ -136,10 +136,13 @@ async function answerLine(input, { read, answer, load }) {
     m.buildTerms(setup.labels || []),
     m.speller(setup)
   )) {
+    // As listed, with its date, or without it.
+    const sent = folded(input.line);
     if (
       line.current &&
       line.answer &&
-      folded(line.title) === folded(input.line)
+      (sent === folded(line.title) ||
+        sent === folded(`${line.when}: ${line.title}`))
     ) {
       named.set(line.answer.id, line);
     }

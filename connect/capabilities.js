@@ -33,7 +33,7 @@ const WEEK = {
 const LEARNED_LINE = {
   type: "string",
   description:
-    "The answer's line exactly as read_learned_answers lists it before its (how), like lunch is a fixed activity."
+    "The answer's line as read_learned_answers lists it, before its (how), like Jul 1: lunch is a fixed activity (its date can be left out)."
 };
 
 /** What every schedule answer is, and is not (API-1.27). */
