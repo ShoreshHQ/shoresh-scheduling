@@ -21,7 +21,7 @@ public with sharing class ElectiveRunState {
   // The set's offerings, by activity name; and by Id.
   public List<Offering__c> offerings = new List<Offering__c>();
   public Map<Id, Offering__c> offeringsById = new Map<Id, Offering__c>();
-  public ElectiveOpenness openness;
+  private ElectiveOpenness openness;
   // The set's linked choices (slice E8), with their periods and divisions.
   public List<LinkedChoice__c> linkedChoices = new List<LinkedChoice__c>();
   // The run's schedule's days, with the special days replacing some of them (ELECT-4.8).

@@ -83,8 +83,13 @@ public with sharing class ElectiveClearReading {
       WITH USER_MODE
       ORDER BY Id
     ];
-    picture.save = ElectiveBigSave.clearingOf(runs);
     for (ElectiveRun__c run : runs) {
+      // The season's Clear in parts, under way or stopped: every run it clears carries the same
+      // count. Only Clear saves a final run in parts; a committed run's is its own Assign or
+      // Finalize.
+      if (run.Status__c != ElectiveClear.COMMITTED) {
+        picture.save = picture.save ?? ElectiveBigSave.progressOf(run);
+      }
       weekOfRun.put(run.Id, run.Week__c);
       setOfRun.put(run.Id, run.ElectiveSet__c);
       ElectiveClear.WeekCounts week = weeks.get(run.Week__c);

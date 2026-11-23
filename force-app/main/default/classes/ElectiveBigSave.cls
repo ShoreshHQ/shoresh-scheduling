@@ -14,8 +14,8 @@
  * way; a job Salesforce ends outright is found when the run is read (progressOf). In user mode, as
  * the person who saved.
  *
- * Everything about a save's progress is here: reading it (progressOf, clearingOf), whether it is
- * still saving, its "9,000 of 12,000", and ending it with the run's revision moved on (endOn).
+ * Everything about a save's progress is here: reading it (progressOf), whether it is still saving,
+ * its "9,000 of 12,000", and ending it with the run's revision moved on (endOn).
  */
 public with sharing class ElectiveBigSave implements Database.Batchable<Object>, Database.Stateful {
   // Rows one part writes: under 10,000 with room for the run's own updates. Rows emptied from the
@@ -260,7 +260,7 @@ public with sharing class ElectiveBigSave implements Database.Batchable<Object>,
   }
 
   private static Decimal after(Decimal revision) {
-    return (revision == null ? 0 : revision) + 1;
+    return (revision ?? 0) + 1;
   }
 
   // ---------------------------------------------------------------- reading progress
@@ -274,56 +274,39 @@ public with sharing class ElectiveBigSave implements Database.Batchable<Object>,
       return null;
     }
     Progress result = new Progress(run);
-    if (result.isSaving() && run.SaveJob__c != null && ended(run)) {
+    if (result.isSaving() && ended(run)) {
       result.problem = ENDED;
     }
     return result;
   }
 
   /**
-   * The season's Clear in parts, under way or stopped (null when none), from its runs: every run it
-   * clears carries the same count. Only Clear saves a final run in parts; a committed run's is its
-   * own Assign or Finalize.
-   */
-  public static Progress clearingOf(List<ElectiveRun__c> runs) {
-    for (ElectiveRun__c run : runs) {
-      if (
-        run.SaveTotal__c != null &&
-        run.Status__c != ElectiveClear.COMMITTED
-      ) {
-        return progressOf(run);
-      }
-    }
-    return null;
-  }
-
-  /**
    * A run read as saving whose background job Salesforce has already ended (cancelled in Setup, or
    * stopped by a limit before it could say so): shown as stopped, so the run is never "still
    * saving" for ever and the next save goes ahead and clears it. The run is read again first, so a
-   * save that just finished is never taken for one that stopped.
+   * save that just finished (its job cleared) is never taken for one that stopped.
    */
   private static Boolean ended(ElectiveRun__c run) {
     // System mode: a job's status only, by the Id this save kept; AsyncApexJob has no user-mode
     // access a scheduler is granted.
-    List<AsyncApexJob> jobs = [
-      SELECT Status
-      FROM AsyncApexJob
-      WHERE Id = :run.SaveJob__c
-      WITH SYSTEM_MODE
-    ];
-    if (jobs.isEmpty() || !JOB_OVER.contains(jobs[0].Status)) {
+    if (
+      run.SaveJob__c == null ||
+      [
+        SELECT Id
+        FROM AsyncApexJob
+        WHERE Id = :run.SaveJob__c AND Status IN :JOB_OVER
+        WITH SYSTEM_MODE
+      ]
+      .isEmpty()
+    ) {
       return false;
     }
     List<ElectiveRun__c> now = [
-      SELECT SaveTotal__c, SaveProblem__c, SaveJob__c
+      SELECT SaveDone__c, SaveTotal__c, SaveProblem__c
       FROM ElectiveRun__c
-      WHERE Id = :run.Id
+      WHERE Id = :run.Id AND SaveJob__c = :run.SaveJob__c
       WITH USER_MODE
     ];
-    return !now.isEmpty() &&
-      now[0].SaveTotal__c != null &&
-      new Progress(now[0]).isSaving() &&
-      now[0].SaveJob__c == run.SaveJob__c;
+    return !now.isEmpty() && new Progress(now[0]).isSaving();
   }
 }
