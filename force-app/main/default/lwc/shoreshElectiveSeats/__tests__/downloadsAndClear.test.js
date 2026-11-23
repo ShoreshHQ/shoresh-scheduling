@@ -318,13 +318,12 @@ describe("end-of-season Clear", () => {
       clearElectives.mockResolvedValue({
         runs: 0,
         campers: 0,
-        picture: { ...PICTURE, saveDone: 0, saveTotal: 91200 }
+        picture: { ...PICTURE, save: { done: 0, total: 91200 } }
       });
       clearPicture
         .mockResolvedValueOnce({
           ...PICTURE,
-          saveDone: 45000,
-          saveTotal: 91200
+          save: { done: 45000, total: 91200 }
         })
         .mockResolvedValueOnce({ ...PICTURE, weeks: [] });
       seatsSetup.mockResolvedValue({ runs: [] });
@@ -354,14 +353,16 @@ describe("end-of-season Clear", () => {
       clearElectives.mockResolvedValue({
         runs: 0,
         campers: 0,
-        picture: { ...PICTURE, saveDone: 0, saveTotal: 91200 }
+        picture: { ...PICTURE, save: { done: 0, total: 91200 } }
       });
       clearPicture.mockResolvedValueOnce({
         ...PICTURE,
-        saveDone: 4500,
-        saveTotal: 91200,
-        saveProblem:
-          "Another save in this season is still going. Try again in a moment."
+        save: {
+          done: 4500,
+          total: 91200,
+          problem:
+            "Another save in this season is still going. Try again in a moment."
+        }
       });
       $(element, '[data-id="clear-go"]').click();
       await flush();

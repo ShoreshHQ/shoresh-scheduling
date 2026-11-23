@@ -8,34 +8,27 @@ public with sharing class AgentSaveProgress {
     return 'this takes a few minutes. Read them again to see how far it has got; nothing else can change them until it is done.';
   }
 
-  /** "9,000 of 12,000": how far a save has got; null when there is none. */
-  public static String countOf(Decimal done, Decimal total) {
-    return total == null
-      ? null
-      : done.intValue().format() + ' of ' + total.intValue().format();
-  }
-
   /** "Still saving: 9,000 of 12,000 written.", or why it stopped; no line when there is none. */
-  public static List<String> saving(String count, String problem) {
-    if (count == null) {
+  public static List<String> saving(ElectiveBigSave.Progress save) {
+    if (save == null) {
       return new List<String>();
     }
     return new List<String>{
-      problem == null
-        ? 'Still saving: ' + count + ' written.'
-        : 'The last save stopped after ' + count + ': ' + problem
+      save.isSaving()
+        ? 'Still saving: ' + save.count() + ' written.'
+        : 'The last save stopped after ' + save.count() + ': ' + save.problem
     };
   }
 
   /** "Still clearing: 9,000 of 12,000 gone.", or why it stopped; no line when there is none. */
-  public static List<String> clearing(String count, String problem) {
-    if (count == null) {
+  public static List<String> clearing(ElectiveBigSave.Progress save) {
+    if (save == null) {
       return new List<String>();
     }
     return new List<String>{
-      problem == null
-        ? 'Still clearing: ' + count + ' gone.'
-        : 'The last clear stopped after ' + count + ': ' + problem
+      save.isSaving()
+        ? 'Still clearing: ' + save.count() + ' gone.'
+        : 'The last clear stopped after ' + save.count() + ': ' + save.problem
     };
   }
 }

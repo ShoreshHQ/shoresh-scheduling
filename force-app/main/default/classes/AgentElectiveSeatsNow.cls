@@ -53,12 +53,7 @@ global with sharing class AgentElectiveSeatsNow implements AgentRequest.Sentence
     if (view.scheduleChanged) {
       lines.add('Schedule changed since ' + seatWords + ' were assigned.');
     }
-    lines.addAll(
-      AgentSaveProgress.saving(
-        AgentSaveProgress.countOf(view.saveDone, view.saveTotal),
-        view.saveProblem
-      )
-    );
+    lines.addAll(AgentSaveProgress.saving(view.save));
     lines.add('Times:');
     for (ElectivePeriod period : view.times) {
       lines.add(timeLine(period, offerings, groups));

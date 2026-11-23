@@ -1,8 +1,7 @@
 /**
- * Campers, elective runs, preferences and seats (repo ADR 0018). Fills the hidden keys that make
- * "a camper number once in a season", "one set of choices per camper in a run" and "one seat per
- * camper at a time in a run" impossible to break, and keeps a run inside its season. Two campers
- * may share a name (ELECT-2.7): their name key only finds them.
+ * Elective runs, preferences and seats (repo ADR 0018). Fills the hidden keys that make "one set
+ * of choices per camper in a run" and "one seat per camper at a time in a run" impossible to
+ * break, and keeps a run inside its season. A camper's own keys are CamperKeys'.
  *
  * Preferences and seats are written hundreds at a time by Shoresh's own saves, which check what
  * they save; their triggers only fill keys and read nothing, so a big save stays within its query
@@ -14,13 +13,6 @@
  * return no name to anyone, and sharing still applies (the class is with sharing).
  */
 public with sharing class ElectiveRunTriggers {
-  // ---------------------------------------------------------------- campers
-
-  /** A camper's hidden keys: a number once in a season, a name only to find them (CamperKeys). */
-  public static void campersSaving(List<Camper__c> campers) {
-    CamperKeys.fill(campers);
-  }
-
   // ---------------------------------------------------------------- runs
 
   /** The runs made, or whose set, week or schedules changed; none for a delete (no new rows). */

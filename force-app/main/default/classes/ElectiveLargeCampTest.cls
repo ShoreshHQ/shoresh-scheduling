@@ -74,8 +74,8 @@ private class ElectiveLargeCampTest {
 
       Test.startTest();
       ElectiveSeats.RunView view = ElectiveSeatsController.assignSeats(sent);
-      Assert.areEqual(0, view.saveDone.intValue(), 'Checked, then saving');
-      Assert.areEqual(12000, view.saveTotal.intValue());
+      Assert.areEqual(0, view.save.done.intValue(), 'Checked, then saving');
+      Assert.areEqual(12000, view.save.total.intValue());
       // The first part, as Salesforce runs it, with a request's own limits.
       ElectiveBigSave save = ElectiveBigSave.held;
       save.execute(null, new List<Object>{ 0 });
@@ -130,7 +130,11 @@ private class ElectiveLargeCampTest {
 
       Test.startTest();
       view = camp.assign(again);
-      Assert.areEqual(4, view.saveTotal.intValue(), 'Two deletes, two changes');
+      Assert.areEqual(
+        4,
+        view.save.total.intValue(),
+        'Two deletes, two changes'
+      );
       Assert.areEqual(8, view.seats.size(), 'Nothing written yet');
       runHeldSave();
       Test.stopTest();
@@ -191,9 +195,9 @@ private class ElectiveLargeCampTest {
         'A screen opened before is stale'
       );
       ElectiveSeats.RunView view = ElectiveSeatsController.openRun(camp.runId);
-      Assert.areEqual(run.SaveProblem__c, view.saveProblem);
+      Assert.areEqual(run.SaveProblem__c, view.save.problem);
       Assert.isNull(
-        ElectiveSeatsController.clearPicture(camp.ids.get('Season')).saveTotal,
+        ElectiveSeatsController.clearPicture(camp.ids.get('Season')).save,
         'An Assign is never taken for a Clear'
       );
       // Assign again goes ahead, and puts the stop behind it.
@@ -205,8 +209,7 @@ private class ElectiveLargeCampTest {
       again.seats.remove(6);
       view = camp.assign(again);
       Assert.areEqual(6, view.seats.size());
-      Assert.isNull(view.saveProblem);
-      Assert.isNull(view.saveTotal);
+      Assert.isNull(view.save, 'The stop is behind it');
     }
   }
 
@@ -276,7 +279,7 @@ private class ElectiveLargeCampTest {
       Test.startTest();
       view = ElectiveSeatsController.finalizeRun(camp.runId, view.revision);
       Assert.areEqual('Committed', view.run.status, 'Not final yet');
-      Assert.areEqual(12, view.saveTotal.intValue());
+      Assert.areEqual(12, view.save.total.intValue());
       runHeldSave();
       Test.stopTest();
 
@@ -355,16 +358,16 @@ private class ElectiveLargeCampTest {
       ElectiveClear.Result result = ElectiveSeatsController.clearElectives(
         JSON.serialize(request)
       );
-      Assert.areEqual(0, result.picture.saveDone.intValue());
+      Assert.areEqual(0, result.picture.save.done.intValue());
       Assert.areEqual(
         18,
-        result.picture.saveTotal.intValue(),
+        result.picture.save.total.intValue(),
         '12 seats, 6 choices'
       );
       ElectiveBigSave save = ElectiveBigSave.held;
       save.execute(null, new List<Object>{ 0 });
       picture = ElectiveSeatsController.clearPicture(seasonId);
-      Assert.areEqual(5, picture.saveDone.intValue(), 'Five gone: ten rows');
+      Assert.areEqual(5, picture.save.done.intValue(), 'Five gone: ten rows');
       try {
         request.stamp = picture.stamp;
         ElectiveSeatsController.clearElectives(JSON.serialize(request));
@@ -465,13 +468,13 @@ private class ElectiveLargeCampTest {
       ElectiveSeats.RunView view = ElectiveSeatsController.openRun(camp.runId);
       Assert.areEqual(
         'Salesforce stopped it before the end.',
-        view.saveProblem
+        view.save.problem
       );
       // Not "still being saved": the next save goes ahead and puts the stop behind it.
       ElectiveSeatSaves.rowBound = 9500;
       view = camp.assign(camp.everyoneInDrama(view.revision));
       Assert.areEqual(8, view.seats.size());
-      Assert.isNull(view.saveTotal);
+      Assert.isNull(view.save);
     }
   }
 }

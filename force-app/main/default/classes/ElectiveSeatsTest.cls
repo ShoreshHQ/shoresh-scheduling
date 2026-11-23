@@ -281,7 +281,7 @@ private class ElectiveSeatsTest {
       // Eight new seats and the run: nine rows, past the bound (ElectiveLargeCampTest).
       ElectiveSeats.RunView view = camp.assign(camp.everyoneInDrama(1));
       Test.stopTest();
-      Assert.areEqual(8, view.saveTotal.intValue());
+      Assert.areEqual(8, view.save.total.intValue());
       Assert.isNotNull(ElectiveBigSave.held, 'Started in the background');
       Assert.areEqual(
         0,

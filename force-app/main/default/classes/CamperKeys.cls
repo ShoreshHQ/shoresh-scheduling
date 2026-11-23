@@ -3,7 +3,7 @@
  * a season: its key (Key__c) is unique, and a second camper with the number is refused. A name is
  * not (Greg 2026-11-21): two children may share one, so a number-less camper's name key
  * (NameKey__c) only lets imports find them without reading names. Filled by the camper trigger
- * (ElectiveRunTriggers.campersSaving). No message names a camper.
+ * (CamperTrigger). No message names a camper.
  *
  * Its reads are in system mode on purpose (repo ADR 0018 choice 60): the keys are hidden (no one
  * is granted them; this class fills them), the duplicate check must see every camper whoever

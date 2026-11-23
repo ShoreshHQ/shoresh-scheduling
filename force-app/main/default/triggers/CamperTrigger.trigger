@@ -4,6 +4,6 @@ trigger CamperTrigger on Camper__c(
   before delete
 ) {
   ArchivedSeasons.refuseChanges();
-  ElectiveRunTriggers.campersSaving(Trigger.new);
+  CamperKeys.fill(Trigger.new);
   OutsideOwned.campersSaving(Trigger.new, Trigger.oldMap);
 }

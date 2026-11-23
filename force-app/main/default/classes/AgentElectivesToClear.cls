@@ -81,12 +81,7 @@ global with sharing class AgentElectivesToClear implements AgentRequest.Sentence
             : '; still being worked on: ' + String.join(week.working, ', '))
       );
     }
-    lines.addAll(
-      AgentSaveProgress.clearing(
-        AgentSaveProgress.countOf(picture.saveDone, picture.saveTotal),
-        picture.saveProblem
-      )
-    );
+    lines.addAll(AgentSaveProgress.clearing(picture.save));
     lines.add(
       'Stays for next summer: ' +
         setsBesideElectives(words) +

@@ -83,11 +83,7 @@ public with sharing class ElectiveClearReading {
       WITH USER_MODE
       ORDER BY Id
     ];
-    ElectiveSaveJobs.settle(runs);
-    ElectiveRun__c clearing = ElectiveSaveJobs.clearing(runs);
-    picture.saveDone = clearing?.SaveDone__c;
-    picture.saveTotal = clearing?.SaveTotal__c;
-    picture.saveProblem = clearing?.SaveProblem__c;
+    picture.save = ElectiveBigSave.clearingOf(runs);
     for (ElectiveRun__c run : runs) {
       weekOfRun.put(run.Id, run.Week__c);
       setOfRun.put(run.Id, run.ElectiveSet__c);
