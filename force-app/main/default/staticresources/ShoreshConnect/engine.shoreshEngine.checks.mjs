@@ -242,7 +242,11 @@ function groupsAtOnce(ctx) {
     groupBy(here.filter(isActivity), (p) => p.id).forEach((list, actId) => {
       const act = ctx.activities.get(actId);
       const others = ctx.others("activity", actId, at);
-      if (!act || act.atOnce === null || list.length + others <= act.atOnce) {
+      if (
+        !act ||
+        act.atOnce === null ||
+        ctx.room.activity(actId, at) <= act.atOnce
+      ) {
         return;
       }
       const words = { groupsAtOnce: act.atOnce, terms: ctx.t };
@@ -371,7 +375,7 @@ function placeCapacity(ctx) {
       const place = ctx.locations.get(locationId);
       const movable = list.filter(isActivity);
       const others = ctx.others("place", locationId, at);
-      if (list.length + others <= place.fit || !movable.length) {
+      if (ctx.room.place(locationId, at) <= place.fit || !movable.length) {
         return;
       }
       const words = { placeName: place.name, terms: ctx.t };
@@ -403,6 +407,41 @@ function placeCapacity(ctx) {
       inUseBy: [...names.get(f.p.key)].sort(compareText)
     })
   }));
+}
+
+/**
+ * How many groups each activity and each place has in a time block of the days ("d|b"), counted
+ * as groupsAtOnce and placeCapacity count them: the placements there (a fixed or recurring
+ * activity at its place, an elective set at every place its offerings use, ADR 0018 slice E5) and
+ * other programs' groups. model: as checkWeek's (activities, locations, setTimeLocations,
+ * electivePlaces, othersAt). placements: placementsOf(days), or some of them. Answers
+ * { activity(id, at), place(locationId, at) }.
+ */
+export function roomTaken(days, model, placements = placementsOf(days)) {
+  const ctx = {
+    activities: model.activities || new Map(),
+    locations: model.locations || new Map(),
+    setTimeLocations: model.setTimeLocations || new Map(),
+    electivePlaces: model.electivePlaces || new Map()
+  };
+  const others = (kind, id, at) => {
+    if (!model.othersAt) {
+      return 0;
+    }
+    const [d, b] = at.split("|").map(Number);
+    return model.othersAt(kind, id, d, days[d].blocks[b].id) || 0;
+  };
+  const here = occupancy(placements);
+  const size = (list) => (list ? list.length : 0);
+  return {
+    activity: (id, at) =>
+      size(
+        groupBy((here.get(at) || []).filter(isActivity), (p) => p.id).get(id)
+      ) + others("activity", id, at),
+    place: (locationId, at) =>
+      size(byPlace(ctx, here.get(at) || []).get(locationId)) +
+      others("place", locationId, at)
+  };
 }
 
 /** A group with something in two time blocks whose times overlap (blocks that touch don't). */
@@ -655,6 +694,8 @@ export function checkWeek(days, model, words) {
     },
     t: words.t
   };
+  // How full each activity and place is, as a rainy day counts it too (roomTaken).
+  ctx.room = roomTaken(ctx.days, model, placements);
   const marks = [
     weeklyMax,
     onceADay,

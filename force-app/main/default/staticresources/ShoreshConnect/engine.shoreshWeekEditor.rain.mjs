@@ -23,13 +23,15 @@
 import { FIELD } from "./engine.shoreshSchema.shoreshSchema.mjs";
 import {
   otherProgramsAt,
+  placementsOf,
   readActivities,
   readLocations,
   readOtherPrograms,
   readProgram,
+  roomTaken,
   startsActivity
 } from "./engine.shoreshEngine.shoreshEngine.mjs";
-import { owner, placementIn, slots } from "./engine.shoreshWeekEditor.slotEdits.mjs";
+import { placementIn, slots } from "./engine.shoreshWeekEditor.slotEdits.mjs";
 
 export const RAIN_PLAN_FULL = "Rain plan full: choose another";
 
@@ -86,9 +88,10 @@ export function marksAfter(before, made) {
 /**
  * What a rainy day needs from the season's setup (the records the editor's draft carries):
  * activities ({ outdoor, rainPlanId, atOnce, locationId }), how many groups fit each place, where
- * fixed and recurring activities are, and other programs' groups by day and time block.
+ * fixed and recurring activities and elective sets (electivePlaces: readElectivePlaces) are, and
+ * other programs' groups by day and time block: what the checks count room with (roomTaken).
  */
-export function rainModel(draft, weekDays) {
+export function rainModel(draft, weekDays, electivePlaces = new Map()) {
   const records = (draft && draft.activityRecords) || [];
   const catalog = readActivities(records);
   const activities = new Map();
@@ -137,6 +140,10 @@ export function rainModel(draft, weekDays) {
   const indexOf = new Map(days.map((d, i) => [d.dateValue, i]));
   return {
     activities,
+    // The checks' own reading of the activities and places (roomTaken counts with them).
+    catalog,
+    locations: places,
+    electivePlaces: electivePlaces || new Map(),
     indoor,
     isFor: (activityId, groupId) =>
       !(notFor.get(activityId) || new Set()).has(groupId),
@@ -191,33 +198,31 @@ export function planRain(day, model, options = {}) {
   });
   const leaving = new Set(candidates.map((c) => `${c.g}|${c.b}`));
 
-  // Groups doing each activity, and at each place, in each block: "b|id" -> groups.
-  const byActivity = new Map();
-  const byPlace = new Map();
-  const add = (map, key, g) => {
-    if (!map.has(key)) {
-      map.set(key, new Set());
-    }
-    map.get(key).add(g);
-  };
-  const placeOf = (identity) => {
-    const kind = identity.slice(0, 1);
-    const id = identity.slice(2);
-    if (kind === "A") {
-      const act = model.activities.get(id);
-      return act ? act.locationId : null;
-    }
-    return kind === "F" || kind === "R"
-      ? model.setTimeLocations.get(id) || null
-      : null;
-  };
-  const book = (g, b, identity) => {
-    if (startsActivity(identity)) {
-      add(byActivity, `${b}|${identity.slice(2)}`, g);
-    }
-    const place = placeOf(identity);
-    if (place) {
-      add(byPlace, `${b}|${place}`, g);
+  // How full each activity and place is in each block without the cells leaving, as the checks
+  // count it (roomTaken: what stays, a fixed or recurring activity at its place, an elective set
+  // at its offerings' places, other programs' groups), and what this switch puts there as it goes.
+  const groupIndex = new Map(day.groups.map((grp, g) => [grp.id, g]));
+  const taken = roomTaken(
+    [day],
+    {
+      activities: model.catalog,
+      locations: model.locations,
+      setTimeLocations: model.setTimeLocations,
+      electivePlaces: model.electivePlaces,
+      othersAt: (kind, id, d, blockId) =>
+        model.othersAt(kind, id, day.dateValue, blockId)
+    },
+    placementsOf([day]).filter(
+      (p) => !leaving.has(`${groupIndex.get(p.groupId)}|${p.first}`)
+    )
+  );
+  const added = new Map();
+  const add = (key) => added.set(key, (added.get(key) || 0) + 1);
+  const book = (b, activityId) => {
+    add(`activity|${b}|${activityId}`);
+    const act = model.activities.get(activityId);
+    if (act && act.locationId && model.fit(act.locationId) !== null) {
+      add(`place|${b}|${act.locationId}`);
     }
   };
   // The activities each group has that day: "g|id" (CLOSE-4.9: no repeat in a day).
@@ -230,17 +235,14 @@ export function planRain(day, model, options = {}) {
   rows.forEach((row, g) =>
     row.forEach((slot, b) => {
       if (slot && !leaving.has(`${g}|${b}`)) {
-        book(g, b, owner(slot));
         hold(g, slot);
       }
     })
   );
 
   candidates.forEach((c) => {
-    const blockId = day.blocks[c.b].id;
     const groupId = day.groups[c.g].id;
-    const others = (kind, id) =>
-      model.othersAt(kind, id, day.dateValue, blockId);
+    const at = `0|${c.b}`;
     const fits = (id) => {
       const act = model.activities.get(id);
       if (
@@ -251,14 +253,13 @@ export function planRain(day, model, options = {}) {
         return false;
       }
       const doing =
-        (byActivity.get(`${c.b}|${id}`) || new Set()).size +
-        others("activity", id);
+        taken.activity(id, at) + (added.get(`activity|${c.b}|${id}`) || 0);
       const fit = act.locationId ? model.fit(act.locationId) : null;
       const there =
         fit === null
           ? 0
-          : (byPlace.get(`${c.b}|${act.locationId}`) || new Set()).size +
-            others("place", act.locationId);
+          : taken.place(act.locationId, at) +
+            (added.get(`place|${c.b}|${act.locationId}`) || 0);
       return (
         (act.atOnce === null || doing < act.atOnce) &&
         (fit === null || there < fit)
@@ -269,7 +270,7 @@ export function planRain(day, model, options = {}) {
     );
     if (to) {
       result.switches.push({ g: c.g, b: c.b, from: c.activityId, to });
-      book(c.g, c.b, `A:${to}`);
+      book(c.b, to);
       hold(c.g, `A:${to}`);
     } else {
       if (c.named) {
@@ -277,7 +278,7 @@ export function planRain(day, model, options = {}) {
       } else {
         result.noPlan.push({ g: c.g, b: c.b });
       }
-      book(c.g, c.b, `A:${c.activityId}`);
+      book(c.b, c.activityId);
     }
   });
   return result;
