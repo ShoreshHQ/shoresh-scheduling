@@ -17,12 +17,13 @@ import {
   editRun,
   identity,
   isMovable,
+  isPlacedOverlay,
   isSetTime,
   owner,
   placement
 } from "./engine.shoreshWeekEditor.slotEdits.mjs";
 import { REFUSED, moveEdit, removeEdit, resizeEdit } from "./engine.shoreshWeekEditor.moves.mjs";
-import { eventRuns, replacedDays } from "./engine.shoreshWeekEditor.specials.mjs";
+import { eventRuns, replacedDays, rowsCovered } from "./engine.shoreshWeekEditor.specials.mjs";
 import { LEFT_OUT, replan, toolRuns } from "./engine.shoreshWeekEditor.tools.mjs";
 import { rainCounts } from "./engine.shoreshWeekEditor.rain.mjs";
 import { isLockedAt, lockKey, noteRows } from "./engine.shoreshWeekEditor.locks.mjs";
@@ -360,11 +361,11 @@ export function rangeName(ctx, rows) {
 }
 
 /**
- * A special event or elective set (its identity) put over rows (rowsCovered): { runs } (none
- * when nothing changes) or { refused, locked }. Only a Lock stops a hand edit. eachBlock: as
- * eventRuns.
+ * A special event or elective set (its identity, called name) put over rows (rowsCovered):
+ * { runs, label } (no runs when nothing changes) or { refused, locked }. Only a Lock stops a hand
+ * edit. eachBlock: as eventRuns.
  */
-export function placeOverStep(ctx, rows, item, eachBlock = false) {
+export function placeOverStep(ctx, rows, item, name, eachBlock = false) {
   const result = eventRuns(
     ctx.week,
     rows,
@@ -378,7 +379,60 @@ export function placeOverStep(ctx, rows, item, eachBlock = false) {
   );
   return result.refused
     ? { refused: lockedWords(ctx, result.at), locked: result.at }
-    : { runs: result.runs };
+    : { runs: result.runs, label: `Placed ${name} · ${rangeName(ctx, rows)}` };
+}
+
+/**
+ * Delete on a cell (the screen's Delete, Open picked for it, an AI's take_out_cell on what has no
+ * move of its own: API-1.154): a locked placement is refused; a placed event or elective set drawn
+ * as one with groups side by side (the same over the same blocks, unlocked) goes from all of them
+ * as one step (clearAllStep); anything else is that cell cleared (placeStep with Open).
+ * { runs, label }, { refused, locked }, or null on an Open cell or when nothing changes.
+ */
+export function deleteStep(ctx, slot) {
+  const day = ctx.week[slot.day];
+  const at = placement(day, slot.group, slot.block);
+  if (at.slot === OPEN) {
+    return null;
+  }
+  const first = { ...slot, block: at.first };
+  if (ctx.isLocked(first)) {
+    return { refused: lockedWords(ctx, first), locked: first };
+  }
+  const drawnWith = (g) => {
+    if (g < 0 || g >= day.groups.length) return false;
+    const there = placement(day, g, at.first);
+    return (
+      there.slot === at.slot &&
+      there.first === at.first &&
+      there.length === at.length &&
+      !ctx.isLocked({ ...first, group: g })
+    );
+  };
+  let top = slot.group;
+  let bottom = slot.group;
+  if (isPlacedOverlay(at.slot)) {
+    while (drawnWith(top - 1)) top -= 1;
+    while (drawnWith(bottom + 1)) bottom += 1;
+  }
+  if (top === bottom) {
+    return placeStep(ctx, first, OPEN, 1);
+  }
+  const cells = [];
+  for (let g = top; g <= bottom; g++) {
+    cells.push({ slot: { ...first, group: g } });
+  }
+  const step = clearAllStep(
+    ctx,
+    cells.map((c) => c.slot)
+  );
+  if (!step || step.refused) {
+    return step;
+  }
+  return {
+    runs: step.runs,
+    label: `Cleared ${ctx.nameOf(at.slot, day)} · ${rangeName(ctx, rowsCovered(ctx.week, cells))}`
+  };
 }
 
 /**

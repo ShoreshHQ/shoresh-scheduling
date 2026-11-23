@@ -6,6 +6,7 @@ import { dayLabel } from "c/shoreshScheduleViews";
 import {
   canMove,
   clearAllStep,
+  deleteStep,
   editContextOf,
   placeOverStep,
   placeStep,
@@ -94,10 +95,73 @@ describe("hand edits without the screen", () => {
 
   it("an event over cells covers what is there, and only a Lock stops it", () => {
     const rows = [{ day: 0, group: 0, first: 0, last: 1 }];
-    expect(placeOverStep(ctxOf(), rows, "S:e1").runs).toHaveLength(1);
-    expect(placeOverStep(ctxOf([at(0, 0)]), rows, "S:e1").locked).toEqual(
-      at(0, 0)
+    const step = placeOverStep(ctxOf(), rows, "S:e1", "Carnival");
+    expect(step.runs).toHaveLength(1);
+    expect(step.label).toBe(
+      "Placed Carnival · Bunk 1 · Monday · Period 1 to Period 2"
     );
+    expect(
+      placeOverStep(ctxOf([at(0, 0)]), rows, "S:e1", "Carnival").locked
+    ).toEqual(at(0, 0));
+  });
+});
+
+// Delete on a cell, as the screen and an AI's take_out_cell both make it (API-1.154).
+describe("delete on a cell", () => {
+  const EVENT = "S:a0B000000000001";
+  const CARNIVAL = {
+    kind: "S",
+    id: "a0B000000000001",
+    name: "Carnival",
+    gone: false
+  };
+  // Monday: Carnival in Period 2 for Bunks 1 to 3, Bunk 4 Swim; Bunk 1 Swim in Period 1.
+  function ctxWith(locked = []) {
+    const groups = [1, 2, 3, 4].map((n) => ({
+      id: `g${n}`,
+      name: `Bunk ${n}`,
+      gone: false
+    }));
+    const week = [
+      {
+        ...day(
+          "2026-06-29",
+          [...ITEMS, CARNIVAL],
+          ["2,4,", ",4,", ",4,", ",2,"]
+        ),
+        groups
+      }
+    ];
+    return { ...ctxOf(locked), week };
+  }
+
+  it("an event drawn as one across bunks goes from all of them as one step", () => {
+    const step = deleteStep(ctxWith(), at(1, 1));
+    expect(step.runs.map((r) => r.group)).toEqual([0, 1, 2]);
+    step.runs.forEach((r) => expect(r.before).toEqual([EVENT]));
+    expect(step.label).toBe(
+      "Cleared Carnival · Bunk 1 to Bunk 3 · Monday · Period 2"
+    );
+  });
+
+  it("a locked bunk beside it isn't drawn as one with it, and stays", () => {
+    const step = deleteStep(ctxWith([at(2, 1)]), at(0, 1));
+    expect(step.runs.map((r) => r.group)).toEqual([0, 1]);
+  });
+
+  it("a locked cell is refused in the screen's words", () => {
+    const step = deleteStep(ctxWith([at(1, 1)]), at(1, 1));
+    expect(step.refused).toBe("Bunk 2 · Monday · Period 2 is locked.");
+    expect(step.locked).toEqual(at(1, 1));
+  });
+
+  it("an activity is that one cell cleared; an Open cell is nothing", () => {
+    const step = deleteStep(ctxWith(), at(0, 0));
+    expect(step.runs).toEqual([
+      { day: 0, group: 0, first: 0, before: [SWIM], after: [""] }
+    ]);
+    expect(step.label).toBe("Cleared Bunk 1 · Monday · Period 1");
+    expect(deleteStep(ctxWith(), at(0, 2))).toBeNull();
   });
 });
 
