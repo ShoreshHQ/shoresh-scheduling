@@ -397,6 +397,50 @@ private class ElectiveLargeCampTest {
     }
   }
 
+  // ELECT-5.8: a part that takes the last seats and then the choices, and the end that takes the
+  // run and a large camp's campers, each delete one kind at a time. Salesforce refuses one delete
+  // whose rows switch kind more than ten times, 200 rows at a time; the test org's large-camp run
+  // stopped there (900 seats and 3,600 choices in one part).
+  @IsTest
+  static void aClearPartOfSeatsAndChoicesTogetherTakesThemAll() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      ElectiveSeatsCamp camp = new ElectiveSeatsCamp(2100);
+      ElectiveSeatSaves.AssignRequest one = new ElectiveSeatSaves.AssignRequest();
+      one.runId = camp.runId;
+      one.revision = 1;
+      one.seats.add(camp.seat(0, Date.newInstance(2026, 6, 29), 'Drama'));
+      camp.assign(one);
+      List<Camper__c> campers = new List<Camper__c>();
+      for (Id camperId : camp.campers) {
+        campers.add(new Camper__c(Id = camperId));
+      }
+      ElectiveClear.ClearRows rows = new ElectiveClear.ClearRows(
+        new List<ElectiveRun__c>{ new ElectiveRun__c(Id = camp.runId) },
+        campers,
+        2101
+      );
+
+      Test.startTest();
+      Integer written = rows.write(4500);
+      rows.finish();
+      Test.stopTest();
+
+      Assert.areEqual(2101, written, 'One seat, 2,100 choices');
+      Assert.areEqual(
+        0,
+        [SELECT COUNT() FROM Preference__c WHERE ElectiveRun__c = :camp.runId]
+      );
+      Assert.areEqual(
+        0,
+        [SELECT COUNT() FROM ElectiveRun__c WHERE Id = :camp.runId]
+      );
+      Assert.areEqual(
+        0,
+        [SELECT COUNT() FROM Camper__c WHERE Id IN :camp.campers]
+      );
+    }
+  }
+
   // ELECT-5.9: a job Salesforce ended is shown stopped, never saving for ever.
   @IsTest
   static void aSaveSalesforceStoppedWithoutAWordIsShownStoppedNotSavingForEver() {

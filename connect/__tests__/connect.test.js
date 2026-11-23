@@ -2296,12 +2296,17 @@ describe("Shoresh for AI tools and the command line", () => {
     const view = runView();
     const PREVIEW =
       'Nothing has been done yet. This assigns seats in Chugim in Week 1, in the Draft: 20 seats placed from the campers\' choices. There is no undo. Show the person exactly this and ask. Only if they say yes, send the same request again with confirm: "t1".';
-    const assign = async (seen, more = {}) => {
+    const assign = async (
+      seen,
+      more = {},
+      after = { ...view, revision: 2, assigned: true },
+      said = "Seats assigned in Chugim in Week 1."
+    ) => {
       const seen_ = [];
       const queue = [
         `HTTP/1.1 200\n\n${JSON.stringify({ view, labels: [] })}`,
-        `HTTP/1.1 200\n\n${JSON.stringify({ message: more.confirm ? "Seats assigned in Chugim in Week 1." : PREVIEW })}`,
-        `HTTP/1.1 200\n\n${JSON.stringify({ view: { ...view, revision: 2, assigned: true }, labels: [] })}`
+        `HTTP/1.1 200\n\n${JSON.stringify({ message: more.confirm ? said : PREVIEW })}`,
+        `HTTP/1.1 200\n\n${JSON.stringify({ view: after, labels: [] })}`
       ];
       const done = await call(
         "assign_elective_seats",
@@ -2345,6 +2350,17 @@ describe("Shoresh for AI tools and the command line", () => {
     expect(body.seats.length).toBeGreaterThan(0);
     expect(done.done.ok).toBe(true);
     expect(done.done.text).toMatch(/^\d+ of \d+ placed\.$/);
+    // ELECT-5.8: a large camp's seats are still being written: Shoresh's own words, never a count
+    // of a board that is still filling ("0 of 600 placed." in the test org's large-camp run).
+    const SAVING =
+      "Seats in Chugim in Week 1 are being saved: this takes a few minutes. Read them again to see how far it has got; nothing else can change them until it is done.";
+    const big = await assign(
+      "r1:1",
+      { confirm: "t1" },
+      { ...view, revision: 1, saveDone: 0, saveTotal: 10800 },
+      SAVING
+    );
+    expect(big.done).toEqual(expect.objectContaining({ ok: true, text: SAVING }));
 
     // Read at another revision: refused before anything is sent.
     const stale = await assign("r1:0");
