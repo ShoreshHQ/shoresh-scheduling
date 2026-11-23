@@ -250,7 +250,8 @@ export function atCamp(group, partOfDay) {
 /**
  * The week's days in date order, each with its own frame: time blocks (in the grid's order,
  * which is the day's time order), groups and items as Manual Build's DayView has them, and each
- * group's cells as tokens ('' Open, a number into items, '^' carries on).
+ * group's cells as a saved row reads (c/shoreshSavedRow readRow: null Open, else its item and
+ * whether it carries on), one per time block.
  */
 export function readDays(days, partsOfDay) {
   return [...(days || [])]

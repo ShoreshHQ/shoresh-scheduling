@@ -18,6 +18,7 @@ import {
   readImportFile,
   refusedFile
 } from "c/shoreshImportEngine";
+import { readRow } from "c/shoreshSavedRow";
 import { pagesOf, planFromPage } from "./fromFile";
 
 // A special schedule has no checks of its own (desktop: special days have no engine): no dots.
@@ -34,15 +35,13 @@ function listed(names) {
  */
 function hasTyped(day) {
   return (day.rows || []).some((row) =>
-    String(row)
-      .split(",")
-      .some((cell) => {
-        if (!cell || cell === "^") {
-          return false;
-        }
-        const item = day.items[Number(cell) - 1];
-        return !item || (item.kind !== "F" && item.kind !== "R");
-      })
+    readRow(row, day.items).some(
+      (cell) =>
+        cell &&
+        !cell.carriesOn &&
+        cell.item.kind !== "F" &&
+        cell.item.kind !== "R"
+    )
   );
 }
 
@@ -53,13 +52,11 @@ function filledIn(day, { blockIndex = null, groupIndex = null }) {
     if (groupIndex !== null && g !== groupIndex) {
       return;
     }
-    String(row)
-      .split(",")
-      .forEach((cell, b) => {
-        if (cell && (blockIndex === null || b === blockIndex)) {
-          count += 1;
-        }
-      });
+    readRow(row, day.items).forEach((cell, b) => {
+      if (cell && (blockIndex === null || b === blockIndex)) {
+        count += 1;
+      }
+    });
   });
   return count;
 }
