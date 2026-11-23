@@ -22,7 +22,7 @@
  */
 
 import { numberedDay } from "c/shoreshDayNames";
-import { readRow } from "c/shoreshEngine";
+import { readRow } from "c/shoreshSavedRow";
 const NOT_SET_UP = new Set(["E", "D", "S", "T"]);
 
 /**

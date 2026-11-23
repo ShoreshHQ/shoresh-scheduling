@@ -17,7 +17,7 @@
  *   { text, go, sub } for one under a count (sub) or one that goes somewhere (go: { line } for a
  *   cell, as the Why list's locate; { activityId }; { specialItemId }).
  */
-import { readRow } from "c/shoreshEngine";
+import { readRow } from "c/shoreshSavedRow";
 import { buildTerms } from "c/shoreshTerms";
 import { checkLines } from "c/shoreshWeekChecks";
 

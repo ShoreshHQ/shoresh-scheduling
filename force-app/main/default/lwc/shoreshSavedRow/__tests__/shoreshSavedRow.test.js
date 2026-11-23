@@ -1,9 +1,10 @@
 /**
  * A saved row (wiki data model, compact grid format: "" Open, a number for an item of the day's
- * list from 1, "^" carries on), read and written in one place (grid.js readRow, writeRow) for
- * every screen and the engine. What doesn't read as that format is Open, everywhere.
+ * list from 1, "^" carries on), read and written in one place (c/shoreshSavedRow, which the
+ * engine re-exports) for every screen and the engine. What doesn't read as that format is Open, everywhere.
  */
-import { readRow, slots, writeRow } from "c/shoreshEngine";
+import { readRow, writeRow } from "c/shoreshSavedRow";
+import { slots } from "c/shoreshEngine";
 
 const SWIM = { kind: "A", id: "a1", name: "Swim" };
 const FLAG = { kind: "F", id: "f1", name: "Flagpole" };
