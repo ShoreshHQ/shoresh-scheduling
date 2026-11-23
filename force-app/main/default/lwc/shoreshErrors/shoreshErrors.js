@@ -43,7 +43,6 @@ const MACHINE_WORDS = [
   /Disconnected or Canceled/i,
   // An Apex method by name (a page left open across an upgrade asks for one that is gone).
   /No apex action available/i,
-  /\b[A-Z][a-z0-9]+[A-Z][A-Za-z0-9_]*\.[a-z][A-Za-z0-9_]*\b/,
   /\b(?:undefined|null) is not\b|\bis not a function\b|Cannot read propert/i
 ];
 

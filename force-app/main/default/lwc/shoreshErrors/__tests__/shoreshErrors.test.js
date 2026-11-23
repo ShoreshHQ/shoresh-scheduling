@@ -71,6 +71,14 @@ describe("reasonOf", () => {
       "Notes for “Swim” is too long."
     );
     expect(reasonOf("Not allowed.")).toBe("Not allowed.");
+    // A camp's file name in an import's refusal (ImportRemovals) is its own words.
+    expect(
+      reasonOf(
+        ours(
+          "Swim is on Imported from MapleGrove.xlsx, so it can't be removed."
+        )
+      )
+    ).toBe("Swim is on Imported from MapleGrove.xlsx, so it can't be removed.");
     expect(consoleError).not.toHaveBeenCalled();
   });
 
@@ -97,7 +105,6 @@ describe("reasonOf", () => {
             "No apex action available for GeneratedScheduleController.getInputs"
         }
       },
-      { body: { message: "Couldn't run ManualBuildController.getDraft" } },
       { body: [{ message: "One." }, { message: "UNKNOWN_EXCEPTION" }] },
       // The browser's own errors.
       new TypeError("Cannot read properties of undefined (reading 'id')"),
