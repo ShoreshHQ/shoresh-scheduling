@@ -144,6 +144,18 @@ describe("delete on a cell", () => {
     );
   });
 
+  it("in Group View, one group shown, it goes from that group alone", () => {
+    const step = deleteStep(ctxWith(), at(1, 1), { sideBySide: false });
+    expect(step.runs.map((r) => r.group)).toEqual([1]);
+    expect(step.label).toBe("Cleared Bunk 2 · Monday · Period 2");
+  });
+
+  it("says the name as the screen shows it, when it shows more", () => {
+    expect(
+      deleteStep(ctxWith(), at(1, 1), { name: "Carnival (2)" }).label
+    ).toMatch(/^Cleared Carnival \(2\) · Bunk 1 to Bunk 3 · /);
+  });
+
   it("a locked bunk beside it isn't drawn as one with it, and stays", () => {
     const step = deleteStep(ctxWith([at(2, 1)]), at(0, 1));
     expect(step.runs.map((r) => r.group)).toEqual([0, 1]);

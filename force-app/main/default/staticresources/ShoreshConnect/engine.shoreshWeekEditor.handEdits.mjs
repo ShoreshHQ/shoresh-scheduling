@@ -384,12 +384,14 @@ export function placeOverStep(ctx, rows, item, name, eachBlock = false) {
 
 /**
  * Delete on a cell (the screen's Delete, Open picked for it, an AI's take_out_cell on what has no
- * move of its own: API-1.154): a locked placement is refused; a placed event or elective set drawn
- * as one with groups side by side (the same over the same blocks, unlocked) goes from all of them
- * as one step (clearAllStep); anything else is that cell cleared (placeStep with Open).
+ * move of its own: API-1.154): a locked placement is refused; in Daily View (sideBySide), a placed
+ * event or elective set drawn as one with groups side by side (the same over the same blocks,
+ * unlocked) goes from all of them as one step (clearAllStep); anything else is that cell cleared
+ * (placeStep with Open). Group View draws one group, so Delete there clears its cell alone. name:
+ * what the cell shows, when a screen draws more than the name (an elective set's count).
  * { runs, label }, { refused, locked }, or null on an Open cell or when nothing changes.
  */
-export function deleteStep(ctx, slot) {
+export function deleteStep(ctx, slot, { sideBySide = true, name } = {}) {
   const day = ctx.week[slot.day];
   const at = placement(day, slot.group, slot.block);
   if (at.slot === OPEN) {
@@ -411,7 +413,7 @@ export function deleteStep(ctx, slot) {
   };
   let top = slot.group;
   let bottom = slot.group;
-  if (isPlacedOverlay(at.slot)) {
+  if (sideBySide && isPlacedOverlay(at.slot)) {
     while (drawnWith(top - 1)) top -= 1;
     while (drawnWith(bottom + 1)) bottom += 1;
   }
@@ -431,7 +433,7 @@ export function deleteStep(ctx, slot) {
   }
   return {
     runs: step.runs,
-    label: `Cleared ${ctx.nameOf(at.slot, day)} · ${rangeName(ctx, rowsCovered(ctx.week, cells))}`
+    label: `Cleared ${name || ctx.nameOf(at.slot, day)} · ${rangeName(ctx, rowsCovered(ctx.week, cells))}`
   };
 }
 

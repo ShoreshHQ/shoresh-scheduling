@@ -1380,11 +1380,14 @@ export default class ShoreshWeekEditor extends LightningElement {
   }
 
   /**
-   * Clears a cell (deleteStep); an event drawn as one across bunks is cleared from all of them,
-   * as one Undo step (it was placed as one).
+   * Clears a cell (deleteStep); an event drawn as one across bunks (Daily View) is cleared from
+   * all of them, as one Undo step (it was placed as one).
    */
   clearRange(cell) {
-    const result = deleteStep(this.editCtx, cell.slot);
+    const result = deleteStep(this.editCtx, cell.slot, {
+      sideBySide: this.isDaily,
+      name: cell.text
+    });
     if (!result) {
       return;
     }
