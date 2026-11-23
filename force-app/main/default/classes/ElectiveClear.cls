@@ -193,35 +193,29 @@ public with sharing class ElectiveClear {
     }
 
     public override Integer write(Integer most) {
-      List<SObject> rows = new List<SObject>();
-      rows.addAll(
-        [
+      List<Assignment__c> seats = [
+        SELECT Id
+        FROM Assignment__c
+        WHERE ElectiveRun__c IN :runIds
+        WITH USER_MODE
+        ORDER BY Id
+        LIMIT :most
+      ];
+      forGood(seats);
+      Integer left = most - seats.size();
+      List<Preference__c> choices = new List<Preference__c>();
+      if (left > 0) {
+        choices = [
           SELECT Id
-          FROM Assignment__c
+          FROM Preference__c
           WHERE ElectiveRun__c IN :runIds
           WITH USER_MODE
           ORDER BY Id
-          LIMIT :most
-        ]
-      );
-      if (rows.size() < most) {
-        Integer left = most - rows.size();
-        rows.addAll(
-          [
-            SELECT Id
-            FROM Preference__c
-            WHERE ElectiveRun__c IN :runIds
-            WITH USER_MODE
-            ORDER BY Id
-            LIMIT :left
-          ]
-        );
+          LIMIT :left
+        ];
       }
-      if (!rows.isEmpty()) {
-        Database.delete(rows, AccessLevel.USER_MODE);
-        Database.emptyRecycleBin(rows);
-      }
-      return rows.size();
+      forGood(choices);
+      return seats.size() + choices.size();
     }
 
     public override void finish() {
@@ -243,17 +237,24 @@ public with sharing class ElectiveClear {
     List<Camper__c> campers
   ) {
     // Runs first: their seats and choices point at the campers.
-    List<SObject> gone = new List<SObject>();
-    gone.addAll(going);
-    gone.addAll(campers);
     Savepoint before = Database.setSavepoint();
     try {
-      Database.delete(going, AccessLevel.USER_MODE);
-      Database.delete(campers, AccessLevel.USER_MODE);
-      Database.emptyRecycleBin(gone);
+      forGood(going);
+      forGood(campers);
     } catch (Exception e) {
       Database.rollback(before);
       throw e;
+    }
+  }
+
+  /**
+   * Rows of one kind deleted and emptied from the Recycle Bin. One kind a call: Salesforce refuses
+   * a call whose rows switch kind more than ten times, counted 200 rows at a time.
+   */
+  private static void forGood(List<SObject> rows) {
+    if (!rows.isEmpty()) {
+      Database.delete(rows, AccessLevel.USER_MODE);
+      Database.emptyRecycleBin(rows);
     }
   }
 

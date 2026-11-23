@@ -221,21 +221,36 @@ System.debug('LARGE ${what} ' + rows.size());
 `;
 
 function clean() {
-  const inSeason = `Season__r.Name = \\'${SEASON}\\' AND Season__r.Camp__r.Name = \\'${CAMP}\\'`;
+  // The season, reached through each row's own path (path ends in a dot).
+  const inSeason = (path) =>
+    `${path}Season__r.Name = \\'${SEASON}\\' AND ${path}Season__r.Camp__r.Name = \\'${CAMP}\\'`;
   const steps = [
-    ["seats", `SELECT Id FROM Assignment__c WHERE ElectiveRun__r.${inSeason}`],
+    ["seats", `SELECT Id FROM Assignment__c WHERE ${inSeason("ElectiveRun__r.")}`],
     [
       "choices",
-      `SELECT Id FROM Preference__c WHERE ElectiveRun__r.${inSeason}`
+      `SELECT Id FROM Preference__c WHERE ${inSeason("ElectiveRun__r.")}`
     ],
     [
       "schedule days",
-      `SELECT Id FROM ScheduleDay__c WHERE Schedule__r.Program__r.${inSeason}`
+      `SELECT Id FROM ScheduleDay__c WHERE ${inSeason("Schedule__r.Program__r.")}`
+    ],
+    // One at a time: a run's emptied seats still count toward Salesforce's cascade limit for a
+    // while, so a season deleted with all its runs is refused (DELETE_OPERATION_TOO_LARGE).
+    [
+      "elective runs",
+      `SELECT Id FROM ElectiveRun__c WHERE ${inSeason("")}`,
+      1
+    ],
+    // The same for the offerings the seats pointed at.
+    [
+      "offerings",
+      `SELECT Id FROM Offering__c WHERE ${inSeason("ElectiveSet__r.")}`,
+      1
     ]
   ];
-  for (const [what, soql] of steps) {
+  for (const [what, soql, n] of steps) {
     for (;;) {
-      const [line] = apex(`clean ${what}`, cleanStep(what, soql, 4000));
+      const [line] = apex(`clean ${what}`, cleanStep(what, soql, n ?? 4000));
       if (Number(line.split(" ").pop()) === 0) break;
     }
   }

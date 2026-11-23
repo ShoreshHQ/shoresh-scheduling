@@ -7,7 +7,8 @@
  * saved through the screen's own save (POST /v1/assign_elective_seats) with the run as the agent
  * read it (seen). Shoresh asks first (API-1.106): sent without confirm, nothing is saved and its
  * preview comes back as it is; the person's yes sends the same seats again with that confirm. The
- * answer is then the screen's own line, counted with its own board.
+ * answer is then the screen's own line, counted with its own board, or, while a large camp's
+ * seats are still being written, Shoresh's own words saying so.
  */
 
 const { changedSince } = require("./imports");
@@ -59,6 +60,8 @@ async function assignElectiveSeats(
   const again = await readRun();
   if (again.status !== 200) return answer(saved);
   const after = JSON.parse(again.body);
+  // A large camp's seats are still being written (ADR 0018 choice 59): Shoresh's own words.
+  if (after.view.saveTotal != null) return answer(saved);
   const board = m.buildBoard(m.readRun(after.view), t);
   return {
     ok: true,
