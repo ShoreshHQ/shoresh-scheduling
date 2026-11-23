@@ -536,6 +536,56 @@ describe("c-shoresh-manual-build", () => {
   });
 
   // LOCK-5.5
+  it("Undo of a new name still takes it off when a change is made while the Undo saves", async () => {
+    getDraft.mockResolvedValue(draft());
+    addActivity.mockResolvedValue({
+      id: "a7",
+      name: "Zoo trip",
+      length: 1,
+      notFor: [],
+      created: true
+    });
+    removeAddedActivity.mockResolvedValue(true);
+    let undoSaved;
+    saveSlots
+      .mockResolvedValueOnce(
+        answer(
+          [
+            ...WITH_SOCCER.slice(0, 1),
+            { kind: "A", id: "a7", name: "Zoo trip" }
+          ],
+          ["1,2,", "1,,"]
+        )
+      )
+      .mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            undoSaved = () =>
+              resolve(answer(WITH_SOCCER.slice(0, 1), ["1,,", "1,,"]));
+          })
+      )
+      .mockResolvedValueOnce(answer(WITH_SOCCER.slice(0, 1), ["1,,", ",,"]));
+    const element = await render();
+    await press(cell(element, "0-1"), "Enter");
+    await press(await type(element, "Zoo trip"), "Enter");
+    q(element, '[data-id="undo"]').click();
+    await flush();
+    // A new change before the Undo is saved: Redo is gone, and the step with it.
+    await press(cell(element, "1-0"), "Delete");
+    expect(q(element, '[data-id="redo"]').disabled).toBe(true);
+    undoSaved();
+    await flush();
+    await flush();
+    expect(removeAddedActivity).toHaveBeenCalledWith({
+      scheduleId: "d1",
+      activityId: "a7"
+    });
+    expect(q(element, '[data-id="notice"]').textContent).toContain(
+      '"Zoo trip" taken off Activities.'
+    );
+  });
+
+  // LOCK-5.5
   it("Undo leaves an activity on activities while something else still uses it", async () => {
     getDraft.mockResolvedValue(draft());
     addActivity.mockResolvedValue({

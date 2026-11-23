@@ -12,13 +12,7 @@
  */
 
 import { RULE, reasonFor } from "c/shoreshEngine";
-
-/** Names compared the way people type them: spaces and capitals aside. */
-function loose(text) {
-  return String(text || "")
-    .replace(/\s+/g, "")
-    .toLowerCase();
-}
+import { loose } from "./nearNames";
 
 /**
  * "3 of 4": the counter dropdown's own row when the activity has one (under: what counts toward
