@@ -2045,9 +2045,8 @@ export default class ShoreshWeekEditor extends LightningElement {
   }
 
   /** After an Undo of a step that added an activity is saved: it goes too, when unused, and is said. */
-  async undoAdded(stepId) {
-    const step = this.history.find(stepId);
-    const added = step && step.added;
+  async undoAdded(entry) {
+    const { added, stepId } = entry;
     if (!added || added.removed) {
       return;
     }
@@ -2070,11 +2069,10 @@ export default class ShoreshWeekEditor extends LightningElement {
   get addedBusy() {
     return (
       this.addedPending ||
-      this.queue.some((waiting) => {
-        const step =
-          waiting.kind === "undo" && this.history.find(waiting.stepId);
-        return !!(step && step.added) && !step.added.removed;
-      })
+      this.queue.some(
+        (waiting) =>
+          waiting.kind === "undo" && !!waiting.added && !waiting.added.removed
+      )
     );
   }
 
@@ -2102,6 +2100,10 @@ export default class ShoreshWeekEditor extends LightningElement {
     );
     this.history.renameActivity(added.id, activity.id);
     const again = this.history.find(step.id);
+    if (!again) {
+      // Undo and Redo started over (another week shown) while it was being added.
+      return;
+    }
     this.send(
       again.runs,
       `Redone: ${step.label}`,
@@ -2297,6 +2299,9 @@ export default class ShoreshWeekEditor extends LightningElement {
       stepId,
       kind,
       baseLabel: baseLabel || label,
+      // The activity its step added (LOCK-5.5), kept with the save: an Undo's save takes it off
+      // even when the step has left Undo and Redo meanwhile (theirs used, a new change made).
+      added: (this.history.find(stepId) || {}).added || null,
       // The locks the director saw when they made this (the screen's, with the edits waiting
       // before it made): what the run names as locksBefore whenever it is sent, so a lock that
       // arrives while it waits is never covered unseen.
@@ -2503,7 +2508,7 @@ export default class ShoreshWeekEditor extends LightningElement {
             .join(". ")
         );
         if (entry.kind === "undo") {
-          this.undoAdded(entry.stepId);
+          this.undoAdded(entry);
         }
       }
     } catch (e) {
@@ -3983,7 +3988,12 @@ export default class ShoreshWeekEditor extends LightningElement {
       // A change (or a Redo of one) is, from now, what was really saved: Undo takes back this.
       // It keeps its place in Undo; if it had none left (a later change cleared Redo after it
       // was undone), it goes on top, so it can always be taken back.
-      const step = { id: entry.stepId, runs, label: entry.baseLabel };
+      const step = {
+        id: entry.stepId,
+        runs,
+        label: entry.baseLabel,
+        added: entry.added
+      };
       if (dropped.some((w) => w.kind === "undo")) {
         this.history.unundo(entry.stepId);
       }
