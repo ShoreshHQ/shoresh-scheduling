@@ -90,6 +90,14 @@ describe("reasonOf", () => {
       { body: { message: "Script-thrown exception" } },
       { body: { message: "An internal server error has occurred" } },
       { body: { message: "Disconnected or Canceled" } },
+      // Seen in the test org: an Apex method the page asked for that isn't there.
+      {
+        body: {
+          message:
+            "No apex action available for GeneratedScheduleController.getInputs"
+        }
+      },
+      { body: { message: "Couldn't run ManualBuildController.getDraft" } },
       { body: [{ message: "One." }, { message: "UNKNOWN_EXCEPTION" }] },
       // The browser's own errors.
       new TypeError("Cannot read properties of undefined (reading 'id')"),
