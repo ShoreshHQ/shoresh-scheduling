@@ -36,49 +36,44 @@ public with sharing class IncomingCampers {
         keys.add(CamperKeys.ofSent(camper));
       }
     }
-    Map<String, List<Id>> idsByKey = CamperKeys.savedIn(seasonId, keys);
-    byKey = CamperKeys.inOrder(
-      idsByKey,
-      readSaved(seasonId, outsideKeys, CamperKeys.idsIn(idsByKey))
+    byKey = CamperKeys.campersIn(
+      seasonId,
+      keys,
+      new List<SObjectField>{
+        Camper__c.Name,
+        Camper__c.OutsideId__c,
+        Camper__c.SourceSystem__c
+      }
     );
+    readOutside(seasonId, outsideKeys);
   }
 
   /**
-   * The season's campers these keys and outside keys find, read in user mode by Id, each with
-   * its hidden outside key (read in system mode) to tell a doubt (doubt()).
+   * The season's campers with these outside keys (hidden, matched in system mode), read in user
+   * mode by Id, to tell a doubt (doubt()).
    */
-  private Map<Id, Camper__c> readSaved(
-    Id seasonId,
-    Set<String> outsideKeys,
-    Set<Id> ids
-  ) {
+  private void readOutside(Id seasonId, Set<String> outsideKeys) {
+    if (outsideKeys.isEmpty()) {
+      return;
+    }
     Map<Id, Camper__c> hidden = new Map<Id, Camper__c>(
       [
         SELECT Id, OutsideMatch__c
         FROM Camper__c
-        WHERE
-          Season__c = :seasonId
-          AND (OutsideMatch__c IN :outsideKeys
-          OR Id IN :ids)
+        WHERE Season__c = :seasonId AND OutsideMatch__c IN :outsideKeys
         WITH SYSTEM_MODE
       ]
     );
-    Set<Id> all = hidden.keySet();
-    Map<Id, Camper__c> saved = new Map<Id, Camper__c>();
+    Set<Id> ids = hidden.keySet();
     for (Camper__c camper : [
       SELECT Id, Name, OutsideId__c, SourceSystem__c
       FROM Camper__c
-      WHERE Id IN :all
+      WHERE Id IN :ids
       WITH USER_MODE
     ]) {
       // The hidden key stays off the record, which Undo's log may copy (ImportFields.WRITTEN).
-      String outside = hidden.get(camper.Id).OutsideMatch__c;
-      if (outside != null) {
-        byOutside.put(outside, camper);
-      }
-      saved.put(camper.Id, camper);
+      byOutside.put(hidden.get(camper.Id).OutsideMatch__c, camper);
     }
-    return saved;
   }
 
   /** A record's camper as sent: its system, the system's ID, and its name (blanks as none). */
@@ -165,11 +160,20 @@ public with sharing class IncomingCampers {
     Camper__c sent = asSent[index];
     String outside = OutsideOwned.outsideKey(sent);
     for (Camper__c candidate : candidates(sent)) {
-      if (outside == null || !CamperKeys.fromSameSystem(candidate, sent)) {
+      if (outside == null || !fromSameSystem(candidate, sent)) {
         return candidate;
       }
     }
     return null;
+  }
+
+  /** Whether a saved camper already has an ID from the system this record (with one) is from. */
+  private static Boolean fromSameSystem(Camper__c saved, Camper__c sent) {
+    // OutsideOwned.outsideKey's parts, from fields the sender can read.
+    return String.isNotBlank(saved.OutsideId__c) &&
+      String.isNotBlank(saved.SourceSystem__c) &&
+      saved.SourceSystem__c.normalizeSpace().toLowerCase() ==
+      sent.SourceSystem__c.normalizeSpace().toLowerCase();
   }
 
   private List<Camper__c> candidates(Camper__c sent) {

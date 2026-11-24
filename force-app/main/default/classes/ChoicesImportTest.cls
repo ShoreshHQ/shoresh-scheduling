@@ -740,13 +740,10 @@ private class ChoicesImportTest {
 
   @IsTest
   static void commentsAddUpAndNamesFold() {
-    Assert.areEqual('A', ChoicesImportCampers.commentWith(null, ' A '));
-    Assert.areEqual('A', ChoicesImportCampers.commentWith('A', ''));
-    Assert.areEqual(
-      'A and B',
-      ChoicesImportCampers.commentWith('A and B', 'B')
-    );
-    Assert.areEqual('A\nC', ChoicesImportCampers.commentWith('A', 'C'));
+    Assert.areEqual('A', ParentComments.joined(null, ' A '));
+    Assert.areEqual('A', ParentComments.joined('A', ''));
+    Assert.areEqual('A and B', ParentComments.joined('A and B', 'B'));
+    Assert.areEqual('A\nC', ParentComments.joined('A', 'C'));
     Assert.areEqual('potterywheel', ChoicesImport.fold('Pottery-Wheel '));
   }
 

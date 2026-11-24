@@ -1,8 +1,8 @@
 /**
- * A choices sheet's campers (ChoicesImport; repo ADR 0017 choices 14 and 15): which saved camper
- * each row is (ChoicesCamperMatch: two campers may share a name, ELECT-2.7), and new ones made. A
- * known camper keeps Shoresh's name and gains the sheet's comment when it says something new
- * (decision 48.3). No refusal names a camper. In user mode.
+ * A choices sheet's campers saved (ChoicesImport; repo ADR 0017 choices 14 and 15): new ones made
+ * for the rows no saved camper is (ChoicesCamperMatch says which camper each row is). A known
+ * camper keeps Shoresh's name and gains the sheet's comment when it says something new (decision
+ * 48.3). No refusal names a camper. In user mode.
  */
 public with sharing class ChoicesImportCampers {
   private ChoicesImport.Request request;
@@ -15,19 +15,9 @@ public with sharing class ChoicesImportCampers {
     match = new ChoicesCamperMatch(given);
   }
 
-  /** The saved camper for the request's camper at this position, or null (new, or unsettled). */
+  /** The saved camper for the request's camper at this position (made by save() or matched). */
   public Camper__c at(Integer index) {
-    return made.containsKey(index) ? made.get(index) : match.at(index);
-  }
-
-  /** Whether the director must still say which camper this row is. */
-  public Boolean unsettled(Integer index) {
-    return match.unsettled(index);
-  }
-
-  /** "Which camper is row 7?" for each row it is asked of (ChoicesWhichCamper). */
-  public List<ChoicesImport.Which> questions() {
-    return match.questions();
+    return made.get(index) ?? match.at(index);
   }
 
   /** Makes the new campers and adds new comments to known ones. Returns how many were known. */
@@ -40,13 +30,19 @@ public with sharing class ChoicesImportCampers {
       ChoicesImport.SheetCamper sheetCamper = request.campers[i];
       Camper__c saved = at(i);
       if (saved == null) {
-        Camper__c camper = CamperKeys.ofSheet(request.seasonId, sheetCamper);
-        camper.ParentComments__c = commentWith(null, sheetCamper.comment);
+        Camper__c camper = ChoicesCamperMatch.ofSheet(
+          request.seasonId,
+          sheetCamper
+        );
+        camper.ParentComments__c = ParentComments.joined(
+          null,
+          sheetCamper.comment
+        );
         fresh.add(camper);
         freshAt.add(i);
         continue;
       }
-      String comments = commentWith(
+      String comments = ParentComments.joined(
         saved.ParentComments__c,
         sheetCamper.comment
       );
@@ -77,10 +73,5 @@ public with sharing class ChoicesImportCampers {
     for (Integer i = 0; i < fresh.size(); i++) {
       made.put(freshAt[i], fresh[i]);
     }
-  }
-
-  /** The saved comment with the sheet's added (ParentComments.joined). */
-  public static String commentWith(String saved, String sheet) {
-    return ParentComments.joined(saved, sheet);
   }
 }

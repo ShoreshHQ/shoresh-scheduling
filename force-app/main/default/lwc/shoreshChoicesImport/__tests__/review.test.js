@@ -21,7 +21,6 @@ import {
   sheetPreview,
   toCheckRows,
   withApart,
-  camperKeys,
   whichRows,
   NEW_CAMPER
 } from "../review";
@@ -609,7 +608,7 @@ describe("two campers with one name", () => {
 
   it("asks which camper a row is, with a new camper as a choice, and carries the answer", () => {
     const read = withApart(twoNoas(), { "apart-0": true });
-    const keys = camperKeys(read, groups);
+    const keys = build(read).campers.map((camper) => camper.key);
     const check = {
       added: 1,
       known: 0,
@@ -633,7 +632,6 @@ describe("two campers with one name", () => {
     const unanswered = whichRows({
       check,
       request: build(read),
-      keys,
       which: {}
     });
     expect(unanswered.map((r) => [r.name, r.where, r.value])).toEqual([
@@ -651,9 +649,41 @@ describe("two campers with one name", () => {
     expect(request.campers[2].newCamper).toBe(true);
     expect(request.campers[2].camperId).toBeUndefined();
     // Answered or not, each question stays listed, so an answer can be changed.
-    expect(
-      whichRows({ check, request, keys, which }).map((r) => r.value)
-    ).toEqual(["c7", NEW_CAMPER]);
+    expect(whichRows({ check, request, which }).map((r) => r.value)).toEqual([
+      "c7",
+      NEW_CAMPER
+    ]);
+  });
+
+  it("pairs each answer with its own row, past a camper whose bunk isn't one of the camp's", () => {
+    const read = withApart(
+      readChoices(
+        csvFile(
+          "noa.csv",
+          lines(
+            "Name,Cabin,#1,#2,Comments",
+            "Eli Stonebrook,Bunk 9,Archery,Drama,",
+            "Noa Oakhollow,Willow,Drama,Pottery,",
+            "Noa Oakhollow,Aspen,Archery,Drama,"
+          )
+        ),
+        { activities: ACTIVITIES.map((a) => a.Name) }
+      ),
+      { "apart-0": true }
+    );
+    const asked = build(read);
+    expect(asked.campers.map((c) => c.groupId)).toEqual(["g2", "g1"]);
+    const check = {
+      whichCamper: [1].map((index) => ({
+        index,
+        row: 4,
+        choices: [{ id: "c7", label: "Noa Oakhollow, Willow" }]
+      }))
+    };
+    const [row] = whichRows({ check, request: asked, which: {} });
+    expect(row.key).toBe(asked.campers[1].key);
+    const request = build(read, { [row.key]: "c7" });
+    expect(request.campers.map((c) => c.camperId)).toEqual([undefined, "c7"]);
   });
 });
 
