@@ -3008,6 +3008,10 @@ describe("Shoresh for AI tools and the command line", () => {
       'Nothing has been done yet. This forgets "lunch is a fixed activity": the next import asks that question again. Show the person exactly this and ask. Only if they say yes, send the same request again with confirm: "abc".'
     );
     expect(asked.asksFirst).toBe(true);
+    // The person's dialog shows the preview, naming the line too.
+    expect(asked.asks.preview).toBe(
+      'This forgets "lunch is a fixed activity": the next import asks that question again.'
+    );
     // Read first (once forgotten, its line is gone), then the forget as asked.
     expect(sent.map((s) => s.args[3])).toEqual([
       "/services/apexrest/v1/read_learned_answers?season=Summer+2031",

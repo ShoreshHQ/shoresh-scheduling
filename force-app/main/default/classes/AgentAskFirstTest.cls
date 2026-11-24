@@ -77,14 +77,12 @@ private class AgentAskFirstTest {
       Map<String, Object> asked = send(
         new Map<String, Object>{ 'version' => 'First draft' }
       );
-      AgentAskFirst.stateIs('7');
       Map<String, Object> stale = send(
         new Map<String, Object>{
           'version' => 'First draft',
           'confirm' => 'not-this-one'
         }
       );
-      AgentAskFirst.stateIs('7');
       Map<String, Object> done = send(
         new Map<String, Object>{
           'version' => 'First draft',

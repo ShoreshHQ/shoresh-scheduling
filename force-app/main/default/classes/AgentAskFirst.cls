@@ -42,11 +42,11 @@ public with sharing class AgentAskFirst {
     // The ticket's request: the body as sent, confirm aside, before the preview reads it.
     String sent = AgentRequestInOrder.of(JSON.serialize(body));
     String words = ((Preview) change).preview(body);
-    String asked = words == null
+    String notYet = words == null
       ? null
       : question(words, ticketFor(words, sent), given);
-    if (asked != null) {
-      return asked;
+    if (notYet != null) {
+      return notYet;
     }
     return change.run(body);
   }
