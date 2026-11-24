@@ -3,6 +3,7 @@
  * its Undo label, and when a Lock refuses it.
  */
 import { dayLabel } from "c/shoreshScheduleViews";
+import { FIELD } from "c/shoreshSchema";
 import {
   canMove,
   clearAllStep,
@@ -200,6 +201,24 @@ describe("a draft's edit context", () => {
     expect(ctx.nameOf("E:s1", OPEN_CELL)).toBe("Chugim");
     expect(ctx.nameOf("S:gone", OPEN_CELL)).toBe("SpecialEvent (removed)");
     expect(ctx.nameOf("", OPEN_CELL)).toBe("Open");
+  });
+
+  it("knows each elective set's places, for the room a rainy day counts", () => {
+    const withOfferings = {
+      ...setup,
+      activities: [{ Id: "a9", [FIELD.Activity.Location]: "pool" }],
+      electives: {
+        ...setup.electives,
+        offerings: [
+          {
+            [FIELD.Offering.ElectiveSet]: "s1",
+            [FIELD.Offering.Activity]: "a9"
+          }
+        ]
+      }
+    };
+    const ctx = editContextOf({ draft: draftOf(), t, setup: withOfferings });
+    expect(ctx.electivePlaces.get("s1")).toEqual(["pool"]);
   });
 
   it("a group is away where the draft's away blocks say, in any week asked about", () => {

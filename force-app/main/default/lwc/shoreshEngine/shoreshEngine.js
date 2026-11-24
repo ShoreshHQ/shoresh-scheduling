@@ -52,6 +52,7 @@ export {
   reasonFor,
   checkWeek
 };
+export { placementsOf, roomTaken } from "./checks";
 export {
   readActivities,
   readElectivePlaces,

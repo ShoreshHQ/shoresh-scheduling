@@ -1,5 +1,5 @@
 import { setDayNaming } from "c/shoreshDayNames";
-import { checkWeek } from "../checks";
+import { checkWeek, roomTaken } from "../checks";
 import { buildTerms } from "c/shoreshTerms";
 import { dayName, weekOf } from "./data/checkWeeks";
 
@@ -631,5 +631,38 @@ describe("checks: which targets the camp has set", () => {
     );
     expect(both.hasCoverageTargets).toBe(true);
     expect(both.hasSpreadTargets).toBe(true);
+  });
+});
+
+// ADR 0019 §4: what a rainy day counts room with is the checks' own count.
+describe("checks: how full an activity and a place are (roomTaken)", () => {
+  const SET = "a0E000000000001";
+  it("counts what is there, a fixed activity at its place, an elective set at its places, and other programs", () => {
+    const days = weekOf({
+      [MON]: [
+        ["A:swim", "^A:swim", ""],
+        ["A:swim", "F:flag", ""],
+        [`E:${SET}`, "", ""]
+      ]
+    });
+    const room = roomTaken(
+      days,
+      model([activity("swim", { locationId: "pool" })], {
+        locations: new Map([
+          ["pool", { name: "Pool", fit: 2 }],
+          ["hall", { name: "Hall", fit: 3 }]
+        ]),
+        setTimeLocations: new Map([["flag", "hall"]]),
+        electivePlaces: new Map([[SET, ["pool", "hall"]]]),
+        othersAt: (kind, id, d, blockId) =>
+          (kind === "place" && id === "hall" && blockId === "t2" ? 2 : 0)
+      })
+    );
+    expect(room.activity("swim", "0|0")).toBe(2);
+    expect(room.activity("swim", "0|1")).toBe(1);
+    expect(room.place("pool", "0|0")).toBe(3);
+    expect(room.place("hall", "0|0")).toBe(1);
+    expect(room.place("hall", "0|1")).toBe(3);
+    expect(room.place("hall", "0|2")).toBe(0);
   });
 });

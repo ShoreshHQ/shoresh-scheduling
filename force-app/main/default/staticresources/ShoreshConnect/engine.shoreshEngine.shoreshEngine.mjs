@@ -52,6 +52,7 @@ export {
   reasonFor,
   checkWeek
 };
+export { placementsOf, roomTaken } from "./engine.shoreshEngine.checks.mjs";
 export {
   readActivities,
   readElectivePlaces,

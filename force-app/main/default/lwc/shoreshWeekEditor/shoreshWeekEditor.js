@@ -2974,7 +2974,11 @@ export default class ShoreshWeekEditor extends LightningElement {
       dates: [date],
       name,
       label: `Rainy ${name}`,
-      model: rainModel(this.draft, this.schedule.days),
+      model: rainModel(
+        this.draft,
+        this.schedule.days,
+        this.editCtx.electivePlaces
+      ),
       // A Lock beats a switch (Generated): the cells locked now are left as they are.
       locks: this.liveLocks ? new Set(this.liveLocks) : null
     };
