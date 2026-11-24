@@ -21,6 +21,31 @@ pull requests never deploy over each other. Tests run one class at a time (see b
 the test org is also used by hand, the
 deploy ignores change-tracking conflicts: the repository is always what should end up in the org.
 
+### Changes go in as batches (Greg, 2026-11-24)
+
+Only a pull request from a `batch/` branch uses the test org. Any other pull request gets the
+quick checks and its reviews; its org check reports category `later` and passes without touching
+the org. Before this, each pull request took its own 45-to-65-minute turn, and every merge sent the
+others back for another (2026-11-23: three tracks, most org time spent re-testing changes that had
+passed). Never merge a `later` pull request on its own.
+
+How the coordinator puts a batch in:
+
+1. Each change is ready: its own pull request, quick checks green, both reviews done and fixed.
+2. Make `batch/<yyyy-mm-dd>-<n>` from the latest main and merge each ready branch into it
+   (`git merge --no-ff`), in the order its track needs. If only the connector's built files or
+   its version clash, take main's side, run `node scripts/build-connect.js` once, and commit.
+   Any other clash: leave that change out and send it back to its track.
+3. Run lint, then open a pull request from the batch branch to main listing each pull request
+   in it. It runs every check, the test org included, judged against main as above.
+4. Green: merge the batch pull request (`--match-head-commit`). Each pull request in it shows as
+   merged, since its commits are now on main; close any that doesn't, with a link to the batch.
+5. Red: find which change broke it, remake the batch without it, and send it back to its track.
+   A change pushed again after joining a batch also means remaking the batch.
+
+Changes a director can see still get their hands-on check on the test org after the merge, one
+at a time.
+
 ### How much of the test org a pull request needs
 
 A full check (every Apex class) takes 45 to 65 minutes (the job stops at 90), and every pull request waits for the one before it. So a
