@@ -5,7 +5,6 @@ import setUpItem from "@salesforce/apex/SpecialPlacingController.setUpItem";
 import takeOffDay from "@salesforce/apex/SpecialPlacingController.takeOffDay";
 import keepWeekBeforeRain from "@salesforce/apex/RainyDayController.keepGeneratedWeek";
 import { failed } from "c/shoreshErrors";
-import { publishedWord } from "c/shoreshPublish";
 import { notesWithout, whyOf } from "c/shoreshEngine";
 import {
   ACTION,
@@ -529,7 +528,6 @@ export default class ShoreshGeneratedSchedule extends BuildScreen(
     this.buildWeek.loadSetupChanges();
   }
 
-  /** Coming back to the window shows other people's saves, unless something is under way. */
   /**
    * "Set it up" on a cell noted from a file as a special event or day (ADR 0014 slice 4): made
    * on the server from what the file had, then the week and the season are read again (the
@@ -1876,59 +1874,6 @@ export default class ShoreshGeneratedSchedule extends BuildScreen(
   sayDone(text) {
     this.startedOver = null;
     this.say(text);
-  }
-
-  /** Publish and Unpublish (c/shoreshBuildWeek): the question first, when there is one. */
-  handlePublish() {
-    return this.buildWeek.publish();
-  }
-
-  handlePublishAnswer(event) {
-    const done = this.buildWeek.answerPublish(event.detail.yes);
-    if (event.detail.go) {
-      this.goToProblem(event.detail.go);
-    }
-    return done;
-  }
-
-  handleUnpublish() {
-    this.buildWeek.askUnpublish();
-  }
-
-  handleUnpublishAnswer(event) {
-    return this.buildWeek.answerUnpublish(event.detail.yes);
-  }
-
-  /** "Published from Manual Build " before the date (c/shoreshPublish). */
-  get publishedWord() {
-    return publishedWord(this.publishState);
-  }
-
-  /** The rail's Published: and whether the week changed since (its corner says it to the eye). */
-  /**
-   * The main button's word: "Published" once the week is out as it is, "Publish" before and
-   * again once it has changed since (UX pass 2026-11-10: the word stays on the button, so the bar
-   * never grows when a week is published).
-   */
-  get publishLabel() {
-    return this.publishState && !this.publishState.changedSince
-      ? "Published"
-      : "Publish";
-  }
-
-  // The menu beside Publish has a name of its own, never the main button's (word walk
-  // 2026-11-12: two buttons both read "Published").
-  get publishedName() {
-    return this.publishState && this.publishState.changedSince
-      ? // Greg's pick (2026-11-12): "Changed since" and what changed.
-        "Published: options · Changed since: cells edited"
-      : "Published: options";
-  }
-
-  get publishedBy() {
-    return this.publishState && this.publishState.publishedBy
-      ? ` by ${this.publishState.publishedBy}`
-      : "";
   }
 
   // ---------- Versions (as Manual Build: desktop VersionsDropdown, useSnapshots) ----------
