@@ -32,7 +32,6 @@ import {
   startingAnswers,
   toCheckRows,
   withApart,
-  camperKeys,
   whichRows
 } from "./review";
 
@@ -627,7 +626,6 @@ export default class ShoreshChoicesImport extends LightningElement {
     return whichRows({
       check: this.check,
       request,
-      keys: camperKeys(this.read, this.groups),
       which: this.which,
       t: this.t
     }).map((row) => ({

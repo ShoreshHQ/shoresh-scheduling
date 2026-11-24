@@ -23,9 +23,13 @@ decisions live in the wiki (`~/Dev/wiki`: `projects/shoresh-scheduling-sf.md`, i
 - **Every screen follows the design system:** the visual spec in `docs/design/` and its tokens in
   `c/shoreshTokens` (`docs/adr/0015-design-system.md`). Never invent a screen's own look.
 - No namespace, package, or package version without Greg's go-ahead.
-- **Merging is by hand** (Greg, 2026-10-16): a PR is merged (squash) only after both CI checks pass
+- **Merging is by hand** (Greg, 2026-10-16): a PR is merged (merge commit, never squash) only after both CI checks pass
   on its latest commit and an independent review is done. GitHub auto-merge stays off: on the free
   plan this private repo cannot require checks, so auto-merge would not wait for the tests.
+- **Changes go in as batches** (Greg, 2026-11-24): only a `batch/` pull request uses the test org.
+  A single change's PR gets the quick checks and reviews, its org check says `later`, and it is
+  never merged on its own; the coordinator merges ready changes into a `batch/` branch and merges
+  that once it is green (`docs/ci-setup.md`, "Changes go in as batches").
 - **Never queue a full Apex test run in shoresh-test** (no `--test-level RunLocalTests`, no
   `sf apex run test` without `--synchronous`). The org allows 500 queued test-class runs per rolling
   24 hours, and past that every queued run fails at once. Run tests one class at a time with

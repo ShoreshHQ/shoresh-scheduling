@@ -137,7 +137,7 @@ choice 11 (when a screen leaves "Coming", the screen before it gains its next bu
      name is no longer unique. A camper with no number keeps a SHA-256 of the name in
      `NameKey__c` (not unique, hidden), so imports find them without reading names; `Key__c` is
      blank for them (campers saved before keep their name key there, and both are read). Where
-     more than one camper has a name, an import asks which, never guesses (ChoicesImportCampers,
+     more than one camper has a name, an import asks which, never guesses (ChoicesCamperMatch,
      IncomingCampers). This goes beyond the desktop, which refused the second camper ("Another
      camper in this season has this name and no number. Give each a number to tell them
      apart.");
@@ -771,8 +771,8 @@ screen, and other programs' electives.
       `LinkedChoiceTriggers`, which also checks a linked choice's periods and divisions), which
       read hidden keys no one is granted, and seasons, and return no name; the rows that go with a
       deleted set, offering or linked choice (choice 8), which mean nothing without it; and
-      `ChoicesImportCampers` matching campers by their hidden key, which returns only Ids (the
-      campers are then read in user mode). Clear empties from the Recycle Bin only the rows it has
+      `CamperKeys` matching campers by their hidden key (for a choices sheet and incoming campers),
+      which returns only Ids (the campers are then read in user mode). Clear empties from the Recycle Bin only the rows it has
       just deleted in user mode (choice 55).
     - **Found and fixed:** the three elective trigger classes gave no reason for their
       system-mode reads at the top of the class (only their deletes did); each now says why.

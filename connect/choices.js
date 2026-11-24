@@ -244,7 +244,6 @@ async function bringInChoices(capability, input, { read, send, answer, load }) {
   const first = JSON.parse(answer(checked).text);
   // "Which camper?" (ELECT-2.7), as the screen asks it on card 3: by row, a choice's words or
   // "new". With answers the check is asked again, as the screen does, so the count says them.
-  const keys = m.camperKeys(sheet, groups);
   const said =
     input.which_camper && typeof input.which_camper === "object"
       ? input.which_camper
@@ -253,7 +252,6 @@ async function bringInChoices(capability, input, { read, send, answer, load }) {
   const questions = m.whichRows({
     check: first,
     request: request(null),
-    keys,
     which: {},
     t
   });

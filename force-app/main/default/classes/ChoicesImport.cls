@@ -12,9 +12,10 @@
  * is a question for the director, never a guess (ELECT-2.7).
  *
  * The work is split by what it touches: ChoicesImportPlace (the season, set, week, schedule and
- * run), ChoicesImportCampers and ChoicesImportChoices (activities added, and each camper's
- * choices). Reads are bounded: a check is 7 queries, a save about 20 with its triggers, whatever
- * the number of campers (ChoicesImportTest).
+ * run), ChoicesCamperMatch and ChoicesImportCampers (which camper each row is, and new ones),
+ * and ChoicesImportChoices (activities added, and each camper's choices). Reads are bounded: a
+ * check is 7 queries, a save about 20 with its triggers, whatever the number of campers
+ * (ChoicesImportTest).
  */
 public with sharing class ChoicesImport {
   public static final String COMMITTED = 'Committed';
@@ -246,7 +247,7 @@ public with sharing class ChoicesImport {
       // The final run is named in the refusal ('"Chugim · Week 1" is final, ...').
       result.runName = place.finalRunName;
     }
-    ChoicesImportCampers campers = new ChoicesImportCampers(request);
+    ChoicesCamperMatch campers = new ChoicesCamperMatch(request);
     ChoicesImportChoices choices = new ChoicesImportChoices(request, place);
     choices.readSaved();
     new ChoicesCheckCount(request, campers, choices).into(result);

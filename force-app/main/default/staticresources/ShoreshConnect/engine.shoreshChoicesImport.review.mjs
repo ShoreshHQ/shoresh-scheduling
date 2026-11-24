@@ -734,16 +734,19 @@ export function buildRequest({
   for (const camper of reading.campers) {
     // A camper whose bunk Shoresh doesn't have isn't imported, counted or seated (word walk
     // W6): the review lists them, "Bunk 9 isn't one of your bunks: not imported". Never guessed.
-    if (bunkOf(camper, groups).problem === "unknown") continue;
+    const bunk = bunkOf(camper, groups);
+    if (bunk.problem === "unknown") continue;
     const choices = [];
     for (const c of camper.choices) {
       const settled = settledChoice(c, known, answers, linked);
       if (settled === null) return null;
       if (settled) choices.push(settled);
     }
-    const bunk = bunkOf(camper, groups);
     const picked = which[camper.key];
     campers.push({
+      // The camper's reading key: "Which camper?" answers are kept by it (whichRows). Shoresh
+      // ignores it.
+      key: camper.key,
       row: camper.rows[0] ? camper.rows[0].row : null,
       name: camper.name || camper.number,
       camperNumber: camper.number || null,
@@ -787,22 +790,15 @@ export function buildRequest({
 
 // ---------- card 3: the count ----------
 
-/** Each request camper's reading key, in the request's order (buildRequest's campers). */
-export function camperKeys(reading, groups) {
-  return reading.campers
-    .filter((camper) => bunkOf(camper, groups).problem !== "unknown")
-    .map((camper) => camper.key);
-}
-
 /**
  * The server's "which camper?" questions (ChoicesImport.Check.whichCamper; ELECT-2.7), answered
  * or not, each with
  * the season's campers of that name and "A new camper": [{ key, name, where, options, value }].
  * key is the camper's reading key, which the answers (which) are kept by.
  */
-export function whichRows({ check, request, keys, which, t = buildTerms([]) }) {
+export function whichRows({ check, request, which, t = buildTerms([]) }) {
   return ((check && check.whichCamper) || []).map((question) => {
-    const key = keys[question.index];
+    const key = request.campers[question.index].key;
     return {
       key,
       name: request.campers[question.index].name,

@@ -330,9 +330,10 @@ private class ElectivesDataTest {
       }
       Assert.areEqual(
         2,
-        CamperKeys.savedIn(
+        CamperKeys.campersIn(
             camp.season.Id,
-            new Set<String>{ unnumbered[0].NameKey__c }
+            new Set<String>{ unnumbered[0].NameKey__c },
+            new List<SObjectField>{ Camper__c.Name }
           )
           .get(unnumbered[0].NameKey__c)
           .size(),

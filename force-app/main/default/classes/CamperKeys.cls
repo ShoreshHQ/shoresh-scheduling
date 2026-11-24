@@ -97,12 +97,18 @@ public with sharing class CamperKeys {
   }
 
   /**
-   * The season's campers with each of these keys, in the order they were added (one key may
-   * have several: a name two campers share). A camper saved before ELECT-2.7 may hold its name
-   * key in Key__c, so both are read. Only Ids come back.
+   * The season's campers with each of these keys, oldest first (one key may have several: a name
+   * two campers share), with these fields read in user mode: a camper the user can't see is left
+   * out. The keys are matched in system mode (above); a camper saved before ELECT-2.7 may hold its
+   * name key in Key__c, so both are read. Two queries, whatever the number.
    */
-  public static Map<String, List<Id>> savedIn(Id seasonId, Set<String> keys) {
-    Map<String, List<Id>> result = new Map<String, List<Id>>();
+  public static Map<String, List<Camper__c>> campersIn(
+    Id seasonId,
+    Set<String> keys,
+    List<SObjectField> fields
+  ) {
+    Map<String, List<Id>> idsByKey = new Map<String, List<Id>>();
+    Set<Id> ids = new Set<Id>();
     for (Camper__c saved : [
       SELECT Id, Key__c, NameKey__c
       FROM Camper__c
@@ -110,29 +116,14 @@ public with sharing class CamperKeys {
       WITH SYSTEM_MODE
       ORDER BY CreatedDate, Id
     ]) {
-      String key = saved.NameKey__c != null ? saved.NameKey__c : saved.Key__c;
-      if (!result.containsKey(key)) {
-        result.put(key, new List<Id>());
+      String key = saved.NameKey__c ?? saved.Key__c;
+      if (!idsByKey.containsKey(key)) {
+        idsByKey.put(key, new List<Id>());
       }
-      result.get(key).add(saved.Id);
+      idsByKey.get(key).add(saved.Id);
+      ids.add(saved.Id);
     }
-    return result;
-  }
-
-  /** Every Id savedIn found. */
-  public static Set<Id> idsIn(Map<String, List<Id>> idsByKey) {
-    Set<Id> result = new Set<Id>();
-    for (List<Id> ids : idsByKey.values()) {
-      result.addAll(ids);
-    }
-    return result;
-  }
-
-  /** savedIn's campers by key, in its order, keeping only those read (those the user sees). */
-  public static Map<String, List<Camper__c>> inOrder(
-    Map<String, List<Id>> idsByKey,
-    Map<Id, Camper__c> read
-  ) {
+    Map<Id, Camper__c> read = readable(ids, fields);
     Map<String, List<Camper__c>> result = new Map<String, List<Camper__c>>();
     for (String key : idsByKey.keySet()) {
       List<Camper__c> found = new List<Camper__c>();
@@ -146,35 +137,36 @@ public with sharing class CamperKeys {
     return result;
   }
 
+  /** These campers with these fields, those the user sees, in user mode. */
+  private static Map<Id, Camper__c> readable(
+    Set<Id> ids,
+    List<SObjectField> fields
+  ) {
+    if (ids.isEmpty()) {
+      return new Map<Id, Camper__c>();
+    }
+    List<String> names = new List<String>{ 'Id' };
+    for (SObjectField field : fields) {
+      names.add(ShoreshSchema.queryName(field));
+    }
+    return new Map<Id, Camper__c>(
+      (List<Camper__c>) Database.queryWithBinds(
+        'SELECT ' +
+          String.join(names, ', ') +
+          ' FROM ' +
+          ShoreshSchema.queryName(Camper__c.SObjectType) +
+          ' WHERE Id IN :ids',
+        new Map<String, Object>{ 'ids' => ids },
+        AccessLevel.USER_MODE
+      )
+    );
+  }
+
   /**
    * An incoming record's key (of), or null when it names neither a name nor a number
    * (IncomingCampers).
    */
   public static String ofSent(Camper__c sent) {
     return sent.Name == null && sent.CamperNumber__c == null ? null : of(sent);
-  }
-
-  /** Whether a saved camper already has an ID from the system this record is from. */
-  public static Boolean fromSameSystem(Camper__c saved, Camper__c sent) {
-    // OutsideOwned.outsideKey's parts, from fields the sender can read.
-    return String.isNotBlank(saved.OutsideId__c) &&
-      String.isNotBlank(saved.SourceSystem__c) &&
-      String.isNotBlank(sent.SourceSystem__c) &&
-      saved.SourceSystem__c.normalizeSpace().toLowerCase() ==
-      sent.SourceSystem__c.normalizeSpace().toLowerCase();
-  }
-
-  /** A choices sheet's camper as a camper of the season (name and number, trimmed), to key. */
-  public static Camper__c ofSheet(
-    Id seasonId,
-    ChoicesImport.SheetCamper sheetCamper
-  ) {
-    return new Camper__c(
-      Season__c = seasonId,
-      Name = sheetCamper.name == null ? null : sheetCamper.name.trim(),
-      CamperNumber__c = String.isBlank(sheetCamper.camperNumber)
-        ? null
-        : sheetCamper.camperNumber.trim()
-    );
   }
 }
