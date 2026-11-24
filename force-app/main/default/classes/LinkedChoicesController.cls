@@ -26,18 +26,10 @@ public with sharing class LinkedChoicesController {
   }
 
   private static LinkedChoiceSaves.Edit parse(String edit) {
-    try {
-      return (LinkedChoiceSaves.Edit) JSON.deserialize(
-        edit,
-        LinkedChoiceSaves.Edit.class
-      );
-    } catch (Exception e) {
-      throw new ShoreshException(
-        ErrorCodes.said(
-          'That change could not be sent. Try again.',
-          ErrorCodes.detailOf(e)
-        )
-      );
-    }
+    return (LinkedChoiceSaves.Edit) ScreenRequests.parsed(
+      edit,
+      LinkedChoiceSaves.Edit.class,
+      'That change'
+    );
   }
 }

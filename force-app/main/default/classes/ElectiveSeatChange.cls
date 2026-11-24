@@ -88,11 +88,9 @@ public with sharing class ElectiveSeatChange {
       request.day == null ||
       request.blockId == null
     ) {
-      throw new ShoreshException(
-        ErrorCodes.said(
-          'The change could not be sent. Try again.',
-          'ElectiveSeatChange: a request missing its run, camper, day or time'
-        )
+      throw ScreenRequests.notSent(
+        'The change',
+        'ElectiveSeatChange: a request missing its run, camper, day or time'
       );
     }
   }
