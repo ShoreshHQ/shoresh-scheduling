@@ -58,15 +58,20 @@ export function itemText(item) {
 
 /**
  * An elective set's cell lists its offerings, as the desktop's Excel export does
- * ("Chugim (Archery, Drama)"), on every sheet (ELECT-6.3). offerings:
- * a Map of set Id to its offerings' names; a set with none reads as its name; one removed as itemText.
+ * ("Chugim (Archery, Drama)"), on every sheet (ELECT-6.3). offerings: a Map of set Id to its
+ * offerings' names; a set with none reads as its name.
  */
+function withOfferings(name, setId, offerings) {
+  const names = offerings.get(setId) || [];
+  return names.length ? `${name} (${names.join(", ")})` : name;
+}
+
+/** A placed item's cell: an elective set with its offerings, one removed as itemText. */
 function cellText(item, offerings) {
   if (!isElectiveItem(item) || item.gone) {
     return itemText(item);
   }
-  const names = offerings.get(item.id) || [];
-  return names.length ? `${item.name} (${names.join(", ")})` : item.name;
+  return withOfferings(item.name, item.id, offerings);
 }
 
 /** One group's day, one entry per time block: the item there (or null), carried-on blocks too. */
@@ -246,10 +251,10 @@ function gridSheet(name, grid, t, offerings) {
   const text = (cell) => {
     if (!cell || cell.open) return "";
     if (cell.names) return cell.names.map((n) => n.name).join(", ");
-    const setId = cell.electiveKey ? cell.electiveKey.slice(2) : null;
-    const names = setId && !cell.gone ? offerings.get(setId) || [] : [];
-    const said = withRemoved(cell.text, cell.gone);
-    return names.length ? `${cell.text} (${names.join(", ")})` : said;
+    if (cell.electiveKey && !cell.gone) {
+      return withOfferings(cell.text, cell.electiveKey.slice(2), offerings);
+    }
+    return withRemoved(cell.text, cell.gone);
   };
   return {
     name,
