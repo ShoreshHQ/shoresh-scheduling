@@ -1,11 +1,12 @@
 /**
  * What Generated Schedule and Manual Build show the same way, word for word: choosing a program
  * and week, what's still needed, the setup dots and the menu's Update, applying to other weeks,
- * and telling the page what changed. Each screen keeps its own fields and what differs. What acts
- * on the week (Update to match setup, publish, the Versions list and its actions) is
- * c/shoreshBuildWeek; reading the week stays on each screen.
+ * Publish's buttons and words, and telling the page what changed. Each screen keeps its own
+ * fields and what differs. What acts on the week (Update to match setup, publish, the Versions
+ * list and its actions) is c/shoreshBuildWeek; reading the week stays on each screen.
  */
 import { campZone } from "c/shoreshCampClock";
+import { publishedWord } from "c/shoreshPublish";
 import { FIELD } from "c/shoreshSchema";
 import { stillNeeded, stillNeededSentence } from "c/shoreshSetupRules";
 
@@ -197,6 +198,50 @@ export const BuildScreen = (Base) =>
       if (event.detail.sourceChanged) {
         this.load(true);
       }
+    }
+    /** Publish and Unpublish (c/shoreshBuildWeek): the question first, when there is one. */
+    handlePublish() {
+      return this.buildWeek.publish();
+    }
+    handlePublishAnswer(event) {
+      const done = this.buildWeek.answerPublish(event.detail.yes);
+      if (event.detail.go) {
+        this.goToProblem(event.detail.go);
+      }
+      return done;
+    }
+    handleUnpublish() {
+      this.buildWeek.askUnpublish();
+    }
+    handleUnpublishAnswer(event) {
+      return this.buildWeek.answerUnpublish(event.detail.yes);
+    }
+    /** "Published from Manual Build " before the date (c/shoreshPublish). */
+    get publishedWord() {
+      return publishedWord(this.publishState);
+    }
+    get publishedBy() {
+      return this.publishState && this.publishState.publishedBy
+        ? ` by ${this.publishState.publishedBy}`
+        : "";
+    }
+    /**
+     * The main button's word: "Published" once the week is out as it is, "Publish" before and
+     * again once it has changed since (UX pass 2026-11-10: the word stays on the button, so the
+     * bar never grows when a week is published).
+     */
+    get publishLabel() {
+      return this.publishState && !this.publishState.changedSince
+        ? "Published"
+        : "Publish";
+    }
+    // The menu beside Publish has a name of its own, never the main button's (word walk
+    // 2026-11-12: two buttons both read "Published").
+    get publishedName() {
+      return this.publishState && this.publishState.changedSince
+        ? // Greg's pick (2026-11-12): "Changed since" and what changed.
+          "Published: options · Changed since: cells edited"
+        : "Published: options";
     }
     /**
      * Something other screens show was just saved here (WEEK-6.7): a version kept, renamed,
