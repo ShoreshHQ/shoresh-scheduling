@@ -71,6 +71,7 @@ private class ErrorCodesTest {
         Map<String, Object>.class,
         'The seats'
       );
+      Assert.fail('A request that can\'t be read is refused');
     } catch (ShoreshException e) {
       shown = e.getMessage();
     }
