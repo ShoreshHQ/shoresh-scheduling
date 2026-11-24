@@ -9,30 +9,29 @@
 public with sharing class ManualBuildActivities {
   private static final Integer NAME_LIMIT = 80;
 
-  /** The activity, as Manual Build offers it for the schedule's groups. From Manual Build's draft. */
+  /** The draft an activity is added on, and locked as that screen locks it for a hand edit. */
+  public enum Draft {
+    MANUAL_BUILD,
+    GENERATED
+  }
+
+  /**
+   * The activity, as the screen offers it for the schedule's groups: from Manual Build's draft
+   * (ManualDrafts.locked), or from Generated Schedule's (GeneratedDrafts.lockedToEdit, so a
+   * version, a published schedule or Manual Build's draft is refused there, as for its hand
+   * edits).
+   */
   public static ManualBuildViews.ActivityOption add(
     Id scheduleId,
-    String name
+    String name,
+    Draft onDraft
   ) {
     String trimmed = checkedName(name);
     // The season first, then the draft, the order imports lock in: two people adding the same
     // new name at once (from any week or program of the season) get one activity, the second
     // finding the first one's.
     Id seasonId = lockedSeasonOf(scheduleId);
-    return addIn(seasonId, ManualDrafts.locked(scheduleId), trimmed);
-  }
-
-  /**
-   * The same from Generated Schedule's draft (GeneratedDrafts.lockedToEdit): a version, a
-   * published schedule or Manual Build's draft is refused there, as for its hand edits.
-   */
-  public static ManualBuildViews.ActivityOption addOnGenerated(
-    Id scheduleId,
-    String name
-  ) {
-    String trimmed = checkedName(name);
-    Id seasonId = lockedSeasonOf(scheduleId);
-    return addIn(seasonId, GeneratedDrafts.lockedToEdit(scheduleId), trimmed);
+    return addIn(seasonId, lockedDraft(scheduleId, onDraft), trimmed);
   }
 
   /** The activity named, made if the season has none by that name, for the schedule's groups. */
@@ -71,20 +70,19 @@ public with sharing class ManualBuildActivities {
   }
 
   /**
-   * LOCK-5.5: Undo of "Add <name>" on Manual Build's draft takes the activity it made off again
-   * (removeUnused). True when it was.
+   * LOCK-5.5: Undo of "Add <name>" takes the activity it made off again (removeUnused), from the
+   * draft it was added on, locked as add() locks it. True when it was.
    */
-  public static Boolean removeFromManualBuild(Id scheduleId, Id activityId) {
+  public static Boolean remove(Id scheduleId, Id activityId, Draft onDraft) {
     Id seasonId = lockedSeasonOf(scheduleId);
-    ManualDrafts.locked(scheduleId);
+    lockedDraft(scheduleId, onDraft);
     return removeUnused(seasonId, activityId);
   }
 
-  /** The same from Generated Schedule's draft: a version or a published schedule is refused. */
-  public static Boolean removeFromGenerated(Id scheduleId, Id activityId) {
-    Id seasonId = lockedSeasonOf(scheduleId);
-    GeneratedDrafts.lockedToEdit(scheduleId);
-    return removeUnused(seasonId, activityId);
+  private static Schedule__c lockedDraft(Id scheduleId, Draft onDraft) {
+    return onDraft == Draft.GENERATED
+      ? GeneratedDrafts.lockedToEdit(scheduleId)
+      : ManualDrafts.locked(scheduleId);
   }
 
   /**
