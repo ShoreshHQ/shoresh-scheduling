@@ -16,23 +16,11 @@
 const fs = require("fs");
 const path = require("path");
 const { queryFields } = require("./camp");
-const { refused, asTheScreenReads } = require("./imports");
+const { refused, asTheScreenReads } = require("./common");
 const words = require("./screenWords");
 
-/**
- * What a file holds, as the screens' Excel and Print menus offer it (PUB-6.6): the menu's kinds
- * by the words a person says. The old view (daily, group, activity) is the whole week, every
- * group or every activity.
- */
-const WHAT = {
-  week: "week",
-  day: "day",
-  group: "group",
-  activity: "activity",
-  location: "location",
-  division: "division"
-};
-const VIEWS = { daily: "week", group: "group", activity: "activity" };
+/** What a file holds, as the screens' Excel and Print menus offer it (PUB-6.6). */
+const WHAT = ["week", "day", "group", "activity", "location", "division"];
 
 /** The Downloads folder, as a browser saves into it: in the Windows profile folder on Windows. */
 function downloadsFolder(env = process.env, platform = process.platform) {
@@ -77,18 +65,13 @@ function htmlName(m, title) {
 }
 
 /**
- * The menu's choice a person asked for ({ kind, key }), or { problem }: what (or the old view)
- * names the kind; which names one of its choices as the menu says it ("Cedar", "Monday, Jun 29",
- * "Monday"), or every one (left out, or "every").
+ * The menu's choice a person asked for ({ kind, key }), or { problem }: what names the kind
+ * (the whole week when left out); which names one of its choices as the menu says it ("Cedar",
+ * "Monday, Jun 29", "Monday"), or every one (left out, or "every").
  */
 function choiceOf(m, choices, input, t) {
-  // The older view says what a printout holds; Excel without what is the whole week, as before.
-  const kind = input.what
-    ? WHAT[input.what]
-    : input.as === "print"
-      ? VIEWS[input.view || "daily"]
-      : "week";
-  if (!kind) {
+  const kind = input.what || "week";
+  if (!WHAT.includes(kind)) {
     return {
       problem: "what is week, day, group, activity, location or division."
     };
@@ -134,9 +117,6 @@ function scheduleFile(m, body, input, t) {
   const version = opened.schedule ? opened.schedule.name : body.version;
   if (!opened.days || !opened.days.length) {
     return { problem: `This ${t.sIn("Version")} has no days saved.` };
-  }
-  if (input.view && !VIEWS[input.view]) {
-    return { problem: "view is daily, group or activity." };
   }
   const shown = m.withRaindrops(m.withSpecials(opened));
   const catalogue = setup.activities || [];
