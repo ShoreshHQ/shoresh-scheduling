@@ -61,11 +61,8 @@ public with sharing class ManualBuildActivities {
         return option;
       }
     }
-    throw new ShoreshException(
-      ErrorCodes.said(
-        'Shoresh couldn\'t tell why. Try again.',
-        'ManualBuildActivities: the activity added is not among the options'
-      )
+    throw ScreenErrors.unexplained(
+      'ManualBuildActivities: the activity added is not among the options'
     );
   }
 

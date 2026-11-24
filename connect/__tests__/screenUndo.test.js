@@ -80,6 +80,12 @@ const answer = (body, status = 200) =>
   `HTTP/1.1 ${status}\n\n${JSON.stringify(body)}`;
 
 /** What a change's answer says its Undo needs (AgentUndoHeld). */
+// Undo asking first (AgentAskFirst): what it said, its preview and its confirm, each its own part.
+const ASKS = {
+  message: "Nothing has been done yet. This undoes it.",
+  preview: "This undoes it.",
+  confirm: "u1"
+};
 const undoOf = (kind, label, more = {}) => ({
   schedule: SCHEDULE,
   kind,
@@ -236,7 +242,7 @@ describe("an AI's change is the screen's, and so is its Undo", () => {
     const sf = sfAnswering([
       READ,
       answer({ message: `${label}.`, undo: undoOf("edit", label) }),
-      answer({ message: "Nothing has been done yet. This undoes ..." }),
+      answer(ASKS),
       answer({
         message: `Undone: ${label}.`,
         undo: undoOf("undone", label, { seen: "undone" })
@@ -265,9 +271,7 @@ describe("an AI's change is the screen's, and so is its Undo", () => {
     expect(done.text).toBe(`${label}.`);
     const asked = await call("undo_last_change", WEEK, sf);
     expect(asked.asksFirst).toBe(true);
-    expect(sf.seen[2].args[3]).toBe(
-      "/services/apexrest/v1/undo_last_change"
-    );
+    expect(sf.seen[2].args[3]).toBe("/services/apexrest/v1/undo_last_change");
     const held = sf.seen[2].body.held[SCHEDULE];
     expect(held).toEqual(
       expect.objectContaining({ kind: "edit", label, seen: "after" })
@@ -339,7 +343,7 @@ describe("an AI's change is the screen's, and so is its Undo", () => {
           version_name: "Before Start over"
         })
       }),
-      answer({ message: "Nothing has been done yet." })
+      answer(ASKS)
     ]);
     const done = await call("start_over_week", WEEK, { ...sf, checks });
     expect(done.text).toBe(`${started}. 3 of 4 placed.`);
@@ -412,7 +416,7 @@ describe("an AI's change is the screen's, and so is its Undo", () => {
           blockId: null
         }
       }),
-      answer({ message: "Nothing has been done yet." })
+      answer(ASKS)
     ]);
     await call(
       "change_schedule_cell",
@@ -464,7 +468,7 @@ describe("an AI's change is the screen's, and so is its Undo", () => {
         message: '"Carnival" is set up as a special event.',
         undo: undoOf("kept", "Set up Carnival", { seen: "set up" })
       }),
-      answer({ message: "Nothing has been done yet." })
+      answer(ASKS)
     ]);
     await call(
       "change_schedule_cell",
@@ -692,7 +696,7 @@ describe("an AI's change is the screen's, and so is its Undo", () => {
         message: `${label}.`,
         undo: { schedule: ITEM, kind: "edit", label, special: true }
       }),
-      answer({ message: "Nothing has been done yet." }),
+      answer(ASKS),
       answer({
         message: 'Done: add station "Purple" in "Color War". seen is now 5.',
         undo: {

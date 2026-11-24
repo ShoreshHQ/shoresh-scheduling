@@ -24,6 +24,14 @@ public with sharing class ErrorCodes {
    * problem in a request is the one kept; later ones in the same request share its code.
    */
   public static String said(String words, String detail) {
+    return words + ' For support: ' + keep(detail) + '.';
+  }
+
+  /**
+   * The detail kept under this request's code, with nothing to say (a problem the person is told
+   * about another way). Returns the code.
+   */
+  public static String keep(String detail) {
     if (thisRequest == null) {
       thisRequest = newCode();
       kept(thisRequest, detail);
@@ -33,7 +41,7 @@ public with sharing class ErrorCodes {
         'Shoresh ' + thisRequest + ': ' + detail
       );
     }
-    return words + ' For support: ' + thisRequest + '.';
+    return thisRequest;
   }
 
   /** What went wrong, for support: the kind, the message and where. */

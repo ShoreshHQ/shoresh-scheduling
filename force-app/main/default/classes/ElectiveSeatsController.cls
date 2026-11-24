@@ -111,15 +111,6 @@ public with sharing class ElectiveSeatsController {
   }
 
   private static Object parse(String request, System.Type kind) {
-    try {
-      return JSON.deserialize(request, kind);
-    } catch (Exception e) {
-      throw new ShoreshException(
-        ErrorCodes.said(
-          'The seats could not be sent. Try again.',
-          ErrorCodes.detailOf(e)
-        )
-      );
-    }
+    return ScreenRequests.parsed(request, kind, 'The seats');
   }
 }

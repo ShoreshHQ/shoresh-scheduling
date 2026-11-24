@@ -5,26 +5,12 @@
  * The command line and code mode stay as API-1.112 says: whoever types the command is the person.
  */
 const { execFile } = require("child_process");
-const { NOT_YET } = require("./client");
 
 // The dialog closes this many seconds after the tool call came in, at the latest: the Yes's own
 // call still fits in the 60 seconds an AI app waits for one answer, so a late Yes never does what
 // the AI was told didn't happen. Under SHORTEST seconds left, nobody is asked.
 const WAIT_SECONDS = 45;
 const SHORTEST = 10;
-
-// How Shoresh hands back the confirm, at the very end of its answer (AgentAskFirst.question).
-const CONFIRM_AT_END = /confirm: "([^"\s]+)"\.$/;
-const INSTRUCTION = " Show the person";
-
-/** The confirm at the end of Shoresh's answer and its words without it; confirm null when none. */
-function split(text) {
-  const said = String(text ?? "");
-  const found = said.match(CONFIRM_AT_END);
-  const cut = said.lastIndexOf(INSTRUCTION);
-  if (!found || cut < 0) return { words: said, confirm: null };
-  return { words: said.slice(0, cut), confirm: found[1] };
-}
 
 /**
  * Asks the person in a dialog of the computer's own, brought to the front, with Shoresh's words:
@@ -142,10 +128,14 @@ const NOT_ASKED = {
     "Nothing was done: Shoresh can't ask the person for their yes on this computer yet, so they can do it on Shoresh's own screen in Salesforce. It was:"
 };
 
-/** An answer for the AI with no confirm in it: the words, and how the person's yes is asked. */
+/**
+ * An answer for the AI with no confirm in it: when Shoresh asked first (its parts, client.js
+ * askedIn), what it said and how the person's yes is asked.
+ */
 function withoutConfirm(said, then = AGAIN) {
-  const { words, confirm } = split(said?.text);
-  return confirm ? { ...said, text: `${words} ${then}` } : said;
+  if (!said?.asks) return said;
+  const { asks, ...rest } = said;
+  return { ...rest, text: `${asks.said} ${then}` };
 }
 
 /**
@@ -163,17 +153,14 @@ async function withPersonsYes(
   if (dropped !== undefined)
     log(`Shoresh: left out the confirm the AI sent with ${name}`);
   const first = await act(asked);
-  const { words, confirm } = split(first?.text);
-  if (!first?.ok || !first.asksFirst || !confirm) return withoutConfirm(first);
+  if (!first?.ok || !first.asksFirst) return withoutConfirm(first);
   if (inScript) {
     return withoutConfirm(
       first,
       `To do it, call ${name} on its own (not in a script): Shoresh asks the person on their screen.`
     );
   }
-  const shown = words.startsWith(NOT_YET)
-    ? words.slice(NOT_YET.length).trim()
-    : words;
+  const { preview: shown, confirm } = first.asks;
   const left = Math.floor(WAIT_SECONDS - (now() - started) / 1000);
   const answer = left < SHORTEST ? "late" : await ask(shown, left);
   log(`Shoresh: the person's answer to ${name}: ${answer}`);
@@ -183,16 +170,10 @@ async function withPersonsYes(
   return withoutConfirm(await act({ ...asked, confirm }));
 }
 
-/** What an ask-first tool's description says over MCP, in place of the confirm's instructions. */
-const ASKS_ON_SCREEN =
-  " Shoresh asks first, on the person's own screen: it shows them in plain words what this would do, and does it only when they click Yes there. Never ask them to type or say a yes to you instead; if they say no, nothing was done.";
-
 module.exports = {
-  split,
   askPerson,
   withPersonsYes,
   withoutConfirm,
-  ASKS_ON_SCREEN,
   WAIT_SECONDS,
   SHORTEST
 };
