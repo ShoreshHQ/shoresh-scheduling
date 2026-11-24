@@ -52,6 +52,7 @@ export {
   reasonFor,
   checkWeek
 };
+export { placementsOf, roomTaken } from "./checks";
 export {
   readActivities,
   readElectivePlaces,
@@ -66,7 +67,10 @@ export {
   isCarryOn,
   isSetTime,
   owner,
-  startsActivity
+  readRow,
+  slots,
+  startsActivity,
+  writeRow
 } from "./grid";
 export { measureWeek } from "./measure";
 export { NOW } from "./progress";
@@ -588,22 +592,20 @@ function withReplaced(days, replaced) {
 function lockedHeads(days, locks, groups) {
   const heads = new Set();
   for (const day of days) {
-    for (const [groupId, tokens] of day.tokens) {
+    for (const [groupId, cells] of day.cells) {
       const kept = !groups.has(groupId);
-      tokens.forEach((token, b) => {
+      cells.forEach((cell, b) => {
         if (
-          !token ||
+          !cell ||
           (!kept && !locks.has(lockKey(day.date, groupId, day.blocks[b].id)))
         ) {
           return;
         }
         let first = b;
-        while (first > 0 && tokens[first] === "^") {
+        while (cells[first].carriesOn) {
           first -= 1;
         }
-        if (tokens[first] && tokens[first] !== "^") {
-          heads.add(`${day.date}|${groupId}|${day.blocks[first].id}`);
-        }
+        heads.add(`${day.date}|${groupId}|${day.blocks[first].id}`);
       });
     }
   }
@@ -730,7 +732,7 @@ function flagCells(days, checked) {
 function groupOrder(groups, days) {
   const inGrid = new Set();
   for (const day of days) {
-    for (const groupId of day.tokens.keys()) {
+    for (const groupId of day.cells.keys()) {
       inGrid.add(groupId);
     }
   }

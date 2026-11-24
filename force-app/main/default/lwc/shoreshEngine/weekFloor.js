@@ -79,17 +79,17 @@ function placementsOf(model, importDays) {
   const out = [];
   importDays.forEach((day, d) => {
     for (const groupId of model.groupIds) {
-      const tokens = day.tokens.get(groupId);
-      if (!tokens) {
+      const cells = day.cells.get(groupId);
+      if (!cells) {
         continue;
       }
-      tokens.forEach((token, b) => {
-        const item = /^\d+$/.test(token) ? day.items[Number(token) - 1] : null;
-        if (!item || item.kind !== "A") {
+      cells.forEach((cell, b) => {
+        if (!cell || cell.carriesOn || cell.item.kind !== "A") {
           return;
         }
+        const { item } = cell;
         let length = 1;
-        while (tokens[b + length] === "^") {
+        while (cells[b + length] && cells[b + length].carriesOn) {
           length += 1;
         }
         out.push({

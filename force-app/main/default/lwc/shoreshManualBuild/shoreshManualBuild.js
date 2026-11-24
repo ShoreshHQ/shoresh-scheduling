@@ -13,7 +13,6 @@ import getWeekSources from "@salesforce/apex/ManualBuildController.getWeekSource
 import startFromWeek from "@salesforce/apex/ManualBuildController.startFromWeek";
 import { failed, reasonOf } from "c/shoreshErrors";
 import { dayLabel, days, groups } from "c/shoreshScheduleViews";
-import { publishedWord } from "c/shoreshPublish";
 import { manualWeekAdapter } from "./weekAdapter";
 
 /**
@@ -506,10 +505,6 @@ export default class ShoreshManualBuild extends BuildScreen(LightningElement) {
     }
   }
 
-  /**
-   * Coming back to the window shows other people's changes, unless an edit, a Restore or a start
-   * is under way. Returns whether the week is read again.
-   */
   /** Undo of "Add <name>": the activity taken off again while unused (LOCK-5.5). */
   removeActivityWith = (request) => removeAddedActivity(request);
 
@@ -822,59 +817,6 @@ export default class ShoreshManualBuild extends BuildScreen(LightningElement) {
    */
   get publishDisabled() {
     return this.publishing || this.versionsBusy || this.reads > 0;
-  }
-
-  /** Publish and Unpublish (c/shoreshBuildWeek): the question first, when there is one. */
-  handlePublish() {
-    return this.buildWeek.publish();
-  }
-
-  handlePublishAnswer(event) {
-    const done = this.buildWeek.answerPublish(event.detail.yes);
-    if (event.detail.go) {
-      this.goToProblem(event.detail.go);
-    }
-    return done;
-  }
-
-  handleUnpublish() {
-    this.buildWeek.askUnpublish();
-  }
-
-  handleUnpublishAnswer(event) {
-    return this.buildWeek.answerUnpublish(event.detail.yes);
-  }
-
-  /** "Published from Manual Build " before the date (c/shoreshPublish). */
-  get publishedWord() {
-    return publishedWord(this.publishState);
-  }
-
-  get publishedBy() {
-    return this.publishState && this.publishState.publishedBy
-      ? ` by ${this.publishState.publishedBy}`
-      : "";
-  }
-
-  /** The rail's Published: and whether the week changed since (its corner says it to the eye). */
-  /**
-   * The main button's word: "Published" once the week is out as it is, "Publish" before and
-   * again once it has changed since (UX pass 2026-11-10: the word stays on the button, so the bar
-   * never grows when a week is published).
-   */
-  get publishLabel() {
-    return this.publishState && !this.publishState.changedSince
-      ? "Published"
-      : "Publish";
-  }
-
-  // The menu beside Publish has a name of its own, never the main button's (word walk
-  // 2026-11-12: two buttons both read "Published").
-  get publishedName() {
-    return this.publishState && this.publishState.changedSince
-      ? // Greg's pick (2026-11-12): "Changed since" and what changed.
-        "Published: options · Changed since: cells edited"
-      : "Published: options";
   }
 
   /** The program and week shown. */

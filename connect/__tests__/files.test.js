@@ -168,7 +168,7 @@ describe("the screens' files, made on this computer", () => {
 
     const printed = await make(
       "download_schedule",
-      { week: "Week 1", as: "print", view: "group" },
+      { week: "Week 1", as: "print", what: "group" },
       read
     );
     // Named for what it holds, as the screen's Excel of the same choice.
@@ -180,7 +180,13 @@ describe("the screens' files, made on this computer", () => {
       kind: "schedule",
       title: "Week 1 - Imported from sample-week.xlsx - Every Bunk",
       props: plain({
-        pages: scheduleExport.printPages(shown, "group", setup.activities, t),
+        pages: scheduleExport.pagesFor(
+          shown,
+          { kind: "group", key: scheduleExport.EVERY },
+          setup.activities,
+          setup,
+          t
+        ),
         week: "Week 1",
         version: "Imported from sample-week.xlsx",
         corner: t.s("TimeBlock")
@@ -228,15 +234,6 @@ describe("the screens' files, made on this computer", () => {
     );
     expect(days.saved).toEqual([
       "Week 1 - Imported from sample-week.xlsx - Every Day.xlsx"
-    ]);
-    // Excel without what is the whole week, whatever view says (view is for printing).
-    const viewed = await make(
-      "download_schedule",
-      { week: "Week 1", view: "group" },
-      read
-    );
-    expect(viewed.saved).toEqual([
-      "Week 1 - Imported from sample-week.xlsx.xlsx"
     ]);
     // A removed one is chosen by its name, as a person says it.
     const removed = await make(

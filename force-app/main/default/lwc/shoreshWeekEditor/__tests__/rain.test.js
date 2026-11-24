@@ -132,6 +132,22 @@ describe("planRain", () => {
     expect(at(result.full)).toEqual(["0|1"]);
   });
 
+  // ADR 0019 §4: room counted as the checks count it (c/shoreshEngine roomTaken).
+  it("counts an elective set at every place its offerings use, as the checks do", () => {
+    // Chugim, placed for Bunk 3 and Bunk 4 in Period 2, has an offering in the Gym (fits 2).
+    const SET = "a0E000000000001";
+    const d = {
+      ...day([",1,", ",,", ",9,", ",9,"]),
+      items: [...ITEMS, { kind: "E", id: SET, name: "Chugim" }]
+    };
+    const places = new Map([[SET, ["gymnasium"]]]);
+    const result = planRain(d, rainModel(draft(), [d], places));
+    expect(result.switches).toEqual([]);
+    expect(at(result.full)).toEqual(["0|1"]);
+    // Without the set's places, the Gym looks empty and the switch is made.
+    expect(at(planRain(d, rainModel(draft(), [d])).switches)).toEqual(["0|1"]);
+  });
+
   // CLOSE-4.6
   it("marks full when the rain plan's groups at once are taken", () => {
     const one = nsRecord({ GroupsAtOnce__c: 1 });

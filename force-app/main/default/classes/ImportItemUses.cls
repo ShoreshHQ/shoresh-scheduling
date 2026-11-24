@@ -1,7 +1,8 @@
 /**
  * What still uses an item a second import could remove (docs/import/review.md INGEST-5.8): another
- * activity's rain plan or copy, an elective's choices, weeks it is off, and any schedule of the
- * season (drafts, versions, published) with a cell of it. An item in use is never offered for
+ * activity's rain plan or copy, an elective's choices, weeks it is off, any schedule of the season
+ * (drafts, versions, published) with a cell of it, and a special day's or event's plan (or its
+ * published copy) that has it. An item in use is never offered for
  * removal, and the save refuses one that came into use since, with the same plain reason. So
  * nothing pointing at a removed item is ever cleared.
  */
@@ -137,7 +138,7 @@ public with sharing class ImportItemUses {
   }
 
   /** More days than are read: whatever isn't already in use may be on one not read. */
-  private static void uncheckedInUse(
+  public static void uncheckedInUse(
     Map<Id, String> names,
     Map<Id, String> result
   ) {
@@ -201,6 +202,7 @@ public with sharing class ImportItemUses {
     } finally {
       collecting = null;
     }
+    PlanUses.addTo(result, seasonId, names);
     return result;
   }
 

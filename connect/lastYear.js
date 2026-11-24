@@ -9,15 +9,8 @@
  * screen's own save (POST /v1/import_last_year) with the seen, compared while the season is
  * locked. Questions that can wait are left for later, as Add does ("Add 58, 3 for later").
  */
-const {
-  fileOf,
-  fromCommandLine,
-  asTheScreenReads,
-  changedSince,
-  refused,
-  aiWord,
-  engineWord
-} = require("./imports");
+const { fileOf, fromCommandLine, aiWord, engineWord } = require("./imports");
+const { asTheScreenReads, changedSince, refused } = require("./common");
 
 /** The person's answers over the review's: an empty answer takes one back (an unticked place). */
 function answered(m, answers, given) {

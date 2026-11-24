@@ -197,9 +197,9 @@ export function sheetName(name) {
   if (clean.toLowerCase() === "history") {
     clean = `${clean} sheet`;
   }
-  clean = clean.slice(0, 31).replace(/'+$/, "");
+  clean = clean.slice(0, 31);
   // Never half of a two-part character (an emoji) at the cut.
-  return (
-    (/[\uD800-\uDBFF]$/.test(clean) ? clean.slice(0, -1) : clean) || "Sheet"
-  );
+  if (/[\uD800-\uDBFF]$/.test(clean)) clean = clean.slice(0, -1);
+  // Trimmed again after the cut, so a name made twice is the name made once.
+  return clean.replace(/[\s']+$/, "") || "Sheet";
 }

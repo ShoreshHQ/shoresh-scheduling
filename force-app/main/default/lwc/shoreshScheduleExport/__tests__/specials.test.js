@@ -1,7 +1,7 @@
 // Special days and events in the Excel file and the printout (ADR 0014 slice 5; desktop ADR
 // 2026-10-09-special-day-binds-to-a-week-day D7): a replaced day is its own schedule with its name
 // and notes; each event with a schedule of its own gets a sheet and a page (made-up data).
-import { printPages, scheduleSheets } from "c/shoreshScheduleExport";
+import { EVERY, pagesFor, scheduleSheets } from "c/shoreshScheduleExport";
 import { withSpecials } from "c/shoreshScheduleViews";
 import { buildTerms } from "c/shoreshTerms";
 
@@ -124,7 +124,13 @@ describe("c-shoresh-schedule-export: special days and events", () => {
   });
 
   it("prints a replaced day under its name with its notes, then each event's page", () => {
-    const pages = printPages(shown(FIELD_DAY_PLAN), "day", [], t);
+    const pages = pagesFor(
+      shown(FIELD_DAY_PLAN),
+      { kind: "week", key: EVERY },
+      [],
+      null,
+      t
+    );
     expect(pages.map((p) => p.title)).toEqual([
       "Monday, Jun 29",
       "Tuesday, Jun 30 · Field Day",
@@ -142,14 +148,26 @@ describe("c-shoresh-schedule-export: special days and events", () => {
   });
 
   it("prints a special day with no schedule yet as saying so, with its notes", () => {
-    const pages = printPages(shown(null), "day", [], t);
+    const pages = pagesFor(
+      shown(null),
+      { kind: "week", key: EVERY },
+      [],
+      null,
+      t
+    );
     expect(pages[1].table).toBeNull();
     expect(pages[1].empty).toBe("Field Day has no schedule yet.");
     expect(pages[1].notes).toBe("Wear blue");
   });
 
   it("prints a group's week with the special day's own cells in its column", () => {
-    const pages = printPages(shown(FIELD_DAY_PLAN), "group", [], t);
+    const pages = pagesFor(
+      shown(FIELD_DAY_PLAN),
+      { kind: "group", key: EVERY },
+      [],
+      null,
+      t
+    );
     expect(pages.map((p) => p.title)).toEqual(["Bunk 1", "Bunk 2"]);
     expect(pages[0].table.columns.map((c) => c.label)).toEqual([
       "Monday",

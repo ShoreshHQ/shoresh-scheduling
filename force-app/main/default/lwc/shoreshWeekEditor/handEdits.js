@@ -8,7 +8,8 @@
  * ctx (editContextOf): { week (the days shown), t (the camp's words), nameOf(slot, day),
  * dayNameOf(dateValue), isAwayOn(week, d, g, b), isLocked({ day, group, block }), liveLocks (the
  * locked cells' keys, or null where nothing is locked, Manual Build), replaced (the days a special
- * day replaces, by date), setUp (where setup puts each fixed and recurring activity, or null) }.
+ * day replaces, by date), setUp (where setup puts each fixed and recurring activity, or null),
+ * electivePlaces (each elective set's places) }.
  * A position is { day, group, block }: indexes into the week, that day's groups and its time blocks.
  */
 import { dayLabel } from "c/shoreshScheduleViews";
@@ -28,7 +29,7 @@ import { LEFT_OUT, replan, toolRuns } from "./tools";
 import { rainCounts } from "./rain";
 import { isLockedAt, lockKey, noteRows } from "./locks";
 import { dayNameOf } from "./measure";
-import { setUpOf } from "./manualChecks";
+import { electivePlacesOf, setUpOf } from "./manualChecks";
 
 /**
  * A hand edit is always made (Greg, 2026-10-26, engine care Q4): the director knows what can
@@ -112,7 +113,9 @@ export function editContextOf({
     isLocked: (slot) => isLockedAt(week, locks, slot),
     liveLocks: locks,
     replaced: replaced || replacedDays(draft),
-    setUp: setUpOf(draft)
+    setUp: setUpOf(draft),
+    // Each elective set's places, for the room a rainy day counts (rain.js rainModel).
+    electivePlaces: electivePlacesOf(setup)
   };
 }
 

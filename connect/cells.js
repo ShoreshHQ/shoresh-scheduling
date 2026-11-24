@@ -300,7 +300,7 @@ function rainyDay(ctx, m, input, weekName) {
     dates: [day.dateValue],
     name,
     label: `Rainy ${name}`,
-    model: m.rainModel(ctx.draft, ctx.week),
+    model: m.rainModel(ctx.draft, ctx.week, ctx.electivePlaces),
     // A Lock beats a switch (Generated): the cells locked now are left as they are.
     locks: ctx.liveLocks ? new Set(ctx.liveLocks) : null
   });

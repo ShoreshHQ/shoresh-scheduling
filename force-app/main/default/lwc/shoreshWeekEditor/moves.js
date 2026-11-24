@@ -8,6 +8,7 @@
  * groups, and its time blocks.
  */
 import {
+  CARRIES_ON,
   OPEN,
   diffRuns,
   isMovable,
@@ -16,8 +17,6 @@ import {
   slots,
   staysPut
 } from "./slotEdits";
-
-const CARRIES_ON = "^";
 
 /** Why a move can't be made (the page puts it into words). */
 export const REFUSED = Object.freeze({

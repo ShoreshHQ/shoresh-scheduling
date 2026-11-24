@@ -7627,6 +7627,39 @@ function numberedDay(dateValue) {
   const index = weekdayIndex(dateValue);
   return firstDay === null || Number.isNaN(index) ? null : numbered(index + 1);
 }/**
+ * A saved schedule row (wiki data model, compact grid format version 1): one group's day, a cell
+ * per time block, "" Open, a number for an item of the day's list from 1, or "^" (the item before
+ * carries on). Read and written here for the engine (c/shoreshEngine grid.js, which re-exports
+ * it) and every screen, so all of them read a row the same way.
+ */
+
+const CARRIES_ON = "^";
+
+/**
+ * A saved row (one group's day: a cell per time block, "" Open, a number for an item of the
+ * day's list from 1, "^" the item before carries on), read the one way every screen and the
+ * engine read it: each cell null (Open) or { item, number, carriesOn }. Anything else is Open: a
+ * token that is no item's number, and "^" with nothing before it to carry on.
+ */
+function readRow(row, items) {
+  let before = null;
+  return String(row || "").split(",").map(token => {
+    if (token === CARRIES_ON) {
+      before = before && {
+        ...before,
+        carriesOn: true
+      };
+      return before;
+    }
+    const item = /^\d+$/.test(token) ? (items || [])[Number(token) - 1] : null;
+    before = item ? {
+      item,
+      number: Number(token),
+      carriesOn: false
+    } : null;
+    return before;
+  });
+}/**
  * The schedule page's three views of one opened schedule, worked out from its days as the server
  * sends them (SchedulesController.openSchedule): Daily View (all groups for one day), Group View
  * (one group's week), and Activity View (where one activity runs across the week). Each grid is
@@ -7649,7 +7682,6 @@ function numberedDay(dateValue) {
  * Build and Generated Schedule show a switch as it happens instead.
  */
 
-const CARRIES_ON = "^";
 const NOT_SET_UP = new Set(["E", "D", "S", "T"]);
 
 /**
@@ -7769,17 +7801,16 @@ function rainy(drawn) {
  * for nothing placed) and how many blocks it runs. Blocks an item carries on into are left out.
  */
 function groupCells(day, groupIndex) {
-  const row = (day.rows[groupIndex] || "").split(",");
   const cells = [];
-  row.forEach((token, blockIndex) => {
-    if (token === CARRIES_ON && cells.length) {
+  readRow(day.rows[groupIndex], day.items).forEach((read, blockIndex) => {
+    if (read && read.carriesOn) {
       cells[cells.length - 1].length += 1;
       return;
     }
     cells.push({
       blockIndex,
       length: 1,
-      item: token ? day.items[Number(token) - 1] : null
+      item: read ? read.item : null
     });
   });
   return cells;
@@ -7884,6 +7915,9 @@ function blockRows(blocks) {
       // What a screen reader hears: the block's name and its times, once when the name already
       // is the time range (a block saved without a name, desktop blockLabelParts).
       said: range && !isTimeRange(block) ? `${block.name}, ${range}` : block.name,
+      // Its times, for a sheet that names it as the whole week's file does.
+      startTime: block.startTime,
+      endTime: block.endTime,
       gone: block.gone,
       style: `grid-row: ${index + 1} / span 1; grid-column: 1 / span 1;`
     };

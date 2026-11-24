@@ -121,14 +121,11 @@ function requestFor(capability, input = {}, namespace = "") {
     if (input.as_csv) query.format = "csv";
     return read(namespace, capability.api, query);
   }
-  if (capability.sendsFields) {
-    const fields = {};
-    for (const field of Object.keys(capability.inputSchema.properties)) {
-      if (input[field] !== undefined) fields[field] = input[field];
-    }
-    return send(namespace, capability.api, fields);
+  const fields = {};
+  for (const field of Object.keys(capability.inputSchema.properties)) {
+    if (input[field] !== undefined) fields[field] = input[field];
   }
-  return send(namespace, capability.api, { records: input.records ?? [] });
+  return send(namespace, capability.api, fields);
 }
 
 module.exports = {

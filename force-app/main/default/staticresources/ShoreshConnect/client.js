@@ -1197,11 +1197,10 @@ function exportModules(m) {
   return {
     nameDaysFor: m.weeks.nameDaysFor,
     scheduleSheets: m.scheduleExport.scheduleSheets,
-    printPages: m.scheduleExport.printPages,
     printChoices: m.scheduleExport.printChoices,
     pagesFor: m.scheduleExport.pagesFor,
     sheetsFor: m.scheduleExport.sheetsFor,
-    choiceLabel: m.scheduleExport.choiceLabel,
+    fileTitle: m.scheduleExport.fileTitle,
     EVERY: m.scheduleExport.EVERY,
     withRaindrops: m.views.withRaindrops,
     withSpecials: m.views.withSpecials,

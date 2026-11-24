@@ -40,6 +40,11 @@ describe("clearedDays (Start over)", () => {
     expect(day.groups).toBe(DAY.groups);
   });
 
+  it("reads a damaged row as Open, as every screen reads it (engine readRow)", () => {
+    const [day] = clearedDays([{ ...DAY, rows: ["^,1,^,x", "9,3,^,"] }]);
+    expect(day.rows).toEqual([",1,^,", ",2,^,"]);
+  });
+
   it("leaves a week with nothing to clear as it is", () => {
     const [day] = clearedDays([{ ...DAY, rows: ["1,,,", "1,3,,"] }]);
     expect(day.rows).toEqual(["1,,,", "1,2,,"]);

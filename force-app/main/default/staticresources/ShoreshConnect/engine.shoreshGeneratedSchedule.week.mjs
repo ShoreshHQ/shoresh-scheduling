@@ -3,10 +3,8 @@
  * (ScheduleViews.DayView: blocks, groups, items, rows of "1,^,"): the week Start over leaves, the
  * cells left Open, and the cells a counter lights up. Pure: no server, no screen.
  */
-import { BUSY, NO_FIT, reasonFor } from "./engine.shoreshEngine.shoreshEngine.mjs";
+import { BUSY, NO_FIT, readRow, reasonFor, writeRow } from "./engine.shoreshEngine.shoreshEngine.mjs";
 import { dayLabel, groupCells } from "./engine.shoreshScheduleViews.shoreshScheduleViews.mjs";
-
-const CARRIES_ON = "^";
 
 function minutes(hhmm) {
   if (!hhmm) {
@@ -41,29 +39,20 @@ export function clearedDays(days, replacedDates = new Set()) {
     }
     const items = [];
     const numbers = new Map();
-    const rows = (day.rows || []).map((row) => {
-      let cleared = false;
-      return String(row || "")
-        .split(",")
-        .map((token) => {
-          if (token === CARRIES_ON) {
-            return cleared ? "" : token;
+    const rows = (day.rows || []).map((row) =>
+      writeRow(
+        readRow(row, day.items).map((cell) => {
+          if (!cell || cell.item.kind === "A") {
+            return null;
           }
-          const item = /^\d+$/.test(token)
-            ? (day.items || [])[Number(token) - 1]
-            : null;
-          cleared = !item || item.kind === "A";
-          if (cleared) {
-            return "";
+          if (!numbers.has(cell.number)) {
+            items.push(cell.item);
+            numbers.set(cell.number, items.length);
           }
-          if (!numbers.has(token)) {
-            items.push(item);
-            numbers.set(token, String(items.length));
-          }
-          return numbers.get(token);
+          return { ...cell, number: numbers.get(cell.number) };
         })
-        .join(",");
-    });
+      )
+    );
     return { ...day, items, rows };
   });
 }

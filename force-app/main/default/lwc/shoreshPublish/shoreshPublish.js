@@ -17,6 +17,7 @@
  *   { text, go, sub } for one under a count (sub) or one that goes somewhere (go: { line } for a
  *   cell, as the Why list's locate; { activityId }; { specialItemId }).
  */
+import { readRow } from "c/shoreshSavedRow";
 import { buildTerms } from "c/shoreshTerms";
 import { checkLines } from "c/shoreshWeekChecks";
 
@@ -186,12 +187,10 @@ function namedProblems(checked, measure, t) {
 
 /** A row of a special day's own schedule: each cell's token ("" Open, "^" carries on, else 1-based item). */
 function plannedIn(plan, row) {
-  const items = plan.items || [];
-  return (row || "").split(",").some((token) => {
-    const item = /^\d+$/.test(token) ? items[Number(token) - 1] : null;
+  return readRow(row, plan.items).some(
     // A fixed or recurring activity is the regular day's (SPECIAL-2.1), not the special day's plan.
-    return item && item.kind !== "F" && item.kind !== "R";
-  });
+    (cell) => cell && cell.item.kind !== "F" && cell.item.kind !== "R"
+  );
 }
 
 /**
