@@ -65,8 +65,9 @@ function htmlName(m, title) {
 }
 
 /**
- * The menu's choice a person asked for ({ kind, key }), or { problem }: what names the kind; which names one of its choices as the menu says it ("Cedar", "Monday, Jun 29",
- * "Monday"), or every one (left out, or "every").
+ * The menu's choice a person asked for ({ kind, key }), or { problem }: what names the kind
+ * (the whole week when left out); which names one of its choices as the menu says it ("Cedar",
+ * "Monday, Jun 29", "Monday"), or every one (left out, or "every").
  */
 function choiceOf(m, choices, input, t) {
   const kind = input.what || "week";
