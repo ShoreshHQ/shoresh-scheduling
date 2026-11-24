@@ -133,8 +133,8 @@ Each rule is clue, meaning, example, test.
    (not a cell, not a name read, not an elective's choice). Something still using it keeps it:
    another activity's rain plan or copy, an elective's choices, weeks it is off, a cell in any
    of the season's schedules (drafts, versions, published; `ImportItemUses`), or a special day's
-   or event's plan or a published copy of one ("Boating is in Field Day's plan"; `PlanUses`,
-   Apex `ingest58AnItemInASpecialDaysPlanIsInUseAndItsRemovalRefused`). Such an item is
+   or event's plan or a published copy of one ("Boating is in Field Day's plan"; `PlanUses`;
+   Apex `ImportPlanUsesTest`). Such an item is
    listed as kept with why ("Arts & Crafts is Swim's rain plan, so it stays") and no Remove.
    One use does not keep it (coordinator's decision on Greg's Q3 example, 2026-10-27: a
    corrected file lacks "Arhcery", which the first import placed): cells only in earlier
