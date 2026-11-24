@@ -3,11 +3,9 @@
  * (docs/protocol/api.md, Command line and Code mode). Salesforce is a stand-in here; the same
  * rules are checked against the test org by hand with scripts/e2e-connect.js.
  */
-const fs = require("fs");
-const path = require("path");
 const { parse, main, EXIT } = require("../cli");
 const { toolResult } = require("../mcp");
-const { call: callAs, NOT_YET, PERSON_DECIDES } = require("../client");
+const { call: callAs, PERSON_DECIDES } = require("../client");
 
 const call = (name, input, options) =>
   callAs(name, input, {
@@ -37,7 +35,15 @@ async function command(argv, status, body, seen = []) {
   return { code, out: out.join(""), err: err.join(""), seen };
 }
 
-const PREVIEW = `${NOT_YET} Version "Try 2" would be deleted for good. Show the person exactly this and ask. Only if they say yes, send the same request again with confirm: "abc123".`;
+// Shoresh asking first (AgentAskFirst): what it said, its preview and its confirm, each its own part;
+// and the command line's answer, which adds how to send the confirm after the person's yes.
+const WORDS = 'Version "Try 2" would be deleted for good.';
+const ASKS = JSON.stringify({
+  message: `Nothing has been done yet. ${WORDS}`,
+  preview: WORDS,
+  confirm: "abc123"
+});
+const PREVIEW = `Nothing has been done yet. ${WORDS} Show the person exactly this and ask. Only if they say yes, send the same request again with confirm: "abc123".`;
 
 describe("Command line", () => {
   // API-1.109
@@ -153,7 +159,7 @@ describe("Command line", () => {
     const preview = await command(
       ["delete_version", ...week, "--version", "Try 2"],
       200,
-      JSON.stringify({ message: PREVIEW })
+      ASKS
     );
     expect(preview.code).toBe(3);
     expect(preview.out).toBe(`${PREVIEW}\nSeason used: S.\n`);
@@ -165,16 +171,6 @@ describe("Command line", () => {
       (await command(["unpublish_week", "--org", "-x"], 200, "{}")).code
     ).toBe(1);
     expect(EXIT).toEqual({ done: 0, couldNotAsk: 1, refused: 2, asksFirst: 3 });
-    // The ask-first answer's opening is Shoresh's own.
-    expect(
-      fs.readFileSync(
-        path.resolve(
-          __dirname,
-          "../../force-app/main/default/classes/AgentAskFirst.cls"
-        ),
-        "utf8"
-      )
-    ).toContain(`NOT_YET = '${NOT_YET}'`);
   });
 
   // API-1.112
@@ -183,7 +179,7 @@ describe("Command line", () => {
     await command(
       ["delete_version", "--week", "Week 1", "--version", "Try 2"],
       200,
-      JSON.stringify({ message: PREVIEW }),
+      ASKS,
       seen
     );
     const sent = seen.filter((s) =>
@@ -275,7 +271,7 @@ describe("Code mode", () => {
   it("codeModeTellsAPreviewFromDone: asksFirst only when Shoresh did nothing yet", async () => {
     const preview = await code.delete_version(
       { week: "Week 1", version: "Try 2" },
-      { run: sfAnswering(200, JSON.stringify({ message: PREVIEW })) }
+      { run: sfAnswering(200, ASKS) }
     );
     expect(preview).toMatchObject({ ok: true, asksFirst: true, text: PREVIEW });
     const done = await code.delete_version(
@@ -290,7 +286,7 @@ describe("Code mode", () => {
     const seen = [];
     await code.delete_version(
       { week: "Week 1", version: "Try 2" },
-      { run: sfAnswering(200, JSON.stringify({ message: PREVIEW }), seen) }
+      { run: sfAnswering(200, ASKS, seen) }
     );
     const sent = seen.filter((s) =>
       s.args[3].startsWith("/services/apexrest/")

@@ -55,17 +55,14 @@ private class AgentApplyToOtherWeeksTest {
     RestContext.request.requestBody = Blob.valueOf(JSON.serialize(body));
     RestContext.response = new RestResponse();
     AgentApplyToOtherWeeks.post();
+    Map<String, Object> answered = (Map<String, Object>) JSON.deserializeUntyped(
+      RestContext.response.responseBody.toString()
+    );
     return new Map<String, Object>{
       'status' => RestContext.response.statusCode,
-      'message' => ((Map<String, Object>) JSON.deserializeUntyped(
-          RestContext.response.responseBody.toString()
-        ))
-        .get('message')
+      'message' => answered.get('message'),
+      'confirm' => answered.get('confirm')
     };
-  }
-
-  private static String confirmIn(String message) {
-    return message.substringAfter('confirm: "').substringBefore('"');
   }
 
   private static Integer manualDraftsOfWeek2() {
@@ -91,7 +88,7 @@ private class AgentApplyToOtherWeeksTest {
       Assert.isTrue(words.contains('1 cell changes'), words);
       Assert.areEqual(0, manualDraftsOfWeek2(), 'Nothing done yet');
       Map<String, Object> done = ask(
-        new Map<String, Object>{ 'confirm' => confirmIn(words) }
+        new Map<String, Object>{ 'confirm' => first.get('confirm') }
       );
       Test.stopTest();
       Assert.areEqual(200, done.get('status'), (String) done.get('message'));
@@ -109,7 +106,7 @@ private class AgentApplyToOtherWeeksTest {
     System.runAs(ShoreshTestData.scheduler()) {
       Id source = numberedCampWithSwim();
       Test.startTest();
-      String words = (String) ask(new Map<String, Object>()).get('message');
+      Object confirm = ask(new Map<String, Object>()).get('confirm');
       SlotEdits.Result saved = ManualBuildController.saveSlots(
         source,
         new List<SlotEdits.Edit>{
@@ -122,7 +119,7 @@ private class AgentApplyToOtherWeeksTest {
       );
       Assert.isTrue(saved.conflicts.isEmpty());
       Map<String, Object> refused = ask(
-        new Map<String, Object>{ 'confirm' => confirmIn(words) }
+        new Map<String, Object>{ 'confirm' => confirm }
       );
       Test.stopTest();
       Assert.areEqual(409, refused.get('status'));

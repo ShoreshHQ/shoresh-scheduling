@@ -14,10 +14,21 @@ const {
   MEMORY_MB,
   GRACE_MS
 } = require("../script");
-const { PERSON_DECIDES } = require("../client");
+const { PERSON_DECIDES, answer } = require("../client");
 
 const QUESTION = "Nothing has been done yet. Delete Try 2 from Week 1?";
-const PREVIEW = `${QUESTION} Show the person exactly this and ask. Only if they say yes, send the same request again with confirm: "abc123".`;
+// Shoresh asking first, as the connector reads its parts (client.js answer).
+const PREVIEW = {
+  ...answer({
+    status: 200,
+    body: JSON.stringify({
+      message: QUESTION,
+      preview: "Delete Try 2 from Week 1?",
+      confirm: "abc123"
+    })
+  }),
+  asksFirst: true
+};
 
 /** Shoresh as a stub: what each call is answered, and the calls it was asked. */
 function shoresh(asked = []) {
@@ -28,7 +39,7 @@ function shoresh(asked = []) {
     if (name === "delete_version") {
       return input.confirm === "abc123"
         ? { ok: true, status: 200, text: "Deleted Try 2." }
-        : { ok: true, status: 200, text: PREVIEW, asksFirst: true };
+        : PREVIEW;
     }
     return {
       ok: true,
