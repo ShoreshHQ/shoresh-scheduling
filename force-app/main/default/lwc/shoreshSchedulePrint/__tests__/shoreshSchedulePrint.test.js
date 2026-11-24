@@ -2,7 +2,7 @@
 // leaves only it on the paper. Made-up data.
 import { createElement } from "lwc";
 import ShoreshSchedulePrint from "c/shoreshSchedulePrint";
-import { printPages } from "c/shoreshScheduleExport";
+import { EVERY, pagesFor } from "c/shoreshScheduleExport";
 import { buildTerms } from "c/shoreshTerms";
 import {
   LABELS,
@@ -13,15 +13,21 @@ const fs = require("fs");
 const path = require("path");
 
 const t = buildTerms(LABELS);
+// The whole week (Daily View), every group or every activity, as the Print menu chooses them.
+const byView = (view) => ({
+  kind: view === "day" ? "week" : view,
+  key: EVERY
+});
 
 function render(viewKey = "day") {
   const element = createElement("c-shoresh-schedule-print", {
     is: ShoreshSchedulePrint
   });
-  element.pages = printPages(
+  element.pages = pagesFor(
     opened(),
-    viewKey,
+    byView(viewKey),
     [{ Id: "a1", Name: "Swim" }],
+    null,
     t
   );
   element.week = "Week 1";

@@ -15,7 +15,6 @@
  * one chosen, EVERY for every one of the kind (none for the week).
  */
 import { FIELD } from "./engine.shoreshSchema.shoreshSchema.mjs";
-import { sanitizeCell, sheetName } from "./engine.shoreshLists.shoreshLists.mjs";
 import {
   activityCards,
   activityGrid,
@@ -28,16 +27,10 @@ import {
   locationGrid
 } from "./engine.shoreshScheduleViews.shoreshScheduleViews.mjs";
 import { printTable } from "./engine.shoreshScheduleExport.table.mjs";
+import { withRemoved } from "./engine.shoreshScheduleExport.removed.mjs";
 
 export const EVERY = "*";
 export const PAGE_COLUMNS = 10;
-
-const REMOVED = "(removed)";
-const CANT_BE_SHOWN = "Can't be shown";
-
-function withRemoved(name, gone) {
-  return gone ? `${name} ${REMOVED}` : name;
-}
 
 /**
  * The season's divisions and places, as printing needs them: each group's division (in the
@@ -210,7 +203,7 @@ export function choiceLabel(choices, choice) {
 }
 
 /** A day with only some of its groups (by position), for a page or a division. */
-function withGroups(day, indexes) {
+export function withGroups(day, indexes) {
   return {
     ...day,
     groups: indexes.map((i) => day.groups[i]),
@@ -374,211 +367,70 @@ function optionLabel(choices, kind, key) {
 }
 
 /**
- * The printout for a choice: [{ key, title, table | null, notes, empty }], as c-shoresh-schedule-
- * print draws them. The week: every day, a page per day split as dayPieces, then each special
- * event's own schedule. A day: that day for the whole camp. A group: its week. An activity or a
- * location: where and when it runs. A division: a page per day with only its groups.
+ * What a choice covers, in order, the same for its printout and its Excel file: days ({ day, the
+ * day's position; keep, the groups a division keeps; head, the division's name }), or one thing's
+ * week as a grid ({ key, title, grid }). The week and a day: the whole camp's days. A group: its
+ * week. An activity or a location: where and when it runs. A division: each day with only its
+ * groups. { places, parts }, or null when the week has nothing to choose.
  */
-export function pagesFor(view, choice, catalogue, setup, t) {
+export function chosenParts(view, choice, catalogue, setup, t) {
   const choices = printChoices(view, catalogue, setup, t);
-  if (!choices.length) return [];
+  if (!choices.length) return null;
   const places = campPlaces(setup);
   const allDays = days(view).map((d) => d.index);
+  const keys = chosenKeys(choices, choice);
+  const grids = (gridOf) =>
+    keys.map((key) => ({
+      key: `${choice.kind}-${key}`,
+      title: optionLabel(choices, choice.kind, key),
+      grid: gridOf(key)
+    }));
   switch (choice.kind) {
     case "week":
+      return { places, parts: allDays.map((day) => ({ day })) };
+    case "day":
+      return { places, parts: keys.map((key) => ({ day: Number(key) })) };
+    case "group":
+      return { places, parts: grids((key) => groupGrid(view, key, t)) };
+    case "activity":
+      return { places, parts: grids((key) => activityGrid(view, key, t)) };
+    case "location":
+      return {
+        places,
+        parts: grids((key) => locationGrid(view, atLocation(places, key), t))
+      };
+    case "division":
+      return {
+        places,
+        parts: keys.flatMap((key) => {
+          const head = optionLabel(choices, "division", key);
+          const keep = (grp) => {
+            const division = places.divisionOf.get(grp.id);
+            return !!division && division.id === key;
+          };
+          return allDays.map((day) => ({ day, keep, head }));
+        })
+      };
+    default:
+      return { places, parts: [] };
+  }
+}
+
+/**
+ * The printout for a choice: [{ key, title, table | null, notes, empty }], as c-shoresh-schedule-
+ * print draws them: each day chosen a page at a time as dayPieces splits it, each grid a page;
+ * the whole week then each special event's own schedule.
+ */
+export function pagesFor(view, choice, catalogue, setup, t) {
+  const chosen = chosenParts(view, choice, catalogue, setup, t);
+  if (!chosen) return [];
+  const pages = chosen.parts.flatMap((part) => {
+    if (part.grid) {
       return [
-        ...allDays.flatMap((i) => dayPagesOf(view, i, t, places)),
-        ...eventPages(view, t)
+        { key: part.key, title: part.title, table: printTable(part.grid) }
       ];
-    case "day":
-      return chosenKeys(choices, choice).flatMap((key) =>
-        dayPagesOf(view, Number(key), t, places)
-      );
-    case "group":
-      return chosenKeys(choices, choice).map((key) => ({
-        key: `group-${key}`,
-        title: optionLabel(choices, "group", key),
-        table: printTable(groupGrid(view, key, t))
-      }));
-    case "activity":
-      return chosenKeys(choices, choice).map((key) => ({
-        key: `activity-${key}`,
-        title: optionLabel(choices, "activity", key),
-        table: printTable(activityGrid(view, key, t))
-      }));
-    case "location":
-      return chosenKeys(choices, choice).map((key) => ({
-        key: `location-${key}`,
-        title: optionLabel(choices, "location", key),
-        table: printTable(locationGrid(view, atLocation(places, key), t))
-      }));
-    case "division":
-      return chosenKeys(choices, choice).flatMap((key) => {
-        const name = optionLabel(choices, "division", key);
-        const keep = (grp) => {
-          const division = places.divisionOf.get(grp.id);
-          return !!division && division.id === key;
-        };
-        return allDays.flatMap((i) =>
-          dayPagesOf(view, i, t, places, keep, name)
-        );
-      });
-    default:
-      return [];
-  }
-}
-
-// ---------- Excel ----------
-
-/**
- * A grid as sheet rows: the corner and its columns, then a row per time block with what is in
- * each column there; a cell running several blocks is written in each, as the desktop writes a
- * slot per block. An elective set lists its offerings (ELECT-6.3).
- */
-function gridSheetRows(grid, corner, offerings) {
-  const at = new Map();
-  grid.cells.forEach((cell) => {
-    for (let r = cell.row; r < cell.row + cell.length; r++) {
-      at.set(`${r}:${cell.column}`, cell);
     }
+    return dayPagesOf(view, part.day, t, chosen.places, part.keep, part.head);
   });
-  const text = (cell) => {
-    if (!cell || cell.open) return "";
-    if (cell.names) return cell.names.map((n) => n.name).join(", ");
-    const setId = cell.electiveKey ? cell.electiveKey.slice(2) : null;
-    const names = setId && !cell.gone ? offerings.get(setId) || [] : [];
-    const name = withRemoved(cell.text, cell.gone);
-    return names.length ? `${cell.text} (${names.join(", ")})` : name;
-  };
-  return [
-    [
-      corner,
-      ...grid.columns.map((col) =>
-        [col.label, col.sub, col.note].filter(Boolean).join(" ")
-      )
-    ],
-    ...grid.rows.map((row, r) => [
-      withRemoved(row.said || row.time, row.gone),
-      ...grid.columns.map((col, c) => text(at.get(`${r}:${c}`)))
-    ])
-  ];
-}
-
-function sheet(name, grid, corner, offerings) {
-  if (!grid) {
-    return { name, rows: [[CANT_BE_SHOWN]], widths: [22] };
-  }
-  return {
-    name,
-    rows: gridSheetRows(grid, corner, offerings).map((row) =>
-      row.map(sanitizeCell)
-    ),
-    widths: [22, ...grid.columns.map(() => 16)]
-  };
-}
-
-/**
- * Sheet names, each used once (the workbook refuses two of the same name), counted after the
- * workbook shortens them to Excel's 31 characters, so two long names alike at the start stay apart.
- */
-function oneEach(sheets) {
-  const seen = new Set();
-  return sheets.map((s) => {
-    const base = sheetName(s.name);
-    let name = base;
-    let n = 2;
-    while (seen.has(name.toLowerCase())) {
-      const more = ` ${n}`;
-      name = `${base.slice(0, 31 - more.length)}${more}`;
-      n += 1;
-    }
-    seen.add(name.toLowerCase());
-    return { ...s, name };
-  });
-}
-
-/**
- * The Excel file for a choice other than the whole week (which is scheduleSheets): a sheet per
- * day, group, activity or location chosen; a division's is a sheet per day with only its groups.
- * A day's sheet holds the whole camp (a sheet has no pages to split). offerings: each elective
- * set's offerings' names, by set Id.
- */
-export function sheetsFor(view, choice, catalogue, setup, t, offerings) {
-  const choices = printChoices(view, catalogue, setup, t);
-  if (!choices.length) return [];
-  const places = campPlaces(setup);
-  const corner = t.s("TimeBlock");
-  const said = days(view);
-  const daySheet = (i, name, keep) => {
-    const shown = view.days[i];
-    if (shown.problem) return sheet(name, null, corner, offerings);
-    const indexes = shown.groups
-      .map((grp, g) => (!keep || keep(grp) ? g : -1))
-      .filter((g) => g >= 0);
-    if (keep && !indexes.length) return null;
-    const one = { ...view, days: [withGroups(shown, indexes)] };
-    const out = sheet(name, dailyGrid(one, 0, t), corner, offerings);
-    // Under a special day's grid, its name and notes, as the whole week's file has them.
-    if (shown.special) {
-      out.rows.push(
-        [],
-        [sanitizeCell(`${shown.special.name} (${t.s("SpecialDay")})`)]
-      );
-      if (shown.special.notes) {
-        out.rows.push([sanitizeCell(shown.special.notes)]);
-      }
-    }
-    return out;
-  };
-  let sheets;
-  switch (choice.kind) {
-    case "day":
-      sheets = chosenKeys(choices, choice).map((key) =>
-        daySheet(Number(key), said[Number(key)].label)
-      );
-      break;
-    case "group":
-      sheets = chosenKeys(choices, choice).map((key) =>
-        sheet(
-          optionLabel(choices, "group", key),
-          groupGrid(view, key, t),
-          corner,
-          offerings
-        )
-      );
-      break;
-    case "activity":
-      sheets = chosenKeys(choices, choice).map((key) =>
-        sheet(
-          optionLabel(choices, "activity", key),
-          activityGrid(view, key, t),
-          corner,
-          offerings
-        )
-      );
-      break;
-    case "location":
-      sheets = chosenKeys(choices, choice).map((key) =>
-        sheet(
-          optionLabel(choices, "location", key),
-          locationGrid(view, atLocation(places, key), t),
-          corner,
-          offerings
-        )
-      );
-      break;
-    case "division":
-      sheets = chosenKeys(choices, choice).flatMap((key) => {
-        const name = optionLabel(choices, "division", key);
-        const keep = (grp) => {
-          const division = places.divisionOf.get(grp.id);
-          return !!division && division.id === key;
-        };
-        return said.map((d) => daySheet(d.index, `${name} ${d.label}`, keep));
-      });
-      break;
-    default:
-      sheets = [];
-  }
-  return oneEach(sheets.filter(Boolean));
+  return choice.kind === "week" ? [...pages, ...eventPages(view, t)] : pages;
 }

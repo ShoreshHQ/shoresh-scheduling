@@ -5,10 +5,9 @@ import { failed } from "c/shoreshErrors";
 import { downloadWorkbook, fileNameOf } from "c/shoreshDownload";
 import { offeringNames } from "c/shoreshElectiveDetails";
 import {
-  choiceLabel,
+  fileTitle,
   pagesFor,
   printChoices,
-  scheduleSheets,
   sheetsFor
 } from "c/shoreshScheduleExport";
 
@@ -75,34 +74,20 @@ export default class ShoreshScheduleOut extends LightningElement {
     return !!this.printout;
   }
 
-  /**
-   * The Excel file for the choice: the whole week is the desktop's file (a sheet per day, then
-   * every group's and activity's week); anything else a sheet per thing chosen (PUB-6.10).
-   */
+  /** The Excel file for the choice (PUB-6.10, c/shoreshScheduleExport sheetsFor). */
   async handleExport(event) {
     if (this.disabled || this.exporting) {
       return;
     }
     const choice = event.detail;
-    const whole = choice.kind === "week";
-    const offerings = offeringNames(this.setup);
-    const title = `${this.weekName} - ${this.versionName}`;
+    const { view, catalogue, setup, t } = this;
     this.exporting = true;
     try {
       await downloadWorkbook(
         this,
-        whole
-          ? scheduleSheets(this.view, this.catalogue, this.t, offerings)
-          : sheetsFor(
-              this.view,
-              choice,
-              this.catalogue,
-              this.setup,
-              this.t,
-              offerings
-            ),
+        sheetsFor(view, choice, catalogue, setup, t, offeringNames(setup)),
         fileNameOf(
-          whole ? title : `${title} - ${choiceLabel(this.choices, choice)}`
+          fileTitle(this.choices, choice, this.weekName, this.versionName)
         )
       );
     } catch (e) {
