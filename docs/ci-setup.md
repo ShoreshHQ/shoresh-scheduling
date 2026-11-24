@@ -38,7 +38,8 @@ How the coordinator puts a batch in:
    Any other clash: leave that change out and send it back to its track.
 3. Run lint, then open a pull request from the batch branch to main listing each pull request
    in it. It runs every check, the test org included, judged against main as above.
-4. Green: merge the batch pull request (`--match-head-commit`). Each pull request in it shows as
+4. Green: merge the batch pull request with a merge commit, never squash
+   (`gh pr merge <n> --merge --match-head-commit <sha>`). Each pull request in it shows as
    merged, since its commits are now on main; close any that doesn't, with a link to the batch.
 5. Red: find which change broke it, remake the batch without it, and send it back to its track.
    A change pushed again after joining a batch also means remaking the batch.

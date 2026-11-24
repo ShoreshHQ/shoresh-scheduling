@@ -23,7 +23,7 @@ decisions live in the wiki (`~/Dev/wiki`: `projects/shoresh-scheduling-sf.md`, i
 - **Every screen follows the design system:** the visual spec in `docs/design/` and its tokens in
   `c/shoreshTokens` (`docs/adr/0015-design-system.md`). Never invent a screen's own look.
 - No namespace, package, or package version without Greg's go-ahead.
-- **Merging is by hand** (Greg, 2026-10-16): a PR is merged (squash) only after both CI checks pass
+- **Merging is by hand** (Greg, 2026-10-16): a PR is merged (merge commit, never squash) only after both CI checks pass
   on its latest commit and an independent review is done. GitHub auto-merge stays off: on the free
   plan this private repo cannot require checks, so auto-merge would not wait for the tests.
 - **Changes go in as batches** (Greg, 2026-11-24): only a `batch/` pull request uses the test org.
