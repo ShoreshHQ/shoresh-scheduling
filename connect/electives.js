@@ -11,7 +11,7 @@
  * seats are still being written, Shoresh's own words saying so.
  */
 
-const { changedSince } = require("./imports");
+const { changedSince } = require("./common");
 
 async function assignElectiveSeats(
   capability,

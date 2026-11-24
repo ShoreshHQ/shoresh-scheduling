@@ -6,7 +6,7 @@
 const fs = require("fs");
 const os = require("os");
 const path = require("path");
-const { campOf, tooOld, ownVersion, address } = require("../camp");
+const { campOf, tooOld, ownVersion, address, requestFor } = require("../camp");
 const { CAPABILITIES } = require("../capabilities");
 const { call, check } = require("../client");
 
@@ -75,6 +75,21 @@ describe("The camp's Salesforce address", () => {
     expect(address("shoresh", "week_checks", { season: "Summer 2026" })).toBe(
       "/services/apexrest/shoresh/v1/week_checks?season=Summer+2026"
     );
+  });
+
+  it("everyChangeSendsWhatItDeclares: an action that changes something sends the inputs it declares, as given, and nothing else", () => {
+    const changes = CAPABILITIES.filter((c) => c.method !== "GET");
+    expect(changes.length).toBeGreaterThan(30);
+    for (const c of changes) {
+      const declared = Object.keys(c.inputSchema.properties);
+      const input = Object.fromEntries(declared.map((f) => [f, `said ${f}`]));
+      const { method, body } = requestFor(c, { ...input, records: [{}] });
+      expect([c.name, method, JSON.parse(body)]).toEqual([
+        c.name,
+        "POST",
+        input
+      ]);
+    }
   });
 
   it("actionsAskTheNamespacedAddress: an action in a packaged camp asks Shoresh at its namespaced address, and one without at the plain one", async () => {

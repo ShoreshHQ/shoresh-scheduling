@@ -9,8 +9,7 @@
  */
 const crypto = require("crypto");
 const { fileOf } = require("./imports");
-
-const refused = (text) => ({ ok: false, status: 400, text });
+const { refused } = require("./common");
 
 /**
  * One of the names by fold, or a refusal naming them all; what: their words in a sentence, one and

@@ -203,7 +203,6 @@ function importFile(name, api, description, more = {}, required = []) {
     name,
     api,
     method: "POST",
-    sendsFields: true,
     importsWithEngine: true,
     importsWorkbook: api === "import_worksheet",
     description,
@@ -302,7 +301,6 @@ function act(name, api, description, properties, required = []) {
     name,
     api,
     method: "POST",
-    sendsFields: true,
     description,
     inputSchema: {
       type: "object",
@@ -322,7 +320,6 @@ function setup(name, api, description, more = {}, required = []) {
     name,
     api,
     method: "POST",
-    sendsFields: true,
     description,
     inputSchema: {
       type: "object",
@@ -404,7 +401,6 @@ function specialDay(name, description, more = {}) {
     name,
     api: name,
     method: "POST",
-    sendsFields: true,
     description,
     inputSchema: {
       type: "object",
@@ -534,7 +530,6 @@ function linkedChange(name, description, properties, required) {
     name,
     api: name,
     method: "POST",
-    sendsFields: true,
     savesLinkedChoice: true,
     description: `${description} It is made as you, with your own access, exactly as in the editor beside the Electives list. What the editor would then mark on it comes back with the answer: pass that on to the person.`,
     inputSchema: {
@@ -561,7 +556,6 @@ const CAPABILITIES = [
     name: "create_camp",
     api: "create_camp",
     method: "POST",
-    sendsFields: true,
     description:
       "Name the person's camp, as Camp Setup's first screen does. It is only for when the person can see no camp yet (list_seasons's camps is empty): otherwise it is refused, naming the camps there are. It is made as you, with your own access.",
     inputSchema: {
@@ -577,7 +571,6 @@ const CAPABILITIES = [
     name: "create_season",
     api: "create_season",
     method: "POST",
-    sendsFields: true,
     description:
       "Add a blank season to a camp, as Camp Setup's New season does: nothing is set up in it yet. A name another season already has is refused. Then fill it with import_last_year, import_worksheet, import_list or add_to_setup. It is made as you, with your own access.",
     inputSchema: {
@@ -609,7 +602,6 @@ const CAPABILITIES = [
     name: "delete_season",
     api: "delete_season",
     method: "POST",
-    sendsFields: true,
     description:
       "Delete a whole season with everything in it, as Camp Setup's Delete season does. The season must be named. It is refused while the season has any schedule that was ever published, kept as history, even if it has since been unpublished or replaced: such a season can be archived instead (archive_season), if the person wants that. An archived season is refused too.",
     inputSchema: {
@@ -629,7 +621,6 @@ const CAPABILITIES = [
     name: "archive_season",
     api: "archive_season",
     method: "POST",
-    sendsFields: true,
     description:
       "Archive a season, as Camp Setup's Archive does where Delete season is refused for published history: everything in it is kept, read-only, and it leaves the season picker. Only a season that was ever published can be archived, as on the screen; one never published is refused, and can be deleted instead (delete_season) if the person wants that. The season must be named. bring_back_season undoes it. It is done as you, with your own access.",
     inputSchema: {
@@ -649,7 +640,6 @@ const CAPABILITIES = [
     name: "bring_back_season",
     api: "bring_back_season",
     method: "POST",
-    sendsFields: true,
     description:
       "Bring an archived season back, as Camp Setup's Bring back does: it can be changed again and is in the season picker again. The season must be named. It is done as you, with your own access.",
     inputSchema: {
@@ -963,7 +953,6 @@ const CAPABILITIES = [
     name: "change_elective",
     api: "change_elective",
     method: "POST",
-    sendsFields: true,
     changesOffering: true,
     description:
       "Change an elective's seats, its No limit tick or its minimum to run, as the cells of its row on the Electives list do, without sending a list file. Read it first with read_electives_list and send back seen. Blank or 0 seats are saved: assigning seats then places it with no limit and says so, and the list marks it, which comes back with the answer. Fewer seats than campers already have is saved too: those campers keep their seats until seats are assigned again, and the elective shows as over its seats. It is made as you, with your own access. If someone else changed it since, nothing is changed and Shoresh says so in one sentence: pass that on to the person and don't pick a side.",
@@ -994,7 +983,6 @@ const CAPABILITIES = [
     name: "delete_elective",
     api: "delete_elective",
     method: "POST",
-    sendsFields: true,
     description:
       "Take an activity off an elective set, as Delete on its row of the Electives list does: the activity itself is kept, and its linked choices go with it. It is refused while a week's elective seats use it.",
     inputSchema: {
@@ -1081,7 +1069,6 @@ const CAPABILITIES = [
     name: "delete_linked_choice",
     api: "delete_linked_choice",
     method: "POST",
-    sendsFields: true,
     description:
       "Delete a linked choice, as Delete in the editor beside the Electives list does: its time blocks and divisions go with it, and a sheet that names it then counts as its activity. It is refused while a week's elective seats are part of it.",
     inputSchema: {
@@ -1304,7 +1291,6 @@ const CAPABILITIES = [
     name: "assign_elective_seats",
     api: "assign_elective_seats",
     method: "POST",
-    sendsFields: true,
     assignsWithEngine: true,
     description:
       "Assign a week's elective seats, as the Elective seats screen's Assign seats (or Assign again) does: every camper is placed from their choices around the seats already locked, which stay. The seats are worked out here, on this computer, with the same code as the screen, so the same choices give the same seats. Read them first with read_elective_seats_now and send its seen. It is done as you, with your own access. There is no undo; assigning again replaces every seat that isn't locked. If someone changed the seats since, nothing is changed and Shoresh says so.",
@@ -1398,7 +1384,6 @@ const CAPABILITIES = [
     name: "clear_electives",
     api: "clear_electives",
     method: "POST",
-    sendsFields: true,
     description:
       "Clear a season's electives at the end of the season, as the Elective seats screen's Clear does, the whole season or one week: each week's seats with their choices go, and every camper no remaining week uses, for good; elective sets, electives and linked choices stay for next summer. It can't be undone: ask the person first. Read it first with read_electives_to_clear and send its seen. Seats still being worked on (not finalized) are refused. It is done as you, with your own access. If anything changed since, nothing is cleared and Shoresh says so.",
     inputSchema: {
@@ -1446,8 +1431,7 @@ const CAPABILITIES = [
     ),
     method: "GET",
     about:
-      "Camp Setup's question before its Delete, word for word. It holds no findings or problems.",
-    sendsFields: false
+      "Camp Setup's question before its Delete, word for word. It holds no findings or problems."
   },
   {
     // A read: GET, its fields in the web address (API-1.49).
@@ -1458,8 +1442,7 @@ const CAPABILITIES = [
     ),
     method: "GET",
     about:
-      "What it holds now, as Camp Setup shows it. It holds no findings or problems.",
-    sendsFields: false
+      "What it holds now, as Camp Setup shows it. It holds no findings or problems."
   },
   setup(
     "change_in_setup",
@@ -1501,7 +1484,6 @@ const CAPABILITIES = [
     name: "change_activity_details",
     api: "change_activity_details",
     method: "POST",
-    sendsFields: true,
     description:
       "Change an activity's details, as its details panel on Camp Setup saves them: who can do it, groups from the same division only, early in the week, and notes. Read them first with read_activity_details and send what it said as seen. It is done as you, with your own access. If someone else changed those details since, nothing is saved and Shoresh says so; what Camp Setup refuses is refused in its words.",
     inputSchema: {
@@ -1528,7 +1510,6 @@ const CAPABILITIES = [
     name: "fill_in_weeks",
     api: "fill_in_weeks",
     method: "POST",
-    sendsFields: true,
     description:
       "Fill an empty season with weeks covering its dates, on the days its programs run, as Camp Setup's Fill in weeks does. Send the season's start_date and end_date as list_seasons gave them as seen: if someone changed them since, nothing is added and Shoresh says so. A season that already has weeks is refused, as on the screen: tell the person so, and add no week unasked (add_to_setup adds one only when they ask for it by its dates). It is done as you, with your own access.",
     inputSchema: {
@@ -1564,7 +1545,6 @@ const CAPABILITIES = [
     name: "change_camp_words",
     api: "change_camp_words",
     method: "POST",
-    sendsFields: true,
     description:
       "Change the camp's own words for Shoresh's terms, as Camp Setup's Camp words screen saves them; every Shoresh screen then uses them. Read them first with read_camp_words and send what it said as seen. It is done as you, with your own access. If someone else changed one of those words since (capitals count), nothing is saved and Shoresh says so; what that screen refuses is refused in its words.",
     inputSchema: {
@@ -1590,7 +1570,6 @@ const CAPABILITIES = [
     name: "change_season",
     api: "change_season",
     method: "POST",
-    sendsFields: true,
     description:
       "Change the season itself, as Camp Setup's season form saves it: its name, its first day (start_date), its last day (end_date), or what happens to each activity's weekly minimum in a short week (short_week: keep, the default, or lower to match the days; a schedule already built isn't changed, but its checks then count the lowered minimums, as on screen). A name another season has is refused. Send what list_seasons said for each field you change as seen. It is done as you, with your own access. If someone else changed it since (capitals count in the name), nothing is saved and Shoresh says so; what that form refuses is refused in its words.",
     inputSchema: {
@@ -1635,7 +1614,6 @@ const CAPABILITIES = [
     name: "merge_locations",
     api: "merge_locations",
     method: "POST",
-    sendsFields: true,
     description:
       "Merge locations whose names match (capitals and spacing aside) into one, as Camp Setup's \"Same location?\" Merge does: everything at the others (activities, fixed and recurring activities, the weeks they are closed) moves to the one kept, and the others are deleted. This can't be undone here: ask the person first, naming the one kept, the ones deleted and the groups that fit, as that question does. Read them first with read_same_locations and send each location's exact name and groups_that_fit as seen. It is done as you, with your own access. If someone else changed those locations since, nothing is merged and Shoresh says so.",
     inputSchema: {
@@ -1685,7 +1663,6 @@ const CAPABILITIES = [
     name: "mark_looks_right",
     api: "mark_looks_right",
     method: "POST",
-    sendsFields: true,
     description:
       "Say a value Camp Setup marks as guessed from a file looks right, as the mark's Looks right does: Camp Setup then no longer marks it. Only when the person agrees the value is right; to change it instead, use change_in_setup. Read it first with read_setup_guesses and send its value as seen. It is done as you, with your own access. If someone changed it or said it looks right since, nothing is changed and Shoresh says so.",
     inputSchema: {
@@ -1742,7 +1719,6 @@ const CAPABILITIES = [
     name: "elective_looks_right",
     api: "elective_looks_right",
     method: "POST",
-    sendsFields: true,
     description:
       'Say a guessed elective looks right, as Camp Setup\'s Looks right on its row does: it is then offered, and campers can get a seat in it. Only when the person wants it offered; to drop it instead, the person deletes its row on Camp Setup. Read it first with read_guessed_electives and send seen "guessed". It is done as you, with your own access. If someone said it looks right since, nothing is changed and Shoresh says so.',
     inputSchema: {
@@ -1795,7 +1771,6 @@ const CAPABILITIES = [
     name: "copy_season",
     api: "copy_season",
     method: "POST",
-    sendsFields: true,
     description:
       "Copy a season to a new one, as Camp Setup's Copy season page does, only when the person asked to make the copy (to see what a copy would look like, use read_season_copy): its setup comes along with dates moved to the new first day; its schedules, versions, special days and events, elective seats and campers' choices stay behind. The season copied is not changed. Read it first with read_season_copy and send the dates it said as seen. It is done as you, with your own access. If someone changed the season's weeks or dates since, nothing is copied and Shoresh says so.",
     inputSchema: {
@@ -1841,7 +1816,6 @@ const CAPABILITIES = [
     name: "update_to_match_setup",
     api: "update_to_match_setup",
     method: "POST",
-    sendsFields: true,
     description:
       'Update a week to match setup, as Generated Schedule\'s or Manual Build\'s "Update to match setup" does, for the changes named by key. Read them first with read_setup_changes and send its seen. A change marked as replacing a placement made by hand takes away someone\'s choice: ask the person first. It is done as you, with your own access. As on the screen, it keeps the week as it was in Versions ("Before Update to match setup") only when a change replaces a placement made by hand, and there is no Undo: restore that version to go back. If someone changed the week or setup since, nothing is updated and Shoresh says so.',
     inputSchema: {
@@ -1948,7 +1922,6 @@ const CAPABILITIES = [
     name: "change_special_schedule_cell",
     api: "change_special_schedule_cell",
     method: "POST",
-    sendsFields: true,
     // Worked out here with the week editor the page types through (connect/cells.js specialCell).
     typesSpecialCell: true,
     description:
@@ -1984,7 +1957,6 @@ const CAPABILITIES = [
     name: "change_special_schedule_frame",
     api: "change_special_schedule_frame",
     method: "POST",
-    sendsFields: true,
     description:
       "Change a special day's or special event's own time blocks or an event's stations, or clear every cell, as its page on the Special events screen does: add_time_block (name, start_time, end_time), change_time_block (target; name, start_time or end_time), move_time_block (target, direction earlier or later), remove_time_block (target), add_station (name), rename_station (target, name), move_station (target, direction left or right), remove_station (target), clear. What is in a cell moves with its time block or station. remove_time_block, remove_station and clear take cells away and can't be undone here: ask the person first, naming what goes. A special day's columns are the camp's groups and are changed in setup. Read it first with read_special_schedule and send its seen. It is done as you, with your own access. If someone else changed it since, nothing is changed and Shoresh says so.",
     inputSchema: {
@@ -2098,7 +2070,6 @@ const CAPABILITIES = [
     name: "import_last_year",
     api: "import_last_year",
     method: "POST",
-    sendsFields: true,
     importsLastYear: true,
     description:
       "Import last year's schedule files, as Import last year does: the files are read, set against what the season has, and reviewed exactly as the screen reviews them, with the same code (each file's layout, questions such as which program a group is in or whether two similar names are the same thing, answers filled in from the camp's steady patterns, locations named in the files, what an earlier import added that these files lack, what comes in, last year's schedule kept as a version). Send the files first without save: the answer is the review, its questions and its seen. Answer the questions (ask the person about anything the files don't make plain), send again with the same files, then send them with save: true and the seen. A question that can wait may be left open: it waits on Roots for later, as Add does. It is done as you, with your own access, all or none. If someone changed the setup, a week's schedule or the special days since the review, nothing is saved. undo_import undoes it.",
@@ -2151,7 +2122,6 @@ const CAPABILITIES = [
     name: "import_special_schedule",
     api: "import_special_schedule",
     method: "POST",
-    sendsFields: true,
     importsSpecialSchedule: true,
     description:
       "Fill a special day's or event's own schedule from a file, as Import on its page does: the file is read with the same code (times down the side or across the top, its time blocks, and its columns: a special day's groups, an event's stations) and saved as its schedule; activities it names that the season lacks are added. Only a schedule with nothing typed in it can be filled (clear it first with change_special_schedule_frame, after asking the person). Read it first with read_special_schedule and send its seen. If the file renames or removes time blocks or stations the person changed, nothing is saved and the answer is the page's question: ask the person, then send the same file with replace_edited: true. There is no undo. If someone changed it since, nothing is saved.",
@@ -2215,7 +2185,6 @@ const CAPABILITIES = [
     name: "undo_import",
     api: "undo_import",
     method: "POST",
-    sendsFields: true,
     undoesImport: true,
     description:
       "Undo the last import, as Roots' Undo last import (and Settings' Undo of an outside system's last batch) does: what it added is removed, and what it changed goes back to how it was; anything edited since, or still used by something else, stays, and the answer says which. It takes things out of the season's setup, so ask the person first. Read it first with read_last_imports and send its seen (and from, for an outside system's batch). If another import was made, or it was undone, since, nothing is undone.",
@@ -2254,7 +2223,7 @@ const CAPABILITIES = [
   {
     name: "download_schedule",
     // Used on this computer, never sent.
-    localFields: ["as", "view", "what", "which"],
+    localFields: ["as", "what", "which"],
     api: "schedule_file",
     method: "GET",
     makesFile: "schedule",
@@ -2286,12 +2255,6 @@ const CAPABILITIES = [
           type: "string",
           description:
             'Which one, as the menu names it ("Cedar", "Monday", "Swim", "Lake", "Juniors"). Leave it out, or say every, for every one of what.'
-        },
-        view: {
-          type: "string",
-          enum: ["daily", "group", "activity"],
-          description:
-            "Older way to say what, for print: the whole week a page per day (daily), every group, or every activity."
         }
       },
       required: ["week"],
@@ -2414,7 +2377,6 @@ const CAPABILITIES = [
     name: "change_learned_answer",
     api: "change_learned_answer",
     method: "POST",
-    sendsFields: true,
     changesAnswer: true,
     description:
       'Change one remembered answer to another of its choices, as Change and Save on "What Shoresh has learned" do: the next import uses the new answer. Only an answer read_learned_answers lists with choices can be changed. Read it first and send its line and seen. It is done as you, with your own access, and the answer gives an undo for undo_learned_answer. If someone changed or forgot it since, nothing is changed and Shoresh says so.',
@@ -2442,7 +2404,6 @@ const CAPABILITIES = [
     name: "forget_learned_answer",
     api: "forget_learned_answer",
     method: "POST",
-    sendsFields: true,
     forgetsAnswer: true,
     description:
       'Forget one remembered answer, as Forget on "What Shoresh has learned" does: the next import asks that question again. Ask the person first. Read it first with read_learned_answers and send its line and seen. It is done as you, with your own access, and the answer gives an undo for undo_learned_answer. If someone changed or forgot it since, nothing is changed and Shoresh says so.',
@@ -2464,7 +2425,6 @@ const CAPABILITIES = [
     name: "forget_learned_pattern",
     api: "forget_learned_pattern",
     method: "POST",
-    sendsFields: true,
     forgetsPattern: true,
     description:
       'Forget a pattern, as Forget pattern on "What Shoresh has learned" does: the answers saved until now no longer count toward it (they stay remembered), so imports stop suggesting or filling in from it until it is learned again. Ask the person first. Read it first with read_learned_answers and send its pattern and seen. It is done as you, with your own access, and the answer gives an undo for undo_learned_answer. If someone forgot it or undid that since, nothing is changed and Shoresh says so.',
@@ -2489,7 +2449,6 @@ const CAPABILITIES = [
     name: "undo_learned_answer",
     api: "undo_learned_answer",
     method: "POST",
-    sendsFields: true,
     undoesLearned: true,
     description:
       'Undo a change, forget or forget pattern you made in this conversation on "What Shoresh has learned", as its Undo does: the answer or pattern comes back as it was, with who answered it and when. Send the undo that action\'s answer gave. As the screen offers Undo only while its page is open, only what you did in this conversation can be undone, each once, while nothing has happened to that answer since; never over a newer answer. It is done as you, with your own access.',

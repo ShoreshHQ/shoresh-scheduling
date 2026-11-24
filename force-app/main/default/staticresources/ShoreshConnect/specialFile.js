@@ -5,7 +5,8 @@
  * its times can't be told, and sent to the page's own save (POST /v1/import_special_schedule) with
  * the revision read (seen).
  */
-const { fileOf, refused } = require("./imports");
+const { fileOf } = require("./imports");
+const { refused } = require("./common");
 
 async function importSpecialSchedule(
   capability,
