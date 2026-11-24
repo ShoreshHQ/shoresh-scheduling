@@ -6,11 +6,11 @@
  */
 const fs = require("fs");
 const path = require("path");
-const { CAPABILITIES, byName, ASKS_FIRST_SAID } = require("./capabilities");
+const { CAPABILITIES, byName } = require("./capabilities");
 const { call, sfInstalled, signIn, toAgent } = require("./client");
 const { ownVersion } = require("./camp");
 const script = require("./script");
-const { askPerson, withPersonsYes, ASKS_ON_SCREEN } = require("./yes");
+const { askPerson, withPersonsYes } = require("./yes");
 
 /**
  * Shoresh's own view of a week (API-1.26), as an MCP App (the MCP Apps extension,
@@ -33,10 +33,7 @@ function forTheAi(capability) {
   const { confirm, ...properties } = capability.inputSchema.properties;
   return {
     ...capability,
-    description: capability.description.replace(
-      ASKS_FIRST_SAID,
-      ASKS_ON_SCREEN
-    ),
+    description: capability.onScreen,
     inputSchema: { ...capability.inputSchema, properties }
   };
 }

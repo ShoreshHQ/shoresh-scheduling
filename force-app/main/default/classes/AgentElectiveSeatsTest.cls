@@ -180,7 +180,7 @@ private class AgentElectiveSeatsTest {
           ' ' +
           OPENS +
           'no seat changes; 1 seat stays as it is, and the 1 locked seat stays. There is no undo.',
-        preview.substringBefore(' Show the person')
+        preview
       );
       Assert.areEqual(seen, afterPreview, 'nothing done on the preview');
       Assert.areEqual(200, done[0], String.valueOf(done[1]));

@@ -30,7 +30,8 @@ public with sharing class AgentRequest {
 
   /**
    * Runs one change and answers {"message": sentence}: 200 when done, or its refusal (refused),
-   * with nothing changed. Every change takes the right to change schedules (AgentAccess), refused
+   * with nothing changed. One that asks first adds its preview and confirm as their own parts
+   * (AgentAskFirst.asked). Every change takes the right to change schedules (AgentAccess), refused
    * in the same words for every one.
    */
   public static void answer(Change change) {
@@ -39,6 +40,7 @@ public with sharing class AgentRequest {
     Savepoint before = Database.setSavepoint();
     String message;
     AgentUndoHeld.forget();
+    AgentAskFirst.asked = null;
     AgentRefusal.forAgent = true;
     try {
       AgentAccess.require();
@@ -55,14 +57,16 @@ public with sharing class AgentRequest {
     } finally {
       AgentRefusal.forAgent = false;
     }
-    response.responseBody = Blob.valueOf(
-      JSON.serialize(
-        AgentUndoHeld.answered(
-          OutgoingRows.answered(message),
-          response.statusCode
-        )
-      )
+    Map<String, Object> answered = AgentUndoHeld.answered(
+      OutgoingRows.answered(message),
+      response.statusCode
     );
+    for (
+      String part : (AgentAskFirst.asked ?? new Map<String, String>()).keySet()
+    ) {
+      answered.put(part, AgentAskFirst.asked.get(part));
+    }
+    response.responseBody = Blob.valueOf(JSON.serialize(answered));
   }
 
   /**

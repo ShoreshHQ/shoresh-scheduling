@@ -254,13 +254,8 @@ async function call(name, input, options = {}) {
     input
   );
   // Shoresh asked first and did nothing yet (API-1.106): never mistaken for done (API-1.115).
-  return said?.ok && String(said.text).startsWith(NOT_YET)
-    ? { ...said, asksFirst: true }
-    : said;
+  return said?.ok && said.asks ? { ...said, asksFirst: true } : said;
 }
-
-// How Shoresh's ask-first answer opens (AgentAskFirst.NOT_YET; cli.test.js keeps the two the same).
-const NOT_YET = "Nothing has been done yet.";
 
 /**
  * A season named and found: Shoresh refuses one it doesn't have (API-1.25), so a done answer that
@@ -645,7 +640,38 @@ function stoppedByLimit(response) {
 
 function answer(response) {
   const ok = response.status >= 200 && response.status < 300;
-  return { ok, status: response.status, text: answerText(response.body) };
+  const asks = askedIn(response.body);
+  return asks
+    ? { ok, status: response.status, text: withConfirm(asks, ok), asks }
+    : { ok, status: response.status, text: answerText(response.body) };
+}
+
+/**
+ * Shoresh asking first (API-1.106), from the parts of its answer: what it said (that nothing was
+ * done), its preview and its confirm; null when it didn't ask.
+ */
+function askedIn(body) {
+  let parsed;
+  try {
+    parsed = JSON.parse(body);
+  } catch {
+    return null;
+  }
+  const { message, preview, confirm } = parsed ?? {};
+  return typeof preview === "string" && typeof confirm === "string"
+    ? { said: String(message ?? ""), preview, confirm }
+    : null;
+}
+
+/**
+ * What the command line and code mode answer when Shoresh asks first: its words and the confirm
+ * to send after the person's yes (API-1.112). Over MCP the confirm never reaches the AI (yes.js).
+ * first: Shoresh asked; otherwise an old confirm was refused, so the person is asked again.
+ */
+function withConfirm({ said, confirm }, first) {
+  return first
+    ? `${said} Show the person exactly this and ask. Only if they say yes, send the same request again with confirm: "${confirm}".`
+    : `${said} Show the person this and ask again; only if they say yes, send it with confirm: "${confirm}".`;
 }
 
 /**
@@ -1367,9 +1393,9 @@ async function check({ org, run = runSf } = {}) {
 
 module.exports = {
   TOO_BIG,
-  NOT_YET,
   PERSON_DECIDES,
   toAgent,
+  answer,
   importModules,
   exportModules,
   requestFor,

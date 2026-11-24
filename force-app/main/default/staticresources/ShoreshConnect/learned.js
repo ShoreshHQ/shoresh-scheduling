@@ -184,12 +184,17 @@ async function forgetAnswer(capability, input, at) {
   if (refusal) return refusal;
   const done = at.answer(await at.send(capability.api, sentFor(input, line)));
   if (!done.ok) return done;
-  return {
-    ...done,
-    text: done.text
+  const named = (text) =>
+    text
       .replace(/the remembered answer "[^"]*"/, () => `"${line.title}"`)
-      .replace(/^Forgot "[^"]*"/, () => `Forgot "${line.title}"`)
+      .replace(/^Forgot "[^"]*"/, () => `Forgot "${line.title}"`);
+  // Asked first: its preview, shown to the person, names the line too.
+  const asks = done.asks && {
+    ...done.asks,
+    said: named(done.asks.said),
+    preview: named(done.asks.preview)
   };
+  return { ...done, text: named(done.text), ...(asks && { asks }) };
 }
 
 /**

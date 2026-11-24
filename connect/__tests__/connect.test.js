@@ -2333,8 +2333,15 @@ describe("Shoresh for AI tools and the command line", () => {
       elective_set: "Chugim"
     };
     const view = runView();
-    const PREVIEW =
-      'Nothing has been done yet. This assigns seats in Chugim in Week 1, in the Draft: 20 seats placed from the campers\' choices. There is no undo. Show the person exactly this and ask. Only if they say yes, send the same request again with confirm: "t1".';
+    const WORDS =
+      "This assigns seats in Chugim in Week 1, in the Draft: 20 seats placed from the campers' choices. There is no undo.";
+    // Shoresh asking first: its words, preview and confirm as parts; the answer adds the confirm's use.
+    const ASKS = {
+      message: `Nothing has been done yet. ${WORDS}`,
+      preview: WORDS,
+      confirm: "t1"
+    };
+    const PREVIEW = `Nothing has been done yet. ${WORDS} Show the person exactly this and ask. Only if they say yes, send the same request again with confirm: "t1".`;
     const assign = async (
       seen,
       more = {},
@@ -2344,7 +2351,7 @@ describe("Shoresh for AI tools and the command line", () => {
       const seen_ = [];
       const queue = [
         `HTTP/1.1 200\n\n${JSON.stringify({ view, labels: [] })}`,
-        `HTTP/1.1 200\n\n${JSON.stringify({ message: more.confirm ? said : PREVIEW })}`,
+        `HTTP/1.1 200\n\n${JSON.stringify(more.confirm ? { message: said } : ASKS)}`,
         `HTTP/1.1 200\n\n${JSON.stringify({ view: after, labels: [] })}`
       ];
       const done = await call(
@@ -2979,14 +2986,20 @@ describe("Shoresh for AI tools and the command line", () => {
       sent.push({ args, stdin });
       const body = /read_learned_answers/.test(args[3])
         ? learnedNow
-        : JSON.stringify({ message });
+        : JSON.stringify(typeof message === "string" ? { message } : message);
       return `HTTP/1.1 200\ncontent-type: application/json\n\n${body}`;
     };
     const input = { season: "Summer 2031", line: LUNCH, seen: "fixed" };
     const sent = [];
     const asked = await call("forget_learned_answer", input, {
       run: answering(
-        'Nothing has been done yet. This forgets the remembered answer "fixed": the next import asks that question again. Show the person exactly this and ask. Only if they say yes, send the same request again with confirm: "abc".',
+        {
+          message:
+            'Nothing has been done yet. This forgets the remembered answer "fixed": the next import asks that question again.',
+          preview:
+            'This forgets the remembered answer "fixed": the next import asks that question again.',
+          confirm: "abc"
+        },
         sent
       ),
       learned: modules
@@ -2995,6 +3008,10 @@ describe("Shoresh for AI tools and the command line", () => {
       'Nothing has been done yet. This forgets "lunch is a fixed activity": the next import asks that question again. Show the person exactly this and ask. Only if they say yes, send the same request again with confirm: "abc".'
     );
     expect(asked.asksFirst).toBe(true);
+    // The person's dialog shows the preview, naming the line too.
+    expect(asked.asks.preview).toBe(
+      'This forgets "lunch is a fixed activity": the next import asks that question again.'
+    );
     // Read first (once forgotten, its line is gone), then the forget as asked.
     expect(sent.map((s) => s.args[3])).toEqual([
       "/services/apexrest/v1/read_learned_answers?season=Summer+2031",

@@ -64,18 +64,14 @@ public class AgentAskFirstTestCalls {
     return confirmIn(RestContext.response);
   }
 
-  /** The confirm Shoresh's ask-first answer gave, or null when it didn't ask. */
+  /** The confirm Shoresh's ask-first answer gave (its own part), or null when it didn't ask. */
   public static String confirmIn(RestResponse response) {
     if (response.statusCode != 200 || response.responseBody == null) {
       return null;
     }
-    String message = (String) ((Map<String, Object>) JSON.deserializeUntyped(
+    return (String) ((Map<String, Object>) JSON.deserializeUntyped(
         response.responseBody.toString()
       ))
-      .get('message');
-    if (message == null || !message.startsWith(AgentAskFirst.NOT_YET)) {
-      return null;
-    }
-    return message.substringAfterLast('confirm: "').substringBefore('"');
+      .get('confirm');
   }
 }
