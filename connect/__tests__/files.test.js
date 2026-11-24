@@ -180,7 +180,13 @@ describe("the screens' files, made on this computer", () => {
       kind: "schedule",
       title: "Week 1 - Imported from sample-week.xlsx - Every Bunk",
       props: plain({
-        pages: scheduleExport.printPages(shown, "group", setup.activities, t),
+        pages: scheduleExport.pagesFor(
+          shown,
+          { kind: "group", key: scheduleExport.EVERY },
+          setup.activities,
+          setup,
+          t
+        ),
         week: "Week 1",
         version: "Imported from sample-week.xlsx",
         corner: t.s("TimeBlock")

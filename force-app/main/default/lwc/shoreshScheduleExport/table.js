@@ -1,8 +1,8 @@
 /**
- * A schedule grid on paper (c-shoresh-schedule-print): the table rows and their cells, shared by
- * the printout of a view (shoreshScheduleExport printPages) and by a choice (pick.js pagesFor).
+ * A schedule grid on paper (c-shoresh-schedule-print): the table rows and their cells, for the
+ * printout of a choice (pick.js pagesFor).
  */
-const REMOVED = "(removed)";
+import { REMOVED } from "./removed";
 
 /**
  * What a grid cell prints, in parts ({ key, text, rain }): its name, or in Activity View each

@@ -339,6 +339,9 @@ function blockRows(blocks) {
       // is the time range (a block saved without a name, desktop blockLabelParts).
       said:
         range && !isTimeRange(block) ? `${block.name}, ${range}` : block.name,
+      // Its times, for a sheet that names it as the whole week's file does.
+      startTime: block.startTime,
+      endTime: block.endTime,
       gone: block.gone,
       style: `grid-row: ${index + 1} / span 1; grid-column: 1 / span 1;`
     };

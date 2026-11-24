@@ -5,8 +5,10 @@ import {
   PAGE_COLUMNS,
   choiceLabel,
   dayPieces,
+  fileTitle,
   pagesFor,
   printChoices,
+  scheduleSheets,
   sheetsFor
 } from "c/shoreshScheduleExport";
 import { campPlaces } from "../pick";
@@ -159,6 +161,13 @@ describe("print and Excel by choice", () => {
       expect(choiceLabel(choices, { kind: "day", key: EVERY })).toBe(
         "Every Day"
       );
+      // The file: the week and version, then what was chosen; the whole week says no more.
+      expect(fileTitle(choices, { kind: "week" }, "Week 1", "Draft")).toBe(
+        "Week 1 - Draft"
+      );
+      expect(
+        fileTitle(choices, { kind: "group", key: EVERY }, "Week 1", "Draft")
+      ).toBe("Week 1 - Draft - Every Bunk");
     });
 
     it("skips the No division holder and reads every place a thing can run", () => {
@@ -370,13 +379,23 @@ describe("print and Excel by choice", () => {
           name: "Monday",
           rows: [
             ["Time block", "Bunk 1", "Bunk 2"],
-            ["Period 1, 9:00 AM – 9:45 AM", "Swim", "Chugim"],
-            ["Period 2, 10:00 AM – 10:45 AM", "Swim", "Pottery (removed)"],
-            ["Lunch, 12:00 PM – 12:45 PM", "Lunch", "Lunch"]
+            ["Period 1 (9:00 AM – 9:45 AM)", "Swim", "Chugim"],
+            ["Period 2 (10:00 AM – 10:45 AM)", "Swim", "Pottery (removed)"],
+            ["Lunch (12:00 PM – 12:45 PM)", "Lunch", "Lunch"]
           ],
           widths: [22, 16, 16]
         }
       ]);
+    });
+
+    it("gives a day the whole week's sheet of that day, and the whole week the desktop's file", () => {
+      const view = opened();
+      const week = scheduleSheets(view, CATALOGUE, t, offerings);
+      expect(sheets({ kind: "week" }, view)).toEqual(week);
+      // Every day the menu offers (Wednesday can't be read, so it isn't one).
+      expect(sheets({ kind: "day", key: EVERY }, view)).toEqual(
+        week.filter((s) => ["Monday", "Tuesday"].includes(s.name))
+      );
     });
 
     it("gives every bunk, activity and location a sheet each", () => {
@@ -392,7 +411,7 @@ describe("print and Excel by choice", () => {
         "Wednesday Jul 1"
       ]);
       expect(lake.rows[1]).toEqual([
-        "Period 1, 9:00 AM – 9:45 AM",
+        "Period 1 (9:00 AM – 9:45 AM)",
         "Swim (Bunk 1)",
         "Swim (Bunk 2)",
         "Can't be shown"

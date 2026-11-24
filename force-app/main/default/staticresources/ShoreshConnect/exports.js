@@ -123,11 +123,7 @@ function scheduleFile(m, body, input, t) {
   const choices = m.printChoices(shown, catalogue, setup, t);
   const choice = choiceOf(m, choices, input, t);
   if (choice.problem) return choice;
-  const base = `${week} - ${version}`;
-  const title =
-    choice.kind === "week"
-      ? base
-      : `${base} - ${m.choiceLabel(choices, choice)}`;
+  const title = m.fileTitle(choices, choice, week, version);
   if (input.as === "print") {
     return {
       print: {
@@ -145,10 +141,7 @@ function scheduleFile(m, body, input, t) {
   }
   const offerings = m.offeringNames(setup);
   return {
-    sheets:
-      choice.kind === "week"
-        ? m.scheduleSheets(shown, catalogue, t, offerings)
-        : m.sheetsFor(shown, choice, catalogue, setup, t, offerings),
+    sheets: m.sheetsFor(shown, choice, catalogue, setup, t, offerings),
     name: m.fileNameOf(title)
   };
 }

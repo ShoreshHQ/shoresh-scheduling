@@ -1,7 +1,8 @@
 // The schedule's Excel sheets and printed pages, worked out from an opened version (made-up data).
 import {
+  EVERY,
   blockText,
-  printPages,
+  pagesFor,
   printTable,
   scheduleSheets
 } from "c/shoreshScheduleExport";
@@ -12,6 +13,11 @@ import {
 } from "../../shoreshScheduleViews/__tests__/data/scheduleFixture";
 
 const t = buildTerms(LABELS);
+// The whole week (Daily View), every group or every activity, as the Print menu chooses them.
+const byView = (view) => ({
+  kind: view === "day" ? "week" : view,
+  key: EVERY
+});
 const CATALOGUE = [{ Id: "a1", Name: "Swim" }];
 const P1 = "Period 1 (9:00 AM – 9:45 AM)";
 const P2 = "Period 2 (10:00 AM – 10:45 AM)";
@@ -170,7 +176,7 @@ describe("c-shoresh-schedule-export", () => {
 
   describe("the printout", () => {
     it("Daily View prints a page per day, each a timetable with a column per bunk", () => {
-      const pages = printPages(opened(), "day", CATALOGUE, t);
+      const pages = pagesFor(opened(), byView("day"), CATALOGUE, null, t);
       expect(pages.map((p) => p.title)).toEqual([
         "Monday, Jun 29",
         "Tuesday, Jun 30",
@@ -198,7 +204,8 @@ describe("c-shoresh-schedule-export", () => {
     });
 
     it("prints nothing in an Open cell", () => {
-      const tuesday = printPages(opened(), "day", CATALOGUE, t)[1].table;
+      const tuesday = pagesFor(opened(), byView("day"), CATALOGUE, null, t)[1]
+        .table;
       expect(tuesday.rows[0].cells[0]).toMatchObject({
         text: "",
         className: "cell cell_empty"
@@ -206,7 +213,7 @@ describe("c-shoresh-schedule-export", () => {
     });
 
     it("Group View prints a page per bunk, a column per day", () => {
-      const pages = printPages(opened(), "group", CATALOGUE, t);
+      const pages = pagesFor(opened(), byView("group"), CATALOGUE, null, t);
       expect(pages.map((p) => p.title)).toEqual(["Bunk 1", "Bunk 2"]);
       const bunk1 = pages[0].table;
       expect(bunk1.columns.map((c) => [c.label, c.sub])).toEqual([
@@ -222,10 +229,11 @@ describe("c-shoresh-schedule-export", () => {
     });
 
     it("Activity View prints a page per activity that runs this week, with the bunks there", () => {
-      const pages = printPages(
+      const pages = pagesFor(
         opened(),
-        "activity",
+        byView("activity"),
         [...CATALOGUE, { Id: "a2", Name: "Archery" }],
+        null,
         t
       );
       // Archery isn't on this week: no empty page for it.
@@ -241,7 +249,7 @@ describe("c-shoresh-schedule-export", () => {
     });
 
     it("prints nothing for nothing open", () => {
-      expect(printPages(null, "day", CATALOGUE, t)).toEqual([]);
+      expect(pagesFor(null, byView("day"), CATALOGUE, null, t)).toEqual([]);
     });
   });
 });
