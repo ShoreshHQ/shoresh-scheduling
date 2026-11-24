@@ -134,6 +134,11 @@ public with sharing class ScreenErrors {
     return ErrorCodes.said(fallback, ErrorCodes.detailOf(e));
   }
 
+  /** Something Shoresh can't explain: "Shoresh couldn't tell why. Try again.", with a code. */
+  public static ShoreshException unexplained(String detail) {
+    return new ShoreshException(ErrorCodes.said(COULD_NOT_SAVE, detail));
+  }
+
   /**
    * One record's refusal from a partial save or delete (Undo last import), in the same words as
    * a screen save: Shoresh's own messages as they are, the platform's never.

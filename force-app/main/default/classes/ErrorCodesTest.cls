@@ -49,6 +49,42 @@ private class ErrorCodesTest {
     Assert.areEqual(UserInfo.getUserId(), logs[0].Person__c);
   }
 
+  // CORE-6.15: a problem the person is told about another way is kept all the same.
+  @IsTest
+  static void aDetailWithNothingToSayIsKeptUnderACode() {
+    Test.startTest();
+    String code = ErrorCodes.keep('Undoing the start failed');
+    String shown = ErrorCodes.said('Try again.', 'A later problem');
+    Test.stopTest();
+    Assert.areEqual(code, codeIn(shown), 'One code per request');
+    Assert.areEqual('Undoing the start failed', logsFor(code)[0].Detail__c);
+  }
+
+  // CORE-6.15: a screen's request that can't be read says what wasn't sent, with a code.
+  @IsTest
+  static void aRequestThatCantBeReadSaysWhatWasntSent() {
+    Test.startTest();
+    String shown;
+    try {
+      ScreenRequests.parsed(
+        '{not json',
+        Map<String, Object>.class,
+        'The seats'
+      );
+    } catch (ShoreshException e) {
+      shown = e.getMessage();
+    }
+    Test.stopTest();
+    Assert.isTrue(
+      shown.startsWith('The seats could not be sent. Try again. For support: '),
+      shown
+    );
+    Assert.isTrue(
+      logsFor(codeIn(shown))[0].Detail__c.contains('JSONException'),
+      'The detail is kept'
+    );
+  }
+
   // CORE-6.15: the request that went wrong is undone; its detail is still kept.
   @IsTest
   static void theDetailIsKeptWhenTheRequestIsUndone() {

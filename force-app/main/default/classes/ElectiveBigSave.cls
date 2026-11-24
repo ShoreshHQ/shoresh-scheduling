@@ -208,7 +208,7 @@ public with sharing class ElectiveBigSave implements Database.Batchable<Object>,
       work.stopped();
     } catch (Exception e) {
       // Undoing the start is a courtesy; the problem below is what the person needs to see.
-      ErrorCodes.said('', ErrorCodes.detailOf(e));
+      ErrorCodes.keep(ErrorCodes.detailOf(e));
     }
     List<ElectiveRun__c> runs = [
       SELECT Id, Revision__c
