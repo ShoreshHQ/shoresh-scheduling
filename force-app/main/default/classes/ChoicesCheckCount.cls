@@ -6,12 +6,12 @@
  */
 public with sharing class ChoicesCheckCount {
   private ChoicesImport.Request request;
-  private ChoicesImportCampers campers;
+  private ChoicesCamperMatch campers;
   private ChoicesImportChoices choices;
 
   public ChoicesCheckCount(
     ChoicesImport.Request request,
-    ChoicesImportCampers campers,
+    ChoicesCamperMatch campers,
     ChoicesImportChoices choices
   ) {
     this.request = request;
@@ -24,7 +24,7 @@ public with sharing class ChoicesCheckCount {
     result.whichCamper = campers.questions();
     Set<Id> onSheet = new Set<Id>();
     for (Integer i = 0; i < request.campers.size(); i++) {
-      Camper__c saved = campers.unsettled(i) ? null : campers.at(i);
+      Camper__c saved = campers.at(i);
       if (saved != null) {
         result.known++;
         onSheet.add(saved.Id);

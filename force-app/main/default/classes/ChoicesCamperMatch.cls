@@ -1,6 +1,6 @@
 /**
- * Which saved camper each row of a choices sheet is (ChoicesImportCampers; ELECT-2.7). Each row is
- * found by its key (CamperKeys.of: the camper number, else a hash of the name), never by querying
+ * Which saved camper each row of a choices sheet is (ELECT-2.7): what the check counts
+ * (ChoicesCheckCount) and what ChoicesImportCampers saves from. Each row is found by its key (CamperKeys.of: the camper number, else a hash of the name), never by querying
  * a name. Two campers may share a name (Greg 2026-11-21): a row is matched by name only when one
  * saved camper has it; when two or more do, or the row is one of several the director called
  * different campers while one of that name is here, the director says which (questions), never
@@ -18,23 +18,11 @@ public with sharing class ChoicesCamperMatch {
     request = given;
     labels = SetupSeasons.labelsWhenNeeded(new Set<Id>{ given.seasonId });
     readKeys();
-    // The keys are hidden, so they are matched in system mode inside the season the scheduler
-    // was already checked to see (ChoicesImportPlace); the campers are then read in user mode.
-    Map<String, List<Id>> idsByKey = CamperKeys.savedIn(
+    // Inside the season the scheduler was already checked to see (ChoicesImportPlace).
+    byKey = CamperKeys.campersIn(
       request.seasonId,
-      new Set<String>(keys)
-    );
-    Set<Id> matched = CamperKeys.idsIn(idsByKey);
-    byKey = CamperKeys.inOrder(
-      idsByKey,
-      new Map<Id, Camper__c>(
-        [
-          SELECT Id, Name, ParentComments__c
-          FROM Camper__c
-          WHERE Id IN :matched
-          WITH USER_MODE
-        ]
-      )
+      new Set<String>(keys),
+      new List<SObjectField>{ Camper__c.Name, Camper__c.ParentComments__c }
     );
     checkAnswers();
   }
@@ -46,9 +34,7 @@ public with sharing class ChoicesCamperMatch {
   private void readKeys() {
     Map<String, Integer> firstRow = new Map<String, Integer>();
     for (ChoicesImport.SheetCamper sheetCamper : request.campers) {
-      String key = CamperKeys.of(
-        CamperKeys.ofSheet(request.seasonId, sheetCamper)
-      );
+      String key = CamperKeys.of(ofSheet(request.seasonId, sheetCamper));
       if (firstRow.containsKey(key) && sheetCamper.apart != true) {
         throw new ShoreshException(
           'Rows ' +
@@ -86,7 +72,7 @@ public with sharing class ChoicesCamperMatch {
   private void refuseOneCamperTwice() {
     Map<Id, Integer> rowOf = new Map<Id, Integer>();
     for (Integer i = 0; i < request.campers.size(); i++) {
-      Camper__c camper = unsettled(i) ? null : at(i);
+      Camper__c camper = at(i);
       if (camper == null) {
         continue;
       }
@@ -107,8 +93,7 @@ public with sharing class ChoicesCamperMatch {
 
   /** The season's campers this row's key finds (none, one, or several of one name). */
   private List<Camper__c> candidates(Integer index) {
-    List<Camper__c> found = byKey.get(keys[index]);
-    return found == null ? new List<Camper__c>() : found;
+    return byKey.get(keys[index]) ?? new List<Camper__c>();
   }
 
   /** The candidate the director chose for this row, or null. */
@@ -172,6 +157,20 @@ public with sharing class ChoicesCamperMatch {
         );
       }
     }
+  }
+
+  /** A sheet's camper as a camper of the season (name and number, trimmed), to key and to add. */
+  public static Camper__c ofSheet(
+    Id seasonId,
+    ChoicesImport.SheetCamper sheetCamper
+  ) {
+    return new Camper__c(
+      Season__c = seasonId,
+      Name = sheetCamper.name == null ? null : sheetCamper.name.trim(),
+      CamperNumber__c = String.isBlank(sheetCamper.camperNumber)
+        ? null
+        : sheetCamper.camperNumber.trim()
+    );
   }
 
   private String camperWord() {
