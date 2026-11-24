@@ -189,11 +189,15 @@ public with sharing class ElectiveSeatSaves {
     }
   }
 
-  /** Seats no longer wanted, deleted and emptied from the Recycle Bin. */
-  public static void deleteForGood(List<SObject> seats) {
-    if (!seats.isEmpty()) {
-      Database.delete(seats, true, AccessLevel.USER_MODE);
-      Database.emptyRecycleBin(seats);
+  /**
+   * Rows of one kind (seats no longer wanted; Clear's choices, runs and campers) deleted and
+   * emptied from the Recycle Bin. One kind a call: Salesforce refuses a call whose rows switch kind
+   * more than ten times, counted 200 rows at a time.
+   */
+  public static void deleteForGood(List<SObject> rows) {
+    if (!rows.isEmpty()) {
+      Database.delete(rows, true, AccessLevel.USER_MODE);
+      Database.emptyRecycleBin(rows);
     }
   }
 

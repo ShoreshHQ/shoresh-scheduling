@@ -14,12 +14,14 @@ public with sharing class ElectiveRunState {
   public static final String FINAL_STATUS = 'Final';
 
   public ElectiveRun__c run;
+  // A save too big for one request, being written or stopped (ElectiveBigSave); null when none.
+  public ElectiveBigSave.Progress save;
   // The program's bunks, with their division and its order.
   public Map<Id, Group__c> groups = new Map<Id, Group__c>();
   // The set's offerings, by activity name; and by Id.
   public List<Offering__c> offerings = new List<Offering__c>();
   public Map<Id, Offering__c> offeringsById = new Map<Id, Offering__c>();
-  public ElectiveOpenness openness;
+  private ElectiveOpenness openness;
   // The set's linked choices (slice E8), with their periods and divisions.
   public List<LinkedChoice__c> linkedChoices = new List<LinkedChoice__c>();
   // The run's schedule's days, with the special days replacing some of them (ELECT-4.8).
@@ -36,6 +38,7 @@ public with sharing class ElectiveRunState {
   /** The run as it is now, or refused when it is not there. */
   public ElectiveRunState(Id runId) {
     run = readRun(runId);
+    save = ElectiveBigSave.progressOf(run);
     readGroups();
     readOfferings();
     readLinkedChoices();
@@ -83,11 +86,6 @@ public with sharing class ElectiveRunState {
     return run.Status__c == FINAL_STATUS;
   }
 
-  /** A save too big for one request is being written in the background (ElectiveBigSave). */
-  private Boolean isSaving() {
-    return run.SaveTotal__c != null && run.SaveProblem__c == null;
-  }
-
   private static ElectiveRun__c readRun(Id runId) {
     List<ElectiveRun__c> found = [
       SELECT
@@ -129,7 +127,6 @@ public with sharing class ElectiveRunState {
     if (found.isEmpty()) {
       throw notThere();
     }
-    ElectiveSaveJobs.settle(found);
     return found[0];
   }
 
@@ -275,14 +272,12 @@ public with sharing class ElectiveRunState {
           )
       );
     }
-    if (isSaving()) {
+    if (save != null && save.isSaving()) {
       throw new ShoreshException(
         AgentRefusal.withFix(
           labels().plural('Seats') +
             ' are still being saved (' +
-            run.SaveDone__c.intValue().format() +
-            ' of ' +
-            run.SaveTotal__c.intValue().format() +
+            save.count() +
             ').',
           'Try again when that\'s done.'
         )
@@ -320,8 +315,8 @@ public with sharing class ElectiveRunState {
    */
   public void bump(ElectiveRun__c changes) {
     changes.Id = run.Id;
-    changes.Revision__c = (run.Revision__c == null ? 0 : run.Revision__c) + 1;
-    Database.update(ElectiveBigSave.ended(changes), AccessLevel.USER_MODE);
+    ElectiveBigSave.endOn(changes, run.Revision__c);
     run.Revision__c = changes.Revision__c;
+    save = null;
   }
 }

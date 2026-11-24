@@ -2357,10 +2357,12 @@ describe("Shoresh for AI tools and the command line", () => {
     const big = await assign(
       "r1:1",
       { confirm: "t1" },
-      { ...view, revision: 1, saveDone: 0, saveTotal: 10800 },
+      { ...view, revision: 1, save: { done: 0, total: 10800 } },
       SAVING
     );
-    expect(big.done).toEqual(expect.objectContaining({ ok: true, text: SAVING }));
+    expect(big.done).toEqual(
+      expect.objectContaining({ ok: true, text: SAVING })
+    );
 
     // Read at another revision: refused before anything is sent.
     const stale = await assign("r1:0");

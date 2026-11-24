@@ -61,7 +61,7 @@ async function assignElectiveSeats(
   if (again.status !== 200) return answer(saved);
   const after = JSON.parse(again.body);
   // A large camp's seats are still being written (ADR 0018 choice 59): Shoresh's own words.
-  if (after.view.saveTotal != null) return answer(saved);
+  if (after.view.save != null) return answer(saved);
   const board = m.buildBoard(m.readRun(after.view), t);
   return {
     ok: true,

@@ -226,7 +226,7 @@ global with sharing class AgentAssignElectiveSeats implements AgentRequest.Chang
           ScreenErrors.words(e)
       );
     }
-    if (view.saveTotal != null) {
+    if (view.save != null) {
       // A large camp's: written in the background (ADR 0018 choice 59).
       return held.labels().plural('Seats') +
         ' in ' +

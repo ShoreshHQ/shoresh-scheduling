@@ -735,9 +735,11 @@ describe("Assign seats", () => {
     const element = await render();
     jest.useFakeTimers();
     try {
-      assignSeats.mockResolvedValue(runView({ saveDone: 0, saveTotal: 12000 }));
+      assignSeats.mockResolvedValue(
+        runView({ save: { done: 0, total: 12000 } })
+      );
       openRun
-        .mockResolvedValueOnce(runView({ saveDone: 9000, saveTotal: 12000 }))
+        .mockResolvedValueOnce(runView({ save: { done: 9000, total: 12000 } }))
         .mockResolvedValueOnce(assignedView());
       const primary = () => $(element, '[data-id="primary"]');
       primary().click();
@@ -762,12 +764,14 @@ describe("Assign seats", () => {
     const element = await render();
     jest.useFakeTimers();
     try {
-      assignSeats.mockResolvedValue(runView({ saveDone: 0, saveTotal: 8 }));
+      assignSeats.mockResolvedValue(runView({ save: { done: 0, total: 8 } }));
       openRun.mockResolvedValueOnce(
         runView({
-          saveDone: 6,
-          saveTotal: 8,
-          saveProblem: "That was removed. Reload the page."
+          save: {
+            done: 6,
+            total: 8,
+            problem: "That was removed. Reload the page."
+          }
         })
       );
       $(element, '[data-id="primary"]').click();
@@ -787,7 +791,7 @@ describe("Assign seats", () => {
     jest.useFakeTimers();
     try {
       const element = await render({
-        view: runView({ saveDone: 4500, saveTotal: 12000 })
+        view: runView({ save: { done: 4500, total: 12000 } })
       });
       const primary = $(element, '[data-id="primary"]');
       expect(text(primary)).toBe("Saving 4,500 of 12,000");
@@ -801,7 +805,9 @@ describe("Assign seats", () => {
     const element = await render();
     jest.useFakeTimers();
     try {
-      assignSeats.mockResolvedValue(runView({ saveDone: 0, saveTotal: 12000 }));
+      assignSeats.mockResolvedValue(
+        runView({ save: { done: 0, total: 12000 } })
+      );
       openRun
         .mockRejectedValueOnce({
           body: { message: "Disconnected or Canceled" }
@@ -827,13 +833,15 @@ describe("Assign seats", () => {
     jest.useFakeTimers();
     try {
       const element = await render({
-        view: runView({ saveDone: 4500, saveTotal: 12000 })
+        view: runView({ save: { done: 4500, total: 12000 } })
       });
       openRun.mockResolvedValueOnce(
         runView({
-          saveDone: 4500,
-          saveTotal: 12000,
-          saveProblem: "Salesforce stopped it before the end."
+          save: {
+            done: 4500,
+            total: 12000,
+            problem: "Salesforce stopped it before the end."
+          }
         })
       );
       jest.advanceTimersByTime(3000);

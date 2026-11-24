@@ -63,8 +63,8 @@ const FAILED_READS = 5;
 const pause = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 const count = (n) => Number(n || 0).toLocaleString("en-US");
 /** "Saving stopped after 9,000 of 12,000. Why." for a save that stopped in the background. */
-const stoppedWords = (verb, done, total, problem) =>
-  `${verb} stopped after ${count(done)} of ${count(total)}. ${problem}`;
+const stoppedWords = (verb, save) =>
+  `${verb} stopped after ${count(save.done)} of ${count(save.total)}. ${save.problem}`;
 
 // The menus' glyphs (the mock-ups' icons), one path each.
 const ICONS = {
@@ -345,14 +345,14 @@ export default class ShoreshElectiveSeats extends LightningElement {
       const view = await openRun({ runId });
       if (ticket !== this.loadTicket) return;
       this.view = view;
-      if (view.saveProblem) {
+      if (view.save && view.save.problem) {
         this.sayStopped(view);
-      } else if (view.saveTotal != null && !this.busy) {
+      } else if (view.save && !this.busy) {
         // Opened while a large save goes on (by this person or another): its buttons wait for it.
         this.busy = true;
         try {
           const ended = await this.followSave(view);
-          if (ended && ended.saveProblem) this.sayStopped(ended);
+          if (ended && ended.save && ended.save.problem) this.sayStopped(ended);
         } finally {
           this.busy = false;
         }
@@ -743,8 +743,8 @@ export default class ShoreshElectiveSeats extends LightningElement {
    * done or stopped (returned as it ended), or the screen moved on (null).
    */
   async follow(now, stillHere, read) {
-    if (!now || now.saveTotal == null || now.saveProblem) return now;
-    this.saveProgress = { done: now.saveDone, total: now.saveTotal };
+    if (!now || !now.save || now.save.problem) return now;
+    this.saveProgress = now.save;
     await pause(FOLLOW_MS);
     if (!this.connected || !stillHere()) return null;
     return this.follow(await this.readAgain(read, now), stillHere, read);
@@ -772,12 +772,7 @@ export default class ShoreshElectiveSeats extends LightningElement {
 
   /** Why a save in the background stopped, said as a refusal is, with Assign again beside it. */
   sayStopped(view) {
-    this.error = stoppedWords(
-      "Saving",
-      view.saveDone,
-      view.saveTotal,
-      view.saveProblem
-    );
+    this.error = stoppedWords("Saving", view.save);
     this.errorAction = view.run.status === COMMITTED ? "assign" : null;
   }
 
@@ -800,7 +795,7 @@ export default class ShoreshElectiveSeats extends LightningElement {
       });
       this.view = view;
       view = await this.followSave(view);
-      if (view && view.saveProblem) {
+      if (view && view.save && view.save.problem) {
         this.sayStopped(view);
         this.status = "";
       } else if (view) {
@@ -830,13 +825,8 @@ export default class ShoreshElectiveSeats extends LightningElement {
       const ended = await this.followSave(this.view);
       // Another run or week was opened meanwhile: that one's screen is shown, not this one's end.
       if (!ended) return;
-      if (ended.saveProblem) {
-        this.error = stoppedWords(
-          "Finalizing",
-          ended.saveDone,
-          ended.saveTotal,
-          ended.saveProblem
-        );
+      if (ended.save && ended.save.problem) {
+        this.error = stoppedWords("Finalizing", ended.save);
         return;
       }
       this.status = `Finalized: ${this.stateLabel}.`;
@@ -1373,7 +1363,7 @@ export default class ShoreshElectiveSeats extends LightningElement {
   async readClear() {
     try {
       this.clearData = await clearPicture({ seasonId: this._setup.season.Id });
-      if (this.clearData.saveProblem) {
+      if (this.clearData.save && this.clearData.save.problem) {
         this.clearError = this.clearStopped(this.clearData);
       }
     } catch (e) {
@@ -1382,12 +1372,7 @@ export default class ShoreshElectiveSeats extends LightningElement {
   }
 
   clearStopped(picture) {
-    return stoppedWords(
-      "Clearing",
-      picture.saveDone,
-      picture.saveTotal,
-      picture.saveProblem
-    );
+    return stoppedWords("Clearing", picture.save);
   }
 
   /**
@@ -1403,7 +1388,7 @@ export default class ShoreshElectiveSeats extends LightningElement {
     );
     this.saveProgress = null;
     if (!now) return null;
-    if (now.saveProblem) {
+    if (now.save && now.save.problem) {
       this.clearData = now;
       this.clearError = this.clearStopped(now);
     }
@@ -1539,7 +1524,7 @@ export default class ShoreshElectiveSeats extends LightningElement {
           stamp: this.clearData.stamp
         })
       });
-      if (result.picture && result.picture.saveTotal != null) {
+      if (result.picture && result.picture.save) {
         const ended = await this.followClear(result.picture);
         if (!ended) {
           // Cancel was pressed while it cleared: the cursor goes where Cancel sent it, and the
@@ -1551,7 +1536,7 @@ export default class ShoreshElectiveSeats extends LightningElement {
           await this.loadSituation();
           return;
         }
-        if (ended.saveProblem) {
+        if (ended.save && ended.save.problem) {
           focusAfter = ['[data-id="clear-go"]', '[data-id="clear-cancel"]'];
           return;
         }

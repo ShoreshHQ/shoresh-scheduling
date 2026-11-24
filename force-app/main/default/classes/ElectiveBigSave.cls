@@ -11,8 +11,11 @@
  * stops the save: the run keeps how far it got and why (SaveProblem__c), shown to the person, and
  * nothing after it is written. A part that died without a word (a Salesforce limit can't be caught)
  * is undone whole, so the end finds fewer rows written than the save had and stops it the same
- * way; a job Salesforce ends outright is found when the run is read (ElectiveSaveJobs). In user
- * mode, as the person who saved.
+ * way; a job Salesforce ends outright is found when the run is read (progressOf). In user mode, as
+ * the person who saved.
+ *
+ * Everything about a save's progress is here: reading it (progressOf), whether it is still saving,
+ * its "9,000 of 12,000", and ending it with the run's revision moved on (endOn).
  */
 public with sharing class ElectiveBigSave implements Database.Batchable<Object>, Database.Stateful {
   // Rows one part writes: under 10,000 with room for the run's own updates. Rows emptied from the
@@ -27,6 +30,13 @@ public with sharing class ElectiveBigSave implements Database.Batchable<Object>,
   private static ElectiveBigSave held;
 
   private static final String PART_LOST = 'A part of it couldn\'t be saved, so the rest wasn\'t.';
+  private static final String ENDED = 'Salesforce stopped it before the end.';
+  // Salesforce's own word for a background job that is over, however it ended.
+  private static final Set<String> JOB_OVER = new Set<String>{
+    'Completed',
+    'Failed',
+    'Aborted'
+  };
 
   private Work work;
   private Integer most;
@@ -49,6 +59,35 @@ public with sharing class ElectiveBigSave implements Database.Batchable<Object>,
     /** A part failed and the save stopped (best effort: undo what the start made). */
     public virtual void stopped() {
       return;
+    }
+  }
+
+  /**
+   * How far a big save of a run has got (done of total rows), and why it stopped, when it did; as
+   * the screen and an AI are given it. A run with no big save has none (null).
+   */
+  public class Progress {
+    @AuraEnabled
+    public Decimal done;
+    @AuraEnabled
+    public Decimal total;
+    @AuraEnabled
+    public String problem;
+
+    private Progress(ElectiveRun__c run) {
+      done = run.SaveDone__c;
+      total = run.SaveTotal__c;
+      problem = run.SaveProblem__c;
+    }
+
+    /** Still being written in the background: it has not stopped. */
+    public Boolean isSaving() {
+      return problem == null;
+    }
+
+    /** "9,000 of 12,000". */
+    public String count() {
+      return done.intValue().format() + ' of ' + total.intValue().format();
     }
   }
 
@@ -186,7 +225,7 @@ public with sharing class ElectiveBigSave implements Database.Batchable<Object>,
           Id = run.Id,
           SaveDone__c = done,
           SaveProblem__c = why.left(255),
-          Revision__c = (run.Revision__c == null ? 0 : run.Revision__c) + 1
+          Revision__c = after(run.Revision__c)
         )
       );
     }
@@ -207,12 +246,67 @@ public with sharing class ElectiveBigSave implements Database.Batchable<Object>,
     Database.update(marks, AccessLevel.USER_MODE);
   }
 
-  /** The fields that end a big save on a run (set with the run's own in Work.finish). */
-  public static ElectiveRun__c ended(ElectiveRun__c changes) {
+  /**
+   * The run moved on: saved with the changes given, its revision one past the one read, and a big
+   * save's progress, or why it stopped, cleared. In user mode.
+   */
+  public static void endOn(ElectiveRun__c changes, Decimal revision) {
+    changes.Revision__c = after(revision);
     changes.SaveDone__c = null;
     changes.SaveTotal__c = null;
     changes.SaveJob__c = null;
     changes.SaveProblem__c = null;
-    return changes;
+    Database.update(changes, AccessLevel.USER_MODE);
+  }
+
+  private static Decimal after(Decimal revision) {
+    return (revision ?? 0) + 1;
+  }
+
+  // ---------------------------------------------------------------- reading progress
+
+  /**
+   * A run's big save as it is read (null when none). The run was read with its SaveDone__c,
+   * SaveTotal__c, SaveProblem__c and SaveJob__c.
+   */
+  public static Progress progressOf(ElectiveRun__c run) {
+    if (run.SaveTotal__c == null) {
+      return null;
+    }
+    Progress result = new Progress(run);
+    if (result.isSaving() && ended(run)) {
+      result.problem = ENDED;
+    }
+    return result;
+  }
+
+  /**
+   * A run read as saving whose background job Salesforce has already ended (cancelled in Setup, or
+   * stopped by a limit before it could say so): shown as stopped, so the run is never "still
+   * saving" for ever and the next save goes ahead and clears it. The run is read again first, so a
+   * save that just finished (its job cleared) is never taken for one that stopped.
+   */
+  private static Boolean ended(ElectiveRun__c run) {
+    // System mode: a job's status only, by the Id this save kept; AsyncApexJob has no user-mode
+    // access a scheduler is granted.
+    if (
+      run.SaveJob__c == null ||
+      [
+        SELECT Id
+        FROM AsyncApexJob
+        WHERE Id = :run.SaveJob__c AND Status IN :JOB_OVER
+        WITH SYSTEM_MODE
+      ]
+      .isEmpty()
+    ) {
+      return false;
+    }
+    List<ElectiveRun__c> now = [
+      SELECT SaveDone__c, SaveTotal__c, SaveProblem__c
+      FROM ElectiveRun__c
+      WHERE Id = :run.Id AND SaveJob__c = :run.SaveJob__c
+      WITH USER_MODE
+    ];
+    return !now.isEmpty() && new Progress(now[0]).isSaving();
   }
 }

@@ -36,14 +36,10 @@ public with sharing class ElectiveClear {
     // Every run's revision and the season's camper count: Clear checks nothing moved since.
     @AuraEnabled
     public String stamp;
-    // A Clear too big for one request, going on in the background (ElectiveBigSave): rows gone of
-    // how many, and why it stopped, when it did. Blank when there is none.
+    // A Clear too big for one request, going on in the background or stopped (ElectiveBigSave).
+    // Blank when there is none.
     @AuraEnabled
-    public Decimal saveDone;
-    @AuraEnabled
-    public Decimal saveTotal;
-    @AuraEnabled
-    public String saveProblem;
+    public ElectiveBigSave.Progress save;
   }
 
   public class WeekCounts {
@@ -155,14 +151,10 @@ public with sharing class ElectiveClear {
   }
 
   private static void refuseClearing(Picture picture) {
-    if (picture.saveTotal != null && picture.saveProblem == null) {
+    if (picture.save != null && picture.save.isSaving()) {
       throw new ShoreshException(
         AgentRefusal.withFix(
-          'Clearing is still going (' +
-            picture.saveDone.intValue().format() +
-            ' of ' +
-            picture.saveTotal.intValue().format() +
-            ').',
+          'Clearing is still going (' + picture.save.count() + ').',
           'Look again when it\'s done.'
         )
       );
@@ -201,7 +193,7 @@ public with sharing class ElectiveClear {
         ORDER BY Id
         LIMIT :most
       ];
-      forGood(seats);
+      ElectiveSeatSaves.deleteForGood(seats);
       Integer left = most - seats.size();
       List<Preference__c> choices = new List<Preference__c>();
       if (left > 0) {
@@ -214,7 +206,7 @@ public with sharing class ElectiveClear {
           LIMIT :left
         ];
       }
-      forGood(choices);
+      ElectiveSeatSaves.deleteForGood(choices);
       return seats.size() + choices.size();
     }
 
@@ -239,22 +231,11 @@ public with sharing class ElectiveClear {
     // Runs first: their seats and choices point at the campers.
     Savepoint before = Database.setSavepoint();
     try {
-      forGood(going);
-      forGood(campers);
+      ElectiveSeatSaves.deleteForGood(going);
+      ElectiveSeatSaves.deleteForGood(campers);
     } catch (Exception e) {
       Database.rollback(before);
       throw e;
-    }
-  }
-
-  /**
-   * Rows of one kind deleted and emptied from the Recycle Bin. One kind a call: Salesforce refuses
-   * a call whose rows switch kind more than ten times, counted 200 rows at a time.
-   */
-  private static void forGood(List<SObject> rows) {
-    if (!rows.isEmpty()) {
-      Database.delete(rows, AccessLevel.USER_MODE);
-      Database.emptyRecycleBin(rows);
     }
   }
 

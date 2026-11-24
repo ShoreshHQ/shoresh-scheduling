@@ -73,7 +73,7 @@ global with sharing class AgentFinalize implements AgentRequest.Change, AgentAsk
     } catch (Exception e) {
       throw new ShoreshException('Not finalized. ' + ScreenErrors.words(e));
     }
-    if (view.saveTotal != null) {
+    if (view.save != null) {
       return 'Finalizing ' +
         electiveSet.Name +
         ' in ' +

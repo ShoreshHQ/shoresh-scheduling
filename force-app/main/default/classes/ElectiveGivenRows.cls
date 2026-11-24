@@ -61,7 +61,6 @@ public abstract with sharing class ElectiveGivenRows extends ElectiveBigSave.Wor
     ]
     .Revision__c;
     changes.Id = runIds[0];
-    changes.Revision__c = (revision == null ? 0 : revision) + 1;
-    Database.update(ElectiveBigSave.ended(changes), AccessLevel.USER_MODE);
+    ElectiveBigSave.endOn(changes, revision);
   }
 }
