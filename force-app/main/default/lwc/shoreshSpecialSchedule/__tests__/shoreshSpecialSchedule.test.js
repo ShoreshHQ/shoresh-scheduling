@@ -433,6 +433,13 @@ describe("c-shoresh-special-schedule", () => {
     ]);
   });
 
+  it("a damaged row reads as Open, as every screen reads it: Import isn't refused over it", async () => {
+    const { element } = await render(dayPlan(["9,x", "^,"]));
+    q(element, '[data-id="import"]').click();
+    await flush();
+    expect(q(element, '[data-id="error"]')).toBeNull();
+  });
+
   it("ELECT-6.3: Download lists an elective set's offerings, as every Excel download does", async () => {
     const plan = dayPlan(["3,", ",1"]);
     plan.schedule.days[0].items.push(ref("es1", "Chugim", "E"));

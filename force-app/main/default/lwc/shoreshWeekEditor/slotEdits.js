@@ -12,11 +12,15 @@ import {
   identity,
   isSetTime,
   owner,
-  startsActivity
+  readRow,
+  slots,
+  startsActivity,
+  writeRow
 } from "c/shoreshEngine";
 
-// What a slot holds is read by the engine's rules (c/shoreshEngine grid.js), shared with Apex SlotIds.
-export { OPEN, identity, isSetTime, owner };
+// What a slot holds is read by the engine's rules (c/shoreshEngine grid.js), shared with Apex
+// SlotIds; a saved row is read and written there too.
+export { CARRIES_ON, OPEN, identity, isSetTime, owner, slots };
 
 /**
  * Whether a placement can be moved, stretched, or taken out: an activity; on a special day's own
@@ -38,18 +42,6 @@ export function isPlacedOverlay(slot) {
 /** Whether a slot holds what stays where setup put it: a fixed or recurring activity, but not on a special day's own schedule. */
 export function staysPut(slot, ownPlan = false) {
   return !ownPlan && isSetTime(slot);
-}
-
-/** What each of a group's slots holds on a day. */
-export function slots(day, g) {
-  let carrying = OPEN;
-  return (day.rows[g] || "").split(",").map((token) => {
-    if (token === CARRIES_ON) {
-      return CARRIES_ON + carrying;
-    }
-    carrying = token ? identity(day.items[Number(token) - 1]) : OPEN;
-    return carrying;
-  });
 }
 
 /** The placement a slot is part of: its first block and length ('' for Open, length 1). */
@@ -133,24 +125,24 @@ export function editRun(
  */
 export function applyRun(day, g, run, named) {
   const items = [...day.items];
-  const tokens = (day.rows[g] || "").split(",");
+  const cells = readRow(day.rows[g], day.items);
   run.after.forEach((slot, i) => {
     const b = run.first + i;
     if (slot === OPEN) {
-      tokens[b] = "";
+      cells[b] = null;
     } else if (slot.startsWith(CARRIES_ON)) {
-      tokens[b] = CARRIES_ON;
+      cells[b] = { ...cells[b - 1], carriesOn: true };
     } else {
       let index = items.findIndex((item) => identity(item) === slot);
       if (index < 0) {
         items.push({ ...named(slot), gone: false });
         index = items.length - 1;
       }
-      tokens[b] = String(index + 1);
+      cells[b] = { item: items[index], number: index + 1, carriesOn: false };
     }
   });
   const rows = [...day.rows];
-  rows[g] = tokens.join(",");
+  rows[g] = writeRow(cells);
   return { ...day, items, rows };
 }
 

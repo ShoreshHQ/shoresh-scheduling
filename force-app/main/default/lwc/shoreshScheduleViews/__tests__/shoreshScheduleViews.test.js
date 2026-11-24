@@ -41,6 +41,17 @@ describe("c/shoreshScheduleViews", () => {
     expect(tuesday[0].item).toBeNull();
   });
 
+  it("shows a damaged row's cells as Open, as every screen reads it (engine readRow)", () => {
+    const day = { ...opened().days[0], rows: ["^,9,x"] };
+    expect(
+      groupCells(day, 0).map((c) => [c.blockIndex, c.length, c.item])
+    ).toEqual([
+      [0, 1, null],
+      [1, 1, null],
+      [2, 1, null]
+    ]);
+  });
+
   it("a block named by its time range shows its times once (desktop blockLabelParts)", () => {
     const view = opened();
     const [first, ...rest] = view.days[0].blocks;

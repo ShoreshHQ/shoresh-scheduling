@@ -53,13 +53,12 @@ function readRow(st, grid, day, groupId, row) {
   const group = st.groups.get(groupId) || null;
   const runs = [];
   let current = null;
-  row.forEach((token, b) => {
-    if (token === "^" && current) {
+  row.forEach((cell, b) => {
+    if (cell && cell.carriesOn) {
       current.length += 1;
       return;
     }
-    const item = /^\d+$/.test(token) ? day.items[Number(token) - 1] : null;
-    current = item ? { first: b, length: 1, item } : null;
+    current = cell ? { first: b, length: 1, item: cell.item } : null;
     if (current) {
       runs.push(current);
     }
@@ -131,8 +130,8 @@ export function readGrid(st) {
   };
   for (const groupId of st.model.groupIds) {
     for (const day of st.days) {
-      if (day.tokens.has(groupId)) {
-        readRow(st, grid, day, groupId, day.tokens.get(groupId));
+      if (day.cells.has(groupId)) {
+        readRow(st, grid, day, groupId, day.cells.get(groupId));
       }
     }
   }
