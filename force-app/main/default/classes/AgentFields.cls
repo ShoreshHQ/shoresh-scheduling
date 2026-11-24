@@ -14,7 +14,9 @@ public with sharing class AgentFields {
       parsed = null;
     }
     if (!(parsed instanceof Map<String, Object>)) {
-      throw new ShoreshException('Send JSON like {"season": "Summer 2026"}.');
+      throw new ShoreshException(
+        'Send what to do by name, like {"season": "Summer 2026"}.'
+      );
     }
     return (Map<String, Object>) parsed;
   }

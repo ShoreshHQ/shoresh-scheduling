@@ -67,6 +67,45 @@ const callTool = (name, args, run) =>
     { callFn: (n, input, opts) => call(n, input, { ...opts, run }) }
   );
 
+/** What Shoresh has learned's own modules, as the connector runs them. */
+const learnedModules = async () => ({
+  ...require("../../force-app/main/default/lwc/shoreshLearned/history.js"),
+  ...require("../../force-app/main/default/lwc/shoreshLearned/builtIn.js"),
+  ...require("../../force-app/main/default/lwc/shoreshLearned/view.js"),
+  ...require("../../force-app/main/default/lwc/shoreshPatterns/shoreshPatterns.js"),
+  ...require("../../force-app/main/default/lwc/shoreshTerms/shoreshTerms.js")
+});
+
+/**
+ * A stand-in sf for a change or forget of a remembered answer: the list reads one answer, Id
+ * `id`, whose line is "lunch is a fixed activity"; the change or forget answers `message`.
+ */
+const learnedAnswering =
+  (id, message, seen = []) =>
+  async (args, stdin) => {
+    seen.push({ args, stdin });
+    const body = /read_learned_answers/.test(args[3])
+      ? JSON.stringify({
+          camp: "Pine Hollow (made up)",
+          setup: { labels: [] },
+          answers: [
+            {
+              id,
+              question: "kind|lunch",
+              answer: "fixed",
+              byYou: true,
+              byName: "Pat",
+              answeredOn: "2031-07-01",
+              savedAt: "2031-07-01T10:00:00Z"
+            }
+          ],
+          events: []
+        })
+      : JSON.stringify({ message });
+    return `HTTP/1.1 200\ncontent-type: application/json\n\n${body}`;
+  };
+const LUNCH = "lunch is a fixed activity";
+
 describe("Shoresh for AI tools and the command line", () => {
   // API-1.6
   it("matchesTheApi: every API web address has its actions (a delete also its question, API-1.102), no more, no fewer", () => {
@@ -2943,7 +2982,7 @@ describe("Shoresh for AI tools and the command line", () => {
         : JSON.stringify({ message });
       return `HTTP/1.1 200\ncontent-type: application/json\n\n${body}`;
     };
-    const input = { season: "Summer 2031", answer_id: "a01", seen: "fixed" };
+    const input = { season: "Summer 2031", line: LUNCH, seen: "fixed" };
     const sent = [];
     const asked = await call("forget_learned_answer", input, {
       run: answering(
@@ -2961,7 +3000,12 @@ describe("Shoresh for AI tools and the command line", () => {
       "/services/apexrest/v1/read_learned_answers?season=Summer+2031",
       "/services/apexrest/v1/forget_learned_answer"
     ]);
-    expect(JSON.parse(sent[1].stdin)).toEqual(input);
+    // Salesforce is sent the answer's own Id, never shown to the AI (API-1.150).
+    expect(JSON.parse(sent[1].stdin)).toEqual({
+      season: "Summer 2031",
+      answer_id: "a01",
+      seen: "fixed"
+    });
 
     const done = await call(
       "forget_learned_answer",
@@ -3026,7 +3070,7 @@ describe("Shoresh for AI tools and the command line", () => {
       "lunch is a fixed activity (Answered as before)"
     );
     expect(said.text).toContain(
-      'answer_id a01, seen "fixed", can be changed to recurring'
+      'remembered now: seen "fixed", can be changed to recurring'
     );
     expect(said.text).toContain("What Shoresh already knew");
     for (const name of [
@@ -3056,8 +3100,8 @@ describe("Shoresh for AI tools and the command line", () => {
         "forget_learned_answer",
         "--season",
         "Summer 2031",
-        "--answer_id",
-        "a0Learned000009",
+        "--line",
+        LUNCH,
         "--seen",
         "fixed"
       ],
@@ -3067,18 +3111,16 @@ describe("Shoresh for AI tools and the command line", () => {
       (name, input, options) =>
         call(name, input, {
           ...options,
-          run: sfAnswering(
-            200,
-            JSON.stringify({
-              message:
-                'Forgot "fixed": the next import asks that question again. To undo it, use undo_learned_answer with undo "forget:a0Learned000009".'
-            })
+          learned: learnedModules,
+          run: learnedAnswering(
+            "a0Learned000009",
+            'Forgot "fixed": the next import asks that question again. To undo it, use undo_learned_answer with undo "forget:a0Learned000009".'
           )
         })
     );
     expect(code).toBe(0);
     expect(out.join("")).toContain(
-      'Forgot "fixed": the next import asks that question again. The command line keeps no Undo between commands, as the screen keeps none once its page is closed.'
+      'Forgot "lunch is a fixed activity": the next import asks that question again. The command line keeps no Undo between commands, as the screen keeps none once its page is closed.'
     );
     // Nothing held from the command: an undo of it is nothing to undo.
     const after = await call(
@@ -3106,14 +3148,12 @@ describe("Shoresh for AI tools and the command line", () => {
     // A forget made now gives its undo, held for this conversation.
     await call(
       "forget_learned_answer",
-      { season: "Summer 2031", answer_id: "a0Learned000001", seen: "fixed" },
+      { season: "Summer 2031", line: LUNCH, seen: "fixed" },
       {
-        run: sfAnswering(
-          200,
-          JSON.stringify({
-            message:
-              'Forgot "fixed": the next import asks that question again. To undo it, use undo_learned_answer with undo "forget:a0Learned000001".'
-          })
+        learned: learnedModules,
+        run: learnedAnswering(
+          "a0Learned000001",
+          'Forgot "fixed": the next import asks that question again. To undo it, use undo_learned_answer with undo "forget:a0Learned000001".'
         )
       }
     );
@@ -3150,17 +3190,15 @@ describe("Shoresh for AI tools and the command line", () => {
       "change_learned_answer",
       {
         season: "Summer 2031",
-        answer_id: "a0Learned000002",
+        line: LUNCH,
         answer: "recurring",
         seen: "fixed"
       },
       {
-        run: sfAnswering(
-          200,
-          JSON.stringify({
-            message:
-              'Changed "fixed" to "recurring". Shoresh remembers it as changed by you, today. To undo it, use undo_learned_answer with undo "change:a0Learned000003:a0Learned000002".'
-          })
+        learned: learnedModules,
+        run: learnedAnswering(
+          "a0Learned000002",
+          'Changed "fixed" to "recurring". Shoresh remembers it as changed by you, today. To undo it, use undo_learned_answer with undo "change:a0Learned000003:a0Learned000002".'
         )
       }
     );
@@ -3182,15 +3220,13 @@ describe("Shoresh for AI tools and the command line", () => {
     // Another sign-in's conversation holds its own.
     await call(
       "forget_learned_answer",
-      { answer_id: "a0Learned000004", seen: "fixed" },
+      { line: LUNCH, seen: "fixed" },
       {
         org: "camp-a",
-        run: sfAnswering(
-          200,
-          JSON.stringify({
-            message:
-              'Forgot "fixed". To undo it, use undo_learned_answer with undo "forget:a0Learned000004".'
-          })
+        learned: learnedModules,
+        run: learnedAnswering(
+          "a0Learned000004",
+          'Forgot "fixed". To undo it, use undo_learned_answer with undo "forget:a0Learned000004".'
         )
       }
     );

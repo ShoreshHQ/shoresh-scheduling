@@ -26,11 +26,13 @@ const {
   readLearned,
   forgetPattern,
   forgetAnswer,
+  changeAnswer,
   holdUndo,
   undoLearned
 } = require("./learned");
 const { bringInChoices } = require("./choices");
 const undoHeld = require("./undo");
+const { forAi } = require("./screenWords");
 const {
   campOf,
   tooOld,
@@ -459,6 +461,15 @@ async function callOnce(
       org
     );
   }
+  if (capability.changesAnswer) {
+    return holdUndo(
+      await changeAnswer(capability, input, {
+        ...at,
+        load: () => learned(namespace)
+      }),
+      org
+    );
+  }
   if (capability.forgetsAnswer) {
     return holdUndo(
       await forgetAnswer(capability, input, {
@@ -482,8 +493,7 @@ async function callOnce(
       versionWords(namespace)
     );
   }
-  let done = answer(await asked(request));
-  if (capability.givesLearnedUndo) done = holdUndo(done, org);
+  const done = answer(await asked(request));
   if (!done.ok || !capability.about || input.as_csv) return done;
   done.about = capability.about;
   if (capability.showsWeek) {
@@ -1247,11 +1257,15 @@ function importModules(m) {
 const PERSON_DECIDES =
   "Nothing else was changed. This is for the person to decide: tell them, and don't change anything to work around it.";
 
-/** An answer as an AI hears it: a refusal or conflict ends with PERSON_DECIDES. */
+/**
+ * An answer as an AI hears it, in the screens' words (screenWords.js); a refusal or conflict
+ * ends with PERSON_DECIDES.
+ */
 function toAgent(answer) {
+  const text = forAi(answer.text);
   return answer.ok
-    ? answer
-    : { ...answer, text: `${answer.text} ${PERSON_DECIDES}` };
+    ? { ...answer, text }
+    : { ...answer, text: `${text} ${PERSON_DECIDES}` };
 }
 
 const NO_PERMISSION_SET =

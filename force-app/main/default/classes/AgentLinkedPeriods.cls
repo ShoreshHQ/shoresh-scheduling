@@ -66,7 +66,7 @@ public with sharing class AgentLinkedPeriods {
   ) {
     if (!(asked instanceof Map<String, Object>)) {
       throw new ShoreshException(
-        'A period says its day and time, like {"day": "Monday", "time": "Period 2"}.'
+        'Each time in times says its day and time, like {"day": "Monday", "time": "Period 2"}.'
       );
     }
     Map<String, Object> period = (Map<String, Object>) asked;

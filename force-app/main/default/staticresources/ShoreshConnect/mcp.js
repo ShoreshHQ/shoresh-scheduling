@@ -8,6 +8,7 @@ const fs = require("fs");
 const path = require("path");
 const { CAPABILITIES, byName, ASKS_FIRST_SAID } = require("./capabilities");
 const { call, sfInstalled, signIn, toAgent } = require("./client");
+const { ownVersion } = require("./camp");
 const script = require("./script");
 const { askPerson, withPersonsYes, ASKS_ON_SCREEN } = require("./yes");
 
@@ -197,7 +198,8 @@ async function handle(
           resources: {},
           extensions: { "io.modelcontextprotocol/ui": {} }
         },
-        serverInfo: { name: "shoresh", version: "1.0.0" }
+        // This copy's own version (its manifest.json); none in the repo.
+        serverInfo: { name: "shoresh", version: ownVersion() ?? "0.0.0" }
       });
     case "ping":
       return reply({});

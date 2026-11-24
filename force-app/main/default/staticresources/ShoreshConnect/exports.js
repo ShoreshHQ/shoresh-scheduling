@@ -17,6 +17,7 @@ const fs = require("fs");
 const path = require("path");
 const { queryFields } = require("./camp");
 const { refused, asTheScreenReads } = require("./imports");
+const words = require("./screenWords");
 
 /**
  * What a file holds, as the screens' Excel and Print menus offer it (PUB-6.6): the menu's kinds
@@ -239,16 +240,17 @@ function setupFile(m, body, input, t) {
       name: m.fileNameOf(`${setup.season.Name} - worksheet`)
     };
   }
-  const screenName = m.screenLabels(t)[input.list];
   // The camp workbook's lists, and Special events' (not in the worksheet: items stay in their season).
   const lists = [...m.LIST_SCREENS, "specialEvents"];
-  if (!lists.includes(input.list) || !screenName) {
+  const list = words.engineWord(input.list, lists);
+  const screenName = m.screenLabels(t)[list];
+  if (!lists.includes(list) || !screenName) {
     return {
-      problem: `list is worksheet or one of: ${lists.join(", ")}.`
+      problem: `list is worksheet or one of: ${lists.map((k) => words.aiWord(k, lists)).join(", ")}.`
     };
   }
   return {
-    sheets: [{ name: screenName, rows: m.listRows(input.list, setup, t) }],
+    sheets: [{ name: screenName, rows: m.listRows(list, setup, t) }],
     name: m.fileNameOf(`${screenName} - ${setup.season.Name}`)
   };
 }

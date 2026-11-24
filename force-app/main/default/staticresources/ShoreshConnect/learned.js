@@ -5,7 +5,7 @@
  * with the screen's own modules (c/shoreshLearned history.js and builtIn.js, shipped beside this
  * file), so the AI reads the same lines, in the same order and words, as the person. Each line
  * the screen gives Change or Forget (an answer remembered now) or Forget pattern (a pattern there
- * now) carries what those actions take back: answer_id or pattern, and seen.
+ * now) carries what those actions take back: an answer by its line (API-1.150) or a pattern, and seen.
  */
 
 // LearnedEvents.forCamp reads the newest 5000: a full read means older ones were left out.
@@ -29,7 +29,7 @@ function lineText(line, answers, m) {
     const choices = (line.answer.choices || []).filter(
       (c) => c.value !== line.answer.answer
     );
-    text += ` - remembered now: answer_id ${line.answer.id}, seen ${JSON.stringify(line.answer.answer)}`;
+    text += ` - remembered now: seen ${JSON.stringify(line.answer.answer)}`;
     text +=
       line.answer.choices && line.answer.choices.length > 1
         ? `, can be changed to ${choices.map((c) => `${c.value} (${c.label})`).join(", ")}`
@@ -108,42 +108,87 @@ async function forgetPattern(capability, input, { read, send, answer, load }) {
   return answer(await send(capability.api, input));
 }
 
+/** A line as a person or an AI writes it back: case, dashes, quotes and spaces aside. */
+const folded = (text) =>
+  String(text ?? "")
+    .toLowerCase()
+    .replace(/[\u2010-\u2015-]/g, "-")
+    .replace(/["\u201c\u201d]/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+
+/**
+ * The remembered answer the AI named by its line, as read_learned_answers works the lines out
+ * (API-1.150): { line } or, when no line or more than one reads so, { refusal }. Shoresh's own
+ * Id stays between the connector and Salesforce.
+ */
+async function answerLine(input, { read, answer, load }) {
+  const fields = input.season !== undefined ? { season: input.season } : {};
+  const got = await read("read_learned_answers", fields);
+  if (got.status !== 200) return { refusal: answer(got) };
+  const body = JSON.parse(got.body);
+  const m = await load();
+  const setup = body.setup || {};
+  const named = new Map();
+  for (const line of m.historyLines(
+    body.events || [],
+    body.answers || [],
+    m.buildTerms(setup.labels || []),
+    m.speller(setup)
+  )) {
+    // As listed, with its date, or without it.
+    const sent = folded(input.line);
+    if (
+      line.current &&
+      line.answer &&
+      (sent === folded(line.title) ||
+        sent === folded(`${line.when}: ${line.title}`))
+    ) {
+      named.set(line.answer.id, line);
+    }
+  }
+  const said = JSON.stringify(String(input.line ?? "").slice(0, 120));
+  if (named.size === 1) return { line: [...named.values()][0] };
+  return {
+    refusal: {
+      ok: false,
+      status: 400,
+      text: named.size
+        ? `More than one answer remembered now reads ${said} on What Shoresh has learned, so Shoresh can't tell which one. Nothing was changed.`
+        : `No answer remembered now reads ${said} on What Shoresh has learned. Nothing was changed.`
+    }
+  };
+}
+
+/** What Salesforce is sent for an answer named by its line: its own Id, never shown. */
+function sentFor(input, line) {
+  const sent = { ...input, answer_id: line.answer.id };
+  delete sent.line;
+  return sent;
+}
+
+/** change_learned_answer: the answer named by its line (API-1.150), changed as the screen changes it. */
+async function changeAnswer(capability, input, at) {
+  const { line, refusal } = await answerLine(input, at);
+  if (refusal) return refusal;
+  return at.answer(await at.send(capability.api, sentFor(input, line)));
+}
+
 /**
  * forget_learned_answer: Shoresh's question and answer name the answer by its line, as the
  * screen's Forget names it ("Forget Archery: 2–4 a week"), never by what is stored ("2-4") that a
- * person can't read (API-1.150). The line is the screen's own, worked out as read_learned_answers
- * works it out; when it can't be found, Shoresh's words go as they are.
+ * person can't read (API-1.150). The line is read first: once forgotten, it is no longer there.
  */
-async function forgetAnswer(capability, input, { read, send, answer, load }) {
-  // Read first: once forgotten, the answer's line is no longer there.
-  let title = null;
-  try {
-    const fields = input.season !== undefined ? { season: input.season } : {};
-    const got = await read("read_learned_answers", fields);
-    if (got.status === 200) {
-      const body = JSON.parse(got.body);
-      const m = await load();
-      const setup = body.setup || {};
-      const line = m
-        .historyLines(
-          body.events || [],
-          body.answers || [],
-          m.buildTerms(setup.labels || []),
-          m.speller(setup)
-        )
-        .find((l) => l.current && l.answer && l.answer.id === input.answer_id);
-      if (line) title = line.title;
-    }
-  } catch {
-    title = null;
-  }
-  const done = answer(await send(capability.api, input));
-  if (!done.ok || !title) return done;
+async function forgetAnswer(capability, input, at) {
+  const { line, refusal } = await answerLine(input, at);
+  if (refusal) return refusal;
+  const done = at.answer(await at.send(capability.api, sentFor(input, line)));
+  if (!done.ok) return done;
   return {
     ...done,
     text: done.text
-      .replace(/the remembered answer "[^"]*"/, () => `"${title}"`)
-      .replace(/^Forgot "[^"]*"/, () => `Forgot "${title}"`)
+      .replace(/the remembered answer "[^"]*"/, () => `"${line.title}"`)
+      .replace(/^Forgot "[^"]*"/, () => `Forgot "${line.title}"`)
   };
 }
 
@@ -195,6 +240,7 @@ module.exports = {
   readLearned,
   forgetPattern,
   forgetAnswer,
+  changeAnswer,
   holdUndo,
   undoLearned,
   oneCommandAtATime
