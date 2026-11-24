@@ -49,7 +49,11 @@ public with sharing class GeneratedScheduleController {
     String name
   ) {
     try {
-      return ManualBuildActivities.addOnGenerated(scheduleId, name);
+      return ManualBuildActivities.add(
+        scheduleId,
+        name,
+        ManualBuildActivities.Draft.GENERATED
+      );
     } catch (Exception e) {
       throw ScreenErrors.of(e);
     }

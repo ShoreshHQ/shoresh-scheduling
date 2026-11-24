@@ -9,9 +9,10 @@ public with sharing class AddedActivityController {
   @AuraEnabled
   public static Boolean removeFromManualBuild(Id scheduleId, Id activityId) {
     try {
-      return ManualBuildActivities.removeFromManualBuild(
+      return ManualBuildActivities.remove(
         scheduleId,
-        activityId
+        activityId,
+        ManualBuildActivities.Draft.MANUAL_BUILD
       );
     } catch (Exception e) {
       throw ScreenErrors.of(e);
@@ -22,7 +23,11 @@ public with sharing class AddedActivityController {
   @AuraEnabled
   public static Boolean removeFromGenerated(Id scheduleId, Id activityId) {
     try {
-      return ManualBuildActivities.removeFromGenerated(scheduleId, activityId);
+      return ManualBuildActivities.remove(
+        scheduleId,
+        activityId,
+        ManualBuildActivities.Draft.GENERATED
+      );
     } catch (Exception e) {
       throw ScreenErrors.of(e);
     }

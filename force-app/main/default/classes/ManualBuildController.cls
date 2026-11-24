@@ -61,7 +61,11 @@ public with sharing class ManualBuildController {
     String name
   ) {
     try {
-      return ManualBuildActivities.add(scheduleId, name);
+      return ManualBuildActivities.add(
+        scheduleId,
+        name,
+        ManualBuildActivities.Draft.MANUAL_BUILD
+      );
     } catch (Exception e) {
       throw ScreenErrors.of(e);
     }
