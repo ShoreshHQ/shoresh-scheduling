@@ -85,16 +85,19 @@ async function forgetPattern(capability, input, { read, send, answer, load }) {
   const body = JSON.parse(got.body);
   const m = await load();
   const setup = body.setup || {};
-  const there = m
+  const lines = m
     .historyLines(
       body.events || [],
       body.answers || [],
       m.buildTerms(setup.labels || []),
       m.speller(setup)
     )
-    .filter((line) => line.current && line.patternNow)
-    .map((line) => line.pattern);
-  if (!there.includes(String(input.pattern ?? "").trim())) {
+    .filter((line) => line.current && line.patternNow);
+  const there = lines.map((line) => line.pattern);
+  const line = lines.find(
+    (l) => l.pattern === String(input.pattern ?? "").trim()
+  );
+  if (!line) {
     return {
       ok: false,
       status: 400,
@@ -105,7 +108,19 @@ async function forgetPattern(capability, input, { read, send, answer, load }) {
       }`
     };
   }
-  return answer(await send(capability.api, input));
+  const done = answer(await send(capability.api, input));
+  // The question the person is asked names the pattern as the screen shows it, never its key.
+  const named = (text) =>
+    String(text).replace(
+      /the pattern "[^"]*"/,
+      () => `the pattern "${line.title}"`
+    );
+  const asks = done.asks && {
+    ...done.asks,
+    said: named(done.asks.said),
+    preview: named(done.asks.preview)
+  };
+  return { ...done, text: named(done.text), ...(asks && { asks }) };
 }
 
 /** A line as a person or an AI writes it back: case, dashes, quotes and spaces aside. */

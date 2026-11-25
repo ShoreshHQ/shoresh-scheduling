@@ -120,6 +120,29 @@ describe("The camp's Salesforce address", () => {
     expect(seen[1]).toBe("/services/apexrest/shoresh/v1/group_schedule");
   });
 
+  // API-1.155
+  it("campNotReadSendsNothing: when Salesforce doesn't say where Shoresh is, no action is sent and that is said", async () => {
+    const seen = [];
+    const done = await call(
+      "publish_week",
+      { season: "Summer 2026", week: "Week 1" },
+      {
+        camp: (org, asked) => campOf(asked),
+        run: async (args) => {
+          seen.push(args[3]);
+          return "HTTP/1.1 503\ncontent-type: text/plain\n\nService Unavailable";
+        }
+      }
+    );
+    expect(done).toEqual({
+      ok: false,
+      status: 503,
+      text: "Salesforce didn't answer just now. Try again in a moment; nothing was changed."
+    });
+    expect(seen).toHaveLength(1);
+    expect(seen[0]).toMatch(/^\/services\/data\//);
+  });
+
   it("olderConnectorSaysSo: a downloaded copy older than the camp's does nothing and says to download it again", async () => {
     expect(tooOld({ version: "1.0.50" }, "1.0.48")).toBe(
       "This copy of Shoresh's connector (1.0.48) is older than your camp's Shoresh (1.0.50), so nothing was done. Download it again from Settings in Shoresh."

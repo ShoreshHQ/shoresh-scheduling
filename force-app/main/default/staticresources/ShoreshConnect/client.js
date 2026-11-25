@@ -311,6 +311,8 @@ async function callOnce(
     return undo ? { ...response, undo } : response;
   };
   const said = await camp(org, asked);
+  // Not read: where Shoresh is (its namespace) isn't known, so nothing is sent (API-1.155).
+  if (said.read === false) return { ok: false, status: 503, text: CAMP_UNREAD };
   const old = tooOld(said);
   if (old) return { ok: false, status: 400, text: old };
   const { namespace } = said;
@@ -622,6 +624,10 @@ const SIGNED_OUT =
 // Signed in, but Salesforce didn't answer (API-1.126): never a sign-in, and never "nothing changed".
 const NO_ANSWER =
   "Salesforce didn't answer just now, so Shoresh can't tell whether this was done. Try again in a moment; if it was a change, read first to see whether it went through.";
+
+// Salesforce didn't say where Shoresh is, so the action was never sent (API-1.155).
+const CAMP_UNREAD =
+  "Salesforce didn't answer just now. Try again in a moment; nothing was changed.";
 
 // The screens' own sentence for it (shoreshErrors TOO_BIG; connect.test.js keeps the two the same).
 const TOO_BIG =

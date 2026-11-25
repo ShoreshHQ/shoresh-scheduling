@@ -9,7 +9,13 @@
  * screen's own save (POST /v1/import_last_year) with the seen, compared while the season is
  * locked. Questions that can wait are left for later, as Add does ("Add 58, 3 for later").
  */
-const { fileOf, fromCommandLine, aiWord, engineWord } = require("./imports");
+const {
+  fileOf,
+  fromCommandLine,
+  notJson,
+  aiWord,
+  engineWord
+} = require("./imports");
 const { asTheScreenReads, changedSince, refused } = require("./common");
 
 /** The person's answers over the review's: an empty answer takes one back (an unticked place). */
@@ -247,11 +253,12 @@ function savedText(m, t, result, plan) {
 
 async function importLastYear(capability, given, { read, send, answer, load }) {
   const input = fromCommandLine(given);
+  if (input.unreadable) return notJson(input.unreadable);
   if (typeof input.layouts === "string") {
     try {
       input.layouts = JSON.parse(input.layouts);
     } catch {
-      input.layouts = null;
+      return notJson("layouts");
     }
   }
   if (input.save && !String(input.seen ?? "").trim()) {

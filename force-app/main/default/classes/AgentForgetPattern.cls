@@ -19,9 +19,10 @@ global with sharing class AgentForgetPattern implements AgentRequest.Change, Age
   /** Which pattern it forgets (API-1.106); the forget itself checks it is still as seen. */
   public String preview(Map<String, Object> body) {
     partsOf(AgentLearned.raw(body, 'pattern'));
-    return 'This forgets the pattern ' +
+    // Quoted, so the connector can name it as the screen shows it (connect/learned.js).
+    return 'This forgets the pattern "' +
       AgentLearned.raw(body, 'pattern') +
-      ': the answers saved until now no longer count toward it (they stay remembered), so imports stop suggesting or filling in from it until it is learned again.';
+      '": the answers saved until now no longer count toward it (they stay remembered), so imports stop suggesting or filling in from it until it is learned again.';
   }
 
   public String run(Map<String, Object> body) {
