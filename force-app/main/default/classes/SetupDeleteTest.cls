@@ -149,6 +149,7 @@ private class SetupDeleteTest {
     System.runAs(ShoreshTestData.scheduler()) {
       Map<String, Id> ids = GeneratedTestData.camp();
       SetupDelete.refuseCount = true;
+      ErrorCodes.thisRequest = null;
       Test.startTest();
       SetupDelete.Preview preview = SetupDelete.preview(ids.get('Group B'));
       Test.stopTest();

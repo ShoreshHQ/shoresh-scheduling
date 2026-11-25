@@ -53,4 +53,41 @@ private class ImportUndoLaterTest {
       Assert.isTrue(edited, 'the first later import changed it');
     }
   }
+
+  // INGEST-5.10: more later imports than Undo can read are said, and nothing is undone.
+  @IsTest
+  static void moreLaterImportsThanCanBeReadAreSaid() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      Season__c season = ShoreshTestData.season(
+        ShoreshTestData.camp('Maple Grove (made up)').Id,
+        'Summer 2027'
+      );
+      Import__c done = new Import__c(Season__c = season.Id, Changed__c = '[]');
+      Database.insert(done, AccessLevel.SYSTEM_MODE);
+      Test.setCreatedDate(done.Id, Datetime.now().addDays(-1));
+      done = [
+        SELECT Id, Season__c, CreatedDate
+        FROM Import__c
+        WHERE Id = :done.Id
+        WITH SYSTEM_MODE
+      ];
+      Database.insert(
+        new Import__c(Season__c = season.Id, Changed__c = '[]'),
+        AccessLevel.SYSTEM_MODE
+      );
+      ImportUndoLater.queryBudget = 0;
+      String said;
+      Test.startTest();
+      try {
+        new ImportUndoLater(done);
+      } catch (ShoreshException e) {
+        said = e.getMessage();
+      }
+      Test.stopTest();
+      Assert.areEqual(
+        'There have been too many imports since this one for Shoresh to check what they changed, so nothing was undone.',
+        said
+      );
+    }
+  }
 }

@@ -190,7 +190,8 @@ Each rule is clue, meaning, example, test.
     and `ImportUndoLog` reverses it. Undoing a copy takes the new season away with everything in it, and the
     screen goes back to the camp. Anything changed since, or in use by something the import did
     not make, is kept and named, never removed silently (every later import still standing is
-    read for what it changed, however many there are): that includes every group, time block,
+    read for what it changed; more than Undo can read in one go is said, and nothing is undone):
+    that includes every group, time block,
     activity and place named by a schedule built, locked, placed by hand or published since. The
     import's own kept version is the import's, and goes with it. A copied season that keeps
     anything stays, with what it keeps. A holding record of a group with no division (DIV-1.1) comes back
@@ -202,7 +203,7 @@ Each rule is clue, meaning, example, test.
     camp holds exactly what it held before the copy. Edit a copied activity first, and Undo keeps
     it, and "Summer 2027" with it, and says so.
     Test: Apex `ImportUndoBuiltWeeksTest` `undoKeepsWhatAWeekBuiltSinceUses`;
-    `ImportUndoLaterTest` `everyLaterImportIsRead`; `ImportUndoAsItWasTest`
+    `ImportUndoLaterTest` `everyLaterImportIsRead`, `moreLaterImportsThanCanBeReadAreSaid`; `ImportUndoAsItWasTest`
     `ingest510UndoingCopySeasonTakesTheWholeCopyAway`,
     `ingest510ACopyChangedSinceKeepsTheChangeAndItsSeason`,
     `ingest510WhatTriggersWorkedOutGoesBackToo`; `AgentCopyAndMatchTest`
