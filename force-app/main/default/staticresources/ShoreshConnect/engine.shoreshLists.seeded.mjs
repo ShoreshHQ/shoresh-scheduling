@@ -1,13 +1,7 @@
+import { listed } from "./engine.shoreshTerms.shoreshTerms.mjs";
+
 // A new special day's start, in words (SPECIAL-2.1, SPECIAL-2.6): said on Camp Setup, in Import a
 // list's summary and to an AI (connect/imports.js), so all three say the same.
-
-/** "Lunch, Rest and Flag". */
-function listed(names) {
-  if (names.length <= 1) {
-    return names.join("");
-  }
-  return `${names.slice(0, -1).join(", ")} and ${names[names.length - 1]}`;
-}
 
 /**
  * What a special day just added left out of the regular day (SpecialDaySeed.Seed), and why

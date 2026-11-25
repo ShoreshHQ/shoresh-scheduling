@@ -11,6 +11,7 @@
  * (GroupPlacements), asked once per group the first time a move would leave an activity.
  */
 import { CHILDREN, childRows, FIELD } from "c/shoreshSchema";
+import { listed } from "c/shoreshTerms";
 
 /** The lists (record Id -> name) that name this division and not the group itself. */
 function namingDivision(divisionId, groupId, activities, recurringActivities) {
@@ -43,12 +44,6 @@ function onlyIn(lists, other) {
     .sort();
 }
 
-function nameList(names) {
-  return names.length < 2
-    ? names.join("")
-    : `${names.slice(0, -1).join(", ")} and ${names[names.length - 1]}`;
-}
-
 /** "4 cells" or "1 cell". */
 function cells(count) {
   return `${count} ${count === 1 ? "cell" : "cells"}`;
@@ -75,8 +70,8 @@ function placedNote(placements, leftActivities, name) {
   if (!kept.length) {
     return more;
   }
-  const listed = nameList(kept.map((k) => `${k.name} (${cells(k.cells)})`));
-  return ` Its schedules keep ${listed}, marked “Not set up for ${name}”.${more}`;
+  const keeps = listed(kept.map((k) => `${k.name} (${cells(k.cells)})`));
+  return ` Its schedules keep ${keeps}, marked “Not set up for ${name}”.${more}`;
 }
 
 /**
@@ -130,10 +125,10 @@ export function moveNote(values, original, context) {
   }
   const parts = [];
   if (left.length) {
-    parts.push(`is no longer in ${nameList(left)} (for ${from})`);
+    parts.push(`is no longer in ${listed(left)} (for ${from})`);
   }
   if (joined.length) {
-    parts.push(`is now in ${nameList(joined)} (for ${to})`);
+    parts.push(`is now in ${listed(joined)} (for ${to})`);
   }
   return parts.length
     ? `Moves to ${to}: ${name} ${parts.join(" and ")}.${placedNote(
