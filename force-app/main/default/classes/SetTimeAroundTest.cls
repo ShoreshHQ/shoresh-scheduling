@@ -89,7 +89,7 @@ private class SetTimeAroundTest {
       Integer queries = Limits.getQueries();
       Test.stopTest();
       Assert.isNotNull(result.id);
-      Assert.isTrue(queries < 60, 'Queries: ' + queries);
+      Assert.isTrue(queries < 32, 'Queries: ' + queries);
 
       List<RecurringActivity__c> pieces = [
         SELECT Id, TimeBlock__c, Length__c, Monday__c, Tuesday__c, Location__c

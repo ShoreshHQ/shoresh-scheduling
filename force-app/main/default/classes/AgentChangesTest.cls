@@ -130,7 +130,7 @@ private class AgentChangesTest {
       Assert.areEqual('Placed Soccer · ' + WHERE_A, undo.get('label'));
       Assert.areEqual(String.valueOf(draftId), undo.get('schedule'));
       Assert.areEqual(GeneratedTestData.weekNow(), undo.get('seen'));
-      Assert.isTrue(used < 60, 'A cell change used ' + used + ' queries');
+      Assert.isTrue(used < 33, 'A cell change used ' + used + ' queries');
     }
   }
 

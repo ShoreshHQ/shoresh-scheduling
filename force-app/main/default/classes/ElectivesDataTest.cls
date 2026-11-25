@@ -737,7 +737,7 @@ private class ElectivesDataTest {
           WITH USER_MODE
         ]
       );
-      Assert.isTrue(used <= 60, 'Queries to copy a season: ' + used);
+      Assert.isTrue(used <= 43, 'Queries to copy a season: ' + used);
     }
   }
 }

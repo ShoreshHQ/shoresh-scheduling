@@ -369,7 +369,7 @@ private class AgentCopyAndMatchTest {
         Assert.areEqual(SetupMatch.BEFORE_UPDATE, version.Name);
         Assert.areEqual(ManualVersions.AUTO_SAVED, version.VersionReason__c);
       }
-      Assert.isTrue(queries < 50, 'Update used ' + queries + ' queries');
+      Assert.isTrue(queries < 49, 'Update used ' + queries + ' queries');
     }
   }
 

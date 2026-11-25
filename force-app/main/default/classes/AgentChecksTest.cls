@@ -75,7 +75,9 @@ private class AgentChecksTest {
       Integer queries = Limits.getQueries();
       Test.stopTest();
       Assert.areEqual(200, after[0], String.valueOf(after[1]));
-      Assert.isTrue(queries < 100, queries + ' queries');
+      // Bound: the screen's own reads of the season's setup, the week and its setup changes, each
+      // on its own: measured 58 (2026-11-25), over the 50 the bar asks until they share one read.
+      Assert.isTrue(queries < 62, queries + ' queries');
       Map<String, Object> body = (Map<String, Object>) after[1];
       Assert.areEqual(
         new Set<String>{

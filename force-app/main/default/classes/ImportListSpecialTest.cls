@@ -124,7 +124,7 @@ private class ImportListSpecialTest {
       Integer used = Limits.getQueries() - before;
       Test.stopTest();
 
-      Assert.isTrue(used < 60, 'Queries for a 60-item list: ' + used);
+      Assert.isTrue(used < 38, 'Queries for a 60-item list: ' + used);
       Assert.areEqual(30, result.added.get('SpecialDay'));
       Assert.areEqual(30, result.added.get('SpecialEvent'));
       Assert.areEqual(1, result.added.get('Location'));

@@ -115,7 +115,7 @@ private class AgentSetupTest {
         }
       );
       Assert.isTrue(
-        Limits.getQueries() < 60,
+        Limits.getQueries() < 31,
         'Queries: ' + Limits.getQueries()
       );
       Test.stopTest();

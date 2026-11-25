@@ -164,7 +164,7 @@ private class AgentGuessesTest {
       // Of six: Swim's how often and Bunk 1's division looked at, forgotten as the mark forgets.
       Assert.areEqual(4, remembered());
       Assert.isTrue(
-        queries < 50,
+        queries < 31,
         'One Looks right stays well under 100 queries: ' + queries
       );
     }

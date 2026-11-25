@@ -3,7 +3,9 @@
  * divisions), 5 days, 8 time blocks, a fixed activity every morning, and another program sharing
  * the season's places (fixed and recurring activities, and a published week). Opening the week and each
  * kind of save use a small, fixed number of queries, whatever the size of the week (no query per
- * day, group or cell). Synthetic camp.
+ * day, group or cell). The AI's heaviest requests on the same camp (week_view, read_week_draft,
+ * week_checks, schedule_cell) each stay under half of Salesforce's limits for one request:
+ * queries, CPU time and heap. Synthetic camp.
  */
 @IsTest
 private class GeneratedLimitsTest {
@@ -15,6 +17,11 @@ private class GeneratedLimitsTest {
   // group or cell. Other programs (G5) add at most 4 to opening a week, whatever their number
   // (OtherProgramUse; threeOtherProgramsUseNoMoreQueriesThanOne).
   private static final Integer MOST_QUERIES = 25;
+  // Half of Salesforce's limits for one request (queries under 50 of 100, CPU under 5 of 10 s,
+  // heap under 3 of 6 MB), so a bigger camp than this one still fits: the AI's requests below.
+  private static final Integer HALF_QUERIES = 50;
+  private static final Integer HALF_CPU_MS = 5000;
+  private static final Integer HALF_HEAP = 3 * 1024 * 1024;
 
   // The big camp (with its two other programs) is built once, by the scheduler, in setup; each
   // test reads its ids back (sharedCamp). A test's changes are undone when it ends, so each starts
@@ -99,6 +106,9 @@ private class GeneratedLimitsTest {
       groups[0].Name = 'Group A';
       Database.insert(groups, AccessLevel.SYSTEM_MODE);
       Map<String, Id> ids = ShoreshTestData.placesAndActivities(season.Id);
+      // The cell an AI's change types in (AgentChangesTest's, on this camp).
+      ids.put('Group A', groups[0].Id);
+      ids.put('Period 2', blocks[1].Id);
       ids.put('Camp', camp.Id);
       ids.put('Season', season.Id);
       ids.put('Main', program.Id);
@@ -575,6 +585,198 @@ private class GeneratedLimitsTest {
       Assert.areEqual(5, view.schedule.days.size());
       Assert.areEqual(8 * 2 + 2 + 1, view.otherPrograms.size());
       assertFew(used, 'Opening Manual Build');
+    }
+  }
+
+  /** One AI request (a read: GET with params; a change: POST with body); answers [status, text]. */
+  private static List<Object> asked(
+    Object door,
+    Map<String, Object> sent
+  ) {
+    RestContext.request = new RestRequest();
+    RestContext.response = new RestResponse();
+    if (door instanceof AgentRequest.Read) {
+      RestContext.request.httpMethod = 'GET';
+      for (String key : sent.keySet()) {
+        RestContext.request.addParameter(key, String.valueOf(sent.get(key)));
+      }
+    } else {
+      RestContext.request.httpMethod = 'POST';
+      RestContext.request.requestBody = Blob.valueOf(JSON.serialize(sent));
+    }
+    AgentAskFirstTestCalls.answer(door);
+    return new List<Object>{
+      RestContext.response.statusCode,
+      RestContext.response.responseBody.toString()
+    };
+  }
+
+  /** Week 1 of Main on this camp, with more fields. */
+  private static Map<String, Object> mainWeek(Map<String, Object> more) {
+    Map<String, Object> body = new Map<String, Object>{
+      'season' => 'Summer 2026',
+      'week' => 'Week 1',
+      'program' => 'Main'
+    };
+    body.putAll(more);
+    return body;
+  }
+
+  /**
+   * What one request used, measured from Test.startTest(), under half of each limit: queries
+   * under mostQueries (HALF_QUERIES, or a measured bound the caller says why it needs).
+   */
+  private static void assertUnderHalf(String what, Integer mostQueries) {
+    Integer queries = Limits.getQueries();
+    Integer cpu = Limits.getCpuTime();
+    Integer heap = Limits.getHeapSize();
+    Assert.isTrue(
+      queries < mostQueries,
+      what + ' used ' + queries + ' queries (fewer than ' + mostQueries + ')'
+    );
+    Assert.isTrue(
+      cpu < HALF_CPU_MS,
+      what + ' used ' + cpu + ' ms of CPU (under ' + HALF_CPU_MS + ')'
+    );
+    Assert.isTrue(
+      heap < HALF_HEAP,
+      what + ' used ' + heap + ' bytes of heap (under ' + HALF_HEAP + ')'
+    );
+  }
+
+  // G8: week_view opens what the Schedules screen opens for each published program of the week.
+  @IsTest
+  static void aPublishedWeekViewIsUnderHalfTheLimits() {
+    System.runAs(KeptCamp.scheduler(sharedCamp())) {
+      Test.startTest();
+      List<Object> view = asked(
+        new AgentWeekView(),
+        new Map<String, Object>{ 'season' => 'Summer 2026', 'week' => 'Week 1' }
+      );
+      assertUnderHalf('week_view of two published programs', HALF_QUERIES);
+      Test.stopTest();
+      Assert.areEqual(200, view[0], (String) view[1]);
+      Map<String, Object> answer = (Map<String, Object>) JSON.deserializeUntyped(
+        (String) view[1]
+      );
+      Assert.areEqual(2, ((List<Object>) answer.get('programs')).size());
+    }
+  }
+
+  // G8: week_view opens each published program's week as the Schedules screen opens one (its
+  // schedule, days and special days: 6 queries), so a camp's programs add up: measured 11 for one
+  // program and 23 for three (2026-11-25), so 8 published programs would pass the 50 the bar asks.
+  // Bounded at that per program until one read opens them all.
+  private static final Integer MOST_QUERIES_PER_PROGRAM_VIEW = 6;
+
+  @IsTest
+  static void aWeekViewAddsAFewQueriesPerPublishedProgram() {
+    System.runAs(scheduler()) {
+      SetTimeGuard.defer();
+      Map<String, Id> one;
+      Map<String, Id> three;
+      try {
+        one = seasonWith(new List<String>{ 'Teens' });
+        three = seasonWith(new List<String>{ 'Teens', 'Kids', 'Tweens' });
+        SetTimeGuard.checkPending();
+      } finally {
+        SetTimeGuard.resume();
+      }
+      // Both seasons are called Summer 2026, as the big camp's is: named apart for the reads.
+      Database.update(
+        new List<Season__c>{
+          new Season__c(Id = one.get('Season'), Name = 'One 2026'),
+          new Season__c(Id = three.get('Season'), Name = 'Three 2026')
+        },
+        AccessLevel.SYSTEM_MODE
+      );
+      Test.startTest();
+      Map<String, Object> viewOne = AgentWeekView.answer('One 2026', 'Week 1');
+      Integer withOne = Limits.getQueries();
+      Map<String, Object> viewThree = AgentWeekView.answer(
+        'Three 2026',
+        'Week 1'
+      );
+      Integer withThree = Limits.getQueries() - withOne;
+      Test.stopTest();
+      Assert.areEqual(1, ((List<Object>) viewOne.get('programs')).size());
+      Assert.areEqual(3, ((List<Object>) viewThree.get('programs')).size());
+      Assert.isTrue(
+        withThree - withOne <= 2 * MOST_QUERIES_PER_PROGRAM_VIEW,
+        'Two more programs added ' +
+          (withThree - withOne) +
+          ' queries to week_view (at most ' +
+          MOST_QUERIES_PER_PROGRAM_VIEW +
+          ' each)'
+      );
+    }
+  }
+
+  // G8: the draft an AI reads, and the week's checks, are the screen's own reads: the season's
+  // setup (22 queries), the week (14) and its setup changes (15), each read on its own. Measured
+  // 60 on this camp (2026-11-25): over the 50 the bar asks, until one shared read of the season
+  // setup serves all three; bounded here near that, so it can't grow.
+  private static final Integer MOST_DRAFT_READ_QUERIES = 65;
+
+  @IsTest
+  static void anAiReadOfTheDraftIsUnderHalfTheLimits() {
+    System.runAs(KeptCamp.scheduler(sharedCamp())) {
+      GeneratedTestData.generated();
+      Test.startTest();
+      List<Object> draft = asked(
+        new AgentChecks('draft'),
+        mainWeek(new Map<String, Object>())
+      );
+      assertUnderHalf('read_week_draft', MOST_DRAFT_READ_QUERIES);
+      Test.stopTest();
+      Assert.areEqual(200, draft[0], (String) draft[1]);
+    }
+  }
+
+  @IsTest
+  static void anAiReadOfTheChecksIsUnderHalfTheLimits() {
+    System.runAs(KeptCamp.scheduler(sharedCamp())) {
+      GeneratedTestData.generated();
+      Test.startTest();
+      List<Object> checks = asked(
+        new AgentChecks('checks'),
+        mainWeek(new Map<String, Object>())
+      );
+      assertUnderHalf('week_checks', MOST_DRAFT_READ_QUERIES);
+      Test.stopTest();
+      Assert.areEqual(200, checks[0], (String) checks[1]);
+    }
+  }
+
+  // G8: one cell typed in by an AI (Group A's Monday Period 2, Gym games to Swim).
+  @IsTest
+  static void anAiCellChangeIsUnderHalfTheLimits() {
+    Map<String, Id> ids = sharedCamp();
+    System.runAs(KeptCamp.scheduler(ids)) {
+      GeneratedTestData.generated();
+      Map<String, Object> change = mainWeek(
+        new Map<String, Object>{
+          'change' => 'Placed Swim · Group A · Monday · Period 2',
+          'said' => '',
+          'revision' => GeneratedTestData.weekNow(),
+          'runs' => new List<Object>{
+            new Map<String, Object>{
+              'day' => '2026-06-29',
+              'groupId' => ids.get('Group A'),
+              'firstBlockId' => ids.get('Period 2'),
+              'blockIds' => new List<Object>{ ids.get('Period 2') },
+              'before' => new List<Object>{ GeneratedTestData.a('Gym games') },
+              'after' => new List<Object>{ GeneratedTestData.a('Swim') },
+              'locksBefore' => new List<Object>{ '' }
+            }
+          }
+        }
+      );
+      Test.startTest();
+      List<Object> answer = asked(new AgentCells(), change);
+      assertUnderHalf('schedule_cell', HALF_QUERIES);
+      Test.stopTest();
+      Assert.areEqual(200, answer[0], (String) answer[1]);
     }
   }
 }

@@ -189,7 +189,7 @@ private class ManualBuildTest {
         onItsOwn <= withSetup,
         'Open used ' + onItsOwn + ' queries; with setup read ' + withSetup
       );
-      Assert.isTrue(onItsOwn < 100, onItsOwn + ' queries');
+      Assert.isTrue(onItsOwn < 24, onItsOwn + ' queries');
       Assert.areEqual(started.setUpCells.size(), opened.setUpCells.size());
       Assert.isFalse(opened.setUpCells.isEmpty());
     }
