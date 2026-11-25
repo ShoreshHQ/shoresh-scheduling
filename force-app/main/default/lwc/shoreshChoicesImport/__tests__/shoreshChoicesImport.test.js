@@ -713,6 +713,81 @@ describe("c-shoresh-choices-import", () => {
     expect($(element, '[data-id="primary"]').disabled).toBe(false);
   });
 
+  it("ELECT-2.7: a recount that fails takes the old count and Import away, and answering again counts again", async () => {
+    const question = (index) => ({
+      index,
+      row: index + 2,
+      choices: [
+        { id: "c7", label: "Noa Oakhollow, Willow" },
+        { id: "c8", label: "Noa Oakhollow, Oak" }
+      ]
+    });
+    const asking = {
+      ...CHECK,
+      added: 0,
+      whichCamper: [question(0), question(1)]
+    };
+    checkChoices.mockResolvedValue(asking);
+    const element = await render();
+    await choose(element, "same.csv", SAME_NAME);
+    await click(element, '[data-id="primary"]');
+    await click(element, '[data-apart="apart-0"] [data-answer="different"]');
+    await click(element, '[data-id="primary"]');
+    const which = $$(element, "[data-which] lightning-combobox");
+    which[0].dispatchEvent(
+      new CustomEvent("change", { detail: { value: "c7" } })
+    );
+    await flush();
+    jest.spyOn(console, "error").mockImplementation(() => {});
+    checkChoices.mockRejectedValueOnce(new Error("timed out"));
+    which[1].dispatchEvent(
+      new CustomEvent("change", { detail: { value: "new" } })
+    );
+    await flush();
+    expect($(element, '[data-id="error"]').textContent).toMatch(
+      /^Couldn't count what this sheet imports\. Try again\. For support: /
+    );
+    // Never the count from before the answer, and nothing to press that would import another.
+    expect($(element, '[data-line="count"]')).toBeNull();
+    expect($(element, '[data-id="primary"]')).toBeNull();
+    // Counting again from card 2 that fails too still shows no count from before.
+    checkChoices.mockRejectedValueOnce(new Error("timed out"));
+    await click(element, '[data-id="back"]');
+    await click(element, '[data-id="primary"]');
+    expect($(element, '[data-line="count"]')).toBeNull();
+    expect($(element, '[data-id="primary"]')).toBeNull();
+    // Card 3 counted again: the questions are back, with the answers given.
+    checkChoices.mockResolvedValueOnce(asking);
+    await click(element, '[data-id="back"]');
+    await click(element, '[data-id="primary"]');
+    checkChoices.mockRejectedValueOnce(new Error("timed out"));
+    $$(element, "[data-which] lightning-combobox")[1].dispatchEvent(
+      new CustomEvent("change", { detail: { value: "new" } })
+    );
+    await flush();
+    expect($(element, '[data-line="count"]')).toBeNull();
+    // The questions stay, with the answers given: answering again counts again.
+    const still = $$(element, "[data-which] lightning-combobox");
+    expect(still.map((c) => c.value)).toEqual(["c7", "new"]);
+    checkChoices.mockResolvedValue({ ...asking, added: 1, known: 1 });
+    still[1].dispatchEvent(
+      new CustomEvent("change", { detail: { value: "new" } })
+    );
+    await flush();
+    const recount = JSON.parse(checkChoices.mock.calls.at(-1)[0].request);
+    expect(recount.campers.map((c) => [c.camperId, c.newCamper])).toEqual([
+      ["c7", undefined],
+      [undefined, true]
+    ]);
+    expect($(element, '[data-line="count"]').textContent).toContain(
+      "2 campers: 1 new, 1 already here"
+    );
+    expect($(element, '[data-id="primary"]').disabled).toBe(false);
+    // The failure's message went with it.
+    expect($(element, '[data-id="error"]')).toBeNull();
+    console.error.mockRestore();
+  });
+
   it("says a final run takes no new choices, with no Bring in", async () => {
     // As the server sends it: no run to bring into (runId null), the final one's name.
     checkChoices.mockResolvedValue({

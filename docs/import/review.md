@@ -70,7 +70,10 @@ Each rule is clue, meaning, example, test.
    will be asked next time you import these files"; Roots counts only the ones kept.
    The review says what Add saves: its notes (a week added from the season's dates) and its
    "Kept as a version" lines come from the setup as Add would save it, the questions that can
-   wait left out, so it never promises a week or version the save won't add.
+   wait left out, so it never promises a week or version the save won't add. When that setup
+   can't be worked out, Add stays off and the review says so where its counts would be ("This
+   file can't be added yet." with one support code), for as long as Add is off for it: never a
+   greyed Add with no reason.
    **The kept file** (review of #177): only the files the director chose, as read, linked to the
    import's record only (no other sharing), so it is visible to users who can see the season
    (an import is a detail of its season). It is kept only while its questions are open: it is
@@ -79,7 +82,8 @@ Each rule is clue, meaning, example, test.
    Test: "INGEST-5.5: Add saves what is settled; the open question is kept with the files, and
    nothing it decides is guessed"; "INGEST-5.5: an open division choice can wait for later, and
    its bunk is not guessed"; "INGEST-5.5: while a question waits, the review never promises a
-   week or version the save won't add"; Roots "INGEST-5.5: the last import's questions kept for later wait
+   week or version the save won't add"; planFails.test.js "INGEST-5.5: Add is off with the reason
+   and a support code, never greyed with none"; Roots "INGEST-5.5: the last import's questions kept for later wait
    on Roots"; Apex `ImportReviewTest` `ingest55OpenQuestionsAreKeptWithTheFilesAndShownOnRoots`.
    Counter-case: "an import with no questions left shows none".
 

@@ -133,6 +133,9 @@ export default class ShoreshChoicesImport extends LightningElement {
   // Counts asked again after an answer (handleWhich): the latest one's number, and while it runs.
   recounts = 0;
   recounting = false;
+  // The latest recount failed: the count shown would be from before the answer.
+  countFailed = false;
+  countError = null;
   check = null;
   done = null;
   // A selector that takes the cursor at the next render.
@@ -605,7 +608,7 @@ export default class ShoreshChoicesImport extends LightningElement {
     });
   }
   get lines() {
-    if (!this.check || !this.reading) return [];
+    if (!this.check || !this.reading || this.countFailed) return [];
     const request = this.request;
     if (!request) return [];
     return countLines({
@@ -652,7 +655,9 @@ export default class ShoreshChoicesImport extends LightningElement {
   }
   /**
    * An answer counts again with it (hand changes kept, who is on the sheet), in place. Only the
-   * latest count is kept, and Import waits for it.
+   * latest count is kept, and Import waits for it. A count that fails takes the old count and
+   * Import away (the questions stay, so changing an answer counts again), so Import never brings
+   * in something other than what the card says.
    */
   async handleWhich(event) {
     const key = event.currentTarget.dataset.key;
@@ -663,10 +668,19 @@ export default class ShoreshChoicesImport extends LightningElement {
       const check = await checkChoices({
         request: JSON.stringify(this.request)
       });
-      if (mine === this.recounts) this.check = check;
+      if (mine === this.recounts) {
+        this.check = check;
+        // The failed recount's message goes with it; any other stays.
+        if (this.countFailed && this.error === this.countError) {
+          this.error = null;
+        }
+        this.countFailed = false;
+      }
     } catch (e) {
       if (mine === this.recounts) {
-        this.error = failed("Couldn't count what this sheet imports.", e);
+        this.countFailed = true;
+        this.countError = failed("Couldn't count what this sheet imports.", e);
+        this.error = this.countError;
       }
     } finally {
       if (mine === this.recounts) this.recounting = false;
@@ -695,7 +709,13 @@ export default class ShoreshChoicesImport extends LightningElement {
   get showsPrimary() {
     if (!this.isCards) return false;
     if (this.step < STEPS) return true;
-    return !!this.check && !this.refused && !this.isFinal && !this.whichLeft;
+    return (
+      !!this.check &&
+      !this.countFailed &&
+      !this.refused &&
+      !this.isFinal &&
+      !this.whichLeft
+    );
   }
   get primaryDisabled() {
     return this.isBusy || this.recounting || !this.canGoOn;
@@ -756,6 +776,7 @@ export default class ShoreshChoicesImport extends LightningElement {
     const request = this.request;
     if (!request) return;
     this.phase = "checking";
+    this.countFailed = false;
     try {
       this.check = await checkChoices({ request: JSON.stringify(request) });
       this.phase = "card";
@@ -764,6 +785,8 @@ export default class ShoreshChoicesImport extends LightningElement {
         : "Ready to import.";
     } catch (e) {
       this.phase = "card";
+      // Never a count from before: what is shown is what Import would do, or nothing.
+      this.check = null;
       this.error = failed("Couldn't count what this sheet imports.", e);
     }
   }
@@ -775,7 +798,8 @@ export default class ShoreshChoicesImport extends LightningElement {
       this.refused ||
       this.isFinal ||
       this.whichLeft ||
-      this.recounting
+      this.recounting ||
+      this.countFailed
     )
       return;
     this.phase = "saving";
