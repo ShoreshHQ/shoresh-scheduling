@@ -208,9 +208,9 @@ private class ArchivedSeasonsTest {
       Season__c season = ShoreshTestData.season(camp.Id, 'Summer 2026');
       Program__c program = ShoreshTestData.program(season.Id, 'Main');
       Division__c division = ShoreshTestData.division(program.Id, 'Juniors');
-      Test.startTest();
       Assert.isFalse(ArchivedSeasons.isArchived(season.Id));
       ShoreshTestData.season(camp.Id, 'Summer 2027');
+      Test.startTest();
       Integer before = Limits.getQueries();
       List<Group__c> groups = new List<Group__c>{
         new Group__c(Division__c = division.Id, Name = 'Group A')

@@ -940,7 +940,6 @@ private class GeneratedLocksTest {
     System.runAs(ShoreshTestData.scheduler()) {
       Map<String, Id> ids = GeneratedTestData.camp();
       Id draftId = GeneratedTestData.generated();
-      Test.startTest();
       // Monday's saved day names a group that is still in Salesforce but isn't in Main's setup
       // (another program's), and one that has been deleted. Only the deleted one is marked, on
       // Generated and on the Schedules page alike.
@@ -979,6 +978,7 @@ private class GeneratedLocksTest {
         }
       );
       Database.delete(deleted, AccessLevel.SYSTEM_MODE);
+      Test.startTest();
       Integer last = 3;
       Integer removed = 4;
       Assert.isFalse(GeneratedTestData.inputs().days[0].groups[last].gone);

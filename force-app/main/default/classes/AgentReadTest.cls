@@ -97,36 +97,39 @@ private class AgentReadTest {
   static void noSeasonNamedReadsTheSeasonTheScreensOpenOn() {
     IncomingTestData camp = new IncomingTestData();
     schedule(camp, 'Published', grid(camp));
-    Season__c older = ShoreshTestData.season(
-      camp.season.Camp__c,
-      'Summer 2025'
-    );
-    older.StartDate__c = Date.newInstance(2025, 6, 30);
-    Database.update(older, AccessLevel.SYSTEM_MODE);
-    Map<String, Object> answer = get(
-      new OutgoingGroupSchedule(),
-      new Map<String, String>{ 'week' => 'Week 1' }
-    );
-    Assert.areEqual(200, answer.get('status'), String.valueOf(answer));
-    Assert.areEqual('Summer 2026', answer.get('season'));
-    Assert.areEqual('Summer 2026', AgentSeasons.answer().get('opens_on'));
+    User scheduler = camp.sender('Shoresh_Scheduler');
+    System.runAs(scheduler) {
+      Season__c older = ShoreshTestData.season(
+        camp.season.Camp__c,
+        'Summer 2025'
+      );
+      older.StartDate__c = Date.newInstance(2025, 6, 30);
+      Database.update(older, AccessLevel.SYSTEM_MODE);
+      Map<String, Object> answer = get(
+        new OutgoingGroupSchedule(),
+        new Map<String, String>{ 'week' => 'Week 1' }
+      );
+      Assert.areEqual(200, answer.get('status'), String.valueOf(answer));
+      Assert.areEqual('Summer 2026', answer.get('season'));
+      Assert.areEqual('Summer 2026', AgentSeasons.answer().get('opens_on'));
 
-    // Camp Aspen comes first by name, as on the screens: its one season.
-    Id aspen = ShoreshTestData.camp('Camp Aspen').Id;
-    ShoreshTestData.season(aspen, 'Aspen 2026');
-    Assert.areEqual('Aspen 2026', AgentSeasons.answer().get('opens_on'));
-    // Two of its seasons starting the same day: not one season, so it asks.
-    ShoreshTestData.season(aspen, 'Aspen day camp 2026');
-    answer = get(
-      new OutgoingGroupSchedule(),
-      new Map<String, String>{ 'week' => 'Week 1' }
-    );
-    Assert.areEqual(400, answer.get('status'));
-    Assert.areEqual(
-      'Say which season (season). Seasons you can see: Aspen 2026 (Camp Aspen), Aspen day camp 2026 (Camp Aspen), Summer 2026 (Camp Willow), Summer 2025 (Camp Willow).',
-      answer.get('message')
-    );
-    Assert.isNull(AgentSeasons.answer().get('opens_on'));
+      // Camp Aspen comes first by name, as on the screens: its one season.
+      Id aspen = ShoreshTestData.camp('Camp Aspen').Id;
+      ShoreshTestData.season(aspen, 'Aspen 2026');
+      Assert.areEqual('Aspen 2026', AgentSeasons.answer().get('opens_on'));
+      // Two of its seasons starting the same day: not one season, so it asks.
+      ShoreshTestData.season(aspen, 'Aspen day camp 2026');
+      answer = get(
+        new OutgoingGroupSchedule(),
+        new Map<String, String>{ 'week' => 'Week 1' }
+      );
+      Assert.areEqual(400, answer.get('status'));
+      Assert.areEqual(
+        'Say which season (season). Seasons you can see: Aspen 2026 (Camp Aspen), Aspen day camp 2026 (Camp Aspen), Summer 2026 (Camp Willow), Summer 2025 (Camp Willow).',
+        answer.get('message')
+      );
+      Assert.isNull(AgentSeasons.answer().get('opens_on'));
+    }
   }
 
   // API-1.108: a season copied for next summer doesn't become where unnamed requests go. With two
@@ -136,83 +139,95 @@ private class AgentReadTest {
   static void twoSeasonsNotEndedYetAreAskedAboutAndTheSeasonUsedIsSaid() {
     IncomingTestData camp = new IncomingTestData();
     schedule(camp, 'Published', grid(camp));
-    Map<String, Object> named = get(
-      new OutgoingGroupSchedule(),
-      new Map<String, String>{ 'week' => 'Week 1' }
-    );
-    camp.season.StartDate__c = Date.today().addDays(-3);
-    camp.season.EndDate__c = Date.today().addDays(30);
-    Database.update(camp.season, AccessLevel.SYSTEM_MODE);
-    Season__c copy = ShoreshTestData.season(camp.season.Camp__c, 'Summer 2027');
-    copy.StartDate__c = Date.today().addDays(365);
-    copy.EndDate__c = Date.today().addDays(400);
-    Database.update(copy, AccessLevel.SYSTEM_MODE);
-    Map<String, Object> unnamed = get(
-      new OutgoingGroupSchedule(),
-      new Map<String, String>{ 'week' => 'Week 1' }
-    );
-    Assert.areEqual(200, named.get('status'), String.valueOf(named));
-    Assert.areEqual('Summer 2026', named.get('season'));
-    Assert.areEqual(400, unnamed.get('status'), String.valueOf(unnamed));
-    Assert.areEqual(
-      'Say which season (season): more than one hasn\'t ended yet, so Shoresh doesn\'t pick one. Seasons you can see: Summer 2027, Summer 2026.',
-      unnamed.get('message')
-    );
-    Assert.isNull(AgentSeasons.answer().get('opens_on'));
+    User scheduler = camp.sender('Shoresh_Scheduler');
+    System.runAs(scheduler) {
+      Map<String, Object> named = get(
+        new OutgoingGroupSchedule(),
+        new Map<String, String>{ 'week' => 'Week 1' }
+      );
+      camp.season.StartDate__c = Date.today().addDays(-3);
+      camp.season.EndDate__c = Date.today().addDays(30);
+      Database.update(camp.season, AccessLevel.SYSTEM_MODE);
+      Season__c copy = ShoreshTestData.season(
+        camp.season.Camp__c,
+        'Summer 2027'
+      );
+      copy.StartDate__c = Date.today().addDays(365);
+      copy.EndDate__c = Date.today().addDays(400);
+      Database.update(copy, AccessLevel.SYSTEM_MODE);
+      Map<String, Object> unnamed = get(
+        new OutgoingGroupSchedule(),
+        new Map<String, String>{ 'week' => 'Week 1' }
+      );
+      Assert.areEqual(200, named.get('status'), String.valueOf(named));
+      Assert.areEqual('Summer 2026', named.get('season'));
+      Assert.areEqual(400, unnamed.get('status'), String.valueOf(unnamed));
+      Assert.areEqual(
+        'Say which season (season): more than one hasn\'t ended yet, so Shoresh doesn\'t pick one. Seasons you can see: Summer 2027, Summer 2026.',
+        unnamed.get('message')
+      );
+      Assert.isNull(AgentSeasons.answer().get('opens_on'));
+    }
   }
 
   // API-1.108: a refusal made before the season is looked up still says the season asked for.
   @IsTest
   static void aRefusalBeforeTheSeasonIsFoundStillSaysIt() {
-    new IncomingTestData();
-    RestRequest request = new RestRequest();
-    request.requestURI = '/services/apexrest/v1/update_to_match_setup';
-    request.httpMethod = 'POST';
-    request.requestBody = Blob.valueOf(
-      JSON.serialize(
-        new Map<String, Object>{
-          'season' => 'Summer 2026',
-          'week' => 'Week 1',
-          'changes' => new List<Object>()
-        }
-      )
-    );
-    RestContext.request = request;
-    RestContext.response = new RestResponse();
-    AgentUpdateToMatch.post();
-    Map<String, Object> answer = (Map<String, Object>) JSON.deserializeUntyped(
-      RestContext.response.responseBody.toString()
-    );
-    Assert.areNotEqual(200, RestContext.response.statusCode);
-    Assert.areEqual(
-      'Summer 2026',
-      answer.get('season'),
-      String.valueOf(answer)
-    );
+    IncomingTestData camp = new IncomingTestData();
+    User scheduler = camp.sender('Shoresh_Scheduler');
+    System.runAs(scheduler) {
+      RestRequest request = new RestRequest();
+      request.requestURI = '/services/apexrest/v1/update_to_match_setup';
+      request.httpMethod = 'POST';
+      request.requestBody = Blob.valueOf(
+        JSON.serialize(
+          new Map<String, Object>{
+            'season' => 'Summer 2026',
+            'week' => 'Week 1',
+            'changes' => new List<Object>()
+          }
+        )
+      );
+      RestContext.request = request;
+      RestContext.response = new RestResponse();
+      AgentUpdateToMatch.post();
+      Map<String, Object> answer = (Map<String, Object>) JSON.deserializeUntyped(
+        RestContext.response.responseBody.toString()
+      );
+      Assert.areNotEqual(200, RestContext.response.statusCode);
+      Assert.areEqual(
+        'Summer 2026',
+        answer.get('season'),
+        String.valueOf(answer)
+      );
+    }
   }
 
   // API-1.108: a read's refusal says the season it used too (here a season with no electives).
   @IsTest
   static void aReadsRefusalSaysTheSeasonItUsed() {
-    new IncomingTestData();
-    RestRequest request = new RestRequest();
-    request.requestURI = '/services/apexrest/v1/elective_seats_now';
-    request.httpMethod = 'GET';
-    request.params.putAll(
-      new Map<String, String>{ 'season' => 'Summer 2026', 'week' => 'Week 1' }
-    );
-    RestContext.request = request;
-    RestContext.response = new RestResponse();
-    AgentElectiveSeatsNow.get();
-    Map<String, Object> answer = (Map<String, Object>) JSON.deserializeUntyped(
-      RestContext.response.responseBody.toString()
-    );
-    Assert.areEqual(
-      400,
-      RestContext.response.statusCode,
-      String.valueOf(answer)
-    );
-    Assert.areEqual('Summer 2026', answer.get('season'));
+    IncomingTestData camp = new IncomingTestData();
+    User scheduler = camp.sender('Shoresh_Scheduler');
+    System.runAs(scheduler) {
+      RestRequest request = new RestRequest();
+      request.requestURI = '/services/apexrest/v1/elective_seats_now';
+      request.httpMethod = 'GET';
+      request.params.putAll(
+        new Map<String, String>{ 'season' => 'Summer 2026', 'week' => 'Week 1' }
+      );
+      RestContext.request = request;
+      RestContext.response = new RestResponse();
+      AgentElectiveSeatsNow.get();
+      Map<String, Object> answer = (Map<String, Object>) JSON.deserializeUntyped(
+        RestContext.response.responseBody.toString()
+      );
+      Assert.areEqual(
+        400,
+        RestContext.response.statusCode,
+        String.valueOf(answer)
+      );
+      Assert.areEqual('Summer 2026', answer.get('season'));
+    }
   }
 
   // API-1.25: a season or week name that isn't there comes back with the names that are.

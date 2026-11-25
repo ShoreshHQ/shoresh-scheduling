@@ -543,6 +543,8 @@ private class AgentBuildTest {
       Map<String, Object> noSuchWeek = week(
         new Map<String, Object>{ 'week' => 'Week 9' }
       );
+      // A second program, so a request naming none is asked which.
+      ShoreshTestData.program(seasonId, 'Teens');
       Test.startTest();
       // Read once a request (CLAUDE.md #60): the week refusal costs the season's, the week's
       // and the camp's own query, the camp words one more when read cold.
@@ -553,7 +555,6 @@ private class AgentBuildTest {
       before = Limits.getQueries();
       send('build_week', noSuchWeek);
       Integer warm = Limits.getQueries() - before;
-      ShoreshTestData.program(seasonId, 'Teens');
       List<Object> noProgram = send(
         'build_week',
         week(new Map<String, Object>())

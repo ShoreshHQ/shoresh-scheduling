@@ -207,6 +207,10 @@ private class LinkedChoicesTest {
   static void whatCantBeSavedIsRefusedAndNothingIsWritten() {
     System.runAs(ShoreshTestData.scheduler()) {
       LinkedChoicesMenu menu = new LinkedChoicesMenu();
+      // Another season's time block, for the last refusal below.
+      Camp__c other = ShoreshTestData.camp('Camp Birch');
+      ShoreshTestData.fullSeason(other.Id);
+      Id elsewhereBlock = ShoreshTestData.lastSeasonIds.get('Period 1');
       Test.startTest();
       LinkedChoiceSaves.Edit blank = new LinkedChoiceSaves.Edit();
       blank.offeringId = menu.dramaId;
@@ -245,14 +249,12 @@ private class LinkedChoicesTest {
       );
 
       // Another season's time block: refused by the trigger, and the linked choice is not made.
-      Camp__c other = ShoreshTestData.camp('Camp Birch');
-      ShoreshTestData.fullSeason(other.Id);
       LinkedChoiceSaves.Edit elsewhere = new LinkedChoiceSaves.Edit();
       elsewhere.offeringId = menu.dramaId;
       elsewhere.name = 'Drama';
       LinkedChoiceSaves.Period away = new LinkedChoiceSaves.Period();
       away.weekday = 'Monday';
-      away.blockId = ShoreshTestData.lastSeasonIds.get('Period 1');
+      away.blockId = elsewhereBlock;
       elsewhere.periodsOn.add(away);
       Assert.isNotNull(refusalOf(elsewhere));
 
