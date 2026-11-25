@@ -18,25 +18,16 @@ private class AgentArchivedSeasonTest {
     .Name;
   }
 
-  /** POST at the web address (door: its own post()); answers [status, sentence]. */
-  private static List<Object> post(String door, Map<String, Object> body) {
+  /** A POST with this body, as an AI's arrives; the test then calls the door's own post(). */
+  private static void sent(Map<String, Object> body) {
     RestContext.request = new RestRequest();
     RestContext.request.httpMethod = 'POST';
     RestContext.request.requestBody = Blob.valueOf(JSON.serialize(body));
     RestContext.response = new RestResponse();
-    if (door == 'publish_week') {
-      AgentPublish.post();
-    } else if (door == 'unpublish_week') {
-      AgentUnpublish.post();
-    } else if (door == 'restore_version') {
-      AgentRestoreVersion.post();
-    } else if (door == 'rename_in_setup') {
-      AgentRenameSetup.post();
-    } else if (door == 'archive_season') {
-      AgentArchiveSeason.post();
-    } else {
-      AgentBringBackSeason.post();
-    }
+  }
+
+  /** The door's answer: [status, sentence]. */
+  private static List<Object> answered() {
     Map<String, Object> answer = (Map<String, Object>) JSON.deserializeUntyped(
       RestContext.response.responseBody.toString()
     );
@@ -81,18 +72,15 @@ private class AgentArchivedSeasonTest {
       Integer before = versions();
       String draftBefore = WeekTickets.stamp(ScheduleDays.read(draftId));
       Test.startTest();
-      List<Object> published = post(
-        'publish_week',
-        mainWeek(new Map<String, Object>())
-      );
-      List<Object> restored = post(
-        'restore_version',
-        mainWeek(new Map<String, Object>{ 'version' => 'Plain' })
-      );
-      List<Object> unpublished = post(
-        'unpublish_week',
-        mainWeek(new Map<String, Object>())
-      );
+      sent(mainWeek(new Map<String, Object>()));
+      AgentPublish.post();
+      List<Object> published = answered();
+      sent(mainWeek(new Map<String, Object>{ 'version' => 'Plain' }));
+      AgentRestoreVersion.post();
+      List<Object> restored = answered();
+      sent(mainWeek(new Map<String, Object>()));
+      AgentUnpublish.post();
+      List<Object> unpublished = answered();
       Test.stopTest();
       Assert.areEqual(400, published[0], String.valueOf(published[1]));
       Assert.areEqual('Week 1 was not published. ' + archived(), published[1]);
@@ -139,9 +127,15 @@ private class AgentArchivedSeasonTest {
       Map<String, Object> cabin = new Map<String, Object>(groupA);
       cabin.put('new_name', 'Cabin A');
       Test.startTest();
-      List<Object> noName = post('rename_in_setup', blank);
-      List<Object> unchanged = post('rename_in_setup', same);
-      List<Object> renamed = post('rename_in_setup', cabin);
+      sent(blank);
+      AgentRenameSetup.post();
+      List<Object> noName = answered();
+      sent(same);
+      AgentRenameSetup.post();
+      List<Object> unchanged = answered();
+      sent(cabin);
+      AgentRenameSetup.post();
+      List<Object> renamed = answered();
       Test.stopTest();
       Assert.areEqual(400, noName[0], String.valueOf(noName[1]));
       Assert.areEqual('Say what to call the group now (new_name).', noName[1]);
@@ -240,7 +234,9 @@ private class AgentArchivedSeasonTest {
         'season' => season()
       };
       Test.startTest();
-      List<Object> refused = post('archive_season', body);
+      sent(body);
+      AgentArchiveSeason.post();
+      List<Object> refused = answered();
       Test.stopTest();
       Assert.areEqual(400, refused[0], String.valueOf(refused[1]));
       Assert.areEqual(
@@ -265,7 +261,9 @@ private class AgentArchivedSeasonTest {
         'season' => season()
       };
       Test.startTest();
-      List<Object> back = post('bring_back_season', body);
+      sent(body);
+      AgentBringBackSeason.post();
+      List<Object> back = answered();
       Test.stopTest();
       Assert.areEqual(200, back[0], String.valueOf(back[1]));
       Assert.areEqual(
