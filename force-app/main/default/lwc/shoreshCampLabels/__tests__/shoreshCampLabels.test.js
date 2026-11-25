@@ -551,17 +551,18 @@ describe("c-shoresh-camp-labels", () => {
     expect(savedMark(element).textContent).toBe("");
     // Read now: the clear goes with the record, so the server's Unit is removed.
     getLabels.mockResolvedValue(
-      LABELS.map((row) =>
-        row.term === "Division"
-          ? {
-              ...row,
-              singular: "Unit",
-              plural: "Units",
-              isCustom: true,
-              labelId: "a03"
-            }
-          : row
-      )
+      LABELS.map((row) => {
+        if (row.term !== "Division") {
+          return row;
+        }
+        return {
+          ...row,
+          singular: "Unit",
+          plural: "Units",
+          isCustom: true,
+          labelId: "a03"
+        };
+      })
     );
     leave(element, "Division", "singular");
     await flush();
