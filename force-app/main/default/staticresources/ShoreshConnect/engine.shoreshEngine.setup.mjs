@@ -232,17 +232,6 @@ export function readSetTimeLocations(fixedActivities, recurringActivities) {
 }
 
 /**
- * Whether a group is at camp in a time block: all day, or the part of day it comes for. The same
- * rule as the server's SetTimePlan.atCamp and Manual Build's hatched cells.
- */
-export function atCamp(group, partOfDay) {
-  if (group.availability === "MorningOnly") {
-    return partOfDay === "Morning";
-  }
-  return group.availability !== "AfternoonOnly" || partOfDay === "Afternoon";
-}
-
-/**
  * The week's days in date order, each with its own frame: time blocks (in the grid's order,
  * which is the day's time order), groups and items as Manual Build's DayView has them, and each
  * group's cells as a saved row reads (c/shoreshSavedRow readRow: null Open, else its item and

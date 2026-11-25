@@ -1,3 +1,4 @@
+import { atCamp } from "./engine.shoreshSetupRules.shoreshSetupRules.mjs";
 import { article, buildTerms } from "./engine.shoreshTerms.shoreshTerms.mjs";
 import { blankSetupNote, floorNote, reasonFor } from "./engine.shoreshEngine.words.mjs";
 import { checkWeek, dayWord } from "./engine.shoreshEngine.checks.mjs";
@@ -10,7 +11,6 @@ import { OPEN_WHY } from "./engine.shoreshEngine.notes.mjs";
 import { NOW, nowOf } from "./engine.shoreshEngine.progress.mjs";
 import { fuller, importedFilled, sameFrame, seedFromImport } from "./engine.shoreshEngine.weekFloor.mjs";
 import {
-  atCamp,
   compareText,
   minutes,
   readActivities,
@@ -677,7 +677,10 @@ export function checkModel(input, model, state) {
     notFor,
     isAway: (groupId, blockId) =>
       groupsInSetup.has(groupId) &&
-      !atCamp(groupsInSetup.get(groupId), parts.get(blockId) || null),
+      !atCamp(
+        groupsInSetup.get(groupId).availability,
+        parts.get(blockId) || null
+      ),
     locked: lockedPlacements(model, state),
     isLockedOpen: (groupId, date, blockId) =>
       Boolean(model.locks) && model.locks.has(lockKey(date, groupId, blockId)),
