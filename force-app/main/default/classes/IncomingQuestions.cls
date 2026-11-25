@@ -8,6 +8,8 @@ public with sharing class IncomingQuestions {
   private static final Integer OPEN_LIMIT = 131072;
   // The last question when some didn't fit: how many more there are (API-6.7).
   private static final String MORE_KEY = IncomingBatch.QUESTION_PREFIX + 'more';
+  // Room for that last question and the closing bracket.
+  private static final Integer MORE_ROOM = 300;
 
   /**
    * As many questions as Import__c.Open__c holds, as JSON ("[]" for none). Those left out are
@@ -24,12 +26,26 @@ public with sharing class IncomingQuestions {
       }
     }
     String text = JSON.serialize(withMore(kept, more));
-    while (text.length() > OPEN_LIMIT) {
-      kept.remove(kept.size() - 1);
-      more++;
-      text = JSON.serialize(withMore(kept, more));
+    if (text.length() <= OPEN_LIMIT) {
+      return text;
     }
-    return text;
+    // Each question measured once (a list's JSON is its items' JSON, comma-joined, in [ ]), with
+    // room kept for the last question and the closing bracket.
+    Integer size = 1;
+    Integer fit = 0;
+    while (fit < kept.size()) {
+      Integer next = JSON.serialize(kept[fit]).length() + 1;
+      if (size + next > OPEN_LIMIT - MORE_ROOM) {
+        break;
+      }
+      size += next;
+      fit++;
+    }
+    more += kept.size() - fit;
+    while (kept.size() > fit) {
+      kept.remove(kept.size() - 1);
+    }
+    return JSON.serialize(withMore(kept, more));
   }
 
   private static List<Map<String, String>> withMore(
