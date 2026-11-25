@@ -225,7 +225,6 @@ private class ImportElectivesTest {
       Assert.areEqual(1, result.added.get('ElectiveSet'));
       Assert.areEqual(2, result.added.get('Offering'));
       Assert.areEqual(2, result.added.get('LinkedChoice'));
-      // Measured 51 in the test org (2026-10-23); well under Salesforce's 100.
       // Bound: the screen's own save of sets, offerings and linked choices: measured 55
       // (2026-11-25), over the 50 the bar asks; not cut down here.
       Assert.isTrue(queries < 60, 'queries: ' + queries);

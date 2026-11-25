@@ -768,6 +768,7 @@ private class ImportSetupSavesTest {
         'every guess remembered'
       );
       Assert.isTrue(dml < 60, 'DML statements: ' + dml);
+      // Half of the 10 s limit; measured 629 ms (2026-11-25).
       Assert.isTrue(cpu < 5000, 'CPU ms: ' + cpu);
       Integer logged = [
           SELECT Created__c

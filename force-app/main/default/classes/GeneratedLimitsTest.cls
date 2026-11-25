@@ -3,9 +3,10 @@
  * divisions), 5 days, 8 time blocks, a fixed activity every morning, and another program sharing
  * the season's places (fixed and recurring activities, and a published week). Opening the week and each
  * kind of save use a small, fixed number of queries, whatever the size of the week (no query per
- * day, group or cell). The AI's heaviest requests on the same camp (week_view, read_week_draft,
- * week_checks, schedule_cell) each stay under half of Salesforce's limits for one request:
- * queries, CPU time and heap. Synthetic camp.
+ * day, group or cell). The AI's heaviest requests on the same camp, through their web addresses:
+ * week_view and schedule_cell stay under half of Salesforce's limits for one request (queries, CPU
+ * time, heap held); read_week_draft and week_checks stay under half for CPU and heap and within
+ * their measured query count, which is over half (MOST_DRAFT_READ_QUERIES). Synthetic camp.
  */
 @IsTest
 private class GeneratedLimitsTest {
@@ -19,6 +20,8 @@ private class GeneratedLimitsTest {
   private static final Integer MOST_QUERIES = 25;
   // Half of Salesforce's limits for one request (queries under 50 of 100, CPU under 5 of 10 s,
   // heap under 3 of 6 MB), so a bigger camp than this one still fits: the AI's requests below.
+  // Apex gives only the heap held at a moment, not the most a request reached, so the heap check
+  // catches what a request keeps (its answer and what it holds on to), not a passing spike.
   private static final Integer HALF_QUERIES = 50;
   private static final Integer HALF_CPU_MS = 5000;
   private static final Integer HALF_HEAP = 3 * 1024 * 1024;
@@ -589,10 +592,7 @@ private class GeneratedLimitsTest {
   }
 
   /** One AI request (a read: GET with params; a change: POST with body); answers [status, text]. */
-  private static List<Object> asked(
-    Object door,
-    Map<String, Object> sent
-  ) {
+  private static List<Object> asked(Object door, Map<String, Object> sent) {
     RestContext.request = new RestRequest();
     RestContext.response = new RestResponse();
     if (door instanceof AgentRequest.Read) {
@@ -623,10 +623,11 @@ private class GeneratedLimitsTest {
   }
 
   /**
-   * What one request used, measured from Test.startTest(), under half of each limit: queries
-   * under mostQueries (HALF_QUERIES, or a measured bound the caller says why it needs).
+   * What one request used, measured from Test.startTest(): CPU and heap under half of their
+   * limits, queries under mostQueries (HALF_QUERIES, or a measured bound the caller says why it
+   * needs). Measured on 2026-11-25: CPU 73 ms for week_view, under 500 ms for the draft read.
    */
-  private static void assertUnderHalf(String what, Integer mostQueries) {
+  private static void assertWithinLimits(String what, Integer mostQueries) {
     Integer queries = Limits.getQueries();
     Integer cpu = Limits.getCpuTime();
     Integer heap = Limits.getHeapSize();
@@ -648,12 +649,14 @@ private class GeneratedLimitsTest {
   @IsTest
   static void aPublishedWeekViewIsUnderHalfTheLimits() {
     System.runAs(KeptCamp.scheduler(sharedCamp())) {
+      // Camp words read cold, as a request of its own reads them.
+      CampLabels.forget();
       Test.startTest();
       List<Object> view = asked(
         new AgentWeekView(),
         new Map<String, Object>{ 'season' => 'Summer 2026', 'week' => 'Week 1' }
       );
-      assertUnderHalf('week_view of two published programs', HALF_QUERIES);
+      assertWithinLimits('week_view of two published programs', HALF_QUERIES);
       Test.stopTest();
       Assert.areEqual(200, view[0], (String) view[1]);
       Map<String, Object> answer = (Map<String, Object>) JSON.deserializeUntyped(
@@ -664,10 +667,10 @@ private class GeneratedLimitsTest {
   }
 
   // G8: week_view opens each published program's week as the Schedules screen opens one (its
-  // schedule, days and special days: 6 queries), so a camp's programs add up: measured 11 for one
-  // program and 23 for three (2026-11-25), so 8 published programs would pass the 50 the bar asks.
-  // Bounded at that per program until one read opens them all.
-  private static final Integer MOST_QUERIES_PER_PROGRAM_VIEW = 6;
+  // schedule, days and special days), so a camp's programs add up: measured 11 for one program and
+  // 23 for three (2026-11-25), 6 a program, so 8 published programs would pass the 50 the bar asks.
+  // Bounded near that per program (one to spare) until one read opens them all.
+  private static final Integer MOST_QUERIES_PER_PROGRAM_VIEW = 7;
 
   @IsTest
   static void aWeekViewAddsAFewQueriesPerPublishedProgram() {
@@ -712,37 +715,42 @@ private class GeneratedLimitsTest {
     }
   }
 
-  // G8: the draft an AI reads, and the week's checks, are the screen's own reads: the season's
-  // setup (22 queries), the week (14) and its setup changes (15), each read on its own. Measured
-  // 60 on this camp (2026-11-25): over the 50 the bar asks, until one shared read of the season
-  // setup serves all three; bounded here near that, so it can't grow.
+  // G8: the draft an AI reads, and the week's checks, are the screen's own reads: finding the week
+  // (5 queries), the season's setup (22), the week (14) and its setup changes (15), each read on
+  // its own, and a few more. Measured 60 on this camp (2026-11-25): over the 50 the bar asks,
+  // until one shared read of the season setup serves them; bounded here near that, so it can't
+  // grow.
   private static final Integer MOST_DRAFT_READ_QUERIES = 65;
 
   @IsTest
-  static void anAiReadOfTheDraftIsUnderHalfTheLimits() {
+  static void anAiReadOfTheDraftStaysWithinItsMeasuredLimits() {
     System.runAs(KeptCamp.scheduler(sharedCamp())) {
       GeneratedTestData.generated();
+      // Camp words read cold, as a request of its own reads them.
+      CampLabels.forget();
       Test.startTest();
       List<Object> draft = asked(
         new AgentChecks('draft'),
         mainWeek(new Map<String, Object>())
       );
-      assertUnderHalf('read_week_draft', MOST_DRAFT_READ_QUERIES);
+      assertWithinLimits('read_week_draft', MOST_DRAFT_READ_QUERIES);
       Test.stopTest();
       Assert.areEqual(200, draft[0], (String) draft[1]);
     }
   }
 
   @IsTest
-  static void anAiReadOfTheChecksIsUnderHalfTheLimits() {
+  static void anAiReadOfTheChecksStaysWithinItsMeasuredLimits() {
     System.runAs(KeptCamp.scheduler(sharedCamp())) {
       GeneratedTestData.generated();
+      // Camp words read cold, as a request of its own reads them.
+      CampLabels.forget();
       Test.startTest();
       List<Object> checks = asked(
         new AgentChecks('checks'),
         mainWeek(new Map<String, Object>())
       );
-      assertUnderHalf('week_checks', MOST_DRAFT_READ_QUERIES);
+      assertWithinLimits('week_checks', MOST_DRAFT_READ_QUERIES);
       Test.stopTest();
       Assert.areEqual(200, checks[0], (String) checks[1]);
     }
@@ -772,9 +780,11 @@ private class GeneratedLimitsTest {
           }
         }
       );
+      // Camp words read cold, as a request of its own reads them.
+      CampLabels.forget();
       Test.startTest();
       List<Object> answer = asked(new AgentCells(), change);
-      assertUnderHalf('schedule_cell', HALF_QUERIES);
+      assertWithinLimits('schedule_cell', HALF_QUERIES);
       Test.stopTest();
       Assert.areEqual(200, answer[0], (String) answer[1]);
     }
