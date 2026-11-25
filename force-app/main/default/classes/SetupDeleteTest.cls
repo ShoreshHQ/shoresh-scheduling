@@ -143,6 +143,26 @@ private class SetupDeleteTest {
     }
   }
 
+  // CORE-6.19: a count that fails is said to the person and kept for support with why.
+  @IsTest
+  static void aCountThatFailsIsSaidAndKeptForSupport() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      Map<String, Id> ids = GeneratedTestData.camp();
+      // A count Salesforce refuses: no rows asked for at all (LIMIT -1).
+      ScheduleUses.rowBudget = -2;
+      ErrorCodes.thisRequest = null;
+      Test.startTest();
+      SetupDelete.Preview preview = SetupDelete.preview(ids.get('Group B'));
+      Test.stopTest();
+      Assert.isFalse(preview.uses.complete);
+      Assert.areEqual(
+        'Shoresh couldn\'t count the schedules Group B is in. Delete anyway?',
+        preview.message
+      );
+      Assert.isNotNull(ErrorCodes.thisRequest, 'kept for support');
+    }
+  }
+
   // Word walk W4: a name another bunk shares is named with its division ("Bunk 2 (Juniors)").
   @IsTest
   static void aBunkWhoseNameIsSharedIsNamedWithItsDivision() {

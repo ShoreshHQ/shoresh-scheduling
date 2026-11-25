@@ -159,8 +159,12 @@ public with sharing class NoDivisions {
       WITH SYSTEM_MODE
     ];
     if (!empty.isEmpty()) {
-      // Machinery: removed as the group's own change, whoever made it.
-      Database.delete(empty, false, AccessLevel.SYSTEM_MODE);
+      // Machinery: removed as the group's own change, whoever made it. One that can't be
+      // removed stays (the group's change still saves) and is kept for support with why.
+      ErrorCodes.keepFailed(
+        'NoDivisions: holding record not removed',
+        Database.delete(empty, false, AccessLevel.SYSTEM_MODE)
+      );
     }
   }
 

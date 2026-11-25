@@ -5,13 +5,19 @@
  * edited since is.
  */
 public with sharing class ImportUndoLater {
-  // Later imports read for what they changed: more than stand at once in a season.
-  private static final Integer LATER_LIMIT = 50;
+  // Logs read at once: 10 at the longest (131,072 characters) is about 1.3 million.
+  @TestVisible
+  private static Integer logsAtOnce = 10;
+  // Queries for the logs: past them, Undo says so rather than leave later imports unread.
+  @TestVisible
+  private static Integer queryBudget = 30;
   private Set<Id> changed = new Set<Id>();
 
+  /** Every later import standing: listed first (Ids only), then its log read a few at a time. */
   public ImportUndoLater(Import__c done) {
+    List<Id> laterIds = new List<Id>();
     for (Import__c later : [
-      SELECT Changed__c
+      SELECT Id
       FROM Import__c
       WHERE
         Season__c = :done.Season__c
@@ -19,8 +25,34 @@ public with sharing class ImportUndoLater {
         AND Id != :done.Id
         AND UndoneAt__c = NULL
       WITH USER_MODE
-      ORDER BY CreatedDate DESC
-      LIMIT :LATER_LIMIT
+      ORDER BY CreatedDate DESC, Id
+    ]) {
+      laterIds.add(later.Id);
+    }
+    Integer queries = 0;
+    for (Integer i = 0; i < laterIds.size(); i += logsAtOnce) {
+      if (queries == queryBudget) {
+        // Shoresh's own refusal (CORE-6.15): no support code.
+        throw new ShoreshException(
+          'There have been too many imports since this one for Shoresh to check what they changed, so nothing was undone.'
+        );
+      }
+      List<Id> batch = new List<Id>();
+      for (Integer j = i; j < Math.min(i + logsAtOnce, laterIds.size()); j++) {
+        batch.add(laterIds[j]);
+      }
+      readLogs(batch);
+      queries++;
+    }
+  }
+
+  /** What these imports changed, from their logs. */
+  private void readLogs(List<Id> importIds) {
+    for (Import__c later : [
+      SELECT Changed__c
+      FROM Import__c
+      WHERE Id IN :importIds
+      WITH USER_MODE
     ]) {
       if (String.isNotBlank(later.Changed__c)) {
         addIds(ImportLogEntries.read(later.Changed__c).recordValues);

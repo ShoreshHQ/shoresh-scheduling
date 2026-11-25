@@ -87,6 +87,8 @@ public with sharing class SetupDelete {
       try {
         result.uses = ScheduleUses.count(recordId);
       } catch (Exception e) {
+        // Why is kept for support; the person is told the count couldn't be made.
+        ErrorCodes.keep('SetupDelete: ' + ErrorCodes.detailOf(e));
         result.uses.complete = false;
       }
       String used = usedIn(name, result.uses);

@@ -44,6 +44,18 @@ public with sharing class ErrorCodes {
     return thisRequest;
   }
 
+  /** Each delete that failed, kept for support with why (nothing is said to the person). */
+  public static void keepFailed(
+    String what,
+    List<Database.DeleteResult> results
+  ) {
+    for (Database.DeleteResult result : results) {
+      if (!result.isSuccess()) {
+        keep(what + ': ' + result.getErrors()[0].getMessage());
+      }
+    }
+  }
+
   /** What went wrong, for support: the kind, the message and where. */
   public static String detailOf(Exception e) {
     return e.getTypeName() +
