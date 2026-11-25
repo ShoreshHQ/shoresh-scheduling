@@ -523,6 +523,55 @@ describe("c-shoresh-camp-labels", () => {
     expect(input(element, "Division", "singular").value).toBe("");
   });
 
+  // CORE-1.37 (review 2026-11-25 wave 2): a clear sent without the record deleted nothing on the
+  // server while the screen showed the standard word.
+  it("CORE-1.37: saved, but its record not read back, the next save reads it first, or says it can't", async () => {
+    saveCampLabels.mockResolvedValue();
+    const element = await render();
+    const saved = jest.fn();
+    element.addEventListener("saved", saved);
+    getLabels.mockRejectedValueOnce(new Error("offline"));
+    await type(element, "Division", "singular", "Unit");
+    leave(element, "Division", "singular");
+    await flush();
+    // The word itself was saved: said so.
+    expect(saved).toHaveBeenCalledTimes(1);
+    // Cleared while its record still can't be read: nothing sent, and said why.
+    getLabels.mockRejectedValueOnce(new Error("offline"));
+    await type(element, "Division", "singular", "");
+    leave(element, "Division", "singular");
+    await flush();
+    expect(saveCampLabels).toHaveBeenCalledTimes(1);
+    const why = element.shadowRoot.querySelector(
+      '[data-error="Division"][data-field-error="singular"]'
+    );
+    expect(why.textContent.trim()).toMatch(
+      /^Camp words not saved\. Try again\. For support: [\w-]+\.$/
+    );
+    expect(savedMark(element).textContent).toBe("");
+    // Read now: the clear goes with the record, so the server's Unit is removed.
+    getLabels.mockResolvedValue(
+      LABELS.map((row) =>
+        row.term === "Division"
+          ? {
+              ...row,
+              singular: "Unit",
+              plural: "Units",
+              isCustom: true,
+              labelId: "a03"
+            }
+          : row
+      )
+    );
+    leave(element, "Division", "singular");
+    await flush();
+    expect(saveCampLabels).toHaveBeenCalledTimes(2);
+    expect(
+      saveCampLabels.mock.calls[1][0].labels.find((r) => r.term === "Division")
+    ).toMatchObject({ singular: "", plural: "", labelId: "a03" });
+    expect(element.shadowRoot.querySelector("[data-error]")).toBeNull();
+  });
+
   it("is accessible", async () => {
     const element = await render();
     await expect(element).toBeAccessible();

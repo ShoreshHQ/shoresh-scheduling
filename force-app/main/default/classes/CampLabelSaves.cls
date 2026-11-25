@@ -39,17 +39,6 @@ public with sharing class CampLabelSaves {
     List<CampLabel__c> toSave = new List<CampLabel__c>();
     List<Id> toDelete = new List<Id>();
     CampLabels now = CampLabels.forCamp(campId);
-    // CORE-1.37: a word sent without its record (the screen couldn't read it back after a save)
-    // is the camp's saved word all the same: changed or cleared, never refused as a second one.
-    Map<String, Id> saved = new Map<String, Id>();
-    for (CampLabels.TermLabel word : now.all()) {
-      saved.put(word.term, word.labelId);
-    }
-    for (CampLabels.TermLabel row : rows) {
-      if (row.labelId == null) {
-        row.labelId = saved.get(row.term);
-      }
-    }
     for (CampLabels.TermLabel row : rows) {
       CampLabel__c label = recordOf(row, campId, now);
       if (label != null) {

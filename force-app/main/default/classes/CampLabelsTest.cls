@@ -288,48 +288,6 @@ private class CampLabelsTest {
     Assert.isFalse(results[0].isSuccess() && results[1].isSuccess());
   }
 
-  // CORE-1.37
-  @IsTest
-  static void aWordSentWithoutItsRecordStillChangesOrClearsIt() {
-    System.runAs(ShoreshTestData.scheduler()) {
-      Camp__c camp = ShoreshTestData.camp('Camp Willow');
-      // "Bunk" saved; the screen couldn't read its record back, so it still sends no Id.
-      CampLabels.save(
-        camp.Id,
-        new List<CampLabels.TermLabel>{ group('Bunk', 'Bunks') }
-      );
-      // Another word typed: the saved record is changed, not refused as a second one.
-      CampLabels.save(
-        camp.Id,
-        new List<CampLabels.TermLabel>{ group('Cabin', 'Cabins') }
-      );
-      Assert.areEqual('Cabin', CampLabels.forCamp(camp.Id).singular('Group'));
-      // Cleared: the record goes, and every screen says the standard word again.
-      CampLabels.save(camp.Id, new List<CampLabels.TermLabel>{ group('', '') });
-      Assert.areEqual(
-        0,
-        [
-          SELECT COUNT()
-          FROM CampLabel__c
-          WHERE Camp__c = :camp.Id
-          WITH SYSTEM_MODE
-        ]
-      );
-      Assert.areEqual('Group', CampLabels.forCamp(camp.Id).singular('Group'));
-    }
-  }
-
-  /** The Group word as the label editor sends it, with no record Id. */
-  private static CampLabels.TermLabel group(String singular, String plural) {
-    CampLabels.TermLabel row = new CampLabels.TermLabel();
-    row.term = 'Group';
-    row.modelSingular = 'Group';
-    row.modelPlural = 'Groups';
-    row.singular = singular;
-    row.plural = plural;
-    return row;
-  }
-
   @IsTest
   static void onlyThisCampsOwnLabelsAreChangedOrRemoved() {
     System.runAs(ShoreshTestData.scheduler()) {
