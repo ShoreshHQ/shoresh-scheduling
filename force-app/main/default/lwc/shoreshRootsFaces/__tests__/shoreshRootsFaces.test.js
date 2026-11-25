@@ -129,7 +129,8 @@ describe("c/shoreshRootsFaces", () => {
       [3, false, false]
     ]);
     expect(camp.shownWeek.name).toBe("Week 2");
-    expect(camp.programs[0].days).toEqual([true, true, false, false, false]);
+    // The days the programs run: Monday and Tuesday.
+    expect(camp.programs[0].days).toEqual([true, true]);
     expect(camp.blocks.map((b) => [b.start, b.fixed])).toEqual([
       [540, null],
       [690, "Lunch"]
@@ -647,9 +648,87 @@ describe("a group in no division", () => {
 describe("the days the cards draw (word walk W1)", () => {
   afterEach(() => setDayNaming(null));
 
+  const MON_FRI = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
+
   it("are weekday letters, or the season's numbered days", () => {
-    expect(dayLetters()).toEqual(["M", "T", "W", "T", "F"]);
+    expect(dayLetters(MON_FRI)).toEqual(["M", "T", "W", "T", "F"]);
     setDayNaming({ numbered: true, firstDay: 1 });
-    expect(dayLetters()).toEqual(["1", "2", "3", "4", "5"]);
+    expect(dayLetters(MON_FRI)).toEqual(["1", "2", "3", "4", "5"]);
+  });
+
+  // A Sunday-to-Thursday camp: Roots draws its days, Sunday first, never Monday to Friday.
+  const SUN_THU = nsRecord({
+    season: { Id: "s1", Name: "Summer 2027", StartDate__c: "2027-06-27" },
+    programs: [
+      {
+        program: {
+          Name: "Day camp",
+          Sunday__c: true,
+          Monday__c: true,
+          Tuesday__c: true,
+          Wednesday__c: true,
+          Thursday__c: true
+        },
+        recurringActivities: [
+          { Name: "Swim", Sunday__c: true, Thursday__c: true }
+        ]
+      }
+    ]
+  });
+
+  it("are the days the season's programs run, in the order the camp's week runs", () => {
+    const sunThu = readCamp(SUN_THU, {});
+    expect(sunThu.days).toEqual([
+      "Sunday",
+      "Monday",
+      "Tuesday",
+      "Wednesday",
+      "Thursday"
+    ]);
+    expect(dayLetters(sunThu.days)).toEqual(["S", "M", "T", "W", "T"]);
+    expect(sunThu.programs[0].days).toEqual([true, true, true, true, true]);
+    expect(sunThu.recurring[0].days).toEqual([true, false, false, false, true]);
+    expect(words(glimpseOf("recurringActivities", sunThu))).toEqual(
+      expect.arrayContaining(["S", "M", "T", "W", "T"])
+    );
+  });
+
+  it("are numbered from the camp's first day in a numbered-days season", () => {
+    setDayNaming({ numbered: true, firstDay: 7 });
+    expect(dayLetters(readCamp(SUN_THU, {}).days)).toEqual([
+      "1",
+      "2",
+      "3",
+      "4",
+      "5"
+    ]);
+  });
+
+  it("are Monday to Friday for a season with no programs yet", () => {
+    expect(readCamp(nsRecord({ season: { Id: "s1" } }), {}).days).toEqual(
+      MON_FRI
+    );
+  });
+
+  it("fit a camp that runs every day of the week inside the card", () => {
+    const every = readCamp(
+      nsRecord({
+        season: { Id: "s1" },
+        programs: [
+          {
+            program: Object.fromEntries(
+              [...MON_FRI, "Saturday", "Sunday"].map((d) => [`${d}__c`, true])
+            )
+          }
+        ]
+      }),
+      {}
+    );
+    expect(every.days).toHaveLength(7);
+    ["programs", "recurringActivities"].forEach((key) => {
+      const rects = glimpseOf(key, every).shapes.filter((s) => s.rect);
+      expect(rects.length).toBeGreaterThan(0);
+      rects.forEach((r) => expect(r.x + r.w).toBeLessThanOrEqual(W + 0.5));
+    });
   });
 });

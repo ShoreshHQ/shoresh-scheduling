@@ -608,6 +608,35 @@ describe("c-shoresh-roots: the camp's workbook", () => {
     );
   });
 
+  it("API-6.7: the closing line that more questions couldn't be kept is shown, never counted as a question", async () => {
+    const element = await render({
+      ...SETUP,
+      lastImport: {
+        Id: "im3",
+        Files__c: "Campers from CampMinder",
+        CreatedDate: "2027-06-20T14:00:00.000Z",
+        Open__c: JSON.stringify([
+          {
+            key: "incoming|choices|a0X1",
+            title:
+              "Maya Cohen's choices for Chugim · Week 1 were changed in Shoresh."
+          },
+          {
+            key: "incoming|more",
+            title: "More questions from this system couldn't be kept here."
+          }
+        ])
+      }
+    });
+    const button = $(element, 'lightning-button[data-id="import-questions"]');
+    expect(button.label).toBe("1 import question left");
+    button.click();
+    await Promise.resolve();
+    expect($(element, '[data-id="incoming-questions"]').textContent).toContain(
+      "More questions from this system couldn't be kept here."
+    );
+  });
+
   it("INGEST-5.5 counter-case: an import with no questions left shows none", async () => {
     const element = await render({
       ...SETUP,

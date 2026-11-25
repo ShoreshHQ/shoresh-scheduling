@@ -1,6 +1,11 @@
 import { FIELD } from "c/shoreshSchema";
 import { numberedWeekday } from "c/shoreshDayNames";
-import { holdsNoDivision, realDivisionsOf } from "c/shoreshImportEngine";
+import {
+  holdsNoDivision,
+  programDays,
+  realDivisionsOf,
+  weekOrder
+} from "c/shoreshImportEngine";
 
 /**
  * Roots' card faces (repo ADR 0020; the approved mock-up design-research/roots-approved/table.js):
@@ -15,18 +20,29 @@ import { holdsNoDivision, realDivisionsOf } from "c/shoreshImportEngine";
 
 export const W = 220;
 export const H = 128;
-const DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
-const LETTERS = ["M", "T", "W", "T", "F"];
 
 /**
- * The week's days as the cards draw them: "M T W T F", or in a numbered-days season "1 2 3 4 5"
+ * The camp's days, as the cards draw them: the days the season's programs run, in the order its
+ * week runs (Sunday first for Sunday to Thursday); Monday to Friday before it has programs.
+ */
+export function campDays(setup) {
+  return weekOrder(programDays(setup));
+}
+
+/**
+ * The days as the cards draw them: "M T W T F", or in a numbered-days season "1 2 3 4 5"
  * (word walk W1: Roots says the days as the season does, shoreshDayNames).
  */
-export function dayLetters() {
-  return DAYS.map((d, i) => {
+export function dayLetters(days) {
+  return days.map((d) => {
     const numbered = numberedWeekday(d);
-    return numbered ? numbered.replace(/^Day /, "") : LETTERS[i];
+    return numbered ? numbered.replace(/^Day /, "") : d[0];
   });
+}
+
+/** A day's step across a drawing `span` wide: five days fill it, six or seven share it. */
+export function dayStep(days, span) {
+  return span / Math.max(days.length, 5);
 }
 const MONTHS = "JAN FEB MAR APR MAY JUN JUL AUG SEP OCT NOV DEC".split(" ");
 
@@ -148,10 +164,11 @@ export function readCamp(setup, table) {
     }))
     .sort((a, b) => b.acts.length - a.acts.length);
   const noPlace = activities.filter((a) => !a.place).map((a) => a.name);
+  const days = campDays(s);
   const recurring = programs.flatMap((entry) =>
     (entry.recurringActivities || []).map((r) => ({
       name: nameOf(r),
-      days: DAYS.map((d) => !!r[FIELD.RecurringActivity[d]])
+      days: days.map((d) => !!r[FIELD.RecurringActivity[d]])
     }))
   );
   const special = s.special || {};
@@ -188,9 +205,10 @@ export function readCamp(setup, table) {
     year: dateParts(s.season && s.season[FIELD.Season.StartDate])?.y || null,
     weeks,
     shownWeek: shown,
+    days,
     programs: programs.map((entry) => ({
       name: nameOf(entry.program),
-      days: DAYS.map((d) => !!(entry.program || {})[FIELD.Program[d]])
+      days: days.map((d) => !!(entry.program || {})[FIELD.Program[d]])
     })),
     divisions,
     blocks,
@@ -585,22 +603,22 @@ const G = {
     // Each program across its week, the days it runs raised, the others an outline.
     const list = c.programs.slice(0, 3);
     const lane = list.length > 2 ? 40 : 52;
-    const dw = (W - 4 * 4) / 5;
+    const step = dayStep(c.days, W + 4);
+    const dw = step - 4;
+    const letters = dayLetters(c.days);
     const shapes = [];
     if (!list.length) {
-      dayLetters().forEach((d, i) =>
-        shapes.push(dashed(i * (dw + 4), 40, dw, 26))
-      );
+      letters.forEach((d, i) => shapes.push(dashed(i * step, 40, dw, 26)));
       return glimpse(shapes);
     }
     list.forEach((p, r) => {
       const y = 4 + r * lane;
       shapes.push(txt(0, y + 10, shorten(p.name, W, 11), "g-tb"));
       p.days.forEach((on, i) => {
-        const x = i * (dw + 4);
+        const x = i * step;
         shapes.push(
           on
-            ? tile(x, y + 16, dw, lane - 26, dayLetters()[i], { cls: "g-m" })
+            ? tile(x, y + 16, dw, lane - 26, letters[i], { cls: "g-m" })
             : dashed(x, y + 16, dw, lane - 26, 4, "s400")
         );
       });
@@ -801,21 +819,24 @@ const G = {
 
   recurringActivities(c) {
     const shapes = [];
-    dayLetters().forEach((d, i) =>
-      shapes.push(txt(i * 45 + 20, 22, d, "g-m", "middle"))
+    const step = dayStep(c.days, W + 5);
+    const dw = step - 4;
+    const letters = dayLetters(c.days);
+    letters.forEach((d, i) =>
+      shapes.push(txt(i * step + dw / 2 - 0.5, 22, d, "g-m", "middle"))
     );
     const rows = c.recurring.slice(0, 3);
     const rh = rows.length > 2 ? 26 : 36;
     if (!rows.length) {
-      dayLetters().forEach((d, i) => shapes.push(dashed(i * 45, 34, 41, 36)));
+      letters.forEach((d, i) => shapes.push(dashed(i * step, 34, dw, 36)));
       return glimpse(shapes);
     }
-    if (rows.every((r) => nameWidth(r.name) * 11 <= 35)) {
+    if (rows.every((r) => nameWidth(r.name) * 11 <= dw - 6)) {
       rows.forEach((r, ri) => {
         r.days.forEach((on, i) => {
-          const x = i * 45;
+          const x = i * step;
           const y = 34 + ri * (rh + 8);
-          shapes.push(on ? tile(x, y, 41, rh, r.name) : well(x, y, 41, rh));
+          shapes.push(on ? tile(x, y, dw, rh, r.name) : well(x, y, dw, rh));
         });
       });
       return glimpse(shapes);
@@ -826,11 +847,11 @@ const G = {
       const y = 28 + ri * unit;
       shapes.push(txt(0, y + 10, shorten(r.name, W, 11), "g-t2"));
       r.days.forEach((on, i) => {
-        const x = i * 45;
+        const x = i * step;
         shapes.push(
           on
-            ? tile(x, y + 14, 41, unit - 18, "")
-            : well(x, y + 14, 41, unit - 18)
+            ? tile(x, y + 14, dw, unit - 18, "")
+            : well(x, y + 14, dw, unit - 18)
         );
       });
     });
@@ -1189,12 +1210,13 @@ const PIC = {
     list.forEach((p, r) => {
       const y = r * lane + 2;
       shapes.push(ptx(0, y + f * 0.9, shorten(p.name, W, f), "g-p", f));
-      const dw = (W - 16) / 5;
+      const step = dayStep(c.days, W + 4);
+      const dw = step - 4;
       p.days.forEach((on, i) => {
         shapes.push(
           on
-            ? tile(i * (dw + 4), y + f * 1.15, dw, bh, "")
-            : dashed(i * (dw + 4), y + f * 1.15, dw, bh, 4, "s400")
+            ? tile(i * step, y + f * 1.15, dw, bh, "")
+            : dashed(i * step, y + f * 1.15, dw, bh, 4, "s400")
         );
       });
     });
@@ -1370,17 +1392,20 @@ const PIC = {
     const top = f + 8;
     const rows = c.recurring.slice(0, 2);
     const rh = (H - top - 6) / 2;
-    const shapes = dayLetters().map((d, i) =>
-      ptx(i * 45 + 20, f, d, "g-pm", f, "middle")
+    const step = dayStep(c.days, W + 5);
+    const dw = step - 4;
+    const letters = dayLetters(c.days);
+    const shapes = letters.map((d, i) =>
+      ptx(i * step + dw / 2 - 0.5, f, d, "g-pm", f, "middle")
     );
     if (!rows.length) {
-      dayLetters().forEach((d, i) => shapes.push(dashed(i * 45, top, 41, rh)));
+      letters.forEach((d, i) => shapes.push(dashed(i * step, top, dw, rh)));
     }
     rows.forEach((r, ri) => {
       r.days.forEach((on, i) => {
-        const x = i * 45;
+        const x = i * step;
         const y = top + ri * (rh + 6);
-        shapes.push(on ? tile(x, y, 41, rh, "") : well(x, y, 41, rh));
+        shapes.push(on ? tile(x, y, dw, rh, "") : well(x, y, dw, rh));
       });
     });
     return glimpse(shapes);
