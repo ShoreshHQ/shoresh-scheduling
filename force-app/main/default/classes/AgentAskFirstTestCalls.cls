@@ -53,8 +53,9 @@ public class AgentAskFirstTestCalls {
   }
 
   /**
-   * The confirm Shoresh's preview gives for this POST, asked on its own: a test reads it before
-   * Test.startTest, so the yes request is counted alone, as it is in its own request for real.
+   * The confirm Shoresh's preview gives for this POST, asked on its own: a test reads
+   * Limits.getQueries() after it, so the yes request is counted alone, as it is in its own request
+   * for real.
    */
   public static String confirmFor(
     AgentRequest.Change action,
