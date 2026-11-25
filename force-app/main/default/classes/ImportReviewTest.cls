@@ -149,6 +149,39 @@ private class ImportReviewTest {
     }
   }
 
+  // INGEST-5.8: Undo brings back what the import removed; one emptied from the Recycle Bin since
+  // can't come back and is named as gone, while the rest come back.
+  @IsTest
+  static void ingest58UndoNamesWhatCanNoLongerComeBack() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      Season__c season = newSeason();
+      firstImport(season.Id);
+      Activity__c boating = activityNamed(season.Id, 'Boating');
+      Activity__c swim = activityNamed(season.Id, 'Swim');
+      Map<String, Object> second = ImportTestPlans.emptyPlan(season.Id);
+      second.put(
+        'removals',
+        new List<Object>{
+          new Map<String, Object>{ 'id' => boating.Id, 'name' => 'Boating' },
+          new Map<String, Object>{ 'id' => swim.Id, 'name' => 'Swim' }
+        }
+      );
+      ImportSetupSaves.Result result = ImportController.saveSetup(
+        JSON.serialize(second)
+      );
+      Database.emptyRecycleBin(new List<Id>{ boating.Id });
+      Test.startTest();
+      ImportUndo.Result undone = ImportController.undoImport(result.importId);
+      Test.stopTest();
+      Assert.areEqual(new List<String>{ 'Boating' }, undone.gone);
+      Assert.areEqual(1, undone.restored, 'Swim is back');
+      Assert.areEqual(
+        1,
+        [SELECT COUNT() FROM Activity__c WHERE Id = :swim.Id WITH USER_MODE]
+      );
+    }
+  }
+
   @IsTest
   static void ingest58NeverRemovesWhatWasMadeOrChangedByHand() {
     System.runAs(ShoreshTestData.scheduler()) {

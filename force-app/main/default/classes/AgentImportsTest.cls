@@ -303,6 +303,44 @@ private class AgentImportsTest {
     }
   }
 
+  // API-1.82: an outside system's last batch is listed for its own Undo, named by where it came
+  // from, at the read's web address.
+  @IsTest
+  static void anOutsideSystemsLastBatchIsListedWithWhereItCameFrom() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      Import__c batch = new Import__c(
+        Season__c = camp(),
+        Source__c = 'Bunk Planner (made up)',
+        Files__c = 'campers from Bunk Planner (made up)'
+      );
+      Database.insert(batch, AccessLevel.SYSTEM_MODE);
+      Test.setCreatedDate(
+        batch.Id,
+        Datetime.newInstance(2026, 11, 1, 10, 3, 0)
+      );
+      Test.startTest();
+      RestContext.request = new RestRequest();
+      RestContext.request.httpMethod = 'GET';
+      RestContext.request.addParameter('season', SEASON);
+      RestContext.response = new RestResponse();
+      AgentReadLastImports.get();
+      Test.stopTest();
+      String said = (String) ((Map<String, Object>) JSON.deserializeUntyped(
+          RestContext.response.responseBody.toString()
+        ))
+        .get('message');
+      Assert.areEqual(200, RestContext.response.statusCode, said);
+      Assert.isTrue(
+        said.contains(
+          'Last from Bunk Planner (made up): campers, Nov 1, 2026 10:03 AM, seen: "' +
+            batch.Id +
+            '", from: "Bunk Planner (made up)"'
+        ),
+        said
+      );
+    }
+  }
+
   // API-1.82: an Id read with other capitals is another Id, so Undo is refused as not the one read.
   @IsTest
   static void undoRefusesAnIdReadWithOtherCapitals() {

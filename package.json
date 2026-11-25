@@ -8,6 +8,7 @@
     "scan:connect": "sf code-analyzer run --workspace connect --rule-selector AppExchange --rule-selector Recommended:Security --severity-threshold 3",
     "test": "npm run test:unit",
     "test:unit": "sfdx-lwc-jest -- --passWithNoTests",
+    "test:apex": "node scripts/run-apex-tests.mjs",
     "test:unit:namespaced": "sfdx-lwc-jest -- --config jest.namespaced.config.js",
     "test:engine:full": "sfdx-lwc-jest -- --config jest.full.config.js force-app/main/default/lwc/shoreshEngine",
     "score:import": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/import-corpus-score.mjs",
