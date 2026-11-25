@@ -337,13 +337,18 @@ private class AgentCopyAndMatchTest {
       Map<String, Object> weekAsked = weekAsk(draftId);
       List<String> read = shown(draftId);
       Boolean replacesHand = Boolean.valueOf(read.remove(2));
+      // The person's yes, read first, so the request counted is the update alone (API-1.106).
+      Map<String, Object> yes = updateAsk(weekAsked, read);
+      String confirm = AgentAskFirstTestCalls.confirmFor(
+        new AgentUpdateToMatch(),
+        yes
+      );
+      if (confirm != null) {
+        yes.put(AgentAskFirst.FIELD, confirm);
+      }
       Test.startTest();
       Integer before = Limits.getQueries();
-      List<Object> done = ask(
-        new AgentUpdateToMatch(),
-        'POST',
-        updateAsk(weekAsked, read)
-      );
+      List<Object> done = ask(new AgentUpdateToMatch(), 'POST', yes);
       Integer queries = Limits.getQueries() - before;
       Boolean matched = SetupMatchController.getSetupChanges(draftId)
         .changes.isEmpty();

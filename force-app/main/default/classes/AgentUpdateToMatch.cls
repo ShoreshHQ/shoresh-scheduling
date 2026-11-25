@@ -32,16 +32,14 @@ global with sharing class AgentUpdateToMatch implements AgentRequest.Change, Age
 
   /**
    * Asked only when a change named replaces a placement made by hand, on the week as read (seen):
-   * each such cell, before and after. A week changed since, or a change no longer offered, asks
-   * nothing here: the update refuses it.
+   * each such cell, before and after. A week changed since (or no seen) asks nothing here: the
+   * update refuses it.
    */
   public String preview(Map<String, Object> body) {
     Set<String> keys = new Set<String>(keysOf(body.get('changes')));
     String seen = AgentFields.text(body, 'seen');
     AgentWeeks.Week week = AgentSchedules.placeOfEither(body);
-    if (String.isBlank(seen) || week.draft == null) {
-      return null;
-    }
+    AgentSchedules.requireDraft(week);
     SetupMatch.Preview shown = SetupMatchController.getSetupChanges(
       week.draft.Id
     );
