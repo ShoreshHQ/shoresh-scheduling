@@ -6,7 +6,6 @@
  * Section titles are the desktop's NAV_SECTIONS titles. At the foot, Settings, where the desktop
  * has its footer link: it holds only What Shoresh has learned for now (repo ADR 0023, Greg
  * 2026-10-28; the screen keeps its key, "learned"). Every label is in the camp's own words.
- * Screens not built yet are listed as coming, not hidden.
  *
  * The Schedules title is itself a doorway (wiki decision 61): it opens the season's weeks
  * (screen "scheduleWeeks"), each with Generated Schedule and Manual Build. The desktop draws that
@@ -15,9 +14,6 @@
  */
 import { article, electiveSeatsTitle } from "c/shoreshTerms";
 
-// Built in a later slice: listed, not reachable from the menu yet. None just now: Electives and
-// Elective seats opened with slice E11 (decision 44; repo ADR 0018 choice 59).
-const COMING = new Set();
 // A screen the page's address may open (repo ADR 0018 choices 12 and 59: ?c__preview=electives,
 // ?c__preview=electiveSeats; ADR 0017 choice 19: ?c__preview=bringInChoices; API-1.28:
 // ?c__preview=schedules, a chat's link to a published week). The checks reach Bring in choices
@@ -96,13 +92,9 @@ const SECTIONS = [
   { key: "settings", foot: true, screens: ["learned"] }
 ];
 
-/**
- * Whether the screen can be opened now: built, and (except camp words) a season exists. preview:
- * the coming screen the page's address names (previewScreen), which opens like a built one.
- */
-export function canOpen(screen, hasSeason, preview = null) {
-  const built = !COMING.has(screen) || preview === screen;
-  return built && (hasSeason || WITHOUT_SEASON.has(screen));
+/** Whether the screen can be opened now: a season exists (camp words and learned need none). */
+export function canOpen(screen, hasSeason) {
+  return hasSeason || WITHOUT_SEASON.has(screen);
 }
 
 /** The screen a page address may open ("electives", "bringInChoices", "electiveSeats", "schedules"), else null. */
@@ -143,24 +135,20 @@ const MARKS = {
   changed: { symbol: "", label: "Changed since: setup" }
 };
 
-/** Why a screen can't open now, read with it ("Coming", "Needs a Season"), or null. */
-function whyClosed(screen, t, hasSeason, preview) {
-  if (canOpen(screen, hasSeason, preview)) {
-    return null;
-  }
-  return COMING.has(screen) && preview !== screen
-    ? "Coming"
+/** Why a screen can't open now, read with it ("Needs a Season"), or null. */
+function whyClosed(screen, t, hasSeason) {
+  return canOpen(screen, hasSeason)
+    ? null
     : `Needs ${article(t.sIn("Season"))}`;
 }
 
 /**
- * The menu: sections, each with its items ({ key, label, coming, disabled, reason, mark }). marks:
+ * The menu: sections, each with its items ({ key, label, disabled, reason, mark }). marks:
  * screen -> "needed" | "done" (shoreshSetupRules.menuMarks) | "changed" (a schedule whose week can
  * be updated to match setup); mark is { kind, symbol, label }.
- * preview: the coming screen the page's address opened (previewScreen), listed as built.
  * door: the screen a section's title opens ({ key, disabled, reason }), or null (a plain title).
  */
-export function menuSections(t, hasSeason, marks = {}, preview = null) {
+export function menuSections(t, hasSeason, marks = {}) {
   const labels = screenLabels(t);
   return SECTIONS.map((section) => ({
     key: section.key,
@@ -169,21 +157,19 @@ export function menuSections(t, hasSeason, marks = {}, preview = null) {
     door: section.door
       ? {
           key: section.door,
-          disabled: !canOpen(section.door, hasSeason, preview),
-          reason: whyClosed(section.door, t, hasSeason, preview)
+          disabled: !canOpen(section.door, hasSeason),
+          reason: whyClosed(section.door, t, hasSeason)
         }
       : null,
     items: section.screens.map((screen) => {
-      const disabled = !canOpen(screen, hasSeason, preview);
+      const disabled = !canOpen(screen, hasSeason);
       const kind = disabled ? null : marks[screen];
-      const coming = COMING.has(screen) && preview !== screen;
       return {
         key: screen,
         label: labels[screen],
-        coming,
         disabled,
         // Why it can't open, read with it (it stays in the tab order, so keyboard users hear it).
-        reason: whyClosed(screen, t, hasSeason, preview),
+        reason: whyClosed(screen, t, hasSeason),
         mark: kind ? { kind, ...MARKS[kind] } : null
       };
     })

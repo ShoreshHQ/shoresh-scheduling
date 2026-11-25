@@ -3000,7 +3000,6 @@ describe("c-shoresh-camp-setup", () => {
       .find((entry) => entry.key === "electiveSeats");
     expect(item).toMatchObject({
       label: "Elective seats",
-      coming: false,
       disabled: false
     });
     expect(q(element, "c-shoresh-elective-seats")).toBeNull();
@@ -4569,13 +4568,13 @@ describe("c-shoresh-camp-setup", () => {
       );
     });
 
-    it("uses the camp's words, with nothing coming just now", async () => {
+    it("uses the camp's words, every screen open with a season", async () => {
       getCamps.mockResolvedValue(nsRecord([CAMP]));
       getSeasons.mockResolvedValue(nsRecord([SEASON]));
       getSeasonSetup.mockResolvedValue(nsRecord(setupWith()));
       const element = await render();
       const items = q(element, "c-shoresh-menu").sections.flatMap((section) =>
-        section.items.map((item) => [item.label, item.coming])
+        section.items.map((item) => [item.label, item.disabled])
       );
       expect(items).toContainEqual(["Bunks", false]);
       expect(items).toContainEqual(["Fixed activities", false]);

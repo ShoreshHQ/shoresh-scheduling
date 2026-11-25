@@ -323,17 +323,6 @@ describe("c-shoresh-menu", () => {
     expect(previewScreen("electives")).toBe("electives");
     expect(previewScreen("weeks")).toBeNull();
     expect(previewScreen(undefined)).toBeNull();
-    expect(canOpen("electives", true, "electives")).toBe(true);
-    // Still a season first.
-    expect(canOpen("electives", false, "electives")).toBe(false);
-    const listed = menuSections(terms, true, {}, "electives")
-      .flatMap((section) => section.items)
-      .find((item) => item.key === "electives");
-    expect(listed).toMatchObject({
-      label: "Electives",
-      coming: false,
-      disabled: false
-    });
     expect(previewScreen("electiveSeats")).toBe("electiveSeats");
     expect(previewScreen("bringInChoices")).toBe("bringInChoices");
     // Without it, the menu lists both electives screens as built (slice E11, ADR 0018 choice 59).
@@ -342,7 +331,6 @@ describe("c-shoresh-menu", () => {
     );
     for (const key of ["electives", "electiveSeats"]) {
       expect(items.find((item) => item.key === key)).toMatchObject({
-        coming: false,
         disabled: false,
         reason: null
       });
@@ -364,41 +352,6 @@ describe("c-shoresh-menu", () => {
     weeks.dispatchEvent(click);
     expect(handler).not.toHaveBeenCalled();
     expect(click.defaultPrevented).toBe(true);
-  });
-
-  it("a coming entry says so once: the badge is seen, the reason is read", async () => {
-    // Nothing is coming just now (slice E11 opened Electives), so the entry is the menu's own
-    // shape for a screen built later (menuSections marks one coming: true, reason "Coming").
-    const element = await render(
-      true,
-      "roots",
-      {},
-      {
-        sections: [
-          {
-            key: "later",
-            title: "Later",
-            items: [
-              {
-                key: "later",
-                label: "Later",
-                coming: true,
-                disabled: true,
-                reason: "Coming",
-                mark: null
-              }
-            ]
-          }
-        ]
-      }
-    );
-    const coming = element.shadowRoot.querySelector('[data-item="later"]');
-    expect(coming.getAttribute("aria-disabled")).toBe("true");
-    expect(coming.querySelector("[data-reason]").textContent).toBe("Coming");
-    // The visible badge isn't read twice.
-    expect(
-      coming.querySelector(".slds-badge").getAttribute("aria-hidden")
-    ).toBe("true");
   });
 
   it("CORE-6.14: shows the bronze needs-a-look dot, the changed-since ring and the desktop's ✓ (Done), read out as words", async () => {

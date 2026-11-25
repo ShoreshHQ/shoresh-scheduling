@@ -742,12 +742,7 @@ export default class ShoreshCampSetup extends LightningElement {
     }
     // While the season is being read its screens stay ready to click, never greyed as if
     // there were none (WEEK-6.9).
-    return menuSections(
-      this.terms,
-      !!this.setup || this.seasonComing,
-      marks,
-      this.preview
-    );
+    return menuSections(this.terms, !!this.setup || this.seasonComing, marks);
   }
   /**
    * A screen just left (it stays on the page, hidden): its message row and floating refusal were
@@ -856,10 +851,10 @@ export default class ShoreshCampSetup extends LightningElement {
    */
   handleNavigate(event) {
     const screen = event.detail.screen;
-    if (!canOpen(screen, !!this.setup, this.preview)) {
+    if (!canOpen(screen, !!this.setup)) {
       // WEEK-6.9: the season is still being read: the click waits for it, never dropped, and
       // wins over a reload or a link still bringing the tab somewhere (WEEK-6.5).
-      if (this.seasonComing && canOpen(screen, true, this.preview)) {
+      if (this.seasonComing && canOpen(screen, true)) {
         this.placeToRestore = null;
         this.weekToRestore = null;
         this.previewOpened = true;
@@ -1054,7 +1049,7 @@ export default class ShoreshCampSetup extends LightningElement {
    * in (plan §6.2): Bring in choices, with the cursor on its heading.
    */
   handleBringInChoices() {
-    if (canOpen("bringInChoices", !!this.setup, this.preview)) {
+    if (canOpen("bringInChoices", !!this.setup)) {
       this.readAgainFor("bringInChoices");
       this.choicesOpening = null;
       this.openScreen("bringInChoices");
@@ -1263,7 +1258,7 @@ export default class ShoreshCampSetup extends LightningElement {
   /** A screen's "next" button: that screen, with the cursor on its heading (WCAG 2.4.3). */
   handleNext(event) {
     const screen = event.currentTarget.dataset.next;
-    if (!canOpen(screen, !!this.setup, this.preview)) {
+    if (!canOpen(screen, !!this.setup)) {
       return;
     }
     this.openScreen(screen);
@@ -1330,7 +1325,7 @@ export default class ShoreshCampSetup extends LightningElement {
   /** What needs a look, on screens that can be opened (a coming screen's wait with it). */
   get problems() {
     return setupProblems(this.setup, this.terms).filter((problem) =>
-      canOpen(problem.screen, true, this.preview)
+      canOpen(problem.screen, true)
     );
   }
   /**

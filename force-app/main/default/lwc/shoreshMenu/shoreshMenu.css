@@ -238,22 +238,6 @@ ul {
   color: var(--shoresh-text-2);
 }
 
-.menu-coming {
-  flex: none;
-  margin: 0;
-  padding: 0 var(--shoresh-s1);
-  border: 1px solid var(--shoresh-edge);
-  border-radius: var(--shoresh-s1);
-  background: transparent;
-  color: var(--shoresh-text-2);
-  font-family: var(--shoresh-font-mono);
-  font-size: var(--shoresh-font-size-label);
-  font-weight: 400;
-  line-height: 16px;
-  text-transform: none;
-  letter-spacing: 0;
-}
-
 /*
  * The desktop's menu marks (Sidebar.jsx): "!" when an area building needs is empty, "✓" when it
  * has rows. Both in the three colours: "!" in the text colour, "✓" a highlight icon (green on the
