@@ -1,4 +1,4 @@
-import { compareText } from "./setup";
+import { compareText } from "c/shoreshTerms";
 
 /**
  * Protocol rule 9.10 (docs/engine/protocol.md): a fresh build never depends on an activity's place

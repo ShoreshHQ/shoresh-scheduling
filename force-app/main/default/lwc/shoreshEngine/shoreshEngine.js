@@ -1,4 +1,4 @@
-import { article, buildTerms } from "c/shoreshTerms";
+import { article, buildTerms, compareText } from "c/shoreshTerms";
 import { blankSetupNote, floorNote, reasonFor } from "./words";
 import { checkWeek, dayWord } from "./checks";
 import {
@@ -11,7 +11,6 @@ import { NOW, nowOf } from "./progress";
 import { fuller, importedFilled, sameFrame, seedFromImport } from "./weekFloor";
 import {
   atCamp,
-  compareText,
   minutes,
   readActivities,
   readDays,
