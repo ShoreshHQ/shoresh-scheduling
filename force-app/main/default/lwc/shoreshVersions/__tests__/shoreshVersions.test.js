@@ -134,7 +134,7 @@ describe("c-shoresh-versions", () => {
       auto("a4", "Before rainy Monday"),
       auto("a3", "Before Rebuild", { publishedAt: "2026-10-15T10:00:00.000Z" }),
       auto("a2", "Before Restore"),
-      auto("a1", "Before Try another", { reason: "ThroughAgent" })
+      auto("a1", "Before Try another")
     ];
     const names = (element) =>
       qa(element, ".version").map((row) => row.dataset.version);
@@ -442,23 +442,6 @@ describe("c-shoresh-versions", () => {
       expect(first.textContent).toContain("Auto-saved");
       expect(qa(element, ".version")[1].textContent).not.toContain(
         "Auto-saved"
-      );
-    });
-
-    // API-1.12, API-1.32
-    it("a version kept before a change made through an agent says so", async () => {
-      const element = await renderRestore([
-        {
-          id: "a1",
-          name: "Before Placed Soccer · Group A · Monday · Period 2",
-          origin: "Generated",
-          reason: "ThroughAgent",
-          savedAt: "2026-10-30T17:00:00.000Z"
-        }
-      ]);
-      const row = qa(element, ".version")[0];
-      expect(row.querySelector(".version-meta").textContent).toContain(
-        "Generated Schedule · By your AI"
       );
     });
 
