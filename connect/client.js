@@ -1281,6 +1281,11 @@ function importModules(m) {
  */
 const PERSON_DECIDES =
   "Nothing else was changed. This is for the person to decide: tell them, and don't change anything to work around it.";
+// After a refusal that already says nothing was changed, "Nothing else" would say it twice.
+const PERSON_DECIDES_ONLY = PERSON_DECIDES.replace(
+  /^Nothing else was changed\. /,
+  ""
+);
 
 /**
  * An answer as an AI hears it, in the screens' words (screenWords.js); a refusal or conflict
@@ -1290,7 +1295,10 @@ function toAgent(answer) {
   const text = forAi(answer.text);
   return answer.ok
     ? { ...answer, text }
-    : { ...answer, text: `${text} ${PERSON_DECIDES}` };
+    : {
+        ...answer,
+        text: `${text} ${/nothing was changed\.\s*$/i.test(text) ? PERSON_DECIDES_ONLY : PERSON_DECIDES}`
+      };
 }
 
 const NO_PERMISSION_SET =
