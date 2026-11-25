@@ -103,10 +103,9 @@ private class ImportUndoAsItWasTest {
       Id copyId = copySeason(kept);
       System.enqueueJob(new UndoJob(ImportUndo.latest(copyId)));
       Test.stopTest();
-      // Undo of a copy is one request: well under Salesforce's 100 queries for a real camp.
-      // Bound: undoing a season copy deletes everything the copy made: measured 65 (2026-11-25),
-      // over the 50 the bar asks; not cut down here.
-      Assert.isTrue(undoQueries <= 70, 'queries: ' + undoQueries);
+      // Bound: undoing a season copy deletes everything the copy made: measured 46 (2026-11-25).
+      // Measured + 5 would pass the bar's 50, so the bar itself is the bound.
+      Assert.isTrue(undoQueries < 50, 'queries: ' + undoQueries);
       Assert.isTrue(undone.seasonRemoved);
       Assert.areEqual(new List<String>(), undone.keptEdited);
       Assert.areEqual(new List<String>(), undone.keptInUse);

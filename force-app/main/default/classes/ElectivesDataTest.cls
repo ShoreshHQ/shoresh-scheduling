@@ -666,7 +666,8 @@ private class ElectivesDataTest {
       Assert.areEqual(0, [SELECT COUNT() FROM Camper__c WITH SYSTEM_MODE]);
       Assert.areEqual(0, [SELECT COUNT() FROM Assignment__c WITH SYSTEM_MODE]);
       Assert.areEqual(0, [SELECT COUNT() FROM Season__c WITH SYSTEM_MODE]);
-      Assert.isTrue(used <= 40, 'Queries to delete a season: ' + used);
+      // Bound: measured 11 (2026-11-25).
+      Assert.isTrue(used < 16, 'Queries to delete a season: ' + used);
     }
   }
 

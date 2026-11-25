@@ -288,13 +288,25 @@ public with sharing class ImportUndoDeletes {
     for (Object row : (List<Object>) kind.get('rows')) {
       rows.put((Id) (String) ((List<Object>) row)[0], (List<Object>) row);
     }
+    // What is inside each is read along with its values: one query.
+    List<String> relationships = insideOf(term);
+    List<String> subqueries = new List<String>();
+    for (String relationship : relationships) {
+      subqueries.add(
+        '(SELECT Id FROM ' +
+          relationship +
+          ' WHERE Id NOT IN :createdIds LIMIT 1)'
+      );
+    }
     Map<Id, SObject> now = ImportUndoValues.read(
       ImportFields.ofTerm(term),
       fields,
-      rows.keySet()
+      rows.keySet(),
+      subqueries,
+      new Map<String, Object>{ 'createdIds' => createdIds }
     );
     result.removed += count.goneHolders(rows.keySet(), now.keySet());
-    Set<Id> holding = holdingOthers(term, now.keySet());
+    Set<Id> holding = holdingOthers(now.values(), relationships);
     // A special day whose schedule the director saved since holds their work: kept.
     holding.addAll(ImportUndoSpecialDays.revised(term, now.keySet()));
     usedByKeptDays.putAll(ImportUndoSpecialDays.usedBy(keptIds, now.keySet()));
@@ -328,36 +340,29 @@ public with sharing class ImportUndoDeletes {
     );
   }
 
-  /** Records with something inside them the import did not make (one query, with sub-queries). */
-  private Set<Id> holdingOthers(String term, Set<Id> ids) {
-    Set<Id> result = new Set<Id>();
+  /**
+   * The relationship names of what is inside a kind (INSIDE), from the platform, for the fields
+   * listed: none for a kind with nothing inside.
+   */
+  private static List<String> insideOf(String term) {
+    List<String> relationships = new List<String>();
     if (!INSIDE.containsKey(term)) {
-      return result;
+      return relationships;
     }
     Schema.SObjectType type = ImportFields.ofTerm(term);
-    List<String> relationships = new List<String>();
-    List<String> subqueries = new List<String>();
     for (Schema.SObjectField child : INSIDE.get(term)) {
-      String relationship = ShoreshSchema.childRelationship(type, child);
-      relationships.add(relationship);
-      subqueries.add(
-        '(SELECT Id FROM ' +
-          relationship +
-          ' WHERE Id NOT IN :createdIds LIMIT 1)'
-      );
+      relationships.add(ShoreshSchema.childRelationship(type, child));
     }
-    // Object and relationship names come from the platform, for the fields above.
-    for (
-      SObject record : Database.queryWithBinds(
-        'SELECT Id, ' +
-          String.join(subqueries, ', ') +
-          ' FROM ' +
-          ShoreshSchema.queryName(type) +
-          ' WHERE Id IN :ids',
-        new Map<String, Object>{ 'ids' => ids, 'createdIds' => createdIds },
-        AccessLevel.USER_MODE
-      )
-    ) {
+    return relationships;
+  }
+
+  /** Records with something inside them the import did not make, as read with their values. */
+  private static Set<Id> holdingOthers(
+    List<SObject> records,
+    List<String> relationships
+  ) {
+    Set<Id> result = new Set<Id>();
+    for (SObject record : records) {
       for (String relationship : relationships) {
         // An empty sub-query reads as null, not an empty list.
         List<SObject> inside = record.getSObjects(relationship);

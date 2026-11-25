@@ -78,16 +78,30 @@ public with sharing class SeasonTriggerHandler {
     }
 
     public void write() {
+      // Read in five queries, each with the lists inside it (a list inside a query is not a
+      // query of its own), walked in loops so a list of any length reads in parts. Each is read
+      // before the deletes that need it; no delete in between adds or removes any of those rows.
+      List<SObject> runs = new List<SObject>();
+      List<SObject> coverages = new List<SObject>();
+      for (Season__c season : [
+        SELECT
+          Id,
+          (SELECT Id FROM ElectiveRuns__r),
+          (SELECT Id FROM Coverages__r)
+        FROM Season__c
+        WHERE Id IN :deletable
+        WITH SYSTEM_MODE
+      ]) {
+        for (SObject run : season.ElectiveRuns__r) {
+          runs.add(run);
+        }
+        for (SObject coverage : season.Coverages__r) {
+          coverages.add(coverage);
+        }
+      }
       // Elective runs point at the season's elective sets, weeks and schedules, and their
       // choices and seats at its campers, groups, time blocks and offerings; they go first.
-      clear(
-        [
-          SELECT Id
-          FROM ElectiveRun__c
-          WHERE Season__c IN :deletable
-          WITH SYSTEM_MODE
-        ]
-      );
+      clear(runs);
       clear(
         [
           SELECT Id
@@ -100,98 +114,94 @@ public with sharing class SeasonTriggerHandler {
       // recurring activities point at its time blocks and locations; activities at its
       // locations, groups, and divisions (who can do them goes with them). All through
       // restrict-delete lookups.
-      clear(
-        [
-          SELECT Id
-          FROM Coverage__c
-          WHERE Season__c IN :deletable
-          WITH SYSTEM_MODE
-        ]
-      );
+      clear(coverages);
       // Linked choices point at offerings, and their times at time blocks; offerings point at
       // activities. Clearing the sets (with their linked choices) frees both.
-      clear(
-        [
-          SELECT Id
-          FROM LinkedChoice__c
-          WHERE ElectiveSet__r.Season__c IN :deletable
-          WITH SYSTEM_MODE
-        ]
-      );
-      clear(
-        [
-          SELECT Id
-          FROM ElectiveSet__c
-          WHERE Season__c IN :deletable
-          WITH SYSTEM_MODE
-        ]
-      );
-      clear(
-        [
-          SELECT Id
-          FROM FixedActivity__c
-          WHERE Program__r.Season__c IN :deletable
-          WITH SYSTEM_MODE
-        ]
-      );
-      clear(
-        [
-          SELECT Id
-          FROM RecurringActivity__c
-          WHERE Program__r.Season__c IN :deletable
-          WITH SYSTEM_MODE
-        ]
-      );
+      List<SObject> sets = new List<SObject>();
+      List<SObject> linkedChoices = new List<SObject>();
+      for (ElectiveSet__c electiveSet : [
+        SELECT Id, (SELECT Id FROM LinkedChoices__r)
+        FROM ElectiveSet__c
+        WHERE Season__c IN :deletable
+        WITH SYSTEM_MODE
+      ]) {
+        sets.add(electiveSet);
+        for (SObject linkedChoice : electiveSet.LinkedChoices__r) {
+          linkedChoices.add(linkedChoice);
+        }
+      }
+      clear(linkedChoices);
+      clear(sets);
+      List<SObject> fixedItems = new List<SObject>();
+      List<SObject> recurringItems = new List<SObject>();
+      List<SObject> schedules = new List<SObject>();
+      for (Program__c program : [
+        SELECT
+          Id,
+          (SELECT Id FROM FixedActivities__r),
+          (SELECT Id FROM RecurringActivities__r),
+          (SELECT Id FROM Schedules__r)
+        FROM Program__c
+        WHERE Season__c IN :deletable
+        WITH SYSTEM_MODE
+      ]) {
+        for (SObject item : program.FixedActivities__r) {
+          fixedItems.add(item);
+        }
+        for (SObject item : program.RecurringActivities__r) {
+          recurringItems.add(item);
+        }
+        for (SObject schedule : program.Schedules__r) {
+          schedules.add(schedule);
+        }
+      }
+      clear(fixedItems);
+      clear(recurringItems);
       // Schedules point at the season's weeks (restrict-delete); their days go with them. The
       // season's imported weeks go too: they are kept only while their season is (ImportedWeekGuard).
       ImportedWeekGuard.allow();
       try {
-        clear(
-          [
-            SELECT Id
-            FROM Schedule__c
-            WHERE Program__r.Season__c IN :deletable
-            WITH SYSTEM_MODE
-          ]
-        );
+        clear(schedules);
       } finally {
         ImportedWeekGuard.done();
+      }
+      // Read after the schedules go: a draft's delete puts its events' days right
+      // (DeletedDrafts), which can change the special dates.
+      List<SObject> dates = new List<SObject>();
+      List<SObject> plans = new List<SObject>();
+      List<SObject> events = new List<SObject>();
+      List<SObject> activities = new List<SObject>();
+      for (Season__c season : [
+        SELECT
+          Id,
+          (SELECT Id FROM SpecialDates__r),
+          (SELECT Id FROM PlanParts__r),
+          (SELECT Id FROM SpecialEvents__r),
+          (SELECT Id FROM Activities__r)
+        FROM Season__c
+        WHERE Id IN :deletable
+        WITH SYSTEM_MODE
+      ]) {
+        for (SObject row : season.SpecialDates__r) {
+          dates.add(row);
+        }
+        for (SObject row : season.PlanParts__r) {
+          plans.add(row);
+        }
+        for (SObject row : season.SpecialEvents__r) {
+          events.add(row);
+        }
+        for (SObject row : season.Activities__r) {
+          activities.add(row);
+        }
       }
       // Special dates point at the season's weeks and special days and events; plans at the
       // special days and events; special events at its locations. Clearing the dates first
       // means no special event is refused for still being on a day.
-      clear(
-        [
-          SELECT Id
-          FROM SpecialDate__c
-          WHERE Season__c IN :deletable
-          WITH SYSTEM_MODE
-        ]
-      );
-      clear(
-        [
-          SELECT Id
-          FROM PlanPart__c
-          WHERE Season__c IN :deletable
-          WITH SYSTEM_MODE
-        ]
-      );
-      clear(
-        [
-          SELECT Id
-          FROM SpecialEvent__c
-          WHERE Season__c IN :deletable
-          WITH SYSTEM_MODE
-        ]
-      );
-      clear(
-        [
-          SELECT Id
-          FROM Activity__c
-          WHERE Season__c IN :deletable
-          WITH SYSTEM_MODE
-        ]
-      );
+      clear(dates);
+      clear(plans);
+      clear(events);
+      clear(activities);
     }
   }
 
