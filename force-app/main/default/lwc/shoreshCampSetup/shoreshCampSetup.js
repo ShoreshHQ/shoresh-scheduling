@@ -876,7 +876,7 @@ export default class ShoreshCampSetup extends LightningElement {
     // season is read again, as that back does, so the days it replaces show what was saved.
     if (this.specialScheduleChanged && screen !== "specialEvents") {
       this.specialScheduleChanged = false;
-      this.loadSeason().catch(() => {});
+      this.readSeasonAgain();
     }
     // Roots' card for what last year's schedule named: set up by name first, then opened.
     if (event.detail.setUpNoted) {
@@ -938,7 +938,7 @@ export default class ShoreshCampSetup extends LightningElement {
       return;
     }
     if (screen === "bringInChoices" || screen === "electiveSeats") {
-      this.loadSeason().catch(() => {});
+      this.readSeasonAgain("Couldn't show the season's latest changes here.");
     } else if (screen === "schedules") {
       const saved = this.template.querySelector("c-shoresh-schedules");
       if (saved && typeof saved.readAgain === "function") {
@@ -962,7 +962,7 @@ export default class ShoreshCampSetup extends LightningElement {
     const from = event.currentTarget;
     const changed = event.detail || {};
     if (changed.season) {
-      this.loadSeason().catch(() => {});
+      this.readSeasonAgain();
     }
     this.template
       .querySelectorAll(
@@ -1066,7 +1066,7 @@ export default class ShoreshCampSetup extends LightningElement {
    * schedule, Put on a day): the season is read again, so every screen shows it.
    */
   handleSeasonChanged() {
-    this.loadSeason().catch(() => {});
+    this.readSeasonAgain();
   }
 
   /**
@@ -2176,7 +2176,7 @@ export default class ShoreshCampSetup extends LightningElement {
     this.specialScheduleFor = null;
     if (this.specialScheduleChanged) {
       this.specialScheduleChanged = false;
-      this.loadSeason().catch(() => {});
+      this.readSeasonAgain();
     }
     Promise.resolve().then(() => {
       const details = this.template.querySelector("c-shoresh-special-details");
@@ -3724,6 +3724,14 @@ export default class ShoreshCampSetup extends LightningElement {
       (ok, input) => input.reportValidity() && ok,
       true
     );
+  }
+
+  /**
+   * The season read again for work done elsewhere (WEEK-6.11): a read that fails is said, never
+   * left showing the old season with no word.
+   */
+  readSeasonAgain(what = this.refreshFailed) {
+    this.loadSeason().catch((e) => this.showError(e, what));
   }
 
   /** The change was saved, but showing the season again failed. */
