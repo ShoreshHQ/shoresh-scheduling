@@ -6,16 +6,50 @@
 public with sharing class IncomingQuestions {
   // Import__c.Open__c's length.
   private static final Integer OPEN_LIMIT = 131072;
+  // The last question when some didn't fit: how many more there are (API-6.7).
+  private static final String MORE_KEY = IncomingBatch.QUESTION_PREFIX + 'more';
 
-  /** As many questions as Import__c.Open__c holds, as JSON ("[]" for none). */
+  /**
+   * As many questions as Import__c.Open__c holds, as JSON ("[]" for none). Those left out are
+   * counted in one last question, added to the count an earlier batch left there.
+   */
   public static String fitting(List<Map<String, String>> questions) {
-    List<Map<String, String>> kept = questions.clone();
-    String text = JSON.serialize(kept);
+    List<Map<String, String>> kept = new List<Map<String, String>>();
+    Integer more = 0;
+    for (Map<String, String> question : questions) {
+      if (question.get('key') == MORE_KEY) {
+        more += Integer.valueOf(question.get('more'));
+      } else {
+        kept.add(question);
+      }
+    }
+    String text = JSON.serialize(withMore(kept, more));
     while (text.length() > OPEN_LIMIT) {
       kept.remove(kept.size() - 1);
-      text = JSON.serialize(kept);
+      more++;
+      text = JSON.serialize(withMore(kept, more));
     }
     return text;
+  }
+
+  private static List<Map<String, String>> withMore(
+    List<Map<String, String>> kept,
+    Integer more
+  ) {
+    if (more == 0) {
+      return kept;
+    }
+    List<Map<String, String>> all = kept.clone();
+    all.add(
+      new Map<String, String>{
+        'key' => MORE_KEY,
+        'title' => more +
+        (more == 1 ? ' more question' : ' more questions') +
+        ' from this system couldn\'t be kept here.',
+        'more' => String.valueOf(more)
+      }
+    );
+    return all;
   }
 
   /**

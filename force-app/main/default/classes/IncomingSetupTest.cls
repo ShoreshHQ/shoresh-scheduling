@@ -476,8 +476,15 @@ private class IncomingSetupTest {
     }
   }
 
-  /** Two divisions; the first has a name too long for Salesforce, so the save refuses it. */
-  private class OneTooLong implements IncomingBatch.Capability {
+  /**
+   * Divisions: the first count have a name too long for Salesforce, so the save refuses each; the
+   * last is Seniors.
+   */
+  private class TooLong implements IncomingBatch.Capability {
+    private Integer count;
+    TooLong(Integer count) {
+      this.count = count;
+    }
     public String permissionSet() {
       return 'Send_Divisions';
     }
@@ -502,13 +509,15 @@ private class IncomingSetupTest {
         LIMIT 1
       ]
       .Id;
+      for (Integer i = 0; i < count; i++) {
+        batch.save(
+          i,
+          new Division__c(Program__c = main, Name = 'x'.repeat(81)),
+          'Added.'
+        );
+      }
       batch.save(
-        0,
-        new Division__c(Program__c = main, Name = 'x'.repeat(81)),
-        'Added.'
-      );
-      batch.save(
-        1,
+        count,
         new Division__c(Program__c = main, Name = 'Seniors'),
         'Added.'
       );
@@ -542,7 +551,7 @@ private class IncomingSetupTest {
     ScreenErrors.overWeb = true;
     Map<String, Object> answer = throughWeb(
       camp.sender('Send_Divisions'),
-      new OneTooLong(),
+      new TooLong(1),
       2
     );
     Assert.areEqual(200, answer.get('status'), String.valueOf(answer));
@@ -562,5 +571,73 @@ private class IncomingSetupTest {
         WITH SYSTEM_MODE
       ]
     );
+  }
+
+  private static Integer seniors() {
+    return [
+      SELECT COUNT()
+      FROM Division__c
+      WHERE Name = 'Seniors'
+      WITH SYSTEM_MODE
+    ];
+  }
+
+  private static final String TOO_LONG =
+    'problem: Not saved: "' +
+    'x'.repeat(81) +
+    '": Something typed is too long. Shorten it and save again.';
+
+  // API-6.7: five refused records are each left out with why, and the rest is still saved.
+  @IsTest
+  static void fiveRefusedRecordsLeaveTheRestSaved() {
+    IncomingTestData camp = new IncomingTestData();
+    ScreenErrors.overWeb = true;
+    Map<String, Object> answer = throughWeb(
+      camp.sender('Send_Divisions'),
+      new TooLong(5),
+      6
+    );
+    Assert.areEqual(200, answer.get('status'), String.valueOf(answer));
+    for (Integer row = 1; row <= 5; row++) {
+      Assert.areEqual(TOO_LONG, IncomingTestData.said(answer, row));
+    }
+    Assert.areEqual('saved: Added.', IncomingTestData.said(answer, 6));
+    Assert.areEqual(1, seniors());
+  }
+
+  // API-6.7: past five refused records nothing is saved, and each record still says why, through
+  // the web address and the Flow action alike.
+  @IsTest
+  static void tooManyRefusedRecordsAreEachNamedAndNothingIsSaved() {
+    IncomingTestData camp = new IncomingTestData();
+    ScreenErrors.overWeb = true;
+    User sender = camp.sender('Send_Divisions');
+    Map<String, Object> answer = throughWeb(sender, new TooLong(6), 7);
+    Assert.areEqual(200, answer.get('status'), String.valueOf(answer));
+    String notSaved = 'problem: Not saved: 6 records in this batch were refused (each says why), so none of the batch was saved.';
+    for (Integer row = 1; row <= 6; row++) {
+      Assert.areEqual(TOO_LONG, IncomingTestData.said(answer, row));
+    }
+    Assert.areEqual(notSaved, IncomingTestData.said(answer, 7));
+    Assert.areEqual(0, answer.get('saved'));
+    Assert.areEqual(7, answer.get('problems'));
+
+    List<Object> records = new List<Object>();
+    for (Integer i = 0; i < 7; i++) {
+      IncomingGroup.Record record = new IncomingGroup.Record();
+      record.season = 'Summer 2026';
+      record.source_system = IncomingTestData.SYSTEM_NAME;
+      records.add(record);
+    }
+    List<IncomingResult> byFlow;
+    System.runAs(sender) {
+      byFlow = IncomingDoors.byFlow(new TooLong(6), records);
+    }
+    for (Integer row = 1; row <= 6; row++) {
+      Assert.areEqual(TOO_LONG, IncomingTestData.said(byFlow, row));
+    }
+    Assert.areEqual(notSaved, IncomingTestData.said(byFlow, 7));
+    Assert.areEqual(0, seniors());
+    Assert.isTrue(camp.imports().isEmpty(), 'nothing recorded');
   }
 }
