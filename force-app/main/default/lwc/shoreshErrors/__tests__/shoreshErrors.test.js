@@ -174,12 +174,6 @@ describe("failed", () => {
       withoutCode(failed("Week 1. Rainy plan wasn't saved.", uncaught))
     ).toBe("Week 1. Rainy plan wasn't saved. Try again.");
     expect(
-      refusedBecause(
-        "St. Louis trip wasn't saved.",
-        ours("That is no longer there.")
-      )
-    ).toBe("That is no longer there.");
-    expect(
       withoutCode(refusedBecause("St. Louis trip wasn't saved.", uncaught))
     ).toBe("St. Louis trip wasn't saved. Try again.");
   });

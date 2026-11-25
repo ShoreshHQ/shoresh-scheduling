@@ -234,7 +234,7 @@ export function errorMessage(error) {
 const DONE = /^Done\b/;
 
 /**
- * What didn't happen, in one sentence, then why (word walk W4: never "Not saved. Nothing was
+ * What didn't happen, then why (word walk W4: never "Not saved. Nothing was
  * saved. Your changes are still here."): failed("Bunk 1 · Monday wasn't saved.", e) ->
  * "Bunk 1 · Monday wasn't saved. Bunk 1 isn't at camp then.", or "… Try again." when the
  * server's text isn't ours. The subject is said whole: a camp's names ("Dr. Seuss Day") may
