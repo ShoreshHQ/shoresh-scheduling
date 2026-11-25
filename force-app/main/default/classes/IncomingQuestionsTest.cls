@@ -28,37 +28,49 @@ private class IncomingQuestionsTest {
     );
   }
 
+  private static List<String> keys(List<Map<String, String>> asked) {
+    List<String> all = new List<String>();
+    for (Map<String, String> question : asked) {
+      all.add(question.get('key'));
+    }
+    return all;
+  }
+
   @IsTest
   static void questionsThatFitAreKeptAsTheyAre() {
     List<Map<String, String>> asked = questions(3, 'q');
     Assert.areEqual(JSON.serialize(asked), IncomingQuestions.fitting(asked));
   }
 
-  // API-6.7: questions past what an import holds end in one that says how many more there are,
-  // and a later batch joining it adds its own left-out questions to that count.
+  // API-6.7: questions past what an import holds end in one that says more couldn't be kept; a
+  // later batch joining it, even the same questions sent again, keeps that one line as it is.
   @IsTest
-  static void questionsThatDontFitAreCountedInALastQuestion() {
+  static void questionsThatDontFitEndInOneThatSaysSo() {
     String text = IncomingQuestions.fitting(questions(1000, 'q'));
     Assert.isTrue(text.length() <= 131072, 'fits Open__c');
     List<Map<String, String>> kept = read(text);
-    Map<String, String> last = kept[kept.size() - 1];
-    Integer more = 1000 - (kept.size() - 1);
-    Assert.isTrue(more > 0);
+    Assert.isTrue(kept.size() < 1000);
     Assert.areEqual(
-      more + ' more questions from this system couldn\'t be kept here.',
-      last.get('title')
+      'More questions from this system couldn\'t be kept here.',
+      kept[kept.size() - 1].get('title')
     );
     Assert.isTrue(
       IncomingQuestions.isBatch(text),
       'still a batch\'s questions'
     );
 
-    kept.addAll(questions(10, 'later'));
-    List<Map<String, String>> joined = read(IncomingQuestions.fitting(kept));
-    Assert.areEqual(kept.size() - 10, joined.size(), 'one count, not two');
+    List<Map<String, String>> resent = kept.clone();
+    resent.addAll(questions(1000, 'q'));
     Assert.areEqual(
-      (more + 10) + ' more questions from this system couldn\'t be kept here.',
-      joined[joined.size() - 1].get('title')
+      keys(kept),
+      keys(read(IncomingQuestions.fitting(resent))),
+      'sent again'
     );
+
+    List<Map<String, String>> answered = new List<Map<String, String>>{
+      kept[kept.size() - 1]
+    };
+    String after = IncomingQuestions.fitting(answered);
+    Assert.areEqual(1, read(after).size(), 'the line stays once room is made');
   }
 }

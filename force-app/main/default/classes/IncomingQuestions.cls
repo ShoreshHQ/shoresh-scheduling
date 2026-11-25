@@ -6,21 +6,22 @@
 public with sharing class IncomingQuestions {
   // Import__c.Open__c's length.
   private static final Integer OPEN_LIMIT = 131072;
-  // The last question when some didn't fit: how many more there are (API-6.7).
+  // The last question when some didn't fit (API-6.7). It says no count: questions left out keep
+  // no key, so the same ones sent again could not be told from new ones.
   private static final String MORE_KEY = IncomingBatch.QUESTION_PREFIX + 'more';
   // Room for that last question and the closing bracket.
-  private static final Integer MORE_ROOM = 300;
+  private static final Integer MORE_ROOM = 200;
 
   /**
-   * As many questions as Import__c.Open__c holds, as JSON ("[]" for none). Those left out are
-   * counted in one last question, added to the count an earlier batch left there.
+   * As many questions as Import__c.Open__c holds, as JSON ("[]" for none), ending in one that
+   * says more couldn't be kept when any were left out, now or by an earlier batch it joins.
    */
   public static String fitting(List<Map<String, String>> questions) {
     List<Map<String, String>> kept = new List<Map<String, String>>();
-    Integer more = 0;
+    Boolean more = false;
     for (Map<String, String> question : questions) {
       if (question.get('key') == MORE_KEY) {
-        more += Integer.valueOf(question.get('more'));
+        more = true;
       } else {
         kept.add(question);
       }
@@ -41,28 +42,24 @@ public with sharing class IncomingQuestions {
       size += next;
       fit++;
     }
-    more += kept.size() - fit;
     while (kept.size() > fit) {
       kept.remove(kept.size() - 1);
     }
-    return JSON.serialize(withMore(kept, more));
+    return JSON.serialize(withMore(kept, true));
   }
 
   private static List<Map<String, String>> withMore(
     List<Map<String, String>> kept,
-    Integer more
+    Boolean more
   ) {
-    if (more == 0) {
+    if (!more) {
       return kept;
     }
     List<Map<String, String>> all = kept.clone();
     all.add(
       new Map<String, String>{
         'key' => MORE_KEY,
-        'title' => more +
-        (more == 1 ? ' more question' : ' more questions') +
-        ' from this system couldn\'t be kept here.',
-        'more' => String.valueOf(more)
+        'title' => 'More questions from this system couldn\'t be kept here.'
       }
     );
     return all;

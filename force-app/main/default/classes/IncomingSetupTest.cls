@@ -6,6 +6,12 @@
  */
 @IsTest
 private class IncomingSetupTest {
+  // What a division name too long for Salesforce is answered (TooLong).
+  private static final String TOO_LONG =
+    'problem: Not saved: "' +
+    'x'.repeat(81) +
+    '": Something typed is too long. Shorten it and save again.';
+
   private static Map<String, Object> send(
     String address,
     List<Map<String, Object>> records
@@ -477,13 +483,18 @@ private class IncomingSetupTest {
   }
 
   /**
-   * Divisions: the first count have a name too long for Salesforce, so the save refuses each; the
-   * last is Seniors.
+   * Divisions: the first count records each save rows (one unless said) with a name too long for
+   * Salesforce, so the save refuses each; the last is Seniors.
    */
   private class TooLong implements IncomingBatch.Capability {
     private Integer count;
+    private Integer rows = 1;
     TooLong(Integer count) {
       this.count = count;
+    }
+    TooLong(Integer count, Integer rows) {
+      this.count = count;
+      this.rows = rows;
     }
     public String permissionSet() {
       return 'Send_Divisions';
@@ -510,11 +521,13 @@ private class IncomingSetupTest {
       ]
       .Id;
       for (Integer i = 0; i < count; i++) {
-        batch.save(
-          i,
-          new Division__c(Program__c = main, Name = 'x'.repeat(81)),
-          'Added.'
-        );
+        for (Integer r = 0; r < rows; r++) {
+          batch.save(
+            i,
+            new Division__c(Program__c = main, Name = 'x'.repeat(81)),
+            'Added.'
+          );
+        }
       }
       batch.save(
         count,
@@ -582,11 +595,6 @@ private class IncomingSetupTest {
     ];
   }
 
-  private static final String TOO_LONG =
-    'problem: Not saved: "' +
-    'x'.repeat(81) +
-    '": Something typed is too long. Shorten it and save again.';
-
   // API-6.7: five refused records are each left out with why, and the rest is still saved.
   @IsTest
   static void fiveRefusedRecordsLeaveTheRestSaved() {
@@ -639,5 +647,20 @@ private class IncomingSetupTest {
     Assert.areEqual(notSaved, IncomingTestData.said(byFlow, 7));
     Assert.areEqual(0, seniors());
     Assert.isTrue(camp.imports().isEmpty(), 'nothing recorded');
+  }
+
+  // API-6.7: a record whose rows are all refused (a camper's bunk in each week) counts once.
+  @IsTest
+  static void aRecordWithManyRefusedRowsIsOneRefusal() {
+    IncomingTestData camp = new IncomingTestData();
+    ScreenErrors.overWeb = true;
+    Map<String, Object> answer = throughWeb(
+      camp.sender('Send_Divisions'),
+      new TooLong(1, 7),
+      2
+    );
+    Assert.areEqual(TOO_LONG, IncomingTestData.said(answer, 1));
+    Assert.areEqual('saved: Added.', IncomingTestData.said(answer, 2));
+    Assert.areEqual(1, seniors());
   }
 }

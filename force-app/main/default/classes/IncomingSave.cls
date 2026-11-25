@@ -16,7 +16,7 @@ public with sharing class IncomingSave {
   };
   // What Undo needs must fit in the import's record (Import__c long text fields).
   private static final Integer LOG_LIMIT = 131072;
-  // Rows the platform may refuse: each is left out and it tries again; past this, nothing is saved.
+  // Records the platform may refuse: each is left out and it tries again; past this, none is saved.
   private static final Integer MOST_LEFT_OUT = 5;
 
   private IncomingBatch batch;
@@ -90,8 +90,14 @@ public with sharing class IncomingSave {
   ) {
     for (Integer i = 0; i < attempt.size(); i++) {
       if (attempt[i].row === e.record) {
-        batch.problem(attempt[i].index, 'Not saved: ' + ScreenErrors.words(e));
-        batch.staged.remove(i);
+        // The whole record is left out (a camper's bunk in every week), so "Not saved" is true.
+        Integer index = attempt[i].index;
+        batch.problem(index, 'Not saved: ' + ScreenErrors.words(e));
+        for (Integer j = batch.staged.size() - 1; j >= 0; j--) {
+          if (batch.staged[j].index == index) {
+            batch.staged.remove(j);
+          }
+        }
         return;
       }
     }
