@@ -36,6 +36,21 @@ module.exports = {
     // Pages used only by tests (a parent that slots rows into a rail menu).
     "^c/(railPopFixture)$": "<rootDir>/jest/fixtures/lwc/$1/$1.js"
   },
+  // Branch coverage of the three engines (the bar's G9, docs/ci-setup.md), checked whenever a run
+  // measures coverage: CI's LWC Jest job does (`npm run test:unit:coverage`). Each folder is held
+  // as a whole. The Generated Schedule engine meets the bar's 90%; the other two are held at their
+  // level on CI today and may only go up, to 90.
+  collectCoverageFrom: [
+    "force-app/main/default/lwc/shoreshEngine/*.js",
+    "force-app/main/default/lwc/shoreshElectiveEngine/*.js",
+    "force-app/main/default/lwc/shoreshImportEngine/*.js"
+  ],
+  coverageReporters: ["text", "text-summary"],
+  coverageThreshold: {
+    "./force-app/main/default/lwc/shoreshEngine/": { branches: 90 },
+    "./force-app/main/default/lwc/shoreshElectiveEngine/": { branches: 89 },
+    "./force-app/main/default/lwc/shoreshImportEngine/": { branches: 89 }
+  },
   // Shared made-up data for tests, not tests themselves.
   testPathIgnorePatterns: [
     ...(jestConfig.testPathIgnorePatterns || []),

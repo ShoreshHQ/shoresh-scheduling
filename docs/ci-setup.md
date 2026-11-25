@@ -184,6 +184,19 @@ Recommended:Security`), and fails on moderate (3) or worse. A second step runs t
 Not covered: anything else only the org's compiler knows (types, method signatures), and
 sharing and query limits at run time.
 
+## Engine branch coverage (in "LWC Jest")
+
+The LWC Jest job runs `npm run test:unit:coverage`: every test, measuring branch coverage of the
+three engines (`shoreshEngine`, `shoreshElectiveEngine`, `shoreshImportEngine`), each folder as a
+whole. It fails when one drops under its line in `jest.config.js` (`coverageThreshold`). The bar
+is 90% (G9). The Generated Schedule engine is held at 90%; the elective and import engines are
+held at today's level and may only go up, to 90. The job prints each engine file's figures.
+
+Not run by CI: the engine's full seed sweeps (`npm run test:engine:full`, about 15 minutes): the
+desktop differential's camps 101-400, the search proof check 51-150, properties 101-300, across
+61-200 and the ported spare-cell options 26-100. CI runs the first, smaller sample of the same
+seeds. Run the full sweep before changing the engine (docs/engine/protocol.md).
+
 ## The AI connector on macOS, Windows and Linux ("Connector on ...")
 
 The connector (`connect/`) runs on the director's own computer, so its Jest suite also runs on

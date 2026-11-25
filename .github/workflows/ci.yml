@@ -33,8 +33,10 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
-      - name: LWC Jest
-        run: npm run test:unit
+      - name: LWC Jest, with the engines' branch coverage
+        # Fails if an engine's branch coverage drops under its line in jest.config.js
+        # (coverageThreshold; docs/ci-setup.md).
+        run: npm run test:unit:coverage
 
   jest-namespaced:
     name: LWC Jest, as if the package had its namespace
