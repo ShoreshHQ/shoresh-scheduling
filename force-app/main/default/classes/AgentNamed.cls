@@ -114,11 +114,24 @@ public with sharing class AgentNamed {
       '.';
   }
 
-  /** '"Teens" and "teens" are both programs with that name, …' (each row's name, quoted). */
+  /**
+   * '"Teens" and "teens" are both programs with that name, …' (each row's name, quoted), or
+   * 'There are 2 programs called "Teens", …' when they are spelled alike.
+   */
   public static String sameNameSaid(List<SObject> rows, String things) {
     List<String> quoted = new List<String>();
     for (SObject row : rows) {
       quoted.add('"' + (String) row.get('Name') + '"');
+    }
+    String unsure = ', so Shoresh can\'t tell which you mean. Nothing was changed.';
+    if (new Set<String>(quoted).size() == 1) {
+      return 'There are ' +
+        quoted.size() +
+        ' ' +
+        things +
+        ' called ' +
+        quoted[0] +
+        unsure;
     }
     String last = quoted.remove(quoted.size() - 1);
     return String.join(quoted, ', ') +
@@ -126,6 +139,7 @@ public with sharing class AgentNamed {
       last +
       (quoted.size() == 1 ? ' are both ' : ' are all ') +
       things +
-      ' with that name, so Shoresh can\'t tell which you mean. Nothing was changed.';
+      ' with that name' +
+      unsure;
   }
 }

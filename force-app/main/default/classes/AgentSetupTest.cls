@@ -173,10 +173,15 @@ private class AgentSetupTest {
         SortOrder__c = 9
       );
       Database.insert(twin, AccessLevel.SYSTEM_MODE);
+      Division__c twinJuniors = new Division__c(
+        Program__c = twin.Id,
+        Name = 'Juniors'
+      );
       Database.insert(
         new List<SObject>{
           new Group__c(Division__c = ids.get('Juniors'), Name = 'GROUP A!'),
-          new Division__c(Program__c = twin.Id, Name = 'Juniors')
+          twinJuniors,
+          new Division__c(Program__c = twin.Id, Name = 'Teens')
         },
         AccessLevel.SYSTEM_MODE
       );
@@ -214,6 +219,24 @@ private class AgentSetupTest {
           'new_name' => 'Younger'
         }
       );
+      List<Object> notInMain = post(
+        'rename',
+        new Map<String, Object>{
+          'kind' => 'division',
+          'name' => 'Teens',
+          'program' => 'Main',
+          'new_name' => 'Older'
+        }
+      );
+      List<Object> noProgram = post(
+        'rename',
+        new Map<String, Object>{
+          'kind' => 'division',
+          'name' => 'Juniors',
+          'program' => 'Mane',
+          'new_name' => 'Younger'
+        }
+      );
       List<Object> exact = post(
         'rename',
         new Map<String, Object>{
@@ -239,6 +262,20 @@ private class AgentSetupTest {
         divisions[1]
       );
       Assert.areEqual(200, inTwin[0], String.valueOf(inTwin[1]));
+      Assert.areEqual('Younger', nameOf(twinJuniors.Id));
+      // "Main" is that program exactly, not "MAIN!", which holds the only Teens.
+      Assert.areEqual(400, notInMain[0], String.valueOf(notInMain[1]));
+      Assert.isTrue(
+        String.valueOf(notInMain[1])
+          .startsWith('There is no division called "Teens" that you can see.'),
+        String.valueOf(notInMain[1])
+      );
+      Assert.areEqual(400, noProgram[0], String.valueOf(noProgram[1]));
+      Assert.isTrue(
+        String.valueOf(noProgram[1])
+          .startsWith('There is no program called "Mane" that you can see.'),
+        String.valueOf(noProgram[1])
+      );
       Assert.areEqual(200, exact[0], String.valueOf(exact[1]));
       Assert.areEqual('Main', nameOf(ids.get('Main')));
       Assert.areEqual('Juniors', nameOf(ids.get('Juniors')));

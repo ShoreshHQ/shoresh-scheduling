@@ -66,9 +66,17 @@ public with sharing class AgentSetupRecords {
         'Say which ' + labels.singularInSentence(term) + ' (name).'
       );
     }
+    List<SObject> rows = rowsOf(term, seasonId);
+    String programName = AgentFields.text(body, 'program');
+    if (String.isNotBlank(programName)) {
+      // The program named, found among the season's as API-1.25 finds a name.
+      rows = inProgram(
+        rows,
+        AgentNamed.one(rowsOf('Program', seasonId), programName, 'Program').Id
+      );
+    }
     SObject row = onlyOne(
-      rowsOf(term, seasonId),
-      body,
+      rows,
       new List<String>{
         labels.singularInSentence(term),
         labels.pluralInSentence(term),
@@ -271,25 +279,20 @@ public with sharing class AgentSetupRecords {
   }
 
   /**
-   * The one row of that name (in that program, when one is named), found as API-1.25 finds a name:
-   * spelled exactly so, else reading the same. Rows of that name in different programs are asked
-   * about, naming the programs; others are refused naming each row; none is refused naming the
-   * ones there are. words: the kind in the camp's words, singular then plural, then the camp's
-   * Program word, then the name asked.
+   * The one row of the name asked, found as API-1.25 finds a name: spelled exactly so, else
+   * reading the same. Rows of that name in different programs are asked about, naming the
+   * programs; others are refused naming each row; none is refused naming the ones there are.
+   * words: the kind in the camp's words, singular then plural, then the camp's Program word, then
+   * the name asked.
    */
-  private static SObject onlyOne(
-    List<SObject> rows,
-    Map<String, Object> body,
-    List<String> words
-  ) {
-    String name = AgentFields.text(body, 'name');
-    List<SObject> among = inProgram(rows, AgentFields.text(body, 'program'));
-    List<SObject> found = AgentNamed.called(among, name);
+  private static SObject onlyOne(List<SObject> rows, List<String> words) {
+    String name = words[3];
+    List<SObject> found = AgentNamed.called(rows, name);
     if (found.size() == 1) {
       return found[0];
     }
     if (found.isEmpty()) {
-      throw new ShoreshException(AgentNamed.noneSaid(words, name, among));
+      throw new ShoreshException(AgentNamed.noneSaid(words, name, rows));
     }
     List<String> programs = new List<String>();
     for (SObject row : found) {
@@ -298,21 +301,13 @@ public with sharing class AgentSetupRecords {
     throw new ShoreshException(AgentNamed.manySaid(found, programs, words));
   }
 
-  /** The rows in the program named (as API-1.25 finds it), or all of them when none is named. */
-  private static List<SObject> inProgram(
-    List<SObject> rows,
-    String programName
-  ) {
-    if (String.isBlank(programName)) {
-      return rows;
-    }
-    List<String> programs = new List<String>();
-    for (SObject row : rows) {
-      programs.add(programOf(row));
-    }
+  /** The rows in that program. */
+  private static List<SObject> inProgram(List<SObject> rows, Id programId) {
     List<SObject> result = new List<SObject>();
-    for (Integer i : AgentNamed.called(programs, programName)) {
-      result.add(rows[i]);
+    for (SObject row : rows) {
+      if (programIdOf(row) == programId) {
+        result.add(row);
+      }
     }
     return result;
   }
