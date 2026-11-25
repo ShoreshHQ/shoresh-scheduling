@@ -11,6 +11,9 @@ private class AgentLimitsTest {
   // heap under 3 of 6 MB), so a bigger camp than this one still fits: the AI's requests below.
   // Apex gives only the heap held at a moment, not the most a request reached, so the heap check
   // catches what a request keeps (its answer and what it holds on to), not a passing spike.
+  // read_week_draft and week_checks read the week's setup once for the week and its setup
+  // changes: measured 47 on this camp (2026-11-25, 60 before), so their bound is this 50 itself
+  // (measured + 5 would pass it).
   private static final Integer HALF_QUERIES = 50;
   private static final Integer HALF_CPU_MS = 5000;
   private static final Integer HALF_HEAP = 3 * 1024 * 1024;
@@ -19,9 +22,6 @@ private class AgentLimitsTest {
   // 23 for three (2026-11-25), 6 a program, so 8 published programs would pass the 50 the bar asks.
   // Bounded near that per program (one to spare) until one read opens them all.
   private static final Integer MOST_QUERIES_PER_PROGRAM_VIEW = 7;
-  // G8: the draft an AI reads, and the week's checks, read the week's setup once for the week and
-  // its setup changes: measured 47 on this camp (2026-11-25, 60 before), so their bound is the
-  // bar's 50 itself (measured + 5 would pass it).
 
   @TestSetup
   static void makeCamp() {
