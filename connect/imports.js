@@ -109,7 +109,9 @@ function alsoAddLines(p, t, setup, m) {
 /** The file's columns and the column each fills, and how to choose another. */
 function headingLines(p) {
   if (!p.mapping) return [];
-  const choices = p.screen.columns.map((c) => `"${c.key}" (${c.heading})`);
+  const choices = p.screen.columns.map(
+    (c) => `"${words.aiWord(c.key, [c.key])}" (${c.heading})`
+  );
   const lines = p.mapping.headings.map((h) => {
     const column = p.screen.columns.find((c) => c.key === h.column);
     // As the screen marks a heading that needs a look.
@@ -327,7 +329,13 @@ async function importFile(capability, given, { read, send, answer, load }) {
   }
   const remembered = m.rememberedByKey(body.answers || []);
   const sent = Object.fromEntries(
-    Object.entries(input.answers || {}).map(([id, a]) => [id, engineWord(m, a)])
+    Object.entries(input.answers || {}).map(([id, a]) => [
+      id,
+      // A column's choice is read in plain words (rain_plan), as headingLines offers it.
+      id.startsWith("columns|") && typeof a === "string"
+        ? a.replace(/_([a-z])/g, (_, c) => c.toUpperCase())
+        : engineWord(m, a)
+    ])
   );
   const answers = { ...remembered.answers, ...sent };
   const proposal = workbook

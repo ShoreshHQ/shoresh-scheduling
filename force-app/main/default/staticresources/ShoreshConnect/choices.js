@@ -11,6 +11,15 @@ const crypto = require("crypto");
 const { fileOf } = require("./imports");
 const { refused } = require("./common");
 
+/** The screen's "Not read" rows, as an AI hears them. */
+function notReadLines(rows) {
+  return rows.length
+    ? [
+        `Not read (${rows.length}): ${rows.map((r) => [r.name, r.where, r.why].filter(Boolean).join(", ")).join("; ")}`
+      ]
+    : [];
+}
+
 /**
  * One of the names by fold, or a refusal naming them all; what: their words in a sentence, one and
  * many, in the camp's own (CORE-1.0), and the input that names one.
@@ -155,6 +164,7 @@ async function bringInChoices(capability, input, { read, send, answer, load }) {
           m
         );
   if (schedule.problem) return refused(schedule.problem);
+  const groups = m.groupsOfProgram(setup, schedule.item.programId);
 
   const { file, problem } = fileOf(input, m);
   if (problem) return refused(problem);
@@ -193,7 +203,9 @@ async function bringInChoices(capability, input, { read, send, answer, load }) {
           ? [
               `If they are different ${t.pIn("Camper")}, send different_campers: ${JSON.stringify(canSay)}. Ask the person; else the sheet needs fixing.`
             ]
-          : [])
+          : []),
+        // The screen shows its "Not read" section beside this card.
+        ...notReadLines(m.notReadRows(reading, groups, t))
       ].join("\n")
     );
   }
@@ -221,7 +233,6 @@ async function bringInChoices(capability, input, { read, send, answer, load }) {
     weekId: week.item.Id,
     scheduleId: schedule.item.id
   };
-  const groups = m.groupsOfProgram(setup, schedule.item.programId);
   const request = (runRevision, which = {}) =>
     m.buildRequest({
       which,
@@ -309,6 +320,8 @@ async function bringInChoices(capability, input, { read, send, answer, load }) {
       text: [
         `Review of ${file.name} for ${set.item.name} in ${week.item.Name} (${schedule.item.name}), as the Elective seats screen's Import choices shows it. Nothing is imported yet.`,
         ...lines,
+        // The screen's "Not read" section: a bunk Shoresh doesn't have, a column not read.
+        ...notReadLines(m.notReadRows(reading, groups, t)),
         ...(reading.newNames && reading.newNames.length
           ? [
               "Names on the sheet Shoresh doesn't have yet, each as it will be imported:",

@@ -3398,6 +3398,42 @@ describe("Shoresh for AI tools and the command line", () => {
       "Names on the sheet Shoresh doesn't have yet, each as it will be imported:"
     );
     expect(review.text).toContain('save: true and seen: "none"');
+    expect(review.text).not.toContain("Not read");
+
+    // A bunk Shoresh doesn't have: the AI hears the screen's "Not read" row, never nothing.
+    const noBunk = await call(
+      "import_choices",
+      {
+        ...input,
+        csv_text:
+          "Camper,Bunk,Choice 1,Choice 2\nAvery Madeup,Bunk 99,Swim,Art\nCasey Madeup,Bunk 2,Art,Swim\n"
+      },
+      {
+        run: answering([ok(JSON.stringify(read)), message(check)], []),
+        choices
+      }
+    );
+    expect(noBunk.text).toContain(
+      "Not read (1): Avery Madeup, Row 2, Bunk 99 isn't one of your groups: not imported"
+    );
+    // Beside the can't-tell-apart refusal too, as the screen shows both.
+    const apart = await call(
+      "import_choices",
+      {
+        ...input,
+        csv_text:
+          "Camper,Bunk,Choice 1,Choice 2\nAvery Madeup,Bunk 1,Swim,Art\nAvery Madeup,Bunk 2,Art,Swim\nCasey Madeup,Bunk 99,Art,Swim\n"
+      },
+      {
+        run: answering([ok(JSON.stringify(read)), message(check)], []),
+        choices
+      }
+    );
+    expect(apart.ok).toBe(false);
+    expect(apart.text).toContain("send different_campers");
+    expect(apart.text).toContain(
+      "Not read (1): Casey Madeup, Row 4, Bunk 99 isn't one of your groups: not imported"
+    );
     const asked = JSON.parse(seen[1].stdin);
     expect(asked.save).toBeUndefined();
     expect(asked.request).toMatchObject({
@@ -6019,5 +6055,23 @@ describe("a list import says its days as its own season (WEEK-2.6)", () => {
     expect(done.ok).toBe(true);
     // Day 2 of a Sunday-first week is Monday, as set up: nothing differs.
     expect(done.text).not.toContain("Keep or Change");
+
+    // API-1.6: a column's choices are in plain words, and an answer in them is read back.
+    const columns = done.text.split("\n").find((l) => l.startsWith("Columns:"));
+    expect(columns).toContain('"rain_plan" (Rain plan)');
+    expect(columns).toContain('"groups_at_once" (Groups at once)');
+    expect(columns.match(/"[a-z]+[A-Z]\w*"/g)).toBeNull();
+    const chosen = await call(
+      "import_list",
+      {
+        season: "Summer 2026",
+        list: "activities",
+        file_name: "activities.csv",
+        csv_text: "Activity,Location,Early in week\nArchery,Gym,2 by Day 2",
+        answers: { "columns|activities|location": "rain_plan" }
+      },
+      { run: async () => `HTTP/1.1 200\n\n${read}`, imports }
+    );
+    expect(chosen.text).toContain('"Location" → Rain plan');
   });
 });
