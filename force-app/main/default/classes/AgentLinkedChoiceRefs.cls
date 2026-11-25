@@ -114,6 +114,8 @@ public with sharing class AgentLinkedChoiceRefs {
     String activity = AgentFields.text(body, 'activity');
     List<LinkedChoice__c> found = new List<LinkedChoice__c>();
     List<String> names = new List<String>();
+    // The activities a choice of this name is linked to, when not the one asked for.
+    List<String> linkedTo = new List<String>();
     for (LinkedChoice__c each : [
       SELECT
         Id,
@@ -132,19 +134,40 @@ public with sharing class AgentLinkedChoiceRefs {
         String.isBlank(activity) ||
         IncomingBatch.fold(each.Offering__r.Activity__r.Name) ==
         IncomingBatch.fold(activity);
-      if (ofIt && IncomingBatch.fold(each.Name) == IncomingBatch.fold(name)) {
-        found.add(each);
+      if (IncomingBatch.fold(each.Name) == IncomingBatch.fold(name)) {
+        if (ofIt) {
+          found.add(each);
+        } else {
+          linkedTo.add(each.Offering__r.Activity__r.Name);
+        }
       }
     }
     if (found.size() == 1) {
       return found[0];
     }
     throw new ShoreshException(
-      found.isEmpty() ? noSuch(name, names) : twoCalled(found, activity)
+      found.isEmpty()
+        ? noSuch(name, names, linkedTo, activity)
+        : twoCalled(found, activity)
     );
   }
 
-  private String noSuch(String name, List<String> names) {
+  private String noSuch(
+    String name,
+    List<String> names,
+    List<String> linkedTo,
+    String activity
+  ) {
+    if (!linkedTo.isEmpty()) {
+      return '"' +
+        name.left(80) +
+        '" is linked to ' +
+        String.join(linkedTo, ' and ') +
+        ', not ' +
+        activity.left(80) +
+        '.' +
+        NOTHING;
+    }
     String start = String.isBlank(name)
       ? 'Say which ' + word + ' (name).'
       : electiveSet.Name +
