@@ -135,6 +135,7 @@ export default class ShoreshChoicesImport extends LightningElement {
   recounting = false;
   // The latest recount failed: the count shown would be from before the answer.
   countFailed = false;
+  countError = null;
   check = null;
   done = null;
   // A selector that takes the cursor at the next render.
@@ -669,12 +670,17 @@ export default class ShoreshChoicesImport extends LightningElement {
       });
       if (mine === this.recounts) {
         this.check = check;
+        // The failed recount's message goes with it; any other stays.
+        if (this.countFailed && this.error === this.countError) {
+          this.error = null;
+        }
         this.countFailed = false;
       }
     } catch (e) {
       if (mine === this.recounts) {
         this.countFailed = true;
-        this.error = failed("Couldn't count what this sheet imports.", e);
+        this.countError = failed("Couldn't count what this sheet imports.", e);
+        this.error = this.countError;
       }
     } finally {
       if (mine === this.recounts) this.recounting = false;

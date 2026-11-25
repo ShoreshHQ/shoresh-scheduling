@@ -783,6 +783,8 @@ describe("c-shoresh-choices-import", () => {
       "2 campers: 1 new, 1 already here"
     );
     expect($(element, '[data-id="primary"]').disabled).toBe(false);
+    // The failure's message went with it.
+    expect($(element, '[data-id="error"]')).toBeNull();
     console.error.mockRestore();
   });
 
