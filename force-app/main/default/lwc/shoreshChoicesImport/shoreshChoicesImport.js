@@ -779,6 +779,8 @@ export default class ShoreshChoicesImport extends LightningElement {
         : "Ready to import.";
     } catch (e) {
       this.phase = "card";
+      // Never a count from before: what is shown is what Import would do, or nothing.
+      this.check = null;
       this.error = failed("Couldn't count what this sheet imports.", e);
     }
   }

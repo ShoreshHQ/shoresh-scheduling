@@ -237,6 +237,8 @@ export default class ShoreshImport extends LightningElement {
       return;
     }
     this.error = null;
+    // Each choice of files is worked out afresh: a failure on the last one isn't this one's.
+    this.planError = null;
     this.stage = "reading";
     try {
       this.files = await Promise.all(chosen.map((f) => this.readOne(f)));

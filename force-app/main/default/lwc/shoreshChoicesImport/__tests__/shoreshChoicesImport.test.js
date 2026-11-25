@@ -750,6 +750,22 @@ describe("c-shoresh-choices-import", () => {
     // Never the count from before the answer, and nothing to press that would import another.
     expect($(element, '[data-line="count"]')).toBeNull();
     expect($(element, '[data-id="primary"]')).toBeNull();
+    // Counting again from card 2 that fails too still shows no count from before.
+    checkChoices.mockRejectedValueOnce(new Error("timed out"));
+    await click(element, '[data-id="back"]');
+    await click(element, '[data-id="primary"]');
+    expect($(element, '[data-line="count"]')).toBeNull();
+    expect($(element, '[data-id="primary"]')).toBeNull();
+    // Card 3 counted again: the questions are back, with the answers given.
+    checkChoices.mockResolvedValueOnce(asking);
+    await click(element, '[data-id="back"]');
+    await click(element, '[data-id="primary"]');
+    checkChoices.mockRejectedValueOnce(new Error("timed out"));
+    $$(element, "[data-which] lightning-combobox")[1].dispatchEvent(
+      new CustomEvent("change", { detail: { value: "new" } })
+    );
+    await flush();
+    expect($(element, '[data-line="count"]')).toBeNull();
     // The questions stay, with the answers given: answering again counts again.
     const still = $$(element, "[data-which] lightning-combobox");
     expect(still.map((c) => c.value)).toEqual(["c7", "new"]);
