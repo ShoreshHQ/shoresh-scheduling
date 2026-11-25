@@ -260,7 +260,6 @@ const scheduleProgram = schemaName("Schedule__c.Program__c");
 const schedulePublishKey = schemaName("Schedule__c.PublishKey__c");
 const schedulePublishedAt = schemaName("Schedule__c.PublishedAt__c");
 const schedulePublishedBy = schemaName("Schedule__c.PublishedBy__c");
-const scheduleRevisionsAfter = schemaName("Schedule__c.RevisionsAfter__c");
 const scheduleSourceSchedule = schemaName("Schedule__c.SourceSchedule__c");
 const scheduleStatus = schemaName("Schedule__c.Status__c");
 const scheduleVersionReason = schemaName("Schedule__c.VersionReason__c");
@@ -661,7 +660,6 @@ export const FIELD = Object.freeze({
     PublishKey: schedulePublishKey.fieldApiName,
     PublishedAt: schedulePublishedAt.fieldApiName,
     PublishedBy: schedulePublishedBy.fieldApiName,
-    RevisionsAfter: scheduleRevisionsAfter.fieldApiName,
     SourceSchedule: scheduleSourceSchedule.fieldApiName,
     Status: scheduleStatus.fieldApiName,
     VersionReason: scheduleVersionReason.fieldApiName,

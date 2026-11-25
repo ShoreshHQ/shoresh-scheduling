@@ -316,6 +316,5 @@ module.exports = {
   serve,
   hostFrom,
   toolResult,
-  answerTool,
   WEEK_VIEW
 };

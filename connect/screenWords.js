@@ -66,4 +66,4 @@ function forAi(text) {
   return JSON.stringify(renamed(parsed), null, /^[[{]\n/.test(text) ? 2 : 0);
 }
 
-module.exports = { ANSWER_KEYS, LISTS, aiWord, engineWord, forAi };
+module.exports = { LISTS, aiWord, engineWord, forAi };
