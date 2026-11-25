@@ -1,57 +1,9 @@
 /*
- * Generated Schedule's layout (desktop ScheduleScreen.jsx and its views). CSS only: import with
- * @import "c/shoreshScheduleScreen"; (after "c/shoreshTokens").
+ * The layout Generated Schedule and Manual Build share (desktop ScheduleScreen.jsx and its views).
+ * CSS only: import with @import "c/shoreshScheduleScreen"; (after "c/shoreshTokens").
  */
 .schedules {
   position: relative;
-}
-
-.picker {
-  min-width: 12rem;
-}
-
-.pill {
-  padding: 5px 16px;
-  font-size: 12px;
-  font-weight: 600;
-  border-radius: 999px;
-  border: 1px solid var(--slds-g-color-brand-base-50, #0176d3);
-  background: var(--slds-g-color-neutral-base-100, #fff);
-  color: var(--slds-g-color-brand-base-50, #0176d3);
-  cursor: pointer;
-}
-
-.card {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 6px;
-  padding: 14px 16px;
-  text-align: center;
-  cursor: pointer;
-  background: var(--slds-g-color-neutral-base-100, #fff);
-  border: 1px solid var(--slds-g-color-border-base-1, #e5e5e5);
-  border-top: 4px solid var(--slds-g-color-border-base-1, #e5e5e5);
-  border-radius: 8px;
-}
-
-.card:hover {
-  border-color: var(--slds-g-color-brand-base-50, #0176d3);
-}
-
-.back {
-  padding: 4px 10px;
-  border: 1px solid var(--slds-g-color-border-base-1, #e5e5e5);
-  border-radius: 6px;
-  background: var(--slds-g-color-neutral-base-100, #fff);
-  cursor: pointer;
-  font-size: 12px;
-}
-
-.note {
-  font-size: 10px;
-  font-weight: 600;
-  color: var(--shoresh-text-secondary);
 }
 
 .empty-state {
