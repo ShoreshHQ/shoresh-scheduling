@@ -9,6 +9,7 @@ import {
   saidOf,
   spreadOf
 } from "./lines";
+import { reasonOf } from "c/shoreshErrors";
 
 // The counter's lines, for Publish's question (c/shoreshPublish), in the same words.
 export { checkLines } from "./lines";
@@ -116,8 +117,12 @@ export default class ShoreshWeekChecks extends LightningElement {
     let kept;
     try {
       kept = readKept(await readAccepted({ scheduleId }));
-    } catch {
-      // Not read: every line shows, as nothing was accepted (nothing is hidden by mistake).
+    } catch (e) {
+      // Not read: every line shows, as nothing was accepted (nothing is hidden by mistake), and
+      // the dropdown says so (WEEK-6.12).
+      if (ticket === this.readTicket) {
+        this.acceptProblem = `Couldn't read what you accepted for this week. ${reasonOf(e)}`;
+      }
       return;
     }
     if (ticket !== this.readTicket) {
@@ -276,10 +281,10 @@ export default class ShoreshWeekChecks extends LightningElement {
         scheduleId,
         line: keptLine(line)
       });
-    } catch {
+    } catch (e) {
       // Shown in the dropdown, where role="alert" also says it: the live line stays quiet.
       this.acceptSaid = "";
-      this.acceptProblem = `Couldn't keep this Accept with the week: ${said}.`;
+      this.acceptProblem = `Couldn't keep this Accept with the week: ${said}. ${reasonOf(e)}`;
     } finally {
       this.saving = this.saving.filter((e) => e !== entry);
     }

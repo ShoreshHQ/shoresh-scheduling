@@ -571,10 +571,13 @@ export class BuildWeek {
       if (latest()) {
         screen.versions = rows || [];
       }
-    } catch {
-      // The list shows as empty; the week itself is unaffected.
-      if (latest()) {
-        screen.versions = [];
+    } catch (e) {
+      // Said, never hidden (WEEK-6.12): the list stays as last read rather than showing none,
+      // which would look as if the week's versions were gone. A failure already shown stays.
+      if (latest() && !screen.error) {
+        this.adapter.showError(
+          failed(`Couldn't read the versions of ${screen.weekName}.`, e)
+        );
       }
     }
   }

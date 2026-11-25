@@ -959,7 +959,7 @@ describe("c/shoreshBuildWeek: Versions", () => {
       expect(screen.versions).toEqual(ROWS);
     });
 
-    it("an older read answering after a newer one is dropped; one that fails shows none", async () => {
+    it("an older read answering after a newer one is dropped", async () => {
       const { week, screen } = fakeScreen();
       const older = pending();
       getVersions.mockReturnValueOnce(older.promise);
@@ -969,9 +969,35 @@ describe("c/shoreshBuildWeek: Versions", () => {
       older.resolve(ROWS);
       await first;
       expect(screen.versions).toEqual([MINE]);
+    });
+
+    it("WEEK-6.12: a read that fails keeps the list as last read and says so", async () => {
+      const { week, screen } = listed();
       getVersions.mockRejectedValueOnce(new Error("offline"));
       await week.loadVersions();
-      expect(screen.versions).toEqual([]);
+      expect(screen.versions).toEqual(ROWS);
+      expect(screen.error).toMatch(
+        /^Couldn't read the versions of Week 1\. Try again\. For support: [\w-]+\.$/
+      );
+    });
+
+    it("WEEK-6.12: a failed read never covers a failure already shown", async () => {
+      const { week, screen } = listed();
+      screen.error = "Rainy plan wasn't saved. Try again.";
+      getVersions.mockRejectedValueOnce(new Error("offline"));
+      await week.loadVersions();
+      expect(screen.error).toBe("Rainy plan wasn't saved. Try again.");
+    });
+
+    it("WEEK-6.12: a failed read for a week no longer shown says nothing", async () => {
+      const { week, screen } = listed();
+      const late = pending();
+      getVersions.mockReturnValueOnce(late.promise);
+      const read = week.loadVersions();
+      week.forgetVersions();
+      late.reject(new Error("offline"));
+      await read;
+      expect(screen.error).toBeNull();
     });
 
     it("another week: the last one's versions go, and a list still on its way is dropped", async () => {
@@ -1007,6 +1033,15 @@ describe("c/shoreshBuildWeek: Versions", () => {
       expect(said).toEqual(["Saved Rainy plan."]);
       expect(onDone).toHaveBeenCalledWith(true);
       expect(screen.tellSchedulesChanged).toHaveBeenCalledWith(false, "p1|w1");
+    });
+
+    it("WEEK-6.12: a version saved but the list not read again says both", async () => {
+      const { week, screen, said } = listed();
+      getVersions.mockRejectedValueOnce(new Error("offline"));
+      await week.saveVersion("Rainy plan", jest.fn());
+      expect(said).toEqual(["Saved Rainy plan."]);
+      expect(screen.versions).toEqual(ROWS);
+      expect(screen.error).toMatch(/^Couldn't read the versions of Week 1\./);
     });
 
     it("the Versions list is back before the hold ends, and a read asked for meanwhile is done after", async () => {
