@@ -5,6 +5,27 @@ const auraConfig = require("@salesforce/eslint-plugin-aura");
 const lwcConfig = require("@salesforce/eslint-config-lwc/recommended");
 const globals = require("globals");
 
+// The connector's own rules for running programs and code (the connect/*.js block below).
+const CHILD_PROCESS = "/^(node:)?child_process$/";
+const NO_SHELL = [
+  {
+    selector: `CallExpression[callee.name='require'][arguments.0.value=${CHILD_PROCESS}]:not(VariableDeclarator[id.type='ObjectPattern'] > CallExpression)`,
+    message: "Take only execFile from child_process: const { execFile } = require(\"child_process\")."
+  },
+  {
+    selector: `VariableDeclarator[init.arguments.0.value=${CHILD_PROCESS}] > ObjectPattern > Property[key.name!='execFile']`,
+    message: "Run a program with execFile and its arguments as a list, so no shell reads them."
+  },
+  {
+    selector: "Property[key.name='shell'], Property[key.value='shell']",
+    message: "No shell: run the program with execFile and its arguments as a list."
+  }
+];
+const NO_VM = {
+  selector: "CallExpression[callee.name='require'][arguments.0.value=/^(node:)?vm$/]",
+  message: "Only script.js runs text as code, in its walled-off worker (API-1.119)."
+};
+
 module.exports = defineConfig([
   // Aura configuration
   {
@@ -98,29 +119,20 @@ module.exports = defineConfig([
     extends: ["eslintJs/recommended"]
   },
   // The shipped connector runs programs on the director's computer: always a program and its
-  // arguments as a list (execFile), never a command line a shell reads, and never text run as code
-  // outside script.js's walled-off worker (API-1.119).
+  // arguments as a list (execFile), never a command line a shell reads; and it runs text as code
+  // only in script.js's walled-off worker (API-1.119), so `vm` is refused everywhere else.
   {
     files: ["connect/*.js"],
     rules: {
       "no-eval": "error",
       "no-implied-eval": "error",
       "no-new-func": "error",
-      "no-restricted-syntax": [
-        "error",
-        {
-          selector:
-            "VariableDeclarator[init.callee.name='require'][init.arguments.0.value='child_process'] Property[key.name=/^(exec|execSync|spawn|spawnSync)$/]",
-          message:
-            "Run a program with execFile and its arguments as a list, so no shell reads them."
-        },
-        {
-          selector: "Property[key.name='shell'][value.value=true]",
-          message:
-            "No shell: run the program with execFile and its arguments as a list."
-        }
-      ]
+      "no-restricted-syntax": ["error", ...NO_SHELL, NO_VM]
     }
+  },
+  {
+    files: ["connect/script.js"],
+    rules: { "no-restricted-syntax": ["error", ...NO_SHELL] }
   },
   // Browser checks hand functions to Playwright, which runs them inside the page; and the focus
   // check's own test runs that function in Jest's browser stand-in (jsdom).

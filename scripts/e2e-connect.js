@@ -1343,7 +1343,6 @@ async function run() {
     console.error(`Someone holds the org lock (${LOCK}); try again later.`);
     return 1;
   }
-  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "e2e-connect-"));
   const before = listDownloads();
   try {
     apex("e2e-pinecrest-cleanup.apex");
@@ -1362,7 +1361,6 @@ async function run() {
     for (const f of listDownloads()) {
       if (!before.has(f)) fs.rmSync(path.join(DOWNLOADS, f), { force: true });
     }
-    fs.rmSync(tmp, { recursive: true, force: true });
     fs.rmdirSync(LOCK);
   }
   const { text, failed } = table();
