@@ -83,6 +83,60 @@ private class AgentSetupChangeTest {
     }
   }
 
+  // API-1.49, API-1.25: a field naming one of two records that read the same takes the one
+  // spelled exactly so; otherwise it is refused naming both, with nothing saved.
+  @IsTest
+  static void aFieldNamingALookAlikeTakesTheExactOneOrIsRefused() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      Map<String, Id> ids = GeneratedTestData.camp();
+      Location__c twin = new Location__c(
+        Season__c = ids.get('Season'),
+        Name = 'GYM!',
+        GroupsThatFit__c = 1
+      );
+      Database.insert(twin, AccessLevel.SYSTEM_MODE);
+      Test.startTest();
+      List<Object> folded = post(
+        'change',
+        new Map<String, Object>{
+          'kind' => 'activity',
+          'name' => 'Swim',
+          'fields' => new Map<String, Object>{ 'location' => 'gym' },
+          'seen' => new Map<String, Object>{ 'location' => 'Pool' }
+        }
+      );
+      List<Object> exact = post(
+        'change',
+        new Map<String, Object>{
+          'kind' => 'activity',
+          'name' => 'Swim',
+          'fields' => new Map<String, Object>{ 'location' => 'GYM!' },
+          'seen' => new Map<String, Object>{ 'location' => 'Pool' }
+        }
+      );
+      Test.stopTest();
+      Assert.areEqual(400, folded[0], String.valueOf(folded[1]));
+      Assert.isTrue(
+        String.valueOf(folded[1])
+          .contains(
+            '"Gym" and "GYM!" are both locations with that name, so Shoresh can\'t tell which you mean. Nothing was changed.'
+          ),
+        String.valueOf(folded[1])
+      );
+      Assert.areEqual(200, exact[0], String.valueOf(exact[1]));
+      Assert.areEqual(
+        twin.Id,
+        [
+          SELECT Location__c
+          FROM Activity__c
+          WHERE Id = :ids.get('Swim')
+          WITH SYSTEM_MODE
+        ]
+        .Location__c
+      );
+    }
+  }
+
   // API-1.49
   @IsTest
   static void changingFieldsIsTheSetupTablesRowSave() {

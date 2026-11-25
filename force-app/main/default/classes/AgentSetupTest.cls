@@ -161,6 +161,149 @@ private class AgentSetupTest {
     }
   }
 
+  // API-1.47, API-1.25: of two setup records that read the same, the one spelled exactly so is
+  // found; otherwise both are named, and their programs only when they are in different ones.
+  @IsTest
+  static void lookAlikeSetupRecordsAreFoundExactlyOrRefusedNamingBoth() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      Map<String, Id> ids = GeneratedTestData.camp();
+      Program__c twin = new Program__c(
+        Season__c = ids.get('Season'),
+        Name = 'MAIN!',
+        SortOrder__c = 9
+      );
+      Database.insert(twin, AccessLevel.SYSTEM_MODE);
+      // "Side" holds no division; "SIDE!" holds the only Seniors of the pair.
+      List<Program__c> sides = new List<Program__c>{
+        new Program__c(
+          Season__c = ids.get('Season'),
+          Name = 'Side',
+          SortOrder__c = 10
+        ),
+        new Program__c(
+          Season__c = ids.get('Season'),
+          Name = 'SIDE!',
+          SortOrder__c = 11
+        )
+      };
+      Database.insert(sides, AccessLevel.SYSTEM_MODE);
+      Division__c sideSeniors = new Division__c(
+        Program__c = sides[1].Id,
+        Name = 'Seniors'
+      );
+      Division__c twinJuniors = new Division__c(
+        Program__c = twin.Id,
+        Name = 'Juniors'
+      );
+      Database.insert(
+        new List<SObject>{
+          new Group__c(Division__c = ids.get('Juniors'), Name = 'GROUP A!'),
+          twinJuniors,
+          sideSeniors
+        },
+        AccessLevel.SYSTEM_MODE
+      );
+      Test.startTest();
+      List<Object> programs = post(
+        'rename',
+        new Map<String, Object>{
+          'kind' => 'program',
+          'name' => 'main',
+          'new_name' => 'Day camp'
+        }
+      );
+      List<Object> groups = post(
+        'rename',
+        new Map<String, Object>{
+          'kind' => 'group',
+          'name' => 'group a',
+          'new_name' => 'Cabin A'
+        }
+      );
+      List<Object> divisions = post(
+        'rename',
+        new Map<String, Object>{
+          'kind' => 'division',
+          'name' => 'Juniors',
+          'new_name' => 'Younger'
+        }
+      );
+      List<Object> inTwin = post(
+        'rename',
+        new Map<String, Object>{
+          'kind' => 'division',
+          'name' => 'Juniors',
+          'program' => 'MAIN!',
+          'new_name' => 'Younger'
+        }
+      );
+      List<Object> notInSide = post(
+        'rename',
+        new Map<String, Object>{
+          'kind' => 'division',
+          'name' => 'Seniors',
+          'program' => 'Side',
+          'new_name' => 'Older'
+        }
+      );
+      List<Object> noProgram = post(
+        'rename',
+        new Map<String, Object>{
+          'kind' => 'division',
+          'name' => 'Juniors',
+          'program' => 'Mane',
+          'new_name' => 'Younger'
+        }
+      );
+      List<Object> exact = post(
+        'rename',
+        new Map<String, Object>{
+          'kind' => 'program',
+          'name' => 'MAIN!',
+          'new_name' => 'Extra'
+        }
+      );
+      Test.stopTest();
+      Assert.areEqual(400, programs[0], String.valueOf(programs[1]));
+      Assert.areEqual(
+        '"Main" and "MAIN!" are both programs with that name, so Shoresh can\'t tell which you mean. Nothing was changed.',
+        programs[1]
+      );
+      Assert.areEqual(400, groups[0], String.valueOf(groups[1]));
+      Assert.areEqual(
+        '"GROUP A!" and "Group A" are both groups with that name, so Shoresh can\'t tell which you mean. Nothing was changed.',
+        groups[1]
+      );
+      Assert.areEqual(400, divisions[0], String.valueOf(divisions[1]));
+      Assert.areEqual(
+        'More than one division is called "Juniors". Say which program (program): MAIN!, Main.',
+        divisions[1]
+      );
+      Assert.areEqual(200, inTwin[0], String.valueOf(inTwin[1]));
+      Assert.areEqual('Younger', nameOf(twinJuniors.Id));
+      // "Side" is that program exactly, not "SIDE!", which holds the only Seniors of the two.
+      Assert.areEqual(400, notInSide[0], String.valueOf(notInSide[1]));
+      Assert.isTrue(
+        String.valueOf(notInSide[1])
+          .startsWith(
+            'There is no division called "Seniors" that you can see.'
+          ),
+        String.valueOf(notInSide[1])
+      );
+      Assert.areEqual('Seniors', nameOf(sideSeniors.Id));
+      Assert.areEqual(400, noProgram[0], String.valueOf(noProgram[1]));
+      Assert.isTrue(
+        String.valueOf(noProgram[1])
+          .startsWith('There is no program called "Mane" that you can see.'),
+        String.valueOf(noProgram[1])
+      );
+      Assert.areEqual(200, exact[0], String.valueOf(exact[1]));
+      Assert.areEqual('Main', nameOf(ids.get('Main')));
+      Assert.areEqual('Juniors', nameOf(ids.get('Juniors')));
+      Assert.areEqual('Extra', nameOf(twin.Id));
+    }
+  }
+
   // API-1.48
   @IsTest
   static void deletingIsCampSetupsDeleteWithItsRefusals() {
