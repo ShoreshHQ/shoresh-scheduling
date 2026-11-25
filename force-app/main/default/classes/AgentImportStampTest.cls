@@ -16,6 +16,7 @@ private class AgentImportStampTest {
       String first = AgentImportStamp.of(seasonId, camp.Id);
       String last = AgentImportStamp.withSchedules(seasonId, camp.Id);
       Integer queries = Limits.getQueries();
+      Integer lists = Limits.getAggregateQueries();
       Test.stopTest();
       Assert.areEqual(16, first.length());
       Assert.areEqual(first, AgentImportStamp.of(seasonId, camp.Id));
@@ -24,6 +25,9 @@ private class AgentImportStampTest {
       Assert.isTrue(last.startsWith(first), 'the setup\'s stamp, then more');
       // Bound: 7 queries for the setup's stamp, 9 for Import last year's: 16 (2026-11-25).
       Assert.isTrue(queries < 21, 'queries: ' + queries);
+      // A list inside a query counts once against its own limit of 300: 18 for the setup's stamp,
+      // 23 for Import last year's: 41 (2026-11-25).
+      Assert.isTrue(lists < 46, 'lists inside queries: ' + lists);
     }
   }
 
@@ -96,6 +100,43 @@ private class AgentImportStampTest {
       Test.stopTest();
       Assert.areEqual(setup, setupAfter);
       Assert.areNotEqual(withSchedules, withSchedulesAfter);
+    }
+  }
+
+  // A list inside a query longer than 200 is read in parts, not refused: 201 groups in one
+  // division read, and a 202nd seen.
+  @IsTest
+  static void moreThan200InOneListAreAllRead() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      Camp__c camp = ShoreshTestData.camp('Cedar Brook (made up)');
+      Id seasonId = ShoreshTestData.fullSeason(camp.Id).Id;
+      Id divisionId = ShoreshTestData.lastSeasonIds.get('Juniors');
+      List<Group__c> groups = new List<Group__c>();
+      for (Integer i = 0; i < 199; i++) {
+        groups.add(
+          new Group__c(
+            Division__c = divisionId,
+            Name = 'Bunk ' + i,
+            Availability__c = 'MorningOnly',
+            SortOrder__c = i + 3
+          )
+        );
+      }
+      Database.insert(groups, AccessLevel.USER_MODE);
+      String before = AgentImportStamp.of(seasonId, camp.Id);
+      Test.startTest();
+      ImportKeys keys = new ImportKeys(seasonId, CampLabels.forCamp(camp.Id));
+      ShoreshTestData.groupIn(divisionId, 'Bunk 199');
+      String after = AgentImportStamp.of(seasonId, camp.Id);
+      Test.stopTest();
+      Assert.areEqual(
+        202,
+        [SELECT COUNT() FROM Group__c WHERE Division__c = :divisionId]
+      );
+      for (Group__c grp : groups) {
+        Assert.isTrue(keys.knows(grp.Id), 'every group is the season\'s');
+      }
+      Assert.areNotEqual(before, after, 'the 202nd group is seen');
     }
   }
 }
