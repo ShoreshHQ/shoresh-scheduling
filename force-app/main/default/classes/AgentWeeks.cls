@@ -120,31 +120,11 @@ public with sharing class AgentWeeks {
   }
 
   /**
-   * The one record of that name (as camps type names); refused in plain words otherwise, naming
-   * the ones there are so no one has to guess (API-1.25), in the camp words for term of the
-   * season this request found (CORE-1.0), read only when refusing.
+   * The one record of that name (as camps type names), or refused in plain words, never one
+   * picked silently (API-1.25): AgentNamed.
    */
   public static SObject named(List<SObject> rows, String name, String term) {
-    List<String> names = new List<String>();
-    for (SObject row : rows) {
-      if (
-        IncomingBatch.fold((String) row.get('Name')) == IncomingBatch.fold(name)
-      ) {
-        return row;
-      }
-      names.add((String) row.get('Name'));
-    }
-    CampLabels words = OutgoingRows.used == null
-      ? CampLabels.modelTermsOnly()
-      : IncomingSeason.labelsOf(OutgoingRows.used.Id);
-    throw new ShoreshException(
-      'There is no ' +
-        words.singularInSentence(term) +
-        ' called "' +
-        name.left(80) +
-        '" that you can see. ' +
-        namesSaid(words.pluralInSentence(term), names)
-    );
+    return AgentNamed.one(rows, name, term);
   }
 
   /** "The programs: Main, Teens." or "There are no programs yet." (things: the plural). */
