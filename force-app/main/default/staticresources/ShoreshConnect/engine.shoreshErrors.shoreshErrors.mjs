@@ -220,6 +220,15 @@ export function reasonOf(error) {
 }
 
 /**
+ * Whether a failed request's outcome is known: Shoresh's own words (a refusal its server or these
+ * screens made: the request threw, so all of it was undone) or Salesforce's limit (it stops the
+ * whole request). Anything else, such as no answer from the server, leaves it unknown.
+ */
+export function outcomeKnown(error) {
+  return explain(error).kind !== "unexplained";
+}
+
+/**
  * The why on its own, for a caller with no subject to put in front of it: Shoresh's own words,
  * or "That didn't work. Try again." Prefer failed(), which names what didn't happen.
  */
