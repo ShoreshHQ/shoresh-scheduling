@@ -17,6 +17,7 @@
  */
 import { generateWeek } from "c/shoreshEngine";
 import buildSchedule from "shoresh-jest/desktop-engine/engine/buildSchedule";
+import { isActivityEligibleForGroup } from "shoresh-jest/desktop-engine/engine/eligibility";
 import { writeDesktopReport } from "shoresh-jest/desktop-report";
 import { camp, cellsOf } from "./data/camp";
 import { sharedCamp } from "./data/sharedCamp";
@@ -36,9 +37,9 @@ const KNOWN_FEWER_MINIMUMS = {
 const KNOWN_MORE_OPEN = {};
 // Early-week goals short in all, this engine's over the desktop's, on camps both read the same
 // (D.5). The two draw ties differently, so single camps differ either way: on CI's first 100 this
-// engine is 3 over (128 against 125), on all 400 it is 32 under (475 against 507). Lower it, never
-// raise it, unless the protocol says why.
-const EARLY_MARGIN = 3;
+// engine is 3 over (128 against 125), on all 400 it is 32 under (475 against 507), each pinned. Lower
+// it, never raise it, unless the protocol says why.
+const EARLY_MARGIN = sampled(-32, 3);
 
 /** The same camp in the desktop's shapes (buildSchedule's legacy single-cohort input). */
 function desktopInput(spec) {
@@ -224,6 +225,20 @@ function compare(seed) {
   if (sf.error) {
     return { ...row, sfError: sf.error };
   }
+  // Who each activity is for, as the desktop reads the translated camp: the same as here, or the
+  // comparison is of two different camps.
+  const input = desktopInput(spec);
+  for (const g of input.groups) {
+    for (const a of input.activities) {
+      const here = eligible(
+        spec.activities.find((x) => x.id === a.id),
+        spec.groups.find((x) => x.id === g.id)
+      );
+      if (isActivityEligibleForGroup(a, g) !== here) {
+        row.readDifferently = (row.readDifferently || 0) + 1;
+      }
+    }
+  }
   // Groups and activities whose session counts differ, beyond what a bend explains.
   let pairsDiffer = 0;
   let pairsOverMaxSf = 0;
@@ -237,9 +252,6 @@ function compare(seed) {
       }
       if (a.max != null && s > a.max) {
         pairsOverMaxSf++;
-      }
-      if (!eligible(a, g) && d > 0) {
-        row.desktopIneligible = (row.desktopIneligible || 0) + 1;
       }
     }
   }
@@ -314,9 +326,15 @@ function earlyKindOf(row) {
     : "desktopShortMore";
 }
 
-/** Rows that break a promise, minus the camps known to (each listed with why). */
-const breaking = (rows, worse, known) =>
-  rows.filter((r) => worse(r) && !(r.seed in known)).map((r) => r.seed);
+/** Camps that break a promise and aren't listed, and listed camps that no longer break it. */
+const breaking = (rows, worse, known) => [
+  ...rows
+    .filter((r) => worse(r) && !(r.seed in known))
+    .map((r) => `seed ${r.seed}: worse than the desktop`),
+  ...rows
+    .filter((r) => !worse(r) && r.seed in known)
+    .map((r) => `seed ${r.seed}: listed, no longer worse: take it off`)
+];
 
 describe("desktop differential (outcomes on shared synthetic camps)", () => {
   const rows = [];
@@ -343,8 +361,8 @@ describe("desktop differential (outcomes on shared synthetic camps)", () => {
     expect(bad.map((r) => r.seed)).toEqual([]);
   });
 
-  it("reads the camp the same way: the desktop places nothing a group isn't set up for (D.2)", () => {
-    expect(built.filter((r) => r.desktopIneligible).map((r) => r.seed)).toEqual(
+  it("reads the camp the same way: each activity is for the same groups in both engines (D.2)", () => {
+    expect(built.filter((r) => r.readDifferently).map((r) => r.seed)).toEqual(
       []
     );
   });
