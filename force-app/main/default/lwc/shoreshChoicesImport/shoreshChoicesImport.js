@@ -13,7 +13,13 @@ import {
 } from "c/shoreshImportEngine";
 import { readChoices } from "c/shoreshChoicesReader";
 import { scheduleOptions } from "c/shoreshElectiveEngine";
-import { closeRefusal, failed, floatRefusal } from "c/shoreshErrors";
+import {
+  TOO_BIG,
+  closeRefusal,
+  failed,
+  floatRefusal,
+  reasonOf
+} from "c/shoreshErrors";
 import { buildTerms, electiveSeatsTitle } from "c/shoreshTerms";
 import {
   allSettled,
@@ -36,6 +42,22 @@ import {
 } from "./review";
 
 const STEPS = 3;
+
+const FOR_SUPPORT = "For support: ";
+/**
+ * What a save that failed says (CORE-6.15): Shoresh's own refusal carries no support code and
+ * Salesforce's limit stops the whole request, so then nothing was saved. Anything else (a dropped
+ * connection, a timeout) may have saved after all, so only that is said, with where to
+ * look, never "Try again." (desktop writeErrorMessage.js: could not confirm this saved).
+ */
+function saveFailed(nothing, unknown, error) {
+  const why = reasonOf(error);
+  const code = why.indexOf(FOR_SUPPORT);
+  if (code < 0 || why.startsWith(TOO_BIG)) {
+    return failed(nothing, error);
+  }
+  return `${unknown} ${why.slice(code)}`;
+}
 
 /**
  * Bring in choices (electives slice E6; ADR 0017): a camp's own choices sheet, read in the browser
@@ -791,7 +813,11 @@ export default class ShoreshChoicesImport extends LightningElement {
       await this.loadSituation();
     } catch (e) {
       this.phase = "card";
-      this.error = failed("Nothing was imported.", e);
+      this.error = saveFailed(
+        "Nothing was imported.",
+        `Shoresh couldn't confirm the choices were imported. Look at ${electiveSeatsTitle(this.t)} before importing them again.`,
+        e
+      );
     }
   }
 

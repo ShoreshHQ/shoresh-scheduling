@@ -43,7 +43,13 @@ import {
 } from "c/shoreshLists";
 import { screenLabels } from "c/shoreshScreens";
 import { readChoices } from "c/shoreshChoicesReader";
-import { closeRefusal, failed, floatRefusal, reasonOf } from "c/shoreshErrors";
+import {
+  TOO_BIG,
+  closeRefusal,
+  failed,
+  floatRefusal,
+  reasonOf
+} from "c/shoreshErrors";
 import { rememberedFor } from "c/shoreshRemembered";
 import { suggestionsFor, withLearning } from "c/shoreshPatterns";
 import { downloadWorkbook, fileNameOf } from "c/shoreshDownload";
@@ -88,6 +94,22 @@ function isChoicesFile(file) {
   } catch {
     return false;
   }
+}
+
+const FOR_SUPPORT = "For support: ";
+/**
+ * What a save that failed says (CORE-6.15): Shoresh's own refusal carries no support code and
+ * Salesforce's limit stops the whole request, so then nothing was saved. Anything else (a dropped
+ * connection, a timeout) may have saved after all, so only that is said, with where to
+ * look, never "Try again." (desktop writeErrorMessage.js: could not confirm this saved).
+ */
+function saveFailed(nothing, unknown, error) {
+  const why = reasonOf(error);
+  const code = why.indexOf(FOR_SUPPORT);
+  if (code < 0 || why.startsWith(TOO_BIG)) {
+    return failed(nothing, error);
+  }
+  return `${unknown} ${why.slice(code)}`;
 }
 
 export default class ShoreshListImport extends LightningElement {
@@ -1084,7 +1106,11 @@ export default class ShoreshListImport extends LightningElement {
       this.dispatchEvent(new CustomEvent("imported"));
     } catch (e) {
       this.stage = "review";
-      this.error = failed("Nothing was saved.", e);
+      this.error = saveFailed(
+        "Nothing was saved.",
+        `Shoresh couldn't confirm ${this.workbook ? "the worksheet" : "the list"} was saved. Look at ${this.workbook ? "Camp Setup" : this.screenName} before saving it again.`,
+        e
+      );
     }
   }
 

@@ -486,6 +486,18 @@ describe("c-shoresh-list-import", () => {
     );
   });
 
+  it("INGEST-1.9: never says nothing was saved when the save's outcome is unknown", async () => {
+    jest.spyOn(console, "error").mockImplementation(() => {});
+    saveList.mockRejectedValue(new Error("timed out"));
+    const element = await openWith(["Activity", "Canoeing"].join("\n"));
+    saveOf(element).click();
+    await flush();
+    expect($(element, '[data-id="error"]').textContent).toMatch(
+      /^Shoresh couldn't confirm the list was saved\. Look at Activities before saving it again\. For support: [A-Z0-9]{3}-[A-Z0-9]{3}\.$/
+    );
+    console.error.mockRestore();
+  });
+
   it("says why nothing was saved when the server refuses", async () => {
     saveList.mockRejectedValue({
       body: { message: "Canoeing: Must be 1 or more." }

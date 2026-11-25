@@ -968,6 +968,41 @@ describe("c-shoresh-import", () => {
     expect(add(element)).not.toBeNull();
   });
 
+  it("INGEST-1.9: never says nothing was saved when the save's outcome is unknown", async () => {
+    jest.spyOn(console, "error").mockImplementation(() => {});
+    saveSetup.mockRejectedValue(new Error("timed out"));
+    const element = await render();
+    await choose(element, ["maple-grove-2026-all-camp.xlsx"]);
+    await answer(element, similarId(element), "a");
+    add(element).click();
+    await flush();
+    await flush();
+    expect($(element, '[data-id="error"]').textContent).toMatch(
+      /^Shoresh couldn't confirm the import was saved\. Look at Roots before adding these files again\. For support: [A-Z0-9]{3}-[A-Z0-9]{3}\.$/
+    );
+    console.error.mockRestore();
+  });
+
+  it("INGEST-1.9: a save Salesforce's limit stopped saved nothing, and says so", async () => {
+    jest.spyOn(console, "error").mockImplementation(() => {});
+    saveSetup.mockRejectedValue({
+      body: {
+        exceptionType: "System.LimitException",
+        message: "Apex CPU time limit exceeded"
+      }
+    });
+    const element = await render();
+    await choose(element, ["maple-grove-2026-all-camp.xlsx"]);
+    await answer(element, similarId(element), "a");
+    add(element).click();
+    await flush();
+    await flush();
+    expect($(element, '[data-id="error"]').textContent).toMatch(
+      /^Nothing was saved\. This camp is bigger than Salesforce lets Shoresh handle in one go/
+    );
+    console.error.mockRestore();
+  });
+
   it("a choice's reason is in its words for screen readers and its tooltip", async () => {
     const element = await render();
     await choose(element, ["maple-grove-2026-all-camp.xlsx"]);

@@ -807,6 +807,21 @@ describe("c-shoresh-choices-import", () => {
     expect($(element, '[data-id="step"]').textContent).toBe("1 of 3");
   });
 
+  it("INGEST-1.9: never says nothing was imported when the import's outcome is unknown", async () => {
+    jest.spyOn(console, "error").mockImplementation(() => {});
+    bringInChoices.mockRejectedValue(new Error("timed out"));
+    const element = await render();
+    await choose(element, "chugim-week1.csv", SHEET);
+    await click(element, '[data-id="primary"]');
+    await click(element, '[data-settle="potterywheel"] [data-answer="leave"]');
+    await click(element, '[data-id="primary"]');
+    await click(element, '[data-id="primary"]');
+    expect($(element, '[data-id="error"]').textContent).toMatch(
+      /^Shoresh couldn't confirm the choices were imported\. Look at Elective seats before importing them again\. For support: [A-Z0-9]{3}-[A-Z0-9]{3}\.$/
+    );
+    console.error.mockRestore();
+  });
+
   it("shows the server's reason when the save is refused, and stays on the card", async () => {
     bringInChoices.mockRejectedValue({
       body: {

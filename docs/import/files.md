@@ -162,3 +162,21 @@ Each rule is clue, meaning, example, test.
    "INGEST-1.8: a Weeks column that never says which weeks is left unread, said once";
    Apex ImportWorkbookTest aScreenListSavesWeeksOffAndUndoPutsThemBack; ImportListProgramsTest
    addsAWholeNewProgramFromItsListsAndUndoRemovesIt.
+
+9. **A save that fails says only what is known.**
+   Clue: Add, Save or Import fails (Import last year, Import a list or the camp workbook, Bring in
+   choices).
+   Meaning: "Nothing was saved." (Bring in choices: "Nothing was imported.") only when it is
+   known: Shoresh's own refusal, which carries no support code (CORE-6.15) and undoes the whole
+   save, or Salesforce's limit stopping the whole request. Any other failure, a dropped connection
+   or a timeout, may have saved after all, so it says Shoresh couldn't confirm it and where to
+   look before doing it again, with a support code, never "Try again." (desktop
+   `writeErrorMessage.js`: "could not confirm this saved").
+   Example: the connection drops while a whole season imports: "Shoresh couldn't confirm the
+   import was saved. Look at Roots before adding these files again. For support: K7Q-4MX.", never
+   an invitation to bring the files in twice.
+   Test: "INGEST-1.9: never says nothing was saved when the save's outcome is unknown" (Import
+   last year, Import a list), "INGEST-1.9: never says nothing was imported when the import's
+   outcome is unknown" (Bring in choices); counter-cases "shows a save the server refused, and
+   stays on the page", "says why nothing was saved when the server refuses", "INGEST-1.9: a save
+   Salesforce's limit stopped saved nothing, and says so".
