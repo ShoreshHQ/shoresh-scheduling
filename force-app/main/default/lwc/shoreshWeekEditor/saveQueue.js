@@ -8,11 +8,13 @@
  * times), and one over a cell locked since is dropped and said.
  *
  * SaveQueue(Base) adds this to the editor. Its state stays on the editor, where the screen
- * watches it: queue and saving (setters that tell the host), server (the week as last saved),
- * lockBase, stepLocks, lockChosenAt, stepRain, history and conflict. What it asks of the editor:
- * saveRuns, schedule/draft, the words (say, sayOnce, announce, reportError, slotName,
- * dayGroupName, nameOf, itemFor, whyRowsNow/whyNews), replanTool for a day or week tool,
- * refuseLocked, focusAfterQuestion, undoAdded and refuseWhileRestoring.
+ * watches it. It reads and writes: queue and saving (setters that tell the host), draft, server
+ * (the week as last saved), lockBase, stepLocks, lockChosenAt, stepRain, history,
+ * historyVersion, stepSeq, conflict, and the lines notice, toolNotice, unrepeated and pulseKeys.
+ * What it asks of the editor: saveRuns, schedule, toServerRuns, refuseWhileRestoring, edited,
+ * startHistoryOver, the words (t, weekName, checked, say, sayOnce, announce, reportError,
+ * slotName, dayGroupName, nameOf, itemFor, whyRowsNow, whyNews), replanTool for a day or week
+ * tool, refuseLocked, focusAfterQuestion and undoAdded.
  */
 import { failed, refusal } from "c/shoreshErrors";
 import { applyRun, isSetTime, slotKey } from "./slotEdits";

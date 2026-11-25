@@ -62,6 +62,7 @@ class Editor {
     this.checked = { placements: [] };
     this.events = [];
     this.said = [];
+    this.announced = [];
     this.errors = [];
     this.saveRuns = jest.fn();
     this.replanTool = jest.fn();
@@ -100,14 +101,16 @@ class Editor {
   startHistoryOver() {
     this.history.clear();
   }
+  // The quiet line the director sees (said again with the next save)...
   say(text) {
     this.said.push(text);
   }
   sayOnce(text) {
     this.said.push(text);
   }
+  // ...and words only a screen reader hears.
   announce(text) {
-    this.said.push(text);
+    this.announced.push(text);
   }
   reportError(message) {
     this.errors.push(message);
@@ -213,11 +216,13 @@ describe("the save queue", () => {
       after: ["A:a1"]
     });
     expect(editor.queue).toEqual([]);
-    expect(editor.said).toEqual(["Soccer", "Swim"]);
+    expect(editor.announced).toEqual(["Soccer", "Swim"]);
     expect(editor.history.canUndo).toBe(true);
   });
 
   it("on a failed save, says the change and how many after it were lost, and reads the week again", async () => {
+    // The failure's support code is kept (shoreshErrors logs it): quiet here.
+    const logged = jest.spyOn(console, "error").mockImplementation(() => {});
     const editor = new Queue();
     editor.saveRuns.mockRejectedValueOnce(new Error("offline"));
     editor.commit([SOCCER_AT_P2], "Soccer", null);
@@ -233,6 +238,8 @@ describe("the save queue", () => {
     // What is saved is no longer known: Undo starts over.
     expect(editor.history.canUndo).toBe(false);
     expect(editor.events).toContain("reload");
+    expect(logged).toHaveBeenCalled();
+    logged.mockRestore();
   });
 
   it("treats the host's refusal as a failed save, in the host's words", async () => {
@@ -302,6 +309,9 @@ describe("someone else changed it", () => {
       before: ["A:a1"],
       after: ["A:a3"]
     });
+    // Undo now takes back what was really sent: Soccer over their Swim.
+    const step = editor.history.undos.find((s) => s.label === "Soccer");
+    expect(step.runs[0]).toMatchObject({ before: ["A:a1"], after: ["A:a3"] });
   });
 
   it(`gives up after ${MAX_RESENDS} resends that come back with nothing new to ask`, async () => {
