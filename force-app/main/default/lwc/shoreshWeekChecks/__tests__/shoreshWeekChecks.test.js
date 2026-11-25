@@ -556,6 +556,12 @@ describe("c-shoresh-week-checks: the counter", () => {
         /^Couldn't read what you accepted for this week\. Try again\. For support: [\w-]+\.$/
       );
       expect(problem.getAttribute("role")).toBe("alert");
+      // Still said after another Accept: the week's earlier accepts are still unread.
+      q(element, '.accept[data-key^="under|a1|"]').click();
+      await flush();
+      expect(
+        q(element, '[data-id="accept-problem"]').textContent.trim()
+      ).toMatch(/^Couldn't read what you accepted for this week\./);
     });
 
     it("CORE-6.9: an Accept that can't be kept says so on screen", async () => {

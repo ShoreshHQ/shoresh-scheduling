@@ -79,6 +79,8 @@ export default class ShoreshManualBuild extends BuildScreen(LightningElement) {
   checksResetKey = 0;
   // The week's versions (Versions), and what Start from another week can start from.
   versions = [];
+  // Why the versions couldn't be read (WEEK-6.12), or null.
+  versionsUnread = null;
   weekSources = [];
   versionsWorking = false;
   // The version just restored, "on screen now" until the next edit (desktop VersionsDropdown).

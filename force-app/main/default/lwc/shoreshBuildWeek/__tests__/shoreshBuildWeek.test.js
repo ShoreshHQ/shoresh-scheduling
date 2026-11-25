@@ -101,6 +101,7 @@ function fakeScreen() {
     programId: "p1",
     weekId: "w1",
     versions: [],
+    versionsUnread: null,
     versionsBusy: false,
     versionsWorking: false
   };
@@ -979,6 +980,26 @@ describe("c/shoreshBuildWeek: Versions", () => {
       expect(screen.error).toMatch(
         /^Couldn't read the versions of Week 1\. Try again\. For support: [\w-]+\.$/
       );
+      // The list says it too, never "None yet".
+      expect(screen.versionsUnread).toBe(screen.error);
+      // Read again: its line goes, from the list and the error line.
+      await week.loadVersions();
+      expect(screen.versionsUnread).toBeNull();
+      expect(screen.error).toBeNull();
+    });
+
+    it("WEEK-6.12: a week opened whose versions can't be read says so in the list", async () => {
+      const { week, screen } = listed();
+      week.forgetVersions();
+      getVersions.mockRejectedValueOnce(new Error("offline"));
+      await week.loadVersions();
+      expect(screen.versions).toEqual([]);
+      expect(screen.versionsUnread).toMatch(
+        /^Couldn't read the versions of Week 1\./
+      );
+      // Another week: what it said of this one goes.
+      week.forgetVersions();
+      expect(screen.versionsUnread).toBeNull();
     });
 
     it("WEEK-6.12: a failed read never covers a failure already shown", async () => {
@@ -986,6 +1007,13 @@ describe("c/shoreshBuildWeek: Versions", () => {
       screen.error = "Rainy plan wasn't saved. Try again.";
       getVersions.mockRejectedValueOnce(new Error("offline"));
       await week.loadVersions();
+      expect(screen.error).toBe("Rainy plan wasn't saved. Try again.");
+      // The list still says it; a read that works then leaves the other failure alone.
+      expect(screen.versionsUnread).toMatch(
+        /^Couldn't read the versions of Week 1\./
+      );
+      await week.loadVersions();
+      expect(screen.versionsUnread).toBeNull();
       expect(screen.error).toBe("Rainy plan wasn't saved. Try again.");
     });
 

@@ -125,7 +125,12 @@ describe("c-shoresh-versions", () => {
     });
     const MANY = [
       auto("a5", "Before Rebuild"),
-      { id: "n1", name: "Tuesday plan", origin: "Generated", reason: "SavedByHand" },
+      {
+        id: "n1",
+        name: "Tuesday plan",
+        origin: "Generated",
+        reason: "SavedByHand"
+      },
       auto("a4", "Before rainy Monday"),
       auto("a3", "Before Rebuild", { publishedAt: "2026-10-15T10:00:00.000Z" }),
       auto("a2", "Before Restore"),
@@ -149,9 +154,9 @@ describe("c-shoresh-versions", () => {
       element.openId = "a2";
       await openList(element);
       expect(names(element)).toEqual(["a5", "n1", "a3", "a2"]);
-      expect(
-        q(element, '[data-id="versions-unfold"]').textContent.trim()
-      ).toBe("2 more auto-saved");
+      expect(q(element, '[data-id="versions-unfold"]').textContent.trim()).toBe(
+        "2 more auto-saved"
+      );
     });
 
     it("pressing it shows every copy, newest first, with the cursor on the first it showed; closing folds them again", async () => {
@@ -198,6 +203,17 @@ describe("c-shoresh-versions", () => {
     const element = await render([]);
     await openList(element);
     expect(q(element, ".empty").textContent).toBe("None yet");
+  });
+
+  it('WEEK-6.12: a list that couldn\'t be read says so, never "None yet"', async () => {
+    const element = await render([]);
+    element.unread = "Couldn't read the versions of Week 1. Try again.";
+    await openList(element);
+    expect(q(element, '[data-id="unread"]').textContent.trim()).toBe(
+      "Couldn't read the versions of Week 1. Try again."
+    );
+    expect(element.shadowRoot.textContent).not.toContain("None yet");
+    await expect(element).toBeAccessible();
   });
 
   it("asks to open a version, and closes", async () => {

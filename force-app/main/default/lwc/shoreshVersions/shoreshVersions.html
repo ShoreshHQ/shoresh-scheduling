@@ -21,6 +21,11 @@
           <div class="panel-title">{title}</div>
         </div>
         <div class="panel-list">
+          <template lwc:if={unread}>
+            <div class="empty slds-text-color_error" data-id="unread">
+              {unread}
+            </div>
+          </template>
           <template lwc:if={isEmpty}>
             <div class="empty">None yet</div>
           </template>

@@ -68,6 +68,8 @@ export default class ShoreshWeekChecks extends LightningElement {
   // An Accept that couldn't be kept with the week, shown at the top of the dropdown (red text,
   // as a field error) until the next Accept or the week is read again.
   acceptProblem = "";
+  // Why the week's accepts couldn't be read (WEEK-6.12): said until they are.
+  unreadProblem = "";
   // After Accept: focus goes to the line now at this place in the list ({ index }).
   focusAfterRender = null;
 
@@ -103,6 +105,7 @@ export default class ShoreshWeekChecks extends LightningElement {
   /** The week's accepts as kept with it: none shown from another week meanwhile. */
   async readAgain(carried = []) {
     const ticket = ++this.readTicket;
+    this.unreadProblem = "";
     this.acceptProblem = "";
     const scheduleId = this._scheduleId;
     this.accepted = [
@@ -121,7 +124,8 @@ export default class ShoreshWeekChecks extends LightningElement {
       // Not read: every line shows, as nothing was accepted (nothing is hidden by mistake), and
       // the dropdown says so (WEEK-6.12).
       if (ticket === this.readTicket) {
-        this.acceptProblem = `Couldn't read what you accepted for this week. ${reasonOf(e)}`;
+        this.unreadProblem = `Couldn't read what you accepted for this week. ${reasonOf(e)}`;
+        this.acceptProblem = this.unreadProblem;
       }
       return;
     }
@@ -262,7 +266,8 @@ export default class ShoreshWeekChecks extends LightningElement {
     const accepted = { key, same: line.same, size: line.size, said };
     this.accepted = [...this.accepted, accepted];
     this.acceptSaid = `Accepted: ${said}.`;
-    this.acceptProblem = "";
+    // The week's accepts still unread stay said (WEEK-6.12).
+    this.acceptProblem = this.unreadProblem;
     this.focusAfterRender = { index };
     this.dispatchEvent(new CustomEvent("accept", { detail: line }));
     this.keep(accepted, said);
