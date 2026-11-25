@@ -3,6 +3,7 @@ import {
   errorMessage,
   floatRefusal,
   failed,
+  outcomeKnown,
   refusedBecause,
   reasonOf,
   refusal,
@@ -239,6 +240,31 @@ describe("errorMessage", () => {
     expect(errorMessage(ours("That option can't be built."))).toBe(
       "That option can't be built."
     );
+  });
+});
+
+describe("outcomeKnown (INGEST-1.9)", () => {
+  it("is known for Shoresh's own words, its server's coded answer and Salesforce's limit; not for no answer", () => {
+    expect(outcomeKnown(ours("Two things at Lunch for Bunk 1."))).toBe(true);
+    expect(
+      outcomeKnown(
+        ours("Shoresh couldn't tell why. Try again. For support: K7Q-4MX.")
+      )
+    ).toBe(true);
+    expect(outcomeKnown(refusal("That cell can't hold it."))).toBe(true);
+    expect(
+      outcomeKnown({
+        body: {
+          exceptionType: "System.LimitException",
+          message: "Apex CPU time limit exceeded"
+        }
+      })
+    ).toBe(true);
+    expect(outcomeKnown(new Error("timed out"))).toBe(false);
+    expect(
+      outcomeKnown({ body: { message: "Disconnected or Canceled" } })
+    ).toBe(false);
+    expect(outcomeKnown(uncaught)).toBe(false);
   });
 });
 

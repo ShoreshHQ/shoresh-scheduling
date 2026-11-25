@@ -14,10 +14,10 @@ import {
 import { readChoices } from "c/shoreshChoicesReader";
 import { scheduleOptions } from "c/shoreshElectiveEngine";
 import {
-  TOO_BIG,
   closeRefusal,
   failed,
   floatRefusal,
+  outcomeKnown,
   reasonOf
 } from "c/shoreshErrors";
 import { buildTerms, electiveSeatsTitle } from "c/shoreshTerms";
@@ -45,27 +45,17 @@ const STEPS = 3;
 
 const FOR_SUPPORT = "For support: ";
 /**
- * What a save that failed says: "Nothing was imported." only when that is known. It is known when the save
- * was never sent, when Shoresh's server answered (its own words, with or without its support
- * code: the save threw, so all of it was undone) and when Salesforce's limit stopped the whole
- * request. With no answer from the server (a dropped connection, a timeout) it may have saved
- * after all, so only that is said, with where to look, never "Try again." (desktop
- * writeErrorMessage.js: could not confirm this saved; CORE-6.15 support code).
+ * What a save that failed says: "Nothing was imported." only when that is known (never sent, or
+ * outcomeKnown). With no answer from the server (a dropped connection, a timeout) it may have
+ * saved after all, so only that is said, with where to look and the support code, never "Try
+ * again." (desktop writeErrorMessage.js: could not confirm this saved).
  */
 function saveFailed(nothing, unknown, error, sent) {
-  const why = reasonOf(error);
-  const code = why.lastIndexOf(FOR_SUPPORT);
-  const body = error && error.body;
-  const serverCoded = []
-    .concat(body || [])
-    .some(
-      (b) =>
-        b && typeof b.message === "string" && b.message.includes(FOR_SUPPORT)
-    );
-  if (!sent || code < 0 || serverCoded || why.startsWith(TOO_BIG)) {
+  if (!sent || outcomeKnown(error)) {
     return failed(nothing, error);
   }
-  return `${unknown} ${why.slice(code)}`;
+  const why = reasonOf(error);
+  return `${unknown} ${why.slice(why.lastIndexOf(FOR_SUPPORT))}`;
 }
 
 /**
