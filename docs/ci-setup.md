@@ -189,8 +189,10 @@ sharing and query limits at run time.
 The LWC Jest job runs `npm run test:unit:coverage`: every test, measuring branch coverage of the
 three engines (`shoreshEngine`, `shoreshElectiveEngine`, `shoreshImportEngine`), each folder as a
 whole. It fails when one drops under its line in `jest.config.js` (`coverageThreshold`). The bar
-is 90% (G9). The Generated Schedule engine is held at 90%; the elective and import engines are
-held at today's level and may only go up, to 90. The job prints each engine file's figures.
+is 90% (G9). The Generated Schedule and import engines are held at 90% (92.2% and 90.2% on
+2026-11-25); the elective engine is held at its level that day, 89.9% (the seat matching's rare
+fallback search is untested), and may only go up, to 90. The job prints each engine file's figures.
+Measuring coverage adds a few minutes to the job.
 
 Not run by CI: the engine's full seed sweeps (`npm run test:engine:full`, about 15 minutes): the
 desktop differential's camps 101-400, the search proof check 51-150, properties 101-300, across

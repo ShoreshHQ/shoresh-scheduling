@@ -38,8 +38,9 @@ module.exports = {
   },
   // Branch coverage of the three engines (the bar's G9, docs/ci-setup.md), checked whenever a run
   // measures coverage: CI's LWC Jest job does (`npm run test:unit:coverage`). Each folder is held
-  // as a whole. The Generated Schedule engine meets the bar's 90%; the other two are held at their
-  // level on CI today and may only go up, to 90.
+  // as a whole. The Generated Schedule and import engines meet the bar's 90%; the elective engine
+  // (89.93% on CI, 2026-11-25: minCostAssign's rare fallback search is untested) is held at that
+  // level and may only go up, to 90.
   collectCoverageFrom: [
     "force-app/main/default/lwc/shoreshEngine/*.js",
     "force-app/main/default/lwc/shoreshElectiveEngine/*.js",
@@ -48,8 +49,8 @@ module.exports = {
   coverageReporters: ["text", "text-summary"],
   coverageThreshold: {
     "./force-app/main/default/lwc/shoreshEngine/": { branches: 90 },
-    "./force-app/main/default/lwc/shoreshElectiveEngine/": { branches: 89 },
-    "./force-app/main/default/lwc/shoreshImportEngine/": { branches: 89 }
+    "./force-app/main/default/lwc/shoreshElectiveEngine/": { branches: 89.9 },
+    "./force-app/main/default/lwc/shoreshImportEngine/": { branches: 90 }
   },
   // Shared made-up data for tests, not tests themselves.
   testPathIgnorePatterns: [
