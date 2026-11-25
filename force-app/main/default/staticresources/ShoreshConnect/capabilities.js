@@ -1164,7 +1164,7 @@ const CAPABILITIES = [
     method: "GET",
     listsVersions: true,
     description:
-      "List a week's versions as the Versions panel on Generated Schedule or Manual Build lists them (one list for the week), newest first, in its words: each version's name, what the panel says of it (like Generated Schedule · Auto-saved · Oct 31, 3:40 PM), when it was saved, and whether it has a delete. Auto-saved marks one Shoresh kept itself (Before Restore, Before Rebuild); By your AI marks one kept before an AI change by an earlier Shoresh, which no longer keeps them. Use it to find a version's name instead of guessing one.",
+      "List a week's versions as the Versions panel on Generated Schedule or Manual Build lists them (one list for the week), newest first, in its words: each version's name, what the panel says of it (like Generated Schedule · Auto-saved · Oct 31, 3:40 PM), when it was saved, and whether it has a delete. Auto-saved marks one Shoresh kept itself (Before Restore, Before Rebuild). Use it to find a version's name instead of guessing one.",
     about:
       "The Versions panel's list for this week, exactly as it is now. These are the only versions there are.",
     inputSchema: {
