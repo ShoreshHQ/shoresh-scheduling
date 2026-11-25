@@ -237,7 +237,7 @@ export function fixedEventActivityIdsByGroupDay(fixedEvents, activities, groups,
   // from screen state: if slots have loaded and days has not, FIXED_EVENT_DUPLICATE
   // silently under-reports. Loud in DEV, no production behaviour change — the
   // same convention assertIdListShape uses in buildSchedule.js. (Q5 review.)
-  if (false /* vendored: was import.meta.env?.DEV */ && (days || []).length === 0 && (fixedEvents || []).some((a) => a.day_id == null || a.day_id === '')) {
+  if (true /* vendored: was import.meta.env?.DEV */ && (days || []).length === 0 && (fixedEvents || []).some((a) => a.day_id == null || a.day_id === '')) {
     console.warn('fixedEventActivityIdsByGroupDay: empty `days` with all-day fixedEvents — exclusion will be empty')
   }
   const byGroupDay = new Map() // "groupId|dayId" → Set<activityId>
@@ -315,7 +315,7 @@ function scheduleCohort({ cohortEntry, days, replacedDays, activities, rand, mat
     // Contract: eligible_tier_ids / eligible_group_ids are arrays of ids.
     // Callers normalize — this engine does not deserialize; see
     // src/utils/normalizeActivityEligibility.js.
-    if (false /* vendored: was import.meta.env?.DEV */) assertIdListShape(act.eligible_group_ids, 'eligible_group_ids', act.id)
+    if (true /* vendored: was import.meta.env?.DEV */) assertIdListShape(act.eligible_group_ids, 'eligible_group_ids', act.id)
     const eligible = new Set()
     for (const g of groups) {
       if (isActivityEligibleForGroup(act, g)) eligible.add(g.id)
@@ -1468,7 +1468,7 @@ export function computeFindings({ slots: allSlots, groups, activities, days: all
     // Contract: eligible_tier_ids / eligible_group_ids are arrays of ids.
     // Callers normalize — this engine does not deserialize; see
     // src/utils/normalizeActivityEligibility.js.
-    if (false /* vendored: was import.meta.env?.DEV */) assertIdListShape(act.eligible_group_ids, 'eligible_group_ids', act.id)
+    if (true /* vendored: was import.meta.env?.DEV */) assertIdListShape(act.eligible_group_ids, 'eligible_group_ids', act.id)
     const eligible = new Set()
     for (const g of groups) {
       if (isActivityEligibleForGroup(act, g)) eligible.add(g.id)

@@ -13,7 +13,7 @@ import {
 } from "c/shoreshEngine";
 import { buildTerms } from "c/shoreshTerms";
 import { mulberry32 } from "../random";
-import { activity, block, camp, cellsOf, group } from "./data/camp";
+import { activity, block, camp, cellsOf, dateAt, group } from "./data/camp";
 import { randomCamp, withHistory } from "./data/randomCamp";
 import { busiestOther, problems } from "./data/check";
 import { sampled } from "shoresh-jest/sample";
@@ -129,13 +129,37 @@ function dotsOf(result) {
   return out;
 }
 
+/** Locked hand edits of an activity the group isn't set up for (data/randomCamp.js withHistory). */
+function lockedNotForGroup(spec) {
+  return (spec.cells || []).filter((c) => {
+    const a = spec.activities.find((x) => x.id === c.act);
+    const g = spec.groups.find((x) => x.id === c.group);
+    const first = spec.blocks.findIndex((b) => b.id === c.block);
+    const held = spec.blocks.slice(first, first + a.span).map((b) => b.id);
+    const locked = (spec.locks || []).some(
+      (l) =>
+        l.groupId === c.group &&
+        l.date === dateAt(c.day) &&
+        held.includes(l.blockId)
+    );
+    return (
+      locked &&
+      a.eligible.length > 0 &&
+      !a.eligible.includes(g.id) &&
+      !a.eligible.includes(g.division)
+    );
+  }).length;
+}
+
 describe("generateWeek on random small camps", () => {
   // GEN-1.9, GEN-6.1
   it(`keeps every rule, never leaves a cell blank, and is deterministic (${SEEDS} seeds)`, () => {
     const bad = [];
     let flagged = 0;
+    let lockedBreaking = 0;
     for (let seed = 1; seed <= SEEDS; seed++) {
       const spec = withHistory(randomCamp(seed), seed);
+      lockedBreaking += lockedNotForGroup(spec);
       const input = camp(spec);
       const result = generateWeek(input);
       for (const p of problems(spec, input, result)) {
@@ -200,6 +224,9 @@ describe("generateWeek on random small camps", () => {
     // The camps are tight enough that the never-blank pass really runs. (It bends only
     // preferences now, care plan step 7, so it makes no overlaps for this test to count.)
     expect(flagged).toBeGreaterThan(0);
+    // Some locked hand edits break a limit (here: who it's for), so "kept cells come back
+    // unchanged" (data/check.js) is checked on cells the engine would never place itself.
+    expect(lockedBreaking).toBeGreaterThan(0);
   });
 });
 

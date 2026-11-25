@@ -139,6 +139,7 @@ export function randomCamp(seed) {
 /** Locks and filled cells taken from an earlier build of the same camp. */
 export function withHistory(spec, seed) {
   const r = mulberry32(seed ^ 0x9e3779b9);
+  const edit = mulberry32(seed ^ 0x2545f491);
   const first = generateWeek(camp({ ...spec, mode: "full" }));
   if (!first.ok) {
     return spec;
@@ -160,6 +161,14 @@ export function withHistory(spec, seed) {
             act: cell.id
           });
           if (r() < 0.5) {
+            // Sometimes a hand edit to another activity of the same length, whatever its
+            // limits (who it's for, weekly max, groups at once): the lock keeps it all the same.
+            // Its own stream, so the camp's other draws stay as they were.
+            if (edit() < 0.25) {
+              const same = spec.activities.filter((a) => a.span === act.span);
+              cells[cells.length - 1].act =
+                same[Math.floor(edit() * same.length)].id;
+            }
             locks.push({
               date: dateAt(d),
               groupId,
