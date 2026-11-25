@@ -45,15 +45,24 @@ const STEPS = 3;
 
 const FOR_SUPPORT = "For support: ";
 /**
- * What a save that failed says (CORE-6.15): Shoresh's own refusal carries no support code and
- * Salesforce's limit stops the whole request, so then nothing was saved. Anything else (a dropped
- * connection, a timeout) may have saved after all, so only that is said, with where to
- * look, never "Try again." (desktop writeErrorMessage.js: could not confirm this saved).
+ * What a save that failed says: "Nothing was imported." only when that is known. It is known when the save
+ * was never sent, when Shoresh's server answered (its own words, with or without its support
+ * code: the save threw, so all of it was undone) and when Salesforce's limit stopped the whole
+ * request. With no answer from the server (a dropped connection, a timeout) it may have saved
+ * after all, so only that is said, with where to look, never "Try again." (desktop
+ * writeErrorMessage.js: could not confirm this saved; CORE-6.15 support code).
  */
-function saveFailed(nothing, unknown, error) {
+function saveFailed(nothing, unknown, error, sent) {
   const why = reasonOf(error);
-  const code = why.indexOf(FOR_SUPPORT);
-  if (code < 0 || why.startsWith(TOO_BIG)) {
+  const code = why.lastIndexOf(FOR_SUPPORT);
+  const body = error && error.body;
+  const serverCoded = []
+    .concat(body || [])
+    .some(
+      (b) =>
+        b && typeof b.message === "string" && b.message.includes(FOR_SUPPORT)
+    );
+  if (!sent || code < 0 || serverCoded || why.startsWith(TOO_BIG)) {
     return failed(nothing, error);
   }
   return `${unknown} ${why.slice(code)}`;
@@ -802,7 +811,9 @@ export default class ShoreshChoicesImport extends LightningElement {
       return;
     this.phase = "saving";
     this.status = "Importing";
+    let sent = false;
     try {
+      sent = true;
       this.done = await bringInChoices({ request: JSON.stringify(request) });
       this.phase = "done";
       this.status = this.doneText;
@@ -816,7 +827,8 @@ export default class ShoreshChoicesImport extends LightningElement {
       this.error = saveFailed(
         "Nothing was imported.",
         `Shoresh couldn't confirm the choices were imported. Look at ${electiveSeatsTitle(this.t)} before importing them again.`,
-        e
+        e,
+        sent
       );
     }
   }

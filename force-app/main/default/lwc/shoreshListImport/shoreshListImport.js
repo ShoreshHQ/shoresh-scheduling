@@ -98,15 +98,24 @@ function isChoicesFile(file) {
 
 const FOR_SUPPORT = "For support: ";
 /**
- * What a save that failed says (CORE-6.15): Shoresh's own refusal carries no support code and
- * Salesforce's limit stops the whole request, so then nothing was saved. Anything else (a dropped
- * connection, a timeout) may have saved after all, so only that is said, with where to
- * look, never "Try again." (desktop writeErrorMessage.js: could not confirm this saved).
+ * What a save that failed says: "Nothing was saved." only when that is known. It is known when the save
+ * was never sent, when Shoresh's server answered (its own words, with or without its support
+ * code: the save threw, so all of it was undone) and when Salesforce's limit stopped the whole
+ * request. With no answer from the server (a dropped connection, a timeout) it may have saved
+ * after all, so only that is said, with where to look, never "Try again." (desktop
+ * writeErrorMessage.js: could not confirm this saved; CORE-6.15 support code).
  */
-function saveFailed(nothing, unknown, error) {
+function saveFailed(nothing, unknown, error, sent) {
   const why = reasonOf(error);
-  const code = why.indexOf(FOR_SUPPORT);
-  if (code < 0 || why.startsWith(TOO_BIG)) {
+  const code = why.lastIndexOf(FOR_SUPPORT);
+  const body = error && error.body;
+  const serverCoded = []
+    .concat(body || [])
+    .some(
+      (b) =>
+        b && typeof b.message === "string" && b.message.includes(FOR_SUPPORT)
+    );
+  if (!sent || code < 0 || serverCoded || why.startsWith(TOO_BIG)) {
     return failed(nothing, error);
   }
   return `${unknown} ${why.slice(code)}`;
@@ -1078,6 +1087,7 @@ export default class ShoreshListImport extends LightningElement {
   async handleSave() {
     this.stage = "saving";
     this.error = null;
+    let sent = false;
     try {
       if (this.workbook) {
         const plan = workbookPlan(
@@ -1085,6 +1095,7 @@ export default class ShoreshListImport extends LightningElement {
           this.answers,
           this.setup.season.Id
         );
+        sent = true;
         this.result = await saveWorkbook({ plan: JSON.stringify(plan) });
       } else {
         const plan = listPlan(
@@ -1099,6 +1110,7 @@ export default class ShoreshListImport extends LightningElement {
           cards,
           this.suggestionsOf(cards)
         );
+        sent = true;
         this.result = await saveList({ plan: JSON.stringify(plan) });
       }
       this.stage = "done";
@@ -1108,8 +1120,9 @@ export default class ShoreshListImport extends LightningElement {
       this.stage = "review";
       this.error = saveFailed(
         "Nothing was saved.",
-        `Shoresh couldn't confirm ${this.workbook ? "the worksheet" : "the list"} was saved. Look at ${this.workbook ? "Camp Setup" : this.screenName} before saving it again.`,
-        e
+        `Shoresh couldn't confirm ${this.workbook ? "the worksheet" : "the list"} was saved. Look at ${this.workbook ? "Roots" : this.screenName} before saving it again.`,
+        e,
+        sent
       );
     }
   }
