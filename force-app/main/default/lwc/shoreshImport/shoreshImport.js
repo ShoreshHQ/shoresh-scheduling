@@ -23,7 +23,13 @@ import {
   refusedFile,
   nextKeyOf
 } from "c/shoreshImportEngine";
-import { closeRefusal, failed, floatRefusal } from "c/shoreshErrors";
+import {
+  closeRefusal,
+  failed,
+  floatRefusal,
+  outcomeKnown,
+  reasonOf
+} from "c/shoreshErrors";
 import { rememberedFor } from "c/shoreshRemembered";
 import { suggestionsFor } from "c/shoreshPatterns";
 import { comingIn, countTiles, miniCells, total } from "./summary";
@@ -39,6 +45,21 @@ import {
   saveLabel,
   savePlan
 } from "./flow";
+
+const FOR_SUPPORT = "For support: ";
+/**
+ * What a save that failed says: "Nothing was saved." only when that is known (never sent, or
+ * outcomeKnown). With no answer from the server (a dropped connection, a timeout) it may have
+ * saved after all, so only that is said, with where to look and the support code, never "Try
+ * again." (desktop writeErrorMessage.js: could not confirm this saved).
+ */
+function saveFailed(nothing, unknown, error, sent) {
+  if (!sent || outcomeKnown(error)) {
+    return failed(nothing, error);
+  }
+  const why = reasonOf(error);
+  return `${unknown} ${why.slice(why.lastIndexOf(FOR_SUPPORT))}`;
+}
 
 /**
  * Import last year (slice 4b; ADR 0006), drawn as Greg's approved mock-ups
@@ -1038,6 +1059,7 @@ export default class ShoreshImport extends LightningElement {
   async handleSave() {
     this.stage = "saving";
     this.error = null;
+    let sent = false;
     try {
       // The files as read go with open questions, so they can be answered later.
       const plan = savePlan(this.flowInput, this.proposal, this.answers, {
@@ -1048,6 +1070,7 @@ export default class ShoreshImport extends LightningElement {
       if (!plan) {
         throw new Error("The plan could not be made.");
       }
+      sent = true;
       this.result = await saveSetup({ plan: JSON.stringify(plan) });
       this.savedOpen = plan.open;
       this.stage = "done";
@@ -1055,7 +1078,12 @@ export default class ShoreshImport extends LightningElement {
       this.dispatchEvent(new CustomEvent("imported"));
     } catch (e) {
       this.stage = "review";
-      this.error = failed("Nothing was saved.", e);
+      this.error = saveFailed(
+        "Nothing was saved.",
+        "Shoresh couldn't confirm the import was saved. Look at Roots before adding these files again.",
+        e,
+        sent
+      );
     }
   }
 

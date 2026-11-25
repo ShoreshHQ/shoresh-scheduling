@@ -43,7 +43,13 @@ import {
 } from "c/shoreshLists";
 import { screenLabels } from "c/shoreshScreens";
 import { readChoices } from "c/shoreshChoicesReader";
-import { closeRefusal, failed, floatRefusal, reasonOf } from "c/shoreshErrors";
+import {
+  closeRefusal,
+  failed,
+  floatRefusal,
+  outcomeKnown,
+  reasonOf
+} from "c/shoreshErrors";
 import { rememberedFor } from "c/shoreshRemembered";
 import { suggestionsFor, withLearning } from "c/shoreshPatterns";
 import { downloadWorkbook, fileNameOf } from "c/shoreshDownload";
@@ -88,6 +94,21 @@ function isChoicesFile(file) {
   } catch {
     return false;
   }
+}
+
+const FOR_SUPPORT = "For support: ";
+/**
+ * What a save that failed says: "Nothing was saved." only when that is known (never sent, or
+ * outcomeKnown). With no answer from the server (a dropped connection, a timeout) it may have
+ * saved after all, so only that is said, with where to look and the support code, never "Try
+ * again." (desktop writeErrorMessage.js: could not confirm this saved).
+ */
+function saveFailed(nothing, unknown, error, sent) {
+  if (!sent || outcomeKnown(error)) {
+    return failed(nothing, error);
+  }
+  const why = reasonOf(error);
+  return `${unknown} ${why.slice(why.lastIndexOf(FOR_SUPPORT))}`;
 }
 
 export default class ShoreshListImport extends LightningElement {
@@ -1056,6 +1077,7 @@ export default class ShoreshListImport extends LightningElement {
   async handleSave() {
     this.stage = "saving";
     this.error = null;
+    let sent = false;
     try {
       if (this.workbook) {
         const plan = workbookPlan(
@@ -1063,6 +1085,7 @@ export default class ShoreshListImport extends LightningElement {
           this.answers,
           this.setup.season.Id
         );
+        sent = true;
         this.result = await saveWorkbook({ plan: JSON.stringify(plan) });
       } else {
         const plan = listPlan(
@@ -1077,6 +1100,7 @@ export default class ShoreshListImport extends LightningElement {
           cards,
           this.suggestionsOf(cards)
         );
+        sent = true;
         this.result = await saveList({ plan: JSON.stringify(plan) });
       }
       this.stage = "done";
@@ -1084,7 +1108,12 @@ export default class ShoreshListImport extends LightningElement {
       this.dispatchEvent(new CustomEvent("imported"));
     } catch (e) {
       this.stage = "review";
-      this.error = failed("Nothing was saved.", e);
+      this.error = saveFailed(
+        "Nothing was saved.",
+        `Shoresh couldn't confirm ${this.workbook ? "the worksheet" : "the list"} was saved. Look at ${this.workbook ? "Roots" : this.screenName} before saving it again.`,
+        e,
+        sent
+      );
     }
   }
 

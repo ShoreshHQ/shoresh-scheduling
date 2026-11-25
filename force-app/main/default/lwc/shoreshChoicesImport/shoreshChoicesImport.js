@@ -13,7 +13,13 @@ import {
 } from "c/shoreshImportEngine";
 import { readChoices } from "c/shoreshChoicesReader";
 import { scheduleOptions } from "c/shoreshElectiveEngine";
-import { closeRefusal, failed, floatRefusal } from "c/shoreshErrors";
+import {
+  closeRefusal,
+  failed,
+  floatRefusal,
+  outcomeKnown,
+  reasonOf
+} from "c/shoreshErrors";
 import { buildTerms, electiveSeatsTitle } from "c/shoreshTerms";
 import {
   allSettled,
@@ -36,6 +42,21 @@ import {
 } from "./review";
 
 const STEPS = 3;
+
+const FOR_SUPPORT = "For support: ";
+/**
+ * What a save that failed says: "Nothing was imported." only when that is known (never sent, or
+ * outcomeKnown). With no answer from the server (a dropped connection, a timeout) it may have
+ * saved after all, so only that is said, with where to look and the support code, never "Try
+ * again." (desktop writeErrorMessage.js: could not confirm this saved).
+ */
+function saveFailed(nothing, unknown, error, sent) {
+  if (!sent || outcomeKnown(error)) {
+    return failed(nothing, error);
+  }
+  const why = reasonOf(error);
+  return `${unknown} ${why.slice(why.lastIndexOf(FOR_SUPPORT))}`;
+}
 
 /**
  * Bring in choices (electives slice E6; ADR 0017): a camp's own choices sheet, read in the browser
@@ -804,7 +825,9 @@ export default class ShoreshChoicesImport extends LightningElement {
       return;
     this.phase = "saving";
     this.status = "Importing";
+    let sent = false;
     try {
+      sent = true;
       this.done = await bringInChoices({ request: JSON.stringify(request) });
       this.phase = "done";
       this.status = this.doneText;
@@ -815,7 +838,12 @@ export default class ShoreshChoicesImport extends LightningElement {
       await this.loadSituation();
     } catch (e) {
       this.phase = "card";
-      this.error = failed("Nothing was imported.", e);
+      this.error = saveFailed(
+        "Nothing was imported.",
+        `Shoresh couldn't confirm the choices were imported. Look at ${electiveSeatsTitle(this.t)} before importing them again.`,
+        e,
+        sent
+      );
     }
   }
 
