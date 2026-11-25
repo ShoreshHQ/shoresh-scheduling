@@ -159,6 +159,26 @@ private class SetupTablesTest {
     }
   }
 
+  /**
+   * At its own budget the count stays under half of a request's 100 queries, however many days
+   * there are to read: here 60 versions' days read one at a time, far past the budget.
+   */
+  @IsTest
+  static void theCountStaysUnderHalfTheQueryLimit() {
+    ids = KeptCamp.keptIds();
+    System.runAs(scheduler()) {
+      bigSeason();
+      ScheduleUses.partsAtOnce = 1;
+      Test.startTest();
+      ScheduleUses.Count count = ScheduleUses.count(ids.get('Group A'));
+      Integer queries = Limits.getQueries();
+      Test.stopTest();
+      Assert.isFalse(count.complete);
+      Assert.isTrue(count.schedules >= 1, 'Found: ' + count.schedules);
+      Assert.isTrue(queries < 50, 'Counting used ' + queries + ' queries');
+    }
+  }
+
   /** Past any budget the count stops, and says it isn't complete; it never guesses. */
   @IsTest
   static void pastItsBudgetTheCountSaysItIsNotComplete() {
@@ -176,7 +196,7 @@ private class SetupTablesTest {
           'Found: ' + count.schedules
         );
         Assert.isFalse(count.complete);
-        ScheduleUses.queryBudget = 90;
+        ScheduleUses.queryBudget = 40;
         ScheduleUses.rowBudget = 100;
         count = ScheduleUses.count(ids.get('Soccer'));
         Assert.areEqual(0, count.schedules);

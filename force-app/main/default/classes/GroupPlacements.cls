@@ -15,9 +15,10 @@ public with sharing class GroupPlacements {
   // Day parts read at once: 25 at the longest (131,072 characters) is about 3.3 million.
   @TestVisible
   private static Integer partsAtOnce = 25;
-  // Queries for the text, after the two that find the program and list the days.
+  // Queries for the text, after the two that find the program and list the days: with them, under
+  // the 50 a request may use (half of Salesforce's 100).
   @TestVisible
-  private static Integer queryBudget = 60;
+  private static Integer queryBudget = 40;
 
   public class Placed {
     @AuraEnabled
