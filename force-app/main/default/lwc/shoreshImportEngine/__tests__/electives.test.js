@@ -510,19 +510,18 @@ describe("same files, same reading", () => {
 
   /** Runs `read` as a browser set to `language` would: its own order for text. */
   function inLanguage(language, read) {
-    const own = String.prototype.localeCompare;
-    // eslint-disable-next-line no-extend-native
-    String.prototype.localeCompare = function (that, locales, options) {
-      return new Intl.Collator(locales || language, options).compare(
-        String(this),
-        String(that)
-      );
-    };
+    const spy = jest
+      .spyOn(String.prototype, "localeCompare")
+      .mockImplementation(function (that, locales, options) {
+        return new Intl.Collator(locales || language, options).compare(
+          String(this),
+          String(that)
+        );
+      });
     try {
       return read();
     } finally {
-      // eslint-disable-next-line no-extend-native
-      String.prototype.localeCompare = own;
+      spy.mockRestore();
     }
   }
 
