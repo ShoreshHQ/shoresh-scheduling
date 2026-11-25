@@ -17,7 +17,9 @@
  * --class-names runs only those classes (a pull request's pick, scripts/ci-apex-tests.js); then
  * coverage is shown but not required, since the classes not run count as 0%.
  * Exits 1 if no test class is found, any class fails, cannot run, or takes longer than 10
- * minutes, or (running every class) coverage is below 75%. While the shared org is busy (another run or deploy), a
+ * minutes, or (running every class) coverage is below 75% in all or below 90% in any one class
+ * (a class pinned lower in scripts/apex-coverage-floors.json: below its floor). Every class's
+ * coverage is printed, lowest first. While the shared org is busy (another run or deploy), a
  * class waits and tries again, for up to 3 minutes.
  */
 import { execFileSync } from "node:child_process";
@@ -28,6 +30,11 @@ import ciApexTests from "./ci-apex-tests.js";
 const { hasTestMethods } = ciApexTests;
 
 const MIN_COVERAGE = 75;
+const MIN_CLASS_COVERAGE = 90;
+// Classes under 90% when the per-class check came in, each pinned at its coverage then (rounded
+// down). A floor may only go up: raise it as tests are added (the run names the ones that can
+// be), and take the class out once it reaches 90%. Lowering one is a change reviewers see.
+const FLOORS_FILE = "scripts/apex-coverage-floors.json";
 const CLASS_TIMEOUT_MS = 10 * 60 * 1000;
 const CLI_TIMEOUT_MS = 2 * 60 * 1000;
 const args = process.argv.slice(2);
@@ -354,6 +361,7 @@ function coverage(lines) {
   let covered = 0;
   let total = 0;
   const untouched = [];
+  const classes = [];
   codeUnderTest().forEach((file) => {
     const seen = lines.get(baseName(file));
     const source = readFileSync(file, "utf8");
@@ -362,10 +370,18 @@ function coverage(lines) {
       (seen.size > 0 ||
         blockStatements(source, file.endsWith(".trigger")) === 0)
     ) {
+      let hits = 0;
       seen.forEach((hit) => {
-        covered += hit ? 1 : 0;
-        total += 1;
+        hits += hit ? 1 : 0;
       });
+      covered += hits;
+      total += seen.size;
+      if (seen.size > 0) {
+        classes.push({
+          name: baseName(file),
+          percent: (100 * hits) / seen.size
+        });
+      }
       return;
     }
     const statements = withoutComments(source)
@@ -374,10 +390,52 @@ function coverage(lines) {
     if (statements > 0) {
       untouched.push(baseName(file));
       total += statements;
+      classes.push({ name: baseName(file), percent: 0 });
     }
   });
-  return { percent: total === 0 ? 100 : (100 * covered) / total, untouched };
+  return {
+    percent: total === 0 ? 100 : (100 * covered) / total,
+    untouched,
+    classes
+  };
 }
+
+/**
+ * Class name -> its pinned floor (%), from FLOORS_FILE; none when there is no file. Stops the run
+ * on a file that isn't { "Class": a number from 0 to 89 }, so a typo can't switch a class's
+ * check off.
+ */
+function floors() {
+  let pinned;
+  try {
+    pinned = JSON.parse(readFileSync(FLOORS_FILE, "utf8"));
+  } catch (e) {
+    if (e.code === "ENOENT") {
+      return {};
+    }
+    console.log(`Could not read ${FLOORS_FILE}: ${e.message}`);
+    process.exit(1);
+  }
+  const wrong =
+    pinned === null || typeof pinned !== "object" || Array.isArray(pinned)
+      ? ["(not a list of classes)"]
+      : Object.keys(pinned).filter(
+          (name) =>
+            !Number.isFinite(pinned[name]) ||
+            pinned[name] < 0 ||
+            pinned[name] >= MIN_CLASS_COVERAGE
+        );
+  if (wrong.length > 0) {
+    console.log(
+      `${FLOORS_FILE} needs a number from 0 to ${MIN_CLASS_COVERAGE - 1} for each class: ${wrong.join(", ")}`
+    );
+    process.exit(1);
+  }
+  return pinned;
+}
+
+/** A percentage to one decimal, rounded down, so 89.96% doesn't show as 90.0%. */
+const shown = (percent) => (Math.floor(percent * 10) / 10).toFixed(1);
 
 const classes = only
   ? testClasses().filter((name) => only.includes(name))
@@ -405,7 +463,25 @@ for (const name of classes) {
   failedClasses += r.ok ? 0 : 1;
 }
 
-const { percent, untouched } = coverage(await readCoverage(testClassIds));
+const {
+  percent,
+  untouched,
+  classes: perClass
+} = coverage(await readCoverage(testClassIds));
+const pinned = only ? {} : floors();
+const floorOf = (name) => pinned[name] ?? MIN_CLASS_COVERAGE;
+console.log("\nCoverage of each class and trigger, lowest first:");
+perClass
+  .sort((a, b) => a.percent - b.percent || a.name.localeCompare(b.name))
+  .forEach((c) =>
+    console.log(
+      `  ${shown(c.percent).padStart(5)}%  ${c.name}` +
+        (pinned[c.name] === undefined ? "" : ` (pinned at ${pinned[c.name]}%)`)
+    )
+  );
+const underFloor = only
+  ? []
+  : perClass.filter((c) => c.percent < floorOf(c.name));
 console.log(
   `\nSummary: ${classes.length - failedClasses}/${classes.length} classes passed, ` +
     `${ran} tests ran, ${failedTests} failed.`
@@ -414,7 +490,29 @@ console.log(
   `Coverage of this repository's Apex: ${percent.toFixed(0)}%` +
     (only ? " (some classes only; not checked)." : ` (needs ${MIN_COVERAGE}%).`)
 );
-const lowCoverage = !only && percent < MIN_COVERAGE;
+const lowCoverage = !only && (percent < MIN_COVERAGE || underFloor.length > 0);
+if (underFloor.length > 0) {
+  console.log(
+    `Under ${MIN_CLASS_COVERAGE}% (or under its floor in ${FLOORS_FILE}): ` +
+      underFloor
+        .map(
+          (c) => `${c.name} ${shown(c.percent)}% (needs ${floorOf(c.name)}%)`
+        )
+        .join(", ")
+  );
+}
+const raisable = only
+  ? []
+  : perClass.filter(
+      (c) =>
+        pinned[c.name] !== undefined && Math.floor(c.percent) > pinned[c.name]
+    );
+if (raisable.length > 0) {
+  console.log(
+    `Above their floor; raise it in ${FLOORS_FILE} (or take out those at ${MIN_CLASS_COVERAGE}%): ` +
+      raisable.map((c) => `${c.name} ${Math.floor(c.percent)}%`).join(", ")
+  );
+}
 if (!only && untouched.length > 0) {
   console.log(`Not run by any test (counted as 0%): ${untouched.join(", ")}`);
 }

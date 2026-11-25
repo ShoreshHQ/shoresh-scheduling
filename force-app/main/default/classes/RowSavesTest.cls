@@ -212,6 +212,39 @@ private class RowSavesTest {
     }
   }
 
+  // API-1.105: a refused rename names the row once, by the name it has now, never the name it was
+  // refused (here in an archived season, whose rows can't be changed).
+  @IsTest
+  static void aRefusedRenameNamesTheRowByTheNameItHas() {
+    camp();
+    System.runAs(scheduler(ids)) {
+      SeasonArchive.archive(ids.get('Season'));
+      String season = [
+        SELECT Name
+        FROM Season__c
+        WHERE Id = :ids.get('Season')
+        WITH SYSTEM_MODE
+      ]
+      .Name;
+      String refused;
+      try {
+        save(
+          new Location__c(Id = ids.get('Pool'), Name = 'Lake'),
+          new Location__c(Name = 'Pool')
+        );
+      } catch (AuraHandledException e) {
+        refused = e.getMessage();
+      }
+      Assert.areEqual(
+        '"Pool": "' +
+          season +
+          '" is archived, so it can\'t be changed. Bring it back first.',
+        refused
+      );
+      Assert.areEqual('Pool', pool().Name);
+    }
+  }
+
   @IsTest
   static void aRowSomeoneElseDeletedSaysSo() {
     camp();

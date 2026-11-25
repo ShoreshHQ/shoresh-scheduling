@@ -156,7 +156,7 @@ describe("Code mode for an AI: run_shoresh_script", () => {
     const asked = [];
     const many = await runScript("for (;;) await shoresh.list_seasons({});", {
       callLimit: 3,
-      callAction: async (name, input) => {
+      callAction: async (name) => {
         asked.push(name);
         return { answer: { ok: true, text: "ok" }, lines: ["ok"] };
       }

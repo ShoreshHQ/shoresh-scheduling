@@ -105,7 +105,7 @@ private class NoDivisionsTest {
     }
   }
 
-  // DIV-1.1 DIV-3.1
+  // DIV-1.1
   @IsTest
   static void citAloneInDivisionCitStaysADivision() {
     System.runAs(ShoreshTestData.scheduler()) {

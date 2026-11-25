@@ -248,15 +248,15 @@ private class ScreenErrorsTest {
     Camp__c camp = ShoreshTestData.camp('Camp Willow');
     Season__c season = ShoreshTestData.season(camp.Id, 'Summer 2026');
     Week__c week = ShoreshTestData.weeks(season.Id, 1)[0];
+    // The date rule's own message happens to start with this week's name.
+    Database.update(
+      new Week__c(Id = week.Id, Name = 'End date'),
+      AccessLevel.SYSTEM_MODE
+    );
     try {
-      // The date rule's own message happens to start with this week's name.
       UserModeWrites.save(
         new List<SObject>{
-          new Week__c(
-            Id = week.Id,
-            Name = 'End date',
-            EndDate__c = week.StartDate__c.addDays(-1)
-          )
+          new Week__c(Id = week.Id, EndDate__c = week.StartDate__c.addDays(-1))
         }
       );
       Assert.fail('Backwards dates are refused');
@@ -306,5 +306,81 @@ private class ScreenErrorsTest {
         .startsWith('Shoresh couldn\'t tell why.'),
       'Any other read problem is still unknown'
     );
+  }
+
+  /**
+   * A kind of save failure Shoresh has no words for (here a group pointed at something that isn't
+   * a division) is "couldn't tell why" with a support code, never the platform's own text, whether
+   * the save threw or was partial.
+   */
+  @IsTest
+  static void aFailureWithNoPlainWordsSaysShoreshCouldNotTellWhy() {
+    Camp__c camp = ShoreshTestData.camp('Camp Willow');
+    Season__c season = ShoreshTestData.season(camp.Id, 'Summer 2026');
+    Program__c main = ShoreshTestData.program(season.Id, 'Main');
+    Group__c stray = new Group__c(Name = 'Group A', Division__c = main.Id);
+    String unknown = 'Shoresh couldn\'t tell why. Try again. For support: [A-Z0-9]{3}-[A-Z0-9]{3}\\.';
+    String thrown;
+    try {
+      Database.insert(stray, AccessLevel.SYSTEM_MODE);
+    } catch (DmlException e) {
+      thrown = ScreenErrors.words(e);
+    }
+    Database.SaveResult partial = Database.insert(
+      new Group__c(Name = 'Group A', Division__c = main.Id),
+      false,
+      AccessLevel.SYSTEM_MODE
+    );
+    Assert.isNotNull(thrown, 'The save is refused');
+    Assert.isTrue(Pattern.matches(unknown, thrown), thrown);
+    Assert.isFalse(partial.isSuccess());
+    String said = ScreenErrors.messageOf(partial.getErrors()[0]);
+    Assert.isTrue(Pattern.matches(unknown, said), said);
+    Assert.areEqual(
+      0,
+      [SELECT COUNT() FROM Group__c WITH SYSTEM_MODE],
+      'Nothing saved'
+    );
+  }
+
+  /** Over the web (an AI or the command line), a screen's refusal is the AI's refusal. */
+  @IsTest
+  static void overTheWebAScreensRefusalIsTheAisRefusal() {
+    ScreenErrors.overWeb = true;
+    try {
+      ScreenErrors.of('Plain words.');
+      Assert.fail('Refused');
+    } catch (ShoreshException e) {
+      Assert.areEqual('Plain words.', e.getMessage());
+    } finally {
+      ScreenErrors.overWeb = false;
+    }
+  }
+
+  /** A name typed too long for its field is said plainly, with what to do, never the platform's text. */
+  @IsTest
+  static void somethingTypedTooLongSaysToShortenIt() {
+    Camp__c camp = ShoreshTestData.camp('Camp Willow');
+    Season__c season = ShoreshTestData.season(camp.Id, 'Summer 2026');
+    try {
+      UserModeWrites.save(
+        new List<SObject>{
+          new Location__c(
+            Season__c = season.Id,
+            Name = 'Lake'.repeat(100),
+            GroupsThatFit__c = 1
+          )
+        }
+      );
+      Assert.fail('A name too long is not saved');
+    } catch (UserModeWrites.SaveException e) {
+      Assert.isTrue(
+        ScreenErrors.of(e)
+          .getMessage()
+          .endsWith('Something typed is too long. Shorten it and save again.'),
+        ScreenErrors.of(e).getMessage()
+      );
+    }
+    Assert.areEqual(0, [SELECT COUNT() FROM Location__c WITH SYSTEM_MODE]);
   }
 }

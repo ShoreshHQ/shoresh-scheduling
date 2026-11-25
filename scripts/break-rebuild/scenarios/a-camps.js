@@ -3,7 +3,7 @@
  * comes through Import last year's files or add_to_setup, then is built, read back and judged
  * by what must hold of any week.
  */
-const { call, makeCamp, soql } = require("../lib");
+const { call, makeCamp } = require("../lib");
 const {
   importYear,
   draft,

@@ -1,6 +1,5 @@
 /**
- * What goes out is what the published week shows (docs/protocol/api.md API-6.2): a rain switch
- * as published, and a week two programs publish, day by day. Camp Willow (synthetic).
+ * What goes out is what the published week shows: a rain switch as published, and a week two programs publish, day by day. Camp Willow (synthetic).
  */
 @IsTest
 private class OutgoingPublishedTest {
@@ -70,7 +69,7 @@ private class OutgoingPublishedTest {
     };
   }
 
-  // API-6.2: what goes out is what the published week shows. A rain switch changes the draft's
+  // What goes out is what the published week shows. A rain switch changes the draft's
   // cells to the rain plan (repo ADR 0019), and Publish copies those cells, so a switched day goes
   // out with the rain plan, never the activity it replaced. Made the way the screen does it:
   // place Soccer, switch it to its rain plan (Gym games) with the raindrop, publish.
@@ -179,7 +178,7 @@ private class OutgoingPublishedTest {
     }
   }
 
-  // API-6.2: a week two programs publish goes out day by day: each day has every program's
+  // A week two programs publish goes out day by day: each day has every program's
   // groups (in program order) before the next day starts.
   @IsTest
   static void aWeekOfTwoProgramsGoesOutDayByDay() {

@@ -564,7 +564,6 @@ private class GeneratedRefusalsTest {
     Map<String, Id> ids = camp();
     System.runAs(KeptCamp.scheduler(ids)) {
       generated();
-      Test.startTest();
       Schedule__c version = ShoreshTestData.version(
         ids.get('Main'),
         ids.get('Week 1'),
@@ -584,6 +583,7 @@ private class GeneratedRefusalsTest {
       );
       Database.insert(manual, AccessLevel.SYSTEM_MODE);
       Id manualId = manual.Id;
+      Test.startTest();
       GeneratedInputs.Inputs read = GeneratedTestData.inputs();
       GeneratedWeek.Save onVersion = request(read, GeneratedSaves.REBUILD);
       onVersion.scheduleId = version.Id;

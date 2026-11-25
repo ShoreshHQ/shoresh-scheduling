@@ -698,7 +698,6 @@ private class SetTimeClashesTest {
   static void aBunkAwayThatWeekIsNotCountedAtALocation() {
     Map<String, Id> ids = camp();
     System.runAs(scheduler(ids)) {
-      Test.startTest();
       // Group C is away in Week 1; the Gym fits 2.
       WeekException__c away = new WeekException__c(
         Week__c = ids.get('Week 1'),
@@ -709,6 +708,7 @@ private class SetTimeClashesTest {
         new Location__c(Id = ids.get('Gym'), GroupsThatFit__c = 2),
         AccessLevel.SYSTEM_MODE
       );
+      Test.startTest();
       // Rest at the Gym, Week 1 only: Groups A and B come, Group C is away. Two fit.
       List<RunsIn.WeekOff> notWeek1 = new List<RunsIn.WeekOff>();
       for (Integer week = 2; week <= 6; week++) {

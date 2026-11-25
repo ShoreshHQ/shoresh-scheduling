@@ -167,7 +167,7 @@ function render(objects = readObjects()) {
     "export const CHILDREN = Object.freeze({"
   );
   const children = {};
-  for (const { object, fields } of objects) {
+  for (const { fields } of objects) {
     for (const f of fields) {
       if (f.referenceTo && f.relationshipName) {
         (children[f.referenceTo] = children[f.referenceTo] || []).push(

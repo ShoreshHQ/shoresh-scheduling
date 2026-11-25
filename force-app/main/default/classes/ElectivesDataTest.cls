@@ -205,6 +205,47 @@ private class ElectivesDataTest {
     }
   }
 
+  // An elective set happens at one of its own season's time blocks: another season's is refused,
+  // and the set is not made.
+  @IsTest
+  static void aSetsTimeBlockIsOfItsOwnSeason() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      ElectiveCamp camp = new ElectiveCamp();
+      Season__c other = ShoreshTestData.season(
+        camp.season.Camp__c,
+        'Summer 2027'
+      );
+      Program__c main = ShoreshTestData.program(other.Id, 'Main');
+      TimeBlock__c elsewhere = new TimeBlock__c(
+        Program__c = main.Id,
+        Name = 'Period 1',
+        StartTime__c = Time.newInstance(9, 0, 0, 0),
+        EndTime__c = Time.newInstance(9, 45, 0, 0),
+        SortOrder__c = 1
+      );
+      Database.insert(elsewhere, AccessLevel.USER_MODE);
+      Assert.areEqual(
+        'That time block belongs to another season.',
+        refusal(
+          new ElectiveSet__c(
+            Season__c = camp.season.Id,
+            Name = 'Evening',
+            TimeBlock__c = elsewhere.Id
+          )
+        )
+      );
+      Assert.areEqual(
+        0,
+        [
+          SELECT COUNT()
+          FROM ElectiveSet__c
+          WHERE Name = 'Evening'
+          WITH SYSTEM_MODE
+        ]
+      );
+    }
+  }
+
   @IsTest
   static void seatsAreZeroOrMoreAndAMinimumIsOneOrMore() {
     System.runAs(ShoreshTestData.scheduler()) {
@@ -737,7 +778,7 @@ private class ElectivesDataTest {
           WITH USER_MODE
         ]
       );
-      Assert.isTrue(used <= 60, 'Queries to copy a season: ' + used);
+      Assert.isTrue(used <= 43, 'Queries to copy a season: ' + used);
     }
   }
 }

@@ -6,8 +6,7 @@ const {
   checksOf,
   count,
   names,
-  confirmed,
-  seenOf
+  confirmed
 } = require("../kit");
 
 module.exports = [

@@ -3,7 +3,8 @@
 ignores:
   files:
     # Third-party libraries shipped as static resources (SheetJS, minified) are not our code.
-    # Their versions and licences are recorded in docs/adr and NOTICE.
+    # Their versions and licences are recorded in docs/adr and NOTICE. Our own static resource,
+    # the connector (ShoreshConnect), is scanned from its source instead: `npm run scan:connect`.
     - "**/staticresources/**"
 
 # Narrow suppressions for the AppExchange security-review rules (docs/ci-setup.md). Each entry is one

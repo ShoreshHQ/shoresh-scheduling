@@ -99,7 +99,7 @@ private class AgentImportsTest {
     Map<String, Object> answer = (Map<String, Object>) first[1];
     Assert.areEqual(200, first[0]);
     Assert.isTrue(
-      reading < 60,
+      reading < 49,
       'one read stays well under the limit: ' + reading
     );
     Assert.isNotNull(answer.get('setup'));
@@ -130,7 +130,7 @@ private class AgentImportsTest {
       Assert.areEqual(16, seen.length());
       Assert.areEqual(200, saved[0], String.valueOf(saved[1]));
       Assert.isTrue(
-        saving < 60,
+        saving < 46,
         'a save stays well under the limit: ' + saving
       );
       Map<String, Object> result = (Map<String, Object>) JSON.deserializeUntyped(
@@ -299,6 +299,44 @@ private class AgentImportsTest {
       Assert.isTrue(
         undo.contains(', Nov 1, 2026 10:03 AM. What it added'),
         undo
+      );
+    }
+  }
+
+  // API-1.82: an outside system's last batch is listed for its own Undo, named by where it came
+  // from, at the read's web address.
+  @IsTest
+  static void anOutsideSystemsLastBatchIsListedWithWhereItCameFrom() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      Import__c batch = new Import__c(
+        Season__c = camp(),
+        Source__c = 'Bunk Planner (made up)',
+        Files__c = 'campers from Bunk Planner (made up)'
+      );
+      Database.insert(batch, AccessLevel.SYSTEM_MODE);
+      Test.setCreatedDate(
+        batch.Id,
+        Datetime.newInstance(2026, 11, 1, 10, 3, 0)
+      );
+      Test.startTest();
+      RestContext.request = new RestRequest();
+      RestContext.request.httpMethod = 'GET';
+      RestContext.request.addParameter('season', SEASON);
+      RestContext.response = new RestResponse();
+      AgentReadLastImports.get();
+      Test.stopTest();
+      String said = (String) ((Map<String, Object>) JSON.deserializeUntyped(
+          RestContext.response.responseBody.toString()
+        ))
+        .get('message');
+      Assert.areEqual(200, RestContext.response.statusCode, said);
+      Assert.isTrue(
+        said.contains(
+          'Last from Bunk Planner (made up): campers, Nov 1, 2026 10:03 AM, seen: "' +
+            batch.Id +
+            '", from: "Bunk Planner (made up)"'
+        ),
+        said
       );
     }
   }

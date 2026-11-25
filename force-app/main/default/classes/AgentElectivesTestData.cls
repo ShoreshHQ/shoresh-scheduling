@@ -11,6 +11,7 @@ public class AgentElectivesTestData {
     'move_elective_seat' => new AgentMoveElectiveSeat(),
     'lock_elective_seat' => new AgentLockElectiveSeat(),
     'change_seats' => new AgentStartNewElectiveVersion(),
+    'finalize_electives' => new AgentFinalize(),
     'clear_electives' => new AgentClearElectives()
   };
 

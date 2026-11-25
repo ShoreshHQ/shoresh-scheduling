@@ -11,9 +11,9 @@
 private class AgentSpecialScheduleTest {
   private static final Date MONDAY = Date.newInstance(2026, 6, 29);
 
-  /** One request to a door; answers [status, sentence]. */
+  /** One request to a door (a change or a read); answers [status, sentence]. */
   private static List<Object> ask(
-    AgentRequest.Change door,
+    Object door,
     String method,
     Map<String, Object> body
   ) {
@@ -174,6 +174,49 @@ private class AgentSpecialScheduleTest {
       Assert.areEqual(
         swim,
         SlotIds.ofRow(SpecialPlans.read(eventId).grid, 0)[1]
+      );
+    }
+  }
+
+  /** GET /v1/read_special_schedule; answers [status, sentence]. */
+  private static List<Object> readSchedule(Map<String, Object> asked) {
+    return ask(new AgentReadSpecialSchedule(), 'GET', asked);
+  }
+
+  // API-1.76: the read says each time block with its times, the columns (an event's stations),
+  // what each cell holds, and the revision as seen; a plan never saved is "none".
+  @IsTest
+  static void aSpecialScheduleIsReadAsItsPageShowsIt() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      Map<String, Id> ids = SpecialScheduleTestData.campWithFieldDay();
+      Id eventId = SpecialScheduleTestData.colorWar(ids);
+      SpecialScheduleTestData.addEvent(ids.get('Season'), 'Tug of War');
+      String season = seasonName(ids.get('Season'));
+      Integer revision = SpecialPlans.read(eventId).revision;
+      Test.startTest();
+      List<Object> read = readSchedule(
+        colorWar(season, new Map<String, Object>())
+      );
+      Integer queries = Limits.getQueries();
+      List<Object> blank = readSchedule(
+        new Map<String, Object>{ 'season' => season, 'special' => 'tug of war' }
+      );
+      Test.stopTest();
+      Assert.areEqual(200, read[0], String.valueOf(read[1]));
+      Assert.isTrue(queries < 10, 'The read used ' + queries + ' queries');
+      Assert.areEqual(
+        '"Color War" (special event). Columns: Blue, Gold. Times: ' +
+          '9:00 AM – 9:45 AM (09:00-09:45): Blue Open; Gold Open | ' +
+          'Relays (09:50-11:20): Blue Open; Gold Open. seen: ' +
+          revision +
+          ' (send it with change_special_schedule_frame).',
+        read[1]
+      );
+      Assert.areEqual(200, blank[0], String.valueOf(blank[1]));
+      Assert.areEqual(
+        '"Tug of War" (special event). Columns: none yet. Times: none yet. seen: none' +
+        ' (send it with change_special_schedule_frame).',
+        blank[1]
       );
     }
   }

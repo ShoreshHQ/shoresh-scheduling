@@ -189,7 +189,7 @@ private class ManualBuildTest {
         onItsOwn <= withSetup,
         'Open used ' + onItsOwn + ' queries; with setup read ' + withSetup
       );
-      Assert.isTrue(onItsOwn < 100, onItsOwn + ' queries');
+      Assert.isTrue(onItsOwn < 24, onItsOwn + ' queries');
       Assert.areEqual(started.setUpCells.size(), opened.setUpCells.size());
       Assert.isFalse(opened.setUpCells.isEmpty());
     }
@@ -815,7 +815,6 @@ private class ManualBuildTest {
   static void anActivityFromAnotherSeasonIsNotPlaced() {
     Map<String, Id> ids = camp();
     System.runAs(KeptCamp.scheduler(ids)) {
-      Test.startTest();
       ManualBuildViews.DraftView view = start(ids, 'Week 1');
       Season__c other = ShoreshTestData.season(ids.get('Camp'), 'Other summer');
       Activity__c stranger = ShoreshTestData.activity(
@@ -824,6 +823,7 @@ private class ManualBuildTest {
         null
       );
       Database.insert(stranger, AccessLevel.SYSTEM_MODE);
+      Test.startTest();
       String refused = refusal(
         view.schedule.schedule.id,
         SlotRunsTestData.edit(

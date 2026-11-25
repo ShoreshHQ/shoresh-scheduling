@@ -114,6 +114,8 @@ public with sharing class AgentLinkedChoiceRefs {
     String activity = AgentFields.text(body, 'activity');
     List<LinkedChoice__c> found = new List<LinkedChoice__c>();
     List<String> names = new List<String>();
+    // Those of this name under another activity than the one asked for.
+    List<LinkedChoice__c> others = new List<LinkedChoice__c>();
     for (LinkedChoice__c each : [
       SELECT
         Id,
@@ -132,16 +134,29 @@ public with sharing class AgentLinkedChoiceRefs {
         String.isBlank(activity) ||
         IncomingBatch.fold(each.Offering__r.Activity__r.Name) ==
         IncomingBatch.fold(activity);
-      if (ofIt && IncomingBatch.fold(each.Name) == IncomingBatch.fold(name)) {
-        found.add(each);
+      if (IncomingBatch.fold(each.Name) == IncomingBatch.fold(name)) {
+        (ofIt ? found : others).add(each);
       }
     }
     if (found.size() == 1) {
       return found[0];
     }
-    throw new ShoreshException(
-      found.isEmpty() ? noSuch(name, names) : twoCalled(found, activity)
-    );
+    if (found.isEmpty()) {
+      throw new ShoreshException(
+        others.isEmpty()
+          ? noSuch(name, names)
+          : // There, but under another activity: '"Drama" is linked to Drama, not "Archery".'
+            '"' +
+            others[0].Name +
+            '" is linked to ' +
+            others[0].Offering__r.Activity__r.Name +
+            ', not "' +
+            activity.left(80) +
+            '".' +
+            NOTHING
+      );
+    }
+    throw new ShoreshException(twoCalled(found, activity));
   }
 
   private String noSuch(String name, List<String> names) {

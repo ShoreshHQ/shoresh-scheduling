@@ -92,7 +92,6 @@ describe("describeFocus", () => {
     const { innerRoot } = nested();
     innerRoot.querySelector("button").focus();
     // What Playwright does: send the source and evaluate it in the page.
-    // eslint-disable-next-line no-new-func
     const inPage = new Function(
       `return (${describeFocus.toString()})(document);`
     );

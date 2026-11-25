@@ -5,10 +5,11 @@
  * empty, and cells this engine filled by bending a rule. The two engines draw ties differently,
  * so cells differ; outcomes are what a director would notice.
  *
- * Differences are reported as data, not failures (docs/engine/protocol.md, "Desktop
- * differential"). The expected one: where the desktop leaves a cell empty (UNFILLABLE), this
- * engine fills it by bending a rule (never-blank, step 7). The test fails only if a camp can't be
- * built by either engine, or if the comparison itself is broken (counts that don't add up).
+ * It fails where Shoresh does worse than the desktop on the same camp (docs/engine/protocol.md,
+ * "Desktop differential", D.1-D.5): a cell neither filled nor reported Open, more groups short of
+ * a weekly minimum, more cells left Open, or more early-week goals short in all. A camp known to
+ * fall short, and why, is listed below. Expected and allowed: where the desktop leaves a cell
+ * empty (UNFILLABLE), this engine fills it by going over a weekly max (never-blank, step 7).
  * Set DESKTOP_DIFF_REPORT=<file> to write the full table as JSON (jest/desktop-report.js).
  *
  * Only what both engines share is drawn: no overlapping blocks, other programs, same-division
@@ -16,6 +17,7 @@
  */
 import { generateWeek } from "c/shoreshEngine";
 import buildSchedule from "shoresh-jest/desktop-engine/engine/buildSchedule";
+import { isActivityEligibleForGroup } from "shoresh-jest/desktop-engine/engine/eligibility";
 import { writeDesktopReport } from "shoresh-jest/desktop-report";
 import { camp, cellsOf } from "./data/camp";
 import { sharedCamp } from "./data/sharedCamp";
@@ -24,6 +26,20 @@ import { sampled } from "shoresh-jest/sample";
 // CI builds the first 100; the full run all 400 (jest/sample.js).
 const SEEDS = sampled(400, 100);
 const WEEKDAY_NAMES = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
+
+// Camps where this engine meets fewer weekly minimums than the desktop (D.3), and why
+// (docs/engine/protocol.md, "Desktop differential"). Both are past CI's first 100.
+const KNOWN_FEWER_MINIMUMS = {
+  234: "short by 28 against 27 in a full week, different pairs short; no chain of 4 moves finds one",
+  343: "one minimum short more at the same Open cells: its 2-at-a-time place is used in all 20 of its times"
+};
+// Camps where this engine leaves more cells Open than the desktop leaves empty (D.4): none.
+const KNOWN_MORE_OPEN = {};
+// Early-week goals short in all, this engine's over the desktop's, on camps both read the same
+// (D.5). The two draw ties differently, so single camps differ either way: on CI's first 100 this
+// engine is 3 over (128 against 125), on all 400 it is 32 under (475 against 507), each pinned. Lower
+// it, never raise it, unless the protocol says why.
+const EARLY_MARGIN = sampled(-32, 3);
 
 /** The same camp in the desktop's shapes (buildSchedule's legacy single-cohort input). */
 function desktopInput(spec) {
@@ -209,6 +225,20 @@ function compare(seed) {
   if (sf.error) {
     return { ...row, sfError: sf.error };
   }
+  // Who each activity is for, as the desktop reads the translated camp: the same as here, or the
+  // comparison is of two different camps.
+  const input = desktopInput(spec);
+  for (const g of input.groups) {
+    for (const a of input.activities) {
+      const here = eligible(
+        spec.activities.find((x) => x.id === a.id),
+        spec.groups.find((x) => x.id === g.id)
+      );
+      if (isActivityEligibleForGroup(a, g) !== here) {
+        row.readDifferently = (row.readDifferently || 0) + 1;
+      }
+    }
+  }
   // Groups and activities whose session counts differ, beyond what a bend explains.
   let pairsDiffer = 0;
   let pairsOverMaxSf = 0;
@@ -222,9 +252,6 @@ function compare(seed) {
       }
       if (a.max != null && s > a.max) {
         pairsOverMaxSf++;
-      }
-      if (!eligible(a, g) && d > 0) {
-        row.desktopIneligible = (row.desktopIneligible || 0) + 1;
       }
     }
   }
@@ -299,11 +326,21 @@ function earlyKindOf(row) {
     : "desktopShortMore";
 }
 
+/** Camps that break a promise and aren't listed, and listed camps that no longer break it. */
+const breaking = (rows, worse, known) => [
+  ...rows
+    .filter((r) => worse(r) && !(r.seed in known))
+    .map((r) => `seed ${r.seed}: worse than the desktop`),
+  ...rows
+    .filter((r) => !worse(r) && r.seed in known)
+    .map((r) => `seed ${r.seed}: listed, no longer worse: take it off`)
+];
+
 describe("desktop differential (outcomes on shared synthetic camps)", () => {
   const rows = [];
   // The camps both engines built (an error is reported by the first test, with its seed).
   const built = [];
-  // Built inside the suite's hooks, so Jest's timeout applies and a crash names its test.
+  // Built inside the suite's hooks, so a crash names its test.
   beforeAll(() => {
     for (let seed = 1; seed <= SEEDS; seed++) {
       rows.push(compare(seed));
@@ -315,16 +352,39 @@ describe("desktop differential (outcomes on shared synthetic camps)", () => {
     expect(rows.filter((r) => r.sfError || r.desktopError)).toEqual([]);
   });
 
-  it("adds up: each engine's filled plus empty cells never exceed the cells to fill", () => {
+  it("adds up: every cell to fill is filled or reported Open, in each engine (D.1)", () => {
     const bad = built.filter(
       (r) =>
-        r.sf.filled + r.sf.empty > r.cells ||
-        r.desktop.filled + r.desktop.empty > r.cells
+        r.sf.filled + r.sf.empty !== r.cells ||
+        r.desktop.filled + r.desktop.empty !== r.cells
     );
     expect(bad.map((r) => r.seed)).toEqual([]);
   });
 
-  it("reports how the outcomes differ (data, not a pass or fail)", () => {
+  it("reads the camp the same way: each activity is for the same groups in both engines (D.2)", () => {
+    expect(built.filter((r) => r.readDifferently).map((r) => r.seed)).toEqual(
+      []
+    );
+  });
+
+  it("never leaves more groups short of a weekly minimum than the desktop (D.3)", () => {
+    const worse = (r) => r.sf.minimumsShort > r.desktop.minimumsShort;
+    expect(breaking(built, worse, KNOWN_FEWER_MINIMUMS)).toEqual([]);
+  });
+
+  it("never leaves more cells Open than the desktop leaves empty (D.4)", () => {
+    const worse = (r) => r.sf.empty > r.desktop.empty;
+    expect(breaking(built, worse, KNOWN_MORE_OPEN)).toEqual([]);
+  });
+
+  it("leaves no more early-week goals short in all than the desktop, past a pinned margin (D.5)", () => {
+    // Only camps whose every goal day is in the week: elsewhere the desktop drops the goal.
+    const same = built.filter((r) => !r.earlyTargetMissing);
+    const total = (side) => same.reduce((n, r) => n + r[side].earlyShort, 0);
+    expect(total("sf") - total("desktop")).toBeLessThanOrEqual(EARLY_MARGIN);
+  });
+
+  afterAll(() => {
     const summary = {};
     for (const r of built) {
       const k = kindOf(r);
@@ -366,8 +426,11 @@ describe("desktop differential (outcomes on shared synthetic camps)", () => {
       worthALook: rows
         .filter(
           (r) =>
-            ["sfMeetsFewerMinimums", "sfLeavesMoreEmpty"].includes(kindOf(r)) ||
-            earlyKindOf(r) === "sfShortMore"
+            r.sf &&
+            (["sfMeetsFewerMinimums", "sfLeavesMoreEmpty"].includes(
+              kindOf(r)
+            ) ||
+              earlyKindOf(r) === "sfShortMore")
         )
         .map((r) => ({
           seed: r.seed,
@@ -381,6 +444,19 @@ describe("desktop differential (outcomes on shared synthetic camps)", () => {
       `Desktop differential: ${JSON.stringify(report.kinds)}, early week ${JSON.stringify(report.earlyWeek)}`,
       { ...report, rows }
     );
-    expect(report.camps).toBe(rows.length);
   });
+});
+
+it("the desktop engine's own input checks are on: a wrong translation fails, not compares (D.2)", () => {
+  const input = desktopInput(sharedCamp(1));
+  const [first, ...rest] = input.activities;
+  // An id list sent as text, the mistake the desktop's check exists for.
+  const broken = {
+    ...input,
+    activities: [
+      { ...first, eligible_group_ids: JSON.stringify(["g0"]) },
+      ...rest
+    ]
+  };
+  expect(() => buildSchedule(broken)).toThrow(/non-array eligible_group_ids/);
 });
