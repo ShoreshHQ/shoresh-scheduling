@@ -336,8 +336,12 @@ export default class ShoreshCampLabels extends LightningElement {
         }
         this.dispatchEvent(new CustomEvent("saved"));
       } catch (e) {
-        // Still to save: the next box left sends it again.
+        // Still to save: the next box left sends it again. An earlier save's Saved goes with it.
         this.dirty = true;
+        const mark = this.template.querySelector("c-shoresh-saved-mark");
+        if (mark) {
+          mark.clear();
+        }
         const message = refusedBecause(NOT_SAVED, e);
         this.fieldError = { term, field, message };
         // The setup page says it at the top too if this screen is no longer showing.

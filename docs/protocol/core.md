@@ -29,8 +29,9 @@ Each term has one meaning. The words in "Avoid" do not appear on screens.
 - **CORE-1.37** A camp word MUST be saved, changed or cleared as the screen shows it: when its
   record couldn't be read back after a save, the next save MUST read it first and, while it still
   can't, MUST NOT be sent and MUST say so ("Camp words not saved. Try again.", with a support
-  code); the server MUST NOT guess the record, which could undo a word saved elsewhere meanwhile
-  (review 2026-11-25 wave 2, lwc-screens-b finding 2). Jest shoreshCampLabels "CORE-1.37".
+  code), and any Saved shown goes (review 2026-11-25 wave 2, lwc-screens-b finding 2; the screen
+  reads rather than the server guessing the record, which could undo a word saved elsewhere
+  meanwhile). Jest shoreshCampLabels "CORE-1.37".
 
 | ID        | Term                   | Definition                                                                                                                                                                                                      | Avoid                          |
 | --------- | ---------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------ |
