@@ -557,15 +557,15 @@ describe("c-shoresh-week-editor: special days and events", () => {
     // The hosts' own lines on the row (the status slot) have no margin either.
     // Both hosts take it from the layout they share.
     const lwc = require("path").join(__dirname, "..", "..");
-    const css = (file) =>
+    const hostCss = (file) =>
       require("fs").readFileSync(require("path").join(lwc, file), "utf8");
     ["shoreshManualBuild", "shoreshGeneratedSchedule"].forEach((host) => {
-      expect(css(`${host}/${host}.css`)).toContain(
+      expect(hostCss(`${host}/${host}.css`)).toContain(
         '@import "c/shoreshScheduleScreen";'
       );
     });
     expect(
-      css("shoreshScheduleScreen/shoreshScheduleScreen.css").match(
+      hostCss("shoreshScheduleScreen/shoreshScheduleScreen.css").match(
         /\n\.notice \{([^}]*)\}/
       )[1]
     ).toMatch(/margin: 0;/);
