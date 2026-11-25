@@ -337,8 +337,10 @@ private class AgentCopyAndMatchTest {
       Map<String, Object> weekAsked = weekAsk(draftId);
       List<String> read = shown(draftId);
       Boolean replacesHand = Boolean.valueOf(read.remove(2));
-      // The person's yes, read first, so the request counted is the update alone (API-1.106).
       Map<String, Object> yes = updateAsk(weekAsked, read);
+      Test.startTest();
+      // The person's yes, asked first, so the request counted is the confirmed update alone
+      // (API-1.106).
       String confirm = AgentAskFirstTestCalls.confirmFor(
         new AgentUpdateToMatch(),
         yes
@@ -346,7 +348,6 @@ private class AgentCopyAndMatchTest {
       if (confirm != null) {
         yes.put(AgentAskFirst.FIELD, confirm);
       }
-      Test.startTest();
       Integer before = Limits.getQueries();
       List<Object> done = ask(new AgentUpdateToMatch(), 'POST', yes);
       Integer queries = Limits.getQueries() - before;
@@ -368,7 +369,7 @@ private class AgentCopyAndMatchTest {
         Assert.areEqual(SetupMatch.BEFORE_UPDATE, version.Name);
         Assert.areEqual(ManualVersions.AUTO_SAVED, version.VersionReason__c);
       }
-      Assert.isTrue(queries < 100, 'Update used ' + queries + ' queries');
+      Assert.isTrue(queries < 50, 'Update used ' + queries + ' queries');
     }
   }
 
@@ -382,6 +383,8 @@ private class AgentCopyAndMatchTest {
       List<String> read = shown(draftId);
       Assert.areEqual('true', read.remove(2), 'Swim was placed by hand');
       Map<String, Object> asked = updateAsk(weekAsked, read);
+      // A test camp's setup and week fill most of the queries before the test starts.
+      Test.startTest();
       String confirm = AgentAskFirstTestCalls.confirmFor(
         new AgentUpdateToMatch(),
         asked
@@ -393,8 +396,9 @@ private class AgentCopyAndMatchTest {
       String asIs = WeekTickets.stamp(ScheduleDays.read(draftId));
       Map<String, Object> yes = asked.clone();
       yes.put(AgentAskFirst.FIELD, confirm);
-      Test.startTest();
       List<Object> done = ask(new AgentUpdateToMatch(), 'POST', yes);
+      Boolean matched = SetupMatchController.getSetupChanges(draftId)
+        .changes.isEmpty();
       Test.stopTest();
       Assert.isNotNull(confirm, 'asks first');
       Assert.isTrue(
@@ -410,10 +414,7 @@ private class AgentCopyAndMatchTest {
         'nothing changed before the yes'
       );
       Assert.areEqual(200, done[0], String.valueOf(done[1]));
-      Assert.isTrue(
-        SetupMatchController.getSetupChanges(draftId).changes.isEmpty(),
-        'updated on the yes'
-      );
+      Assert.isTrue(matched, 'updated on the yes');
     }
   }
 

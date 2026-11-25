@@ -20,6 +20,9 @@ global with sharing class AgentUpdateToMatch implements AgentRequest.Change, Age
     'changes',
     'seen'
   };
+  // The week the preview found and locked: the confirmed update makes its changes there, without
+  // finding it again.
+  private AgentWeeks.Week found;
 
   @HttpPost
   global static void post() {
@@ -38,10 +41,9 @@ global with sharing class AgentUpdateToMatch implements AgentRequest.Change, Age
   public String preview(Map<String, Object> body) {
     Set<String> keys = new Set<String>(keysOf(body.get('changes')));
     String seen = AgentFields.text(body, 'seen');
-    AgentWeeks.Week week = AgentSchedules.placeOfEither(body);
-    AgentSchedules.requireDraft(week);
+    found = AgentSchedules.eitherOf(body);
     SetupMatch.Preview shown = SetupMatchController.getSetupChanges(
-      week.draft.Id
+      found.draft.Id
     );
     if (!WeekTickets.seenBlankNever(seenOf(shown.revisions), seen)) {
       return null;
@@ -56,9 +58,9 @@ global with sharing class AgentUpdateToMatch implements AgentRequest.Change, Age
       return null;
     }
     return 'Update ' +
-      week.name +
+      found.name +
       ' on ' +
-      AgentSchedules.screenOf(week) +
+      AgentSchedules.screenOf(found) +
       ' to match setup, replacing what was placed by hand: ' +
       String.join(replaced, '; ') +
       '. A lock on a replaced cell goes with it. The week as it is now is kept in Versions as "' +
@@ -74,9 +76,9 @@ global with sharing class AgentUpdateToMatch implements AgentRequest.Change, Age
         'Send the seen read_setup_changes gave, so a change someone made since isn\'t replaced unseen.'
       );
     }
-    AgentWeeks.Week week = AgentSchedules.eitherOf(body);
-    // Held by eitherOf as its screen's update holds it (SetupMatch.make), then compared with what
-    // was read.
+    AgentWeeks.Week week = found;
+    // Held since the preview (eitherOf) as its screen's update holds it (SetupMatch.make), then
+    // compared with what was read.
     List<ScheduleDays.DayGrid> days = ScheduleDays.read(week.draft.Id);
     String stamp = WeekTickets.stamp(days);
     if (!WeekTickets.seenBlankNever(seenOf(stamp), seen)) {
