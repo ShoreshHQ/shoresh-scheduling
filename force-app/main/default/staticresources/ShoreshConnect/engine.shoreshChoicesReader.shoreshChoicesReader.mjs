@@ -256,13 +256,15 @@ function slotOf(c) {
 }
 
 /**
- * Whether two rows fill one slot: two campers, or a contradiction. A ranked slot clashes when
- * the rows name different activities for it; an unranked slot is the activity itself, so two
- * rows naming it clash (desktop preferenceSheet.js, sameNameCampers). With a camper number the
- * rows are one child, so only a ranked contradiction counts (byName false).
+ * The rows that fill a slot an earlier row filled: two campers, or a contradiction. A ranked
+ * slot clashes when the rows name different activities for it; an unranked slot is the activity
+ * itself, so two rows naming it clash (desktop preferenceSheet.js, sameNameCampers). With a
+ * camper number the rows are one child, so only a ranked contradiction counts (byName false).
+ * Every such row is listed, since each one's clashing choice is not kept (camperFrom).
  */
-function clash(rowsOfOne, byName) {
+function clashes(rowsOfOne, byName) {
   const seen = new Map();
+  const found = [];
   for (const row of rowsOfOne) {
     for (const c of row.choices) {
       if (c.kind === UNORDERED && !byName) continue;
@@ -273,12 +275,12 @@ function clash(rowsOfOne, byName) {
         before.row !== row &&
         (c.kind === UNORDERED || foldName(before.name) !== foldName(c.name))
       ) {
-        return row;
+        if (!found.includes(row)) found.push(row);
       }
       if (!before) seen.set(slot, { row, name: c.name });
     }
   }
-  return null;
+  return found;
 }
 
 const sameChoice = (a, b) =>
@@ -373,8 +375,7 @@ function campersFrom(rows, out) {
           out.notKept.push({ camper: null, name: other.name, ...note });
       }
       const kept = rowsOfOne.filter((r) => !isOther(r));
-      const contradiction = clash(kept, false);
-      if (contradiction) {
+      for (const contradiction of clashes(kept, false)) {
         out.toCheck.push({
           kind: "sameRankTwice",
           sheet: contradiction.sheet,
@@ -386,7 +387,7 @@ function campersFrom(rows, out) {
       continue;
     }
     const repeated = rowsOfOne.filter((r) => r.oneRowEach).length > 1;
-    if (repeated || clash(rowsOfOne, true)) {
+    if (repeated || clashes(rowsOfOne, true).length > 0) {
       // Two campers with one name and nothing to tell them apart: the one thing the reader
       // will not decide (desktop §4.4, §13.1). Rows of one name collide when they give
       // different choices for one rank, or when the sheet has one row per camper, where a

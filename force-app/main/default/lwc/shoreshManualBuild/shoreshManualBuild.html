@@ -243,6 +243,11 @@
               </template>
             </lightning-button-menu>
           </template>
+          <template lwc:if={weekSourcesError}>
+            <p class="shoresh-refusal" role="alert" data-id="start-from-error">
+              {weekSourcesError}
+            </p>
+          </template>
         </div>
       </template>
       <template lwc:elseif={showStillNeeded}>

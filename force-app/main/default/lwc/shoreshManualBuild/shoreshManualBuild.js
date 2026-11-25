@@ -82,6 +82,8 @@ export default class ShoreshManualBuild extends BuildScreen(LightningElement) {
   // Why the versions couldn't be read (WEEK-6.12), or null.
   versionsUnread = null;
   weekSources = [];
+  // Why "Start from another week" isn't offered, when the other weeks couldn't be read.
+  weekSourcesError = null;
   versionsWorking = false;
   // The version just restored, "on screen now" until the next edit (desktop VersionsDropdown).
   restoredId = null;
@@ -674,6 +676,7 @@ export default class ShoreshManualBuild extends BuildScreen(LightningElement) {
 
   async loadWeekSources() {
     const key = `${this.programId}|${this.weekId}`;
+    this.weekSourcesError = null;
     try {
       const sources = await getWeekSources({
         programId: this.programId,
@@ -682,9 +685,15 @@ export default class ShoreshManualBuild extends BuildScreen(LightningElement) {
       if (key === `${this.programId}|${this.weekId}`) {
         this.weekSources = sources || [];
       }
-    } catch {
-      // Without the list, only Start a blank week is offered.
-      this.weekSources = [];
+    } catch (e) {
+      // Without the list, only Start a blank week is offered, and the start box says why.
+      if (key === `${this.programId}|${this.weekId}`) {
+        this.weekSources = [];
+        this.weekSourcesError = failed(
+          `Other ${this.t.pIn("Week")} couldn't be listed.`,
+          e
+        );
+      }
     }
   }
 

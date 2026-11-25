@@ -159,12 +159,16 @@ Each rule is clue, meaning, example, test.
    Undo of that import brings them back with what went with them (`ImportUndoRemovals`, from the
    Recycle Bin; one no longer there is named as deleted since). Something made or changed by
    hand is never listed.
+   When what earlier imports brought in can't be read, the review still opens and says so
+   ("What earlier imports brought in couldn't be read." with a support code), since nothing can
+   then be listed here.
    Test: "INGEST-5.8: listed with Keep, the default; Remove sends it to be removed"; "a week
    this import brings in again supersedes it"; counter-case "an imported week this import does
    not bring in keeps it, with why"; Apex
    `ingest58CellsOnlyInASupersededImportedWeekGoWithTheItemAndUndoPutsThemBack`,
    `ingest58AnImportedWeekNotBroughtInAgainKeepsTheItem`; screen
-   "INGEST-5.8: what an earlier import brought in and these files lack"; Apex `ImportReviewTest`
+   "INGEST-5.8: what an earlier import brought in and these files lack"; "INGEST-5.8: says when
+   what earlier imports brought in couldn't be read, and still opens the review"; Apex `ImportReviewTest`
    `ingest58RemovesWhatAnImportBroughtInAndUndoBringsItBack`,
    `ingest58NeverRemovesWhatWasMadeOrChangedByHand`.
    Counter-cases: "made or changed by hand is never listed"; "a program the files do not cover
