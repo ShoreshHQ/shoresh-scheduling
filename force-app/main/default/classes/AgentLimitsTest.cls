@@ -3,8 +3,8 @@
  * groups x 8 time blocks x 5 days, two other programs with a published week), built once by a
  * scheduler: week_view and schedule_cell stay under half of Salesforce's limits for one request
  * (queries, CPU time, heap held); read_week_draft and week_checks stay under half for CPU and heap
- * and within their measured query count, which is over half (MOST_DRAFT_READ_QUERIES); week_view
- * adds a few queries per published program. Synthetic camp.
+ * and within their measured query count, which is over half (MOST_DRAFT_READ_QUERIES); week_view's
+ * queries don't grow with its published programs. Synthetic camp.
  */
 @IsTest
 private class AgentLimitsTest {
@@ -15,11 +15,6 @@ private class AgentLimitsTest {
   private static final Integer HALF_QUERIES = 50;
   private static final Integer HALF_CPU_MS = 5000;
   private static final Integer HALF_HEAP = 3 * 1024 * 1024;
-  // G8: week_view opens each published program's week as the Schedules screen opens one (its
-  // schedule, days and special days), so a camp's programs add up: measured 11 for one program and
-  // 23 for three (2026-11-25), 6 a program, so 8 published programs would pass the 50 the bar asks.
-  // Bounded near that per program (one to spare) until one read opens them all.
-  private static final Integer MOST_QUERIES_PER_PROGRAM_VIEW = 7;
   // G8: the draft an AI reads, and the week's checks, are the screen's own reads: finding the week
   // (5 queries), the season's setup (22), the week (14) and its setup changes (15), each read on
   // its own, and a few more. Measured 60 on this camp (2026-11-25): over the 50 the bar asks,
@@ -120,17 +115,23 @@ private class AgentLimitsTest {
     }
   }
 
+  // G8: week_view opens every published program's week together (SchedulesController
+  // .openSchedules), so its queries don't grow with the programs: measured the same for one
+  // program and for ten (2026-11-25; 6 more a program before), each program's view still exactly
+  // what the Schedules screen opens for it.
   @IsTest
-  static void aWeekViewAddsAFewQueriesPerPublishedProgram() {
+  static void aWeekViewsQueriesDontGrowWithItsPublishedPrograms() {
     System.runAs(KeptCamp.scheduler(KeptCamp.keptIds())) {
       SetTimeGuard.defer();
       Map<String, Id> one;
-      Map<String, Id> three;
+      Map<String, Id> ten;
       try {
         one = GeneratedLimitsTest.seasonWith(new List<String>{ 'Teens' });
-        three = GeneratedLimitsTest.seasonWith(
-          new List<String>{ 'Teens', 'Kids', 'Tweens' }
-        );
+        List<String> programs = new List<String>();
+        for (Integer i = 1; i <= 10; i++) {
+          programs.add('Program ' + i);
+        }
+        ten = GeneratedLimitsTest.seasonWith(programs);
         SetTimeGuard.checkPending();
       } finally {
         SetTimeGuard.resume();
@@ -139,29 +140,47 @@ private class AgentLimitsTest {
       Database.update(
         new List<Season__c>{
           new Season__c(Id = one.get('Season'), Name = 'One 2026'),
-          new Season__c(Id = three.get('Season'), Name = 'Three 2026')
+          new Season__c(Id = ten.get('Season'), Name = 'Ten 2026')
         },
         AccessLevel.SYSTEM_MODE
       );
       Test.startTest();
       Map<String, Object> viewOne = AgentWeekView.answer('One 2026', 'Week 1');
       Integer withOne = Limits.getQueries();
-      Map<String, Object> viewThree = AgentWeekView.answer(
-        'Three 2026',
-        'Week 1'
-      );
-      Integer withThree = Limits.getQueries() - withOne;
+      Map<String, Object> viewTen = AgentWeekView.answer('Ten 2026', 'Week 1');
+      Integer withTen = Limits.getQueries() - withOne;
       Test.stopTest();
       Assert.areEqual(1, ((List<Object>) viewOne.get('programs')).size());
-      Assert.areEqual(3, ((List<Object>) viewThree.get('programs')).size());
-      Assert.isTrue(
-        withThree - withOne <= 2 * MOST_QUERIES_PER_PROGRAM_VIEW,
-        'Two more programs added ' +
-          (withThree - withOne) +
-          ' queries to week_view (at most ' +
-          MOST_QUERIES_PER_PROGRAM_VIEW +
-          ' each)'
+      List<Object> tenViews = (List<Object>) viewTen.get('programs');
+      Assert.areEqual(10, tenViews.size());
+      Assert.areEqual(
+        withOne,
+        withTen,
+        'Ten published programs used ' +
+          withTen +
+          ' queries, one used ' +
+          withOne
       );
+      Assert.isTrue(withTen < HALF_QUERIES, withTen + ' queries');
+      List<Id> published = new List<Id>();
+      for (Schedule__c schedule : [
+        SELECT Id
+        FROM Schedule__c
+        WHERE
+          Week__c = :ten.get('Week 1')
+          AND Status__c = :SchedulePublish.PUBLISHED
+        WITH USER_MODE
+        ORDER BY Program__r.SortOrder__c, Program__r.Name, Id
+      ]) {
+        published.add(schedule.Id);
+      }
+      for (Integer i = 0; i < published.size(); i++) {
+        Assert.areEqual(
+          JSON.serialize(SchedulesController.openSchedule(published[i])),
+          JSON.serialize(((Map<String, Object>) tenViews[i]).get('view')),
+          'Program ' + (i + 1) + ' as the Schedules screen opens it'
+        );
+      }
     }
   }
 

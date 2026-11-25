@@ -62,50 +62,77 @@ public with sharing class ScheduleSpecials {
     return schedule.Status__c == PUBLISHED || schedule.PublishedAt__c != null;
   }
 
-  /** What the Schedules page shows of a schedule's special days and events. */
-  public static Shown shown(
-    Schedule__c schedule,
-    List<ScheduleDays.DayGrid> days
+  /**
+   * What the Schedules page shows of each schedule's special days and events, by schedule: what
+   * the published ones carried read together (SpecialsCarried), and every plan's records looked
+   * for once (SpecialPlanDay.ofAll), so the queries don't grow with how many schedules.
+   */
+  public static Map<Id, Shown> shownAll(
+    List<Schedule__c> schedules,
+    Map<Id, List<ScheduleDays.DayGrid>> daysById
   ) {
-    Shown result = new Shown();
-    result.asPublished = isPublished(schedule);
-    List<Special> specials = result.asPublished
-      ? carriedBy(schedule.Id)
-      : now(schedule.Week__c, days);
-    if (specials.isEmpty()) {
-      return result;
-    }
-    List<ScheduleDays.DayGrid> plans = new List<ScheduleDays.DayGrid>();
-    List<Boolean> isEvent = new List<Boolean>();
-    for (Special special : specials) {
-      ScheduleDays.DayGrid plan = new ScheduleDays.DayGrid();
-      plan.day = special.dateValue;
-      plan.grid = special.grid;
-      plan.problem = special.problem;
-      plans.add(plan);
-      isEvent.add(special.kind == EVENT);
-    }
-    List<ScheduleViews.DayView> views = SpecialPlanDay.ofAll(plans, isEvent);
-    for (Integer i = 0; i < specials.size(); i++) {
-      Special special = specials[i];
-      if (special.kind == DAY) {
-        WeekSpecials.ReplacedDay replaced = new WeekSpecials.ReplacedDay();
-        replaced.dateValue = special.dateValue;
-        replaced.day = WeekCalendar.weekdayName(special.dateValue);
-        replaced.specialDayId = special.itemId;
-        replaced.name = special.name;
-        replaced.notes = special.notes;
-        replaced.plan = views[i];
-        result.days.add(replaced);
-      } else {
-        EventPlan event = new EventPlan();
-        event.eventId = special.itemId;
-        event.name = special.name;
-        event.plan = views[i];
-        result.events.add(event);
+    List<Id> published = new List<Id>();
+    for (Schedule__c schedule : schedules) {
+      if (isPublished(schedule)) {
+        published.add(schedule.Id);
       }
     }
+    SpecialsCarried.readAll(published);
+    Map<Id, List<Special>> specialsById = new Map<Id, List<Special>>();
+    List<ScheduleDays.DayGrid> plans = new List<ScheduleDays.DayGrid>();
+    List<Boolean> isEvent = new List<Boolean>();
+    for (Schedule__c schedule : schedules) {
+      List<Special> specials = isPublished(schedule)
+        ? carriedBy(schedule.Id)
+        : now(schedule.Week__c, daysById.get(schedule.Id));
+      specialsById.put(schedule.Id, specials);
+      for (Special special : specials) {
+        ScheduleDays.DayGrid plan = new ScheduleDays.DayGrid();
+        plan.day = special.dateValue;
+        plan.grid = special.grid;
+        plan.problem = special.problem;
+        plans.add(plan);
+        isEvent.add(special.kind == EVENT);
+      }
+    }
+    List<ScheduleViews.DayView> views = plans.isEmpty()
+      ? new List<ScheduleViews.DayView>()
+      : SpecialPlanDay.ofAll(plans, isEvent);
+    Map<Id, Shown> result = new Map<Id, Shown>();
+    Integer i = 0;
+    for (Schedule__c schedule : schedules) {
+      Shown shown = new Shown();
+      shown.asPublished = isPublished(schedule);
+      for (Special special : specialsById.get(schedule.Id)) {
+        add(shown, special, views[i++]);
+      }
+      result.put(schedule.Id, shown);
+    }
     return result;
+  }
+
+  /** A special day the schedule shows in place of its day, or a special event's plan. */
+  private static void add(
+    Shown shown,
+    Special special,
+    ScheduleViews.DayView plan
+  ) {
+    if (special.kind == DAY) {
+      WeekSpecials.ReplacedDay replaced = new WeekSpecials.ReplacedDay();
+      replaced.dateValue = special.dateValue;
+      replaced.day = WeekCalendar.weekdayName(special.dateValue);
+      replaced.specialDayId = special.itemId;
+      replaced.name = special.name;
+      replaced.notes = special.notes;
+      replaced.plan = plan;
+      shown.days.add(replaced);
+    } else {
+      EventPlan event = new EventPlan();
+      event.eventId = special.itemId;
+      event.name = special.name;
+      event.plan = plan;
+      shown.events.add(event);
+    }
   }
 
   /**

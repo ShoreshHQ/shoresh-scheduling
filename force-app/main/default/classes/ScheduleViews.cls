@@ -132,7 +132,7 @@ public with sharing class ScheduleViews {
    * setup, as GeneratedInputs reads it), or null to look each record up (ScheduleRefs).
    */
   public static ScheduleView open(Id scheduleId, Set<String> stillThere) {
-    return open(scheduleId, stillThere, false);
+    return openOne(scheduleId, stillThere);
   }
 
   /**
@@ -140,15 +140,63 @@ public with sharing class ScheduleViews {
    * the Schedules page shows it, or null if it is not there (or not visible).
    */
   public static ScheduleView openWithSpecials(Id scheduleId) {
-    return open(scheduleId, null, true);
+    return openAllWithSpecials(new List<Id>{ scheduleId })[0];
   }
 
-  private static ScheduleView open(
-    Id scheduleId,
-    Set<String> stillThere,
-    Boolean withSpecials
-  ) {
-    List<Schedule__c> found = [
+  /**
+   * Several schedules, each as openWithSpecials opens it (in the order asked; null for one not
+   * there), read together: the same few queries however many there are (a week's published
+   * programs, AgentWeekView).
+   */
+  public static List<ScheduleView> openAllWithSpecials(List<Id> scheduleIds) {
+    Map<Id, Schedule__c> found = new Map<Id, Schedule__c>(
+      schedulesOf(new Set<Id>(scheduleIds))
+    );
+    Map<Id, List<ScheduleDays.DayGrid>> daysById = ScheduleDays.read(
+      found.keySet()
+    );
+    // What every schedule's days point at, looked for once for all of them.
+    List<ScheduleDays.DayGrid> allDays = new List<ScheduleDays.DayGrid>();
+    for (List<ScheduleDays.DayGrid> days : daysById.values()) {
+      allDays.addAll(days);
+    }
+    Set<String> there = ScheduleRefs.stillThere(allDays);
+    Map<Id, ScheduleSpecials.Shown> specials = ScheduleSpecials.shownAll(
+      found.values(),
+      daysById
+    );
+    List<ScheduleView> views = new List<ScheduleView>();
+    for (Id scheduleId : scheduleIds) {
+      Schedule__c schedule = found.get(scheduleId);
+      if (schedule == null) {
+        views.add(null);
+        continue;
+      }
+      List<ScheduleDays.DayGrid> days = daysById.get(scheduleId);
+      ScheduleView view = viewOf(schedule, days);
+      view.days = new List<DayView>();
+      for (ScheduleDays.DayGrid day : days) {
+        view.days.add(dayView(day, there));
+      }
+      view.specials = specials.get(scheduleId);
+      views.add(view);
+    }
+    return views;
+  }
+
+  private static ScheduleView openOne(Id scheduleId, Set<String> stillThere) {
+    List<Schedule__c> found = schedulesOf(new Set<Id>{ scheduleId });
+    if (found.isEmpty()) {
+      return null;
+    }
+    List<ScheduleDays.DayGrid> days = ScheduleDays.read(scheduleId);
+    ScheduleView view = viewOf(found[0], days);
+    view.days = dayViews(days, stillThere);
+    return view;
+  }
+
+  private static List<Schedule__c> schedulesOf(Set<Id> scheduleIds) {
+    return [
       SELECT
         Id,
         Name,
@@ -160,21 +208,20 @@ public with sharing class ScheduleViews {
         Week__c,
         Program__c
       FROM Schedule__c
-      WHERE Id = :scheduleId
+      WHERE Id IN :scheduleIds
       WITH USER_MODE
     ];
-    if (found.isEmpty()) {
-      return null;
-    }
+  }
+
+  /** The schedule's row, status and the days' revisions (its days are the caller's). */
+  private static ScheduleView viewOf(
+    Schedule__c schedule,
+    List<ScheduleDays.DayGrid> days
+  ) {
     ScheduleView view = new ScheduleView();
-    view.schedule = row(found[0], found[0].Program__c);
-    view.status = found[0].Status__c;
-    List<ScheduleDays.DayGrid> days = ScheduleDays.read(scheduleId);
+    view.schedule = row(schedule, schedule.Program__c);
+    view.status = schedule.Status__c;
     view.revisions = WeekTickets.stamp(days);
-    view.days = dayViews(days, stillThere);
-    if (withSpecials) {
-      view.specials = ScheduleSpecials.shown(found[0], days);
-    }
     return view;
   }
 
