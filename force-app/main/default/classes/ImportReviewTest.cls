@@ -784,7 +784,16 @@ private class ImportReviewTest {
         day,
         day.Grid__c
       );
-      Database.delete(new ScheduleDay__c(Id = day.Id), AccessLevel.SYSTEM_MODE);
+      // Deleted since, as Undo of a later import or a season's clean-up would.
+      ImportedWeekGuard.allow();
+      try {
+        Database.delete(
+          new ScheduleDay__c(Id = day.Id),
+          AccessLevel.SYSTEM_MODE
+        );
+      } finally {
+        ImportedWeekGuard.done();
+      }
       ImportUndo.Result result = new ImportUndo.Result();
       Test.startTest();
       ImportSupersededCells.putBack(
