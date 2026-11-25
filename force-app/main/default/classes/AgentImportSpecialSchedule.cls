@@ -7,10 +7,11 @@
  * this is the page's own save (SpecialScheduleController.importPlan) at the revision read (seen),
  * compared with the item locked: saved since is refused (409), and a schedule with entries is
  * refused as on the page. Time blocks or stations the person changed are not replaced unless
- * replace_edited is true; without it the answer is the page's question, with nothing saved.
+ * replace_edited is true; without it the answer is the page's question, with nothing saved. With
+ * it, Shoresh asks first (API-1.106): the preview names what the file replaces, for good.
  */
 @RestResource(urlMapping='/v1/import_special_schedule')
-global with sharing class AgentImportSpecialSchedule implements AgentRequest.Change {
+global with sharing class AgentImportSpecialSchedule implements AgentRequest.Change, AgentAskFirst.Preview {
   private static final Set<String> FIELDS = new Set<String>{
     'season',
     'special',
@@ -34,6 +35,29 @@ global with sharing class AgentImportSpecialSchedule implements AgentRequest.Cha
     return FIELDS;
   }
 
+  /**
+   * Asked only when replace_edited is sent and the file would rename or remove time blocks or
+   * stations the person changed: the page's question. Otherwise nothing of theirs is replaced.
+   */
+  public String preview(Map<String, Object> body) {
+    if (body.get('replace_edited') != true) {
+      return null;
+    }
+    AgentSpecials.Found found = AgentSpecials.find(body);
+    Integer seen = AgentSpecials.seenOf(body, 'imported');
+    SpecialImportFrame.FrameChanges frame;
+    try {
+      frame = SpecialScheduleImport.editedReplaced(
+        found.owner.itemId,
+        seen,
+        importedOf(body)
+      );
+    } catch (Exception e) {
+      throw refused(e);
+    }
+    return frame == null ? null : new Words(found, body).replacing(frame);
+  }
+
   public String run(Map<String, Object> body) {
     AgentSpecials.Found found = AgentSpecials.find(body);
     Integer seen = AgentSpecials.seenOf(body, 'imported');
@@ -46,13 +70,7 @@ global with sharing class AgentImportSpecialSchedule implements AgentRequest.Cha
         imported
       );
     } catch (Exception e) {
-      String words = ScreenErrors.words(e);
-      if (words.startsWith('Someone else changed')) {
-        throw new AgentWeeks.ConflictException(
-          'Changed by someone else since you read it. Nothing was imported. Read it again with read_special_schedule.'
-        );
-      }
-      throw new ShoreshException('Nothing was imported. ' + words);
+      throw refused(e);
     }
     String said = new Words(found, body).of(outcome);
     if (!said.startsWith('Nothing was imported')) {
@@ -60,6 +78,17 @@ global with sharing class AgentImportSpecialSchedule implements AgentRequest.Cha
       AgentSpecials.undoNone(found, 'Imported a file');
     }
     return said;
+  }
+
+  /** The page's refusal, in its words; saved since is a conflict (409). */
+  private static Exception refused(Exception e) {
+    String words = ScreenErrors.words(e);
+    if (words.startsWith('Someone else changed')) {
+      return new AgentWeeks.ConflictException(
+        'Changed by someone else since you read it. Nothing was imported. Read it again with read_special_schedule.'
+      );
+    }
+    return new ShoreshException('Nothing was imported. ' + words);
   }
 
   /** The blocks and columns the page's module read from the file. */
@@ -107,13 +136,9 @@ global with sharing class AgentImportSpecialSchedule implements AgentRequest.Cha
 
     String of(SpecialScheduleImport.Outcome outcome) {
       if (outcome.asks == true) {
-        return 'Nothing was imported yet. The page asks: Replace ' +
-          frameWords() +
-          ' in ' +
-          found.owner.name +
-          '? ' +
-          String.join(frameSaid(outcome.frame, ''), ' ') +
-          ' This can\'t be undone. Ask the person; to go ahead, send the same file with replace_edited: true.';
+        return 'Nothing was imported yet. The page asks: ' +
+          replacing(outcome.frame) +
+          ' To go ahead, send the same file with replace_edited: true; Shoresh then asks the person.';
       }
       List<String> lines = new List<String>{
         'Imported ' +
@@ -157,6 +182,17 @@ global with sharing class AgentImportSpecialSchedule implements AgentRequest.Cha
           '. There is no undo here: to take it back, clear it with change_special_schedule_frame.'
       );
       return String.join(lines, ' ');
+    }
+
+    /** The page's question: what of the person's own the file replaces, for good. */
+    String replacing(SpecialImportFrame.FrameChanges frame) {
+      return 'Replace ' +
+        frameWords() +
+        ' in ' +
+        found.owner.name +
+        '? ' +
+        String.join(frameSaid(frame, ''), ' ') +
+        ' This can\'t be undone.';
     }
 
     /** What the file had that was not kept, as the page counts it. */

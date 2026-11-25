@@ -4296,8 +4296,35 @@ describe("Shoresh for AI tools and the command line", () => {
       page_count: 1,
       replace_edited: false
     });
+    // Replacing what the person changed asks first: the person's yes goes as Shoresh's confirm.
+    const replacing = [];
+    await call(
+      "import_special_schedule",
+      {
+        season: "Summer 2026",
+        special: "Color War",
+        seen: "4",
+        file_name: "cw.csv",
+        csv_text: csvText,
+        replace_edited: true,
+        confirm: "abc123"
+      },
+      {
+        run: sfAnswering(
+          200,
+          JSON.stringify({ message: "Imported" }),
+          replacing
+        ),
+        imports
+      }
+    );
+    expect(JSON.parse(replacing[0].stdin)).toEqual({
+      ...JSON.parse(special[0].stdin),
+      replace_edited: true,
+      confirm: "abc123"
+    });
     expect(byName("import_special_schedule").description).toMatch(
-      /ask the person/
+      /Shoresh asks first/
     );
   });
 
@@ -5238,7 +5265,7 @@ describe("Shoresh for AI tools and the command line", () => {
       "seen"
     ]);
     expect(byName("update_to_match_setup").description).toMatch(
-      /ask the person first/
+      /Shoresh asks first/
     );
     const read = [];
     await call(

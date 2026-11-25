@@ -1,6 +1,7 @@
 /**
- * Ask first, enforced by Shoresh (docs/protocol/api.md API-1.106): an AI change that removes or
- * replaces something for good is done only with the ticket its own preview gave. Sent without
+ * Ask first, enforced by Shoresh (docs/protocol/api.md API-1.106): an AI change that replaces or
+ * removes the person's own work, or something for good, is done only with the ticket its own
+ * preview gave. Sent without
  * confirm, the change is not made: the answer says in plain words what it would do and hands
  * back the ticket, as parts of their own (asked: preview and confirm), for the AI to show the
  * person and ask. The ticket is the person, the address,

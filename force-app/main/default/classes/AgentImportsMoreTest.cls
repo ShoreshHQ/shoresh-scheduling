@@ -328,4 +328,82 @@ private class AgentImportsMoreTest {
       Assert.areEqual(409, again[0], String.valueOf(again[1]));
     }
   }
+
+  // API-1.106, API-1.85: a file that would replace stations the person made asks first. Without
+  // replace_edited it is the page's question; with it, nothing is done until the person's yes.
+  @IsTest
+  static void replacingWhatThePersonMadeIsDoneOnlyWithTheirYes() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      Map<String, Id> ids = SpecialScheduleTestData.campWithFieldDay();
+      Id eventId = SpecialScheduleTestData.colorWar(ids);
+      Integer revision = SpecialPlans.read(eventId).revision;
+      Map<String, Object> file = new Map<String, Object>{
+        'season' => [
+          SELECT Name
+          FROM Season__c
+          WHERE Id = :ids.get('Season')
+          WITH SYSTEM_MODE
+        ]
+        .Name,
+        'special' => 'Color War',
+        'seen' => String.valueOf(revision),
+        'file_name' => 'color-war.csv',
+        'blocks' => new List<Object>{
+          new Map<String, Object>{
+            'name' => '',
+            'startTime' => '09:00',
+            'endTime' => '09:45'
+          },
+          new Map<String, Object>{
+            'name' => 'Relays',
+            'startTime' => '09:50',
+            'endTime' => '11:20'
+          }
+        },
+        // Gold, a station the person added, is not in the file.
+        'columns' => new List<Object>{
+          new Map<String, Object>{
+            'name' => 'Blue',
+            'cells' => new List<Object>{ 'Tug of war', 'Relay race' }
+          }
+        }
+      };
+      List<Object> asked = post(new AgentImportSpecialSchedule(), file);
+      Map<String, Object> replacing = file.clone();
+      replacing.put('replace_edited', true);
+      String confirm = AgentAskFirstTestCalls.confirmFor(
+        new AgentImportSpecialSchedule(),
+        replacing
+      );
+      String preview = (String) ((Map<String, Object>) JSON.deserializeUntyped(
+          RestContext.response.responseBody.toString()
+        ))
+        .get('preview');
+      Integer afterAsking = SpecialPlans.read(eventId).revision;
+      Map<String, Object> yes = replacing.clone();
+      yes.put(AgentAskFirst.FIELD, confirm);
+      Test.startTest();
+      List<Object> done = post(new AgentImportSpecialSchedule(), yes);
+      Test.stopTest();
+      Assert.areEqual(200, asked[0], String.valueOf(asked[1]));
+      Assert.isTrue(
+        ((String) asked[1])
+          .startsWith('Nothing was imported yet. The page asks: Replace'),
+        String.valueOf(asked[1])
+      );
+      Assert.isNotNull(confirm, 'replace_edited asks first');
+      Assert.isTrue(preview.contains('Stations removed: Gold.'), preview);
+      Assert.isTrue(preview.endsWith('This can\'t be undone.'), preview);
+      Assert.areEqual(revision, afterAsking, 'nothing saved before the yes');
+      Assert.areEqual(200, done[0], String.valueOf(done[1]));
+      Assert.isTrue(
+        ((String) done[1]).startsWith('Imported color-war.csv:'),
+        String.valueOf(done[1])
+      );
+      Assert.isTrue(
+        ((String) done[1]).contains('Stations removed by the file: Gold.'),
+        String.valueOf(done[1])
+      );
+    }
+  }
 }
