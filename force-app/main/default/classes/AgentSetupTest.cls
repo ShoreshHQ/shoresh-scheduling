@@ -173,6 +173,24 @@ private class AgentSetupTest {
         SortOrder__c = 9
       );
       Database.insert(twin, AccessLevel.SYSTEM_MODE);
+      // "Side" holds no division; "SIDE!" holds the only Seniors of the pair.
+      List<Program__c> sides = new List<Program__c>{
+        new Program__c(
+          Season__c = ids.get('Season'),
+          Name = 'Side',
+          SortOrder__c = 10
+        ),
+        new Program__c(
+          Season__c = ids.get('Season'),
+          Name = 'SIDE!',
+          SortOrder__c = 11
+        )
+      };
+      Database.insert(sides, AccessLevel.SYSTEM_MODE);
+      Division__c sideSeniors = new Division__c(
+        Program__c = sides[1].Id,
+        Name = 'Seniors'
+      );
       Division__c twinJuniors = new Division__c(
         Program__c = twin.Id,
         Name = 'Juniors'
@@ -181,7 +199,7 @@ private class AgentSetupTest {
         new List<SObject>{
           new Group__c(Division__c = ids.get('Juniors'), Name = 'GROUP A!'),
           twinJuniors,
-          new Division__c(Program__c = twin.Id, Name = 'Teens')
+          sideSeniors
         },
         AccessLevel.SYSTEM_MODE
       );
@@ -219,12 +237,12 @@ private class AgentSetupTest {
           'new_name' => 'Younger'
         }
       );
-      List<Object> notInMain = post(
+      List<Object> notInSide = post(
         'rename',
         new Map<String, Object>{
           'kind' => 'division',
-          'name' => 'Teens',
-          'program' => 'Main',
+          'name' => 'Seniors',
+          'program' => 'Side',
           'new_name' => 'Older'
         }
       );
@@ -263,13 +281,16 @@ private class AgentSetupTest {
       );
       Assert.areEqual(200, inTwin[0], String.valueOf(inTwin[1]));
       Assert.areEqual('Younger', nameOf(twinJuniors.Id));
-      // "Main" is that program exactly, not "MAIN!", which holds the only Teens.
-      Assert.areEqual(400, notInMain[0], String.valueOf(notInMain[1]));
+      // "Side" is that program exactly, not "SIDE!", which holds the only Seniors of the two.
+      Assert.areEqual(400, notInSide[0], String.valueOf(notInSide[1]));
       Assert.isTrue(
-        String.valueOf(notInMain[1])
-          .startsWith('There is no division called "Teens" that you can see.'),
-        String.valueOf(notInMain[1])
+        String.valueOf(notInSide[1])
+          .startsWith(
+            'There is no division called "Seniors" that you can see.'
+          ),
+        String.valueOf(notInSide[1])
       );
+      Assert.areEqual('Seniors', nameOf(sideSeniors.Id));
       Assert.areEqual(400, noProgram[0], String.valueOf(noProgram[1]));
       Assert.isTrue(
         String.valueOf(noProgram[1])
