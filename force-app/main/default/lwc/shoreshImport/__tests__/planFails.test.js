@@ -91,8 +91,23 @@ describe("c-shoresh-import: the plan Add would save can't be worked out", () => 
     await chooseSample(element);
 
     expect($(element, 'button[data-id="save"]').disabled).toBe(true);
-    expect($(element, '[data-id="error"]').textContent).toMatch(
+    const said = $(element, '[data-id="plan-error"]').textContent.trim();
+    expect(said).toMatch(
       /^This file can't be added yet\. Try again\. For support: [A-Z0-9]{3}-[A-Z0-9]{3}\.$/
     );
+    // Answering works it out again: the same failure keeps its one message and support code.
+    const logged = console.error.mock.calls.length;
+    const tries = planFor.mock.calls.length;
+    element.shadowRoot.querySelector("[data-card] button[data-key]").click();
+    await flush();
+    expect(planFor.mock.calls.length).toBeGreaterThan(tries);
+    expect($(element, '[data-id="plan-error"]').textContent.trim()).toBe(said);
+    expect(console.error.mock.calls.length).toBe(logged);
+    expect($(element, 'button[data-id="save"]').disabled).toBe(true);
+    // It stays while Add is off: leaving the screen and coming back doesn't take it away.
+    element.leave();
+    await flush();
+    expect($(element, '[data-id="plan-error"]').textContent.trim()).toBe(said);
+    await expect(element).toBeAccessible();
   });
 });

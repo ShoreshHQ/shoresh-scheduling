@@ -101,7 +101,7 @@ export default class ShoreshImport extends LightningElement {
   versionUses = {};
   // The questions left open when Add was pressed, for the page after it (INGEST-5.5).
   savedOpen = [];
-  // Why the plan Add would save couldn't be worked out (shown while Add is off for it).
+  // Why the plan Add would save couldn't be worked out, shown in the review while Add is off.
   planError = null;
   // Where the cursor goes at the next render: { key } (that choice, if it is still there, else
   // the next question still open after { after }), { question }, { bringBack } or { selector }.
@@ -484,7 +484,8 @@ export default class ShoreshImport extends LightningElement {
 
   /**
    * The plan Add would save, for the counts; null if it cannot be made yet. When working it out
-   * fails, the screen says so with a support code, never a greyed Add with no reason.
+   * fails, the review says so where the counts would be, with a support code, for as long as
+   * Add is off for it: never a greyed Add with no reason.
    */
   planNow(fileData) {
     try {
@@ -494,14 +495,13 @@ export default class ShoreshImport extends LightningElement {
         this.answers,
         fileData
       );
-      if (this.planError && this.error === this.planError) {
-        this.error = null;
-      }
       this.planError = null;
       return plan;
     } catch (e) {
-      this.planError = failed("This file can't be added yet.", e);
-      this.error = this.planError;
+      // Worked out again on every answer: one failure keeps one message and one support code.
+      if (!this.planError) {
+        this.planError = failed("This file can't be added yet.", e);
+      }
       return null;
     }
   }

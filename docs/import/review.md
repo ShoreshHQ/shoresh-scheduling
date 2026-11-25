@@ -71,8 +71,9 @@ Each rule is clue, meaning, example, test.
    The review says what Add saves: its notes (a week added from the season's dates) and its
    "Kept as a version" lines come from the setup as Add would save it, the questions that can
    wait left out, so it never promises a week or version the save won't add. When that setup
-   can't be worked out, Add stays off and the screen says so ("This file can't be added yet."
-   with a support code), never a greyed Add with no reason.
+   can't be worked out, Add stays off and the review says so where its counts would be ("This
+   file can't be added yet." with one support code), for as long as Add is off for it: never a
+   greyed Add with no reason.
    **The kept file** (review of #177): only the files the director chose, as read, linked to the
    import's record only (no other sharing), so it is visible to users who can see the season
    (an import is a detail of its season). It is kept only while its questions are open: it is

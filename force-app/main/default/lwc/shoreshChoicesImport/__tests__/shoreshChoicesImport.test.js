@@ -713,7 +713,7 @@ describe("c-shoresh-choices-import", () => {
     expect($(element, '[data-id="primary"]').disabled).toBe(false);
   });
 
-  it("ELECT-2.7: a recount that fails takes the old count and Import away, and counting again brings them back", async () => {
+  it("ELECT-2.7: a recount that fails takes the old count and Import away, and answering again counts again", async () => {
     const question = (index) => ({
       index,
       row: index + 2,
@@ -750,10 +750,14 @@ describe("c-shoresh-choices-import", () => {
     // Never the count from before the answer, and nothing to press that would import another.
     expect($(element, '[data-line="count"]')).toBeNull();
     expect($(element, '[data-id="primary"]')).toBeNull();
-    // Counting again (Back, then Next) keeps both answers and brings Import back.
+    // The questions stay, with the answers given: answering again counts again.
+    const still = $$(element, "[data-which] lightning-combobox");
+    expect(still.map((c) => c.value)).toEqual(["c7", "new"]);
     checkChoices.mockResolvedValue({ ...asking, added: 1, known: 1 });
-    await click(element, '[data-id="back"]');
-    await click(element, '[data-id="primary"]');
+    still[1].dispatchEvent(
+      new CustomEvent("change", { detail: { value: "new" } })
+    );
+    await flush();
     const recount = JSON.parse(checkChoices.mock.calls.at(-1)[0].request);
     expect(recount.campers.map((c) => [c.camperId, c.newCamper])).toEqual([
       ["c7", undefined],
