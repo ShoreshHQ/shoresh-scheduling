@@ -293,6 +293,55 @@ describe("an AI's change is the screen's, and so is its Undo", () => {
       status: 400,
       text: '"Swim" and "S.W.I.M." are both activities with that name, so Shoresh can\'t tell which you mean. Nothing was changed.'
     });
+
+    // Exact spelling wins across activities and elective sets alike.
+    alike.setup = { electives: { sets: [{ Id: "e1", Name: "Swim!" }] } };
+    const overSet = await typed("Swim");
+    expect(overSet.sf.seen[1].body.change).toBe(
+      "Placed Swim · Bunk 1 · Monday · Period 3"
+    );
+  });
+
+  // API-1.13
+  it("aLookAlikePutThereSinceIsAChange: what the AI saw, spelled exactly as one of the season's names, is that one and not a look-alike", async () => {
+    const alike = JSON.parse(READ.slice(READ.indexOf("{")));
+    alike.inputs.activities[1].Name = "S.W.I.M.";
+    const sf = sfAnswering([`HTTP/1.1 200\n\n${JSON.stringify(alike)}`]);
+    // Bunk 1 holds Swim in Period 1 on Monday; the AI says it saw S.W.I.M.
+    const done = await call(
+      "change_schedule_cell",
+      {
+        ...WEEK,
+        day: "Monday",
+        group: "Bunk 1",
+        time: "Period 1",
+        was: "S.W.I.M.",
+        activity: "Art",
+        seen: "before"
+      },
+      sf
+    );
+    expect(sf.seen).toHaveLength(1);
+    expect(done).toEqual({
+      ok: false,
+      status: 409,
+      text: "Changed by someone else: Bunk 1 · Monday · Period 1 holds Swim now. Nothing was changed."
+    });
+    const punctuation = await call(
+      "change_schedule_cell",
+      {
+        ...WEEK,
+        day: "Monday",
+        group: "Bunk 1",
+        time: "-",
+        was: "Swim",
+        activity: "Art",
+        seen: "before"
+      },
+      sfAnswering([READ])
+    );
+    expect(punctuation.ok).toBe(false);
+    expect(punctuation.text).toMatch(/^Say which/);
   });
 
   // API-1.14

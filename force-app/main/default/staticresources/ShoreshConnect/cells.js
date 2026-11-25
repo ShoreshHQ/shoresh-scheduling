@@ -41,7 +41,7 @@ function wordsOf(t, term) {
  * list's words (wordsOf).
  */
 function onlyOne(list, asked, nameOf, what, where) {
-  if (!String(asked || "").trim()) {
+  if (!fold(asked)) {
     throw new Refused(`Say which ${what.one}.`);
   }
   const found = list.filter((x) =>
@@ -139,7 +139,16 @@ function cellOf(ctx, m, input, weekName, prefix = "") {
 function checkWas(ctx, m, slot, was) {
   const day = ctx.week[slot.day];
   const now = ctx.nameOf(m.placement(day, slot.group, slot.block).slot, day);
-  if (fold(was || "Open") !== fold(now)) {
+  // What was seen, as the season's names read it: one spelled exactly so is that one, never a
+  // look-alike someone put there since.
+  const names = [
+    ...(ctx.draft.activities || []).map((a) => a.name),
+    ...ctx.sets.map((e) => e.Name)
+  ];
+  const seen = names.includes(was)
+    ? was === now
+    : fold(was || "Open") === fold(now);
+  if (!seen) {
     throw new Refused(
       `Changed by someone else: ${m.slotName(ctx, slot)} holds ${now} now. Nothing was changed.`,
       409
@@ -371,11 +380,13 @@ function placeEvent(ctx, m, input, weekName) {
   return { runs: result.runs, label: result.label };
 }
 
-/** The ones spelled exactly as asked; with none, the ones that read the same (AgentNamed.called). */
-function called(list, nameOf, asked) {
-  const exact = list.filter((x) => nameOf(x) === asked);
-  return exact.length
-    ? exact
+/**
+ * The ones spelled exactly as asked when any of the season's names is (exact); otherwise the ones
+ * that read the same (AgentNamed.called).
+ */
+function called(list, nameOf, asked, exact) {
+  return exact
+    ? list.filter((x) => nameOf(x) === asked)
     : list.filter((x) => fold(nameOf(x)) === fold(asked));
 }
 
@@ -396,8 +407,11 @@ function sameNameSaid(names, things) {
  * neither, is refused, never guessed.
  */
 function typedOf(ctx, m, asked) {
-  const activities = called(ctx.draft.activities || [], (a) => a.name, asked);
-  const sets = called(ctx.sets, (e) => e.Name, asked);
+  const all = ctx.draft.activities || [];
+  const exact =
+    all.some((a) => a.name === asked) || ctx.sets.some((e) => e.Name === asked);
+  const activities = called(all, (a) => a.name, asked, exact);
+  const sets = called(ctx.sets, (e) => e.Name, asked, exact);
   const said = String(asked).slice(0, 80);
   const { t } = ctx;
   if (activities.length && sets.length) {
