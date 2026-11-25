@@ -20,15 +20,7 @@ public with sharing class AgentSchedules {
    * Refused before the week is built or started there.
    */
   public static AgentWeeks.Week eitherOf(Map<String, Object> body) {
-    return eitherOf(body, null);
-  }
-
-  /** eitherOf, on the week found already (placeOfEither, by a preview), not found again. */
-  public static AgentWeeks.Week eitherOf(
-    Map<String, Object> body,
-    AgentWeeks.Week found
-  ) {
-    AgentWeeks.Week result = found == null ? placeOfEither(body) : found;
+    AgentWeeks.Week result = placeOfEither(body);
     requireDraft(result);
     result.draft = result.manual
       ? ManualDrafts.locked(result.draft.Id)

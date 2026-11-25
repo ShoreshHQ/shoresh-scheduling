@@ -20,7 +20,8 @@ global with sharing class AgentUpdateToMatch implements AgentRequest.Change, Age
     'changes',
     'seen'
   };
-  // The week the preview found: the confirmed update locks it without finding it again.
+  // The week the preview found and locked: the confirmed update makes its changes there, without
+  // finding it again.
   private AgentWeeks.Week found;
 
   @HttpPost
@@ -40,8 +41,7 @@ global with sharing class AgentUpdateToMatch implements AgentRequest.Change, Age
   public String preview(Map<String, Object> body) {
     Set<String> keys = new Set<String>(keysOf(body.get('changes')));
     String seen = AgentFields.text(body, 'seen');
-    found = AgentSchedules.placeOfEither(body);
-    AgentSchedules.requireDraft(found);
+    found = AgentSchedules.eitherOf(body);
     SetupMatch.Preview shown = SetupMatchController.getSetupChanges(
       found.draft.Id
     );
@@ -76,9 +76,9 @@ global with sharing class AgentUpdateToMatch implements AgentRequest.Change, Age
         'Send the seen read_setup_changes gave, so a change someone made since isn\'t replaced unseen.'
       );
     }
-    AgentWeeks.Week week = AgentSchedules.eitherOf(body, found);
-    // Held by eitherOf as its screen's update holds it (SetupMatch.make), then compared with what
-    // was read.
+    AgentWeeks.Week week = found;
+    // Held since the preview (eitherOf) as its screen's update holds it (SetupMatch.make), then
+    // compared with what was read.
     List<ScheduleDays.DayGrid> days = ScheduleDays.read(week.draft.Id);
     String stamp = WeekTickets.stamp(days);
     if (!WeekTickets.seenBlankNever(seenOf(stamp), seen)) {
