@@ -16,8 +16,8 @@ public with sharing class IncomingSave {
   };
   // What Undo needs must fit in the import's record (Import__c long text fields).
   private static final Integer LOG_LIMIT = 131072;
-  // Tries before the batch is refused: a row the platform refuses is left out, then it tries again.
-  private static final Integer MOST_TRIES = 5;
+  // Records the platform may refuse: each is left out and it tries again; past this, none is saved.
+  private static final Integer MOST_LEFT_OUT = 5;
 
   private IncomingBatch batch;
 
@@ -26,18 +26,29 @@ public with sharing class IncomingSave {
   }
 
   public void run() {
-    Integer tries = 0;
+    Integer refused = 0;
     while (!tryOnce()) {
-      tries++;
-      if (tries == MOST_TRIES) {
-        throw new IncomingBatch.RefusedException(
-          'Too many records in this batch were refused, so nothing was saved. Fix the ones said and send it again.'
-        );
+      refused++;
+      if (refused > MOST_LEFT_OUT) {
+        noneSaved(refused);
+        return;
       }
     }
     for (IncomingBatch.Staged item : batch.staged) {
       // A record can save more than one row (a camper's bunk in each week): said once.
       batch.say(item.index, IncomingBatch.SAVED, item.saved);
+    }
+  }
+
+  /** Too many rows were refused: each said why, and every other row says nothing was saved. */
+  private void noneSaved(Integer refused) {
+    for (IncomingBatch.Staged item : batch.staged) {
+      batch.problem(
+        item.index,
+        'Not saved: ' +
+          refused +
+          ' records in this batch were refused (each says why), so none of the batch was saved.'
+      );
     }
   }
 
@@ -79,8 +90,14 @@ public with sharing class IncomingSave {
   ) {
     for (Integer i = 0; i < attempt.size(); i++) {
       if (attempt[i].row === e.record) {
-        batch.problem(attempt[i].index, 'Not saved: ' + ScreenErrors.words(e));
-        batch.staged.remove(i);
+        // The whole record is left out (a camper's bunk in every week), so "Not saved" is true.
+        Integer index = attempt[i].index;
+        batch.problem(index, 'Not saved: ' + ScreenErrors.words(e));
+        for (Integer j = batch.staged.size() - 1; j >= 0; j--) {
+          if (batch.staged[j].index == index) {
+            batch.staged.remove(j);
+          }
+        }
         return;
       }
     }
