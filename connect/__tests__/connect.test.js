@@ -2515,7 +2515,7 @@ describe("Shoresh for AI tools and the command line", () => {
       r.Id === soccer.Id ? { ...r, ...outdoors } : r
     );
     const item = { kind: "A", id: soccer.Id, name: "Soccer", gone: false };
-    const [bunk1, bunk2] = inputs.groups.map((g) => g.Id);
+    const [bunk1] = inputs.groups.map((g) => g.Id);
     const [, p1, p2] = inputs.timeBlocks.map((b) => b.Id);
     const earlier = `${bunk1}|${p2}|${soccer.Id}`;
     inputs.days = inputs.days.map((day, d) => ({

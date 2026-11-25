@@ -155,6 +155,18 @@ Recommended:Security`), and fails on moderate (3) or worse. A second step runs t
   `QuestionKey__c` lookup keys (`ProtectSensitiveData`: not secrets) and Jest tests that fake
   real browser events (`AvoidLwcBubblesComposedTrue`). Suppression paths are relative to
   `force-app`, the scanned folder. Suppressed findings are not in the reports.
+- **The connector, linted and scanned from its source.** It ships as the `ShoreshConnect` static
+  resource, and the scan above skips static resources (SheetJS is third-party, minified). So
+  `npm run lint` also covers `connect/` and `scripts/` with Node's rules (`eslint.config.js`): in
+  the shipped connector a program runs only with `execFile` and its arguments as a list (no `exec`,
+  `spawn` or `shell: true`), and nothing runs text as code (`eval`, `new Function`). A second step,
+  `npm run scan:connect`, runs the security-review rules (`AppExchange`, `Recommended:Security`:
+  known-vulnerable libraries, unsafe HTML) on `connect/`; its report is
+  `connector-security-review.html` in the same artifact. The built copy stays identical to the
+  source because `connect.test.js` (`shipsInsideThePackage`) fails while they differ. Not covered:
+  Code Analyzer's PMD can't read some modern JavaScript (it reports a "processing error" for those
+  files and goes on); its only JavaScript rule there is for screens' events, which the connector
+  doesn't fire.
 - **Every Apex class and trigger has its `-meta.xml`** (`npm run check:meta`,
   `scripts/apex-meta-files.js`), and no `-meta.xml` is left without its file. Without one, a class
   is left out of every deploy and dry-run with no error, so it never compiles (#55).

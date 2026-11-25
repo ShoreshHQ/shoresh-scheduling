@@ -68,7 +68,7 @@ jobs:
           distribution: temurin
           java-version: 21
       - run: npm ci
-      - name: ESLint on the screens
+      - name: ESLint on the screens, the connector and the scripts
         run: npm run lint
       - name: Every Apex class and trigger has its -meta.xml
         # scripts/apex-meta-files.js: a class without one never reaches the org (#55).
@@ -97,6 +97,13 @@ jobs:
           sf code-analyzer run --workspace force-app
           --rule-selector Recommended --rule-selector AppExchange --rule-selector Recommended:Security
           --severity-threshold 3 --output-file code-analyzer.html
+      - name: Code Analyzer on the connector's source
+        # The connector ships as the ShoreshConnect static resource, which the scan above skips with
+        # the other static resources; this scans its source (connect/), which the built copy must
+        # match (connect.test.js, shipsInsideThePackage). The AppExchange security-review rules
+        # only: ESLint above holds it to Node's rules (docs/ci-setup.md).
+        if: ${{ !cancelled() && steps.install-sf.outcome == 'success' }}
+        run: npm run scan:connect -- --output-file connector-security-review.html
       - name: AppExchange security-review report
         # The same scan Salesforce documents for security review, on its own, for the submission.
         # Runs even when the scan above fails, but only once the CLI is installed: when an earlier
@@ -113,6 +120,7 @@ jobs:
           path: |
             code-analyzer.html
             appexchange-security-review.html
+            connector-security-review.html
           if-no-files-found: ignore
 
   connector:

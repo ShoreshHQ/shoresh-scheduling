@@ -4,7 +4,8 @@
   "version": "1.0.0",
   "description": "Shoresh day-camp scheduling for Salesforce",
   "scripts": {
-    "lint": "eslint \"force-app/**/lwc/**/*.js\"",
+    "lint": "eslint \"force-app/**/lwc/**/*.js\" connect scripts",
+    "scan:connect": "sf code-analyzer run --workspace connect --rule-selector AppExchange --rule-selector Recommended:Security --severity-threshold 3",
     "test": "npm run test:unit",
     "test:unit": "sfdx-lwc-jest -- --passWithNoTests",
     "test:unit:namespaced": "sfdx-lwc-jest -- --config jest.namespaced.config.js",

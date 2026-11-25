@@ -4,7 +4,7 @@
  */
 const fs = require("fs");
 const path = require("path");
-const { call, sendAsSystem, makeCamp, soql, ROOT } = require("../lib");
+const { call, sendAsSystem, makeCamp, ROOT } = require("../lib");
 const {
   sample,
   importMaple,

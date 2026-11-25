@@ -259,20 +259,13 @@ const ticketed = (action, input, done) => {
 
 // ---------- electives, all the way (the seed's Chugim in Week 2) ----------
 
-function electives(tmp) {
+function electives() {
   const at = { week: "Week 2", elective_set: "Chugim" };
-  const src = { season: SEASON, source_system: "E2E made-up system" };
   const campers = [
     ["E2E-1", "Avery Madeup", "Bunk 1"],
     ["E2E-2", "Blake Madeup", "Bunk 1"],
     ["E2E-3", "Casey Madeup", "Bunk 2"]
   ];
-  const file = (name, records) => {
-    const f = path.join(tmp, `${name}.json`);
-    fs.writeFileSync(f, JSON.stringify({ records }));
-    return f;
-  };
-  const saved = (n) => [["API-6.3", has(`"saved": ${n}`), `${n} saved`]];
   // Start the week's electives as a person does, with a choices file (API-1.117).
   const sheet = {
     ...at,
@@ -483,7 +476,7 @@ function electives(tmp) {
 
 // ---------- imports that save, read back, undone ----------
 
-function importsSave(tmp) {
+function importsSave() {
   const lastSeen = (from) => {
     const text = step("read_last_imports", {}, "done");
     const re = from
@@ -590,11 +583,11 @@ function importsSave(tmp) {
 
 // ---------- every command, once ----------
 
-function everyCommand(tmp) {
+function everyCommand() {
   const week = { week: "Week 1" };
   step("list_seasons", {}, "done");
   // Setup reads and changes.
-  const words = step("read_camp_words");
+  step("read_camp_words");
   step("read_from_setup", { kind: "activity", name: "Swim" });
   const swim = step("read_from_setup", { kind: "location", name: "Pool" });
   step(
@@ -1355,11 +1348,11 @@ async function run() {
   try {
     apex("e2e-pinecrest-cleanup.apex");
     apex("e2e-pinecrest-seed.apex");
-    everyCommand(tmp);
+    everyCommand();
     await codeMode();
     await aiCodeMode();
-    electives(tmp);
-    importsSave(tmp);
+    electives();
+    importsSave();
   } finally {
     try {
       apex("e2e-pinecrest-cleanup.apex");
