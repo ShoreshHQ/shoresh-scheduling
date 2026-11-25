@@ -107,6 +107,8 @@ export default class ShoreshCampLabels extends LightningElement {
   dirty = false;
   // Saves go one at a time, in order.
   saves = Promise.resolve();
+  // The words' records couldn't be read back after a save: read before the next one (CORE-1.37).
+  idsUnread = false;
   // Why the last save was refused, under the box that was left: { term, field, message }.
   fieldError = null;
 
@@ -286,21 +288,19 @@ export default class ShoreshCampLabels extends LightningElement {
    * After a save, which word has a saved record of its own: a word typed for the first time
    * gets one, a word put back loses it. Without this, putting back a word just typed would send
    * no record to remove, and the camp's word would stay. Only the records are read: what is on
-   * screen stays as typed. If they can't be read, the next save still sends every word.
+   * screen stays as typed. If they can't be read, the next save reads them first and isn't sent
+   * until they are (CORE-1.37).
    */
   async readIds() {
-    try {
-      const saved = await getLabels({ campId: this.campId });
-      const ids = new Map(
-        (saved || []).map((row) => [row.term, row.labelId || null])
-      );
-      this.rows = this.rows.map((row) => ({
-        ...row,
-        labelId: ids.has(row.term) ? ids.get(row.term) : row.labelId
-      }));
-    } catch {
-      // Kept as they were; the words themselves were saved.
-    }
+    const saved = await getLabels({ campId: this.campId });
+    const ids = new Map(
+      (saved || []).map((row) => [row.term, row.labelId || null])
+    );
+    this.rows = this.rows.map((row) => ({
+      ...row,
+      labelId: ids.has(row.term) ? ids.get(row.term) : row.labelId
+    }));
+    this.idsUnread = false;
   }
 
   /** Sends every word as it is now, after any save still under way. */
@@ -312,6 +312,10 @@ export default class ShoreshCampLabels extends LightningElement {
     const words = this.sent();
     this.saves = this.saves.then(async () => {
       try {
+        if (this.idsUnread) {
+          // Sent without them, a word cleared would leave the saved one on the server (CORE-1.37).
+          await this.readIds();
+        }
         // The words as they were when the box was left; each word's saved record as it is now
         // (a save before this one may have made it).
         const ids = new Map(this.rows.map((row) => [row.term, row.labelId]));
@@ -322,15 +326,22 @@ export default class ShoreshCampLabels extends LightningElement {
         await saveCampLabels({ campId: this.campId, labels });
         // Every word went, so an earlier refusal no longer stands.
         this.fieldError = null;
-        await this.readIds();
+        // The words were saved whether or not their records can be read back now.
+        await this.readIds().catch(() => {
+          this.idsUnread = true;
+        });
         const mark = this.template.querySelector("c-shoresh-saved-mark");
         if (mark) {
           mark.saved();
         }
         this.dispatchEvent(new CustomEvent("saved"));
       } catch (e) {
-        // Still to save: the next box left sends it again.
+        // Still to save: the next box left sends it again. An earlier save's Saved goes with it.
         this.dirty = true;
+        const mark = this.template.querySelector("c-shoresh-saved-mark");
+        if (mark) {
+          mark.clear();
+        }
         const message = refusedBecause(NOT_SAVED, e);
         this.fieldError = { term, field, message };
         // The setup page says it at the top too if this screen is no longer showing.
