@@ -582,9 +582,6 @@ export default class ShoreshGeneratedSchedule extends BuildScreen(
   get isGenerated() {
     return !!(this.loaded && this.loaded.scheduleId);
   }
-  get editable() {
-    return !this.readOnly;
-  }
   get showStart() {
     return (
       this.editable &&
@@ -1740,19 +1737,6 @@ export default class ShoreshGeneratedSchedule extends BuildScreen(
     }
   }
 
-  /** "Update to match setup" (c/shoreshBuildWeek): the list, read fresh, before anything changes. */
-  handleSetupMatch() {
-    return this.buildWeek.openSetupMatch();
-  }
-
-  handleSetupClose() {
-    this.buildWeek.closeSetupMatch();
-  }
-
-  handleSetupUpdate(event) {
-    return this.buildWeek.updateToMatchSetup(event.detail.keys);
-  }
-
   /**
    * The week as the update left it, read again: a whole new week (Undo starts over, as after
    * Restore), its locks as saved, no longer a version restored. False when it can't be read now
@@ -1832,31 +1816,6 @@ export default class ShoreshGeneratedSchedule extends BuildScreen(
     }
   }
 
-  /** Unpublish, when Published's dropdown is open; else Published; null with neither. */
-  unpublishTarget() {
-    const menu = this.template.querySelector('[data-id="published-menu"]');
-    if (!menu) {
-      return null;
-    }
-    return menu.opened
-      ? this.template.querySelector('[data-id="unpublish"]')
-      : menu;
-  }
-
-  /**
-   * Focus fell to the page (or stayed on Publish or Unpublish while they were held), rather than
-   * being on something the director chose since.
-   */
-  focusIsLost() {
-    const inside = this.template.activeElement;
-    if (inside) {
-      const id = inside.dataset ? inside.dataset.id : null;
-      return id === "publish" || id === "unpublish" || id === "published-menu";
-    }
-    const page = document.activeElement;
-    return !page || page === document.body;
-  }
-
   /**
    * Said on the editor's quiet line and read out, as on Manual Build. A short line ("Week 1
    * matches setup.", "One moment: …") leaves a Rebuild's or Start over's Undo where it is.
@@ -1907,26 +1866,12 @@ export default class ShoreshGeneratedSchedule extends BuildScreen(
     return this.showStart && this.versions.length > 0;
   }
 
-  /** Save version (c/shoreshBuildWeek): the week as it is now (its locks and option too). */
-  handleSaveVersion(event) {
-    const { name, onDone } = event.detail;
-    return this.buildWeek.saveVersion(name, onDone);
-  }
-
-  /**
-   * Restore (c/shoreshBuildWeek): the version's cells, locks and option become the week's, after
-   * the week as it was is kept as "Before Restore" (the way back), then the week is read again.
-   * Someone else's save since this screen read the week: nothing is restored, and the line offers
-   * Reload, held as for any save.
-   */
-  handleRestore(event) {
-    return this.buildWeek.restoreVersion(event.detail.id);
-  }
-
   /**
    * The week as a Restore left it, read again (the server says only that it was done). False when
    * it can't be read now: it is read again once the Restore is over, and shown then as the
-   * restored week (its error goes once that read works).
+   * restored week (its error goes once that read works). A Restore brings back the version's
+   * cells, locks and option; after someone else's save since this screen read the week, nothing
+   * is restored, and the line offers Reload, held as for any save.
    */
   async showRestoredWeek(ticket, restored) {
     const hadSchedule = this.isGenerated;
@@ -1973,14 +1918,5 @@ export default class ShoreshGeneratedSchedule extends BuildScreen(
       // A week not generated yet: the editor shows it now, and says it there.
       this.sayWhenShown = said;
     }
-  }
-
-  handleDeleteVersion(event) {
-    return this.buildWeek.deleteVersion(event.detail.id);
-  }
-
-  handleRenameVersion(event) {
-    const { id, name, onDone } = event.detail;
-    return this.buildWeek.renameVersion(id, name, onDone);
   }
 }
