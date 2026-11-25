@@ -188,11 +188,16 @@ sharing and query limits at run time.
 
 The LWC Jest job runs `npm run test:unit:coverage`: every test, measuring branch coverage of the
 three engines (`shoreshEngine`, `shoreshElectiveEngine`, `shoreshImportEngine`), each folder as a
-whole. It fails when one drops under its line in `jest.config.js` (`coverageThreshold`). The bar
-is 90% (G9). The Generated Schedule and import engines are held at 90% (92.2% and 90.2% on
-2026-11-25); the elective engine is held at its level that day, 89.9% (the seat matching's rare
-fallback search is untested), and may only go up, to 90. The job prints each engine file's figures.
-Measuring coverage adds a few minutes to the job.
+whole. It fails when one drops under its line in `jest.config.js` (`coverageThreshold`). The code
+review of 2026-11-25 set the bar at 90%. The Generated Schedule and import engines are held at 90%
+(92.2% and 90.2% that day); the elective engine at its level that day, 89.9% (the seat matching's
+rare fallback search is untested), and it may only go up, to 90. The margins are small: a change
+that adds untested branches to the import or elective engine fails this check until it is tested.
+The job prints each engine file's figures, uncovered lines included. Run on a few folders only,
+the script fails on the engines it didn't run; it prints text only (no HTML report). On a Mac the
+engines' tests take as long with coverage as without (164 s and 168 s); on CI the job took 13 and
+16 minutes in its first two runs, against 8.5 to 13.5 without coverage, so any extra is within
+the runners' own variation.
 
 Not run by CI: the engine's full seed sweeps (`npm run test:engine:full`, about 15 minutes): the
 desktop differential's camps 101-400, the search proof check 51-150, properties 101-300, across

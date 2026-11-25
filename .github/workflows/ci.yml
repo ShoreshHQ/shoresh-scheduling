@@ -20,8 +20,8 @@ permissions:
   contents: read
 
 jobs:
-  # The quick checks run as three jobs side by side (about 7 minutes instead of 13 one after
-  # another); "LWC Jest and Code Analyzer" below passes only when all three pass, so the merge
+  # The quick checks run as jobs side by side rather than one after another (LWC Jest, the longest,
+  # takes 9 to 16 minutes); "LWC Jest and Code Analyzer" below passes only when all pass, so the merge
   # procedure still watches that one check (docs/ci-setup.md).
   jest:
     name: LWC Jest

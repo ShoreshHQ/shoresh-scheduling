@@ -36,11 +36,11 @@ module.exports = {
     // Pages used only by tests (a parent that slots rows into a rail menu).
     "^c/(railPopFixture)$": "<rootDir>/jest/fixtures/lwc/$1/$1.js"
   },
-  // Branch coverage of the three engines (the bar's G9, docs/ci-setup.md), checked whenever a run
-  // measures coverage: CI's LWC Jest job does (`npm run test:unit:coverage`). Each folder is held
-  // as a whole. The Generated Schedule and import engines meet the bar's 90%; the elective engine
-  // (89.93% on CI, 2026-11-25: minCostAssign's rare fallback search is untested) is held at that
-  // level and may only go up, to 90.
+  // Branch coverage of the three engines, checked whenever a run measures coverage: CI's LWC Jest
+  // job does (`npm run test:unit:coverage`; docs/ci-setup.md). Each folder is held as a whole. The
+  // Generated Schedule and import engines meet the review bar's 90%; the elective engine (89.93% on
+  // CI, 2026-11-25: minCostAssign's rare fallback search is untested) is held at that level and may
+  // only go up, to 90.
   collectCoverageFrom: [
     "force-app/main/default/lwc/shoreshEngine/*.js",
     "force-app/main/default/lwc/shoreshElectiveEngine/*.js",
