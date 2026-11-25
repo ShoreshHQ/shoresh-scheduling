@@ -366,7 +366,7 @@ describe("run-apex-tests.mjs", () => {
     );
     const { code, out } = await run();
     expect(out).toMatch(
-      /80\.0%  Widget \(pinned at 80%\)\n\s+100\.0%  Gadget\n/
+      /80\.0% {2}Widget \(pinned at 80%\)\n\s+100\.0% {2}Gadget\n/
     );
     expect(code).toBe(0);
   });
