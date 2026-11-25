@@ -278,6 +278,16 @@ describe("Code mode", () => {
     expect(nothing.text).toBe(
       "Week 1 isn't published. Nothing was changed. This is for the person to decide: tell them, and don't change anything to work around it."
     );
+    const lower = await code.unpublish_week(
+      { week: "Week 1" },
+      {
+        run: sfAnswering(
+          409,
+          '{"message":"Week 1 is final, so nothing was changed."}'
+        )
+      }
+    );
+    expect(lower.text).not.toContain("Nothing else was changed");
   });
 
   // API-1.115

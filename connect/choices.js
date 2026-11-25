@@ -164,6 +164,7 @@ async function bringInChoices(capability, input, { read, send, answer, load }) {
           m
         );
   if (schedule.problem) return refused(schedule.problem);
+  const groups = m.groupsOfProgram(setup, schedule.item.programId);
 
   const { file, problem } = fileOf(input, m);
   if (problem) return refused(problem);
@@ -202,7 +203,9 @@ async function bringInChoices(capability, input, { read, send, answer, load }) {
           ? [
               `If they are different ${t.pIn("Camper")}, send different_campers: ${JSON.stringify(canSay)}. Ask the person; else the sheet needs fixing.`
             ]
-          : [])
+          : []),
+        // The screen shows its "Not read" section beside this card.
+        ...notReadLines(m.notReadRows(reading, groups, t))
       ].join("\n")
     );
   }
@@ -230,7 +233,6 @@ async function bringInChoices(capability, input, { read, send, answer, load }) {
     weekId: week.item.Id,
     scheduleId: schedule.item.id
   };
-  const groups = m.groupsOfProgram(setup, schedule.item.programId);
   const request = (runRevision, which = {}) =>
     m.buildRequest({
       which,

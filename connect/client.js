@@ -1297,7 +1297,7 @@ function toAgent(answer) {
     ? { ...answer, text }
     : {
         ...answer,
-        text: `${text} ${/Nothing was changed\.\s*$/.test(text) ? PERSON_DECIDES_ONLY : PERSON_DECIDES}`
+        text: `${text} ${/nothing was changed\.\s*$/i.test(text) ? PERSON_DECIDES_ONLY : PERSON_DECIDES}`
       };
 }
 

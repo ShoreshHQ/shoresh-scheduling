@@ -3416,6 +3416,24 @@ describe("Shoresh for AI tools and the command line", () => {
     expect(noBunk.text).toContain(
       "Not read (1): Avery Madeup, Row 2, Bunk 99 isn't one of your groups: not imported"
     );
+    // Beside the can't-tell-apart refusal too, as the screen shows both.
+    const apart = await call(
+      "import_choices",
+      {
+        ...input,
+        csv_text:
+          "Camper,Bunk,Choice 1,Choice 2\nAvery Madeup,Bunk 1,Swim,Art\nAvery Madeup,Bunk 2,Art,Swim\nCasey Madeup,Bunk 99,Art,Swim\n"
+      },
+      {
+        run: answering([ok(JSON.stringify(read)), message(check)], []),
+        choices
+      }
+    );
+    expect(apart.ok).toBe(false);
+    expect(apart.text).toContain("send different_campers");
+    expect(apart.text).toContain(
+      "Not read (1): Casey Madeup, Row 4, Bunk 99 isn't one of your groups: not imported"
+    );
     const asked = JSON.parse(seen[1].stdin);
     expect(asked.save).toBeUndefined();
     expect(asked.request).toMatchObject({
