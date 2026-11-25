@@ -17,10 +17,19 @@ let lastUrl = null;
 // is allowed, and the .xlsx file name tells the computer what it is.
 const FILE_TYPE = "application/octet-stream";
 
-export async function downloadWorkbook(component, sheets, fileName) {
+/**
+ * SheetJS, its static resource loaded for the component the first time it is needed (the
+ * platform loads a script once): for saving a file here, and for reading one on the three import
+ * screens (c/shoreshImportEngine readImportFile).
+ */
+export async function loadSheetJs(component) {
   await loadScript(component, SHEETJS);
   // SheetJS puts itself on window when its script runs.
-  const XLSX = window.XLSX;
+  return window.XLSX;
+}
+
+export async function downloadWorkbook(component, sheets, fileName) {
+  const XLSX = await loadSheetJs(component);
   // A Blob, not a data: link, so a large camp's file isn't cut off by the browser's link limit.
   const data = workbookBytes(XLSX, sheets);
   const url = URL.createObjectURL(new Blob([data], { type: FILE_TYPE }));

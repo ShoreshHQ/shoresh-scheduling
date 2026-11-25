@@ -1,6 +1,4 @@
 import { LightningElement, api } from "lwc";
-import { loadScript } from "lightning/platformResourceLoader";
-import SHEETJS from "@salesforce/resourceUrl/SheetJS";
 import saveList from "@salesforce/apex/ImportController.saveList";
 import saveWorkbook from "@salesforce/apex/ImportController.saveWorkbook";
 import getAnswers from "@salesforce/apex/ImportController.getAnswers";
@@ -52,7 +50,7 @@ import {
 } from "c/shoreshErrors";
 import { rememberedFor } from "c/shoreshRemembered";
 import { suggestionsFor, withLearning } from "c/shoreshPatterns";
-import { downloadWorkbook, fileNameOf } from "c/shoreshDownload";
+import { downloadWorkbook, fileNameOf, loadSheetJs } from "c/shoreshDownload";
 import { ShowToastEvent } from "lightning/platformShowToastEvent";
 import { importTable } from "./table";
 
@@ -151,7 +149,6 @@ export default class ShoreshListImport extends LightningElement {
   result;
   undone;
   undoing = false;
-  sheetJsLoaded = false;
   // Where the cursor goes at the next render: { card } (that card), { after } (the next question
   // still open after that one), or { selector }.
   focusNext = null;
@@ -369,14 +366,6 @@ export default class ShoreshListImport extends LightningElement {
     event.target.value = null;
   }
 
-  async ensureSheetJs() {
-    if (!this.sheetJsLoaded) {
-      await loadScript(this, SHEETJS);
-      this.sheetJsLoaded = true;
-    }
-    return window.XLSX;
-  }
-
   async readFile(chosen) {
     if (!chosen) {
       return;
@@ -386,7 +375,7 @@ export default class ShoreshListImport extends LightningElement {
       return;
     }
     await this.read(chosen.name, () =>
-      readImportFile(chosen, () => this.ensureSheetJs())
+      readImportFile(chosen, () => loadSheetJs(this))
     );
   }
 

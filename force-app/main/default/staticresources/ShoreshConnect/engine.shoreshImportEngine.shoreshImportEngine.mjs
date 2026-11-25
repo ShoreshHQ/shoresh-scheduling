@@ -95,6 +95,12 @@ export async function readImportFile(file, loadSheetJs) {
   );
 }
 
+/** The files dropped on an import screen's drop zone (none if it carried none), the browser's own opening of them stopped. */
+export function droppedFiles(event) {
+  event.preventDefault();
+  return (event.dataTransfer && event.dataTransfer.files) || [];
+}
+
 /** The bytes text takes in a UTF-8 file (TextEncoder is not in every place this runs). */
 function utf8Length(text) {
   let bytes = 0;
