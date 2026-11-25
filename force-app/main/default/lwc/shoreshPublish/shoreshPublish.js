@@ -20,12 +20,10 @@
 import { readRow } from "c/shoreshSavedRow";
 import { buildTerms, listed } from "c/shoreshTerms";
 import { checkLines } from "c/shoreshWeekChecks";
+import { screenOf } from "c/shoreshVersions";
 
 // Under each count, at most this many of its lines; then "…and N more."
 const NAMED = 5;
-
-// The screen a published schedule was published from, by the Origin__c its copy records.
-const SCREENS = { Manual: "Manual Build", Generated: "Generated Schedule" };
 
 /**
  * The Published line's words before the date, on both screens (Greg, 2026-10-19): "Published from
@@ -33,7 +31,7 @@ const SCREENS = { Manual: "Manual Build", Generated: "Generated Schedule" };
  * PublishState. One whose screen isn't known (published before Origin was kept) says "Published ".
  */
 export function publishedWord(published) {
-  const screen = published && SCREENS[published.origin];
+  const screen = published && screenOf(published.origin);
   return screen ? `Published from ${screen} ` : "Published ";
 }
 
@@ -232,9 +230,6 @@ export function specialDayLines(specials, t = buildTerms([])) {
   });
 }
 
-// The screen a published schedule came from, by its Origin.
-const FROM_SCREEN = { Manual: "Manual Build", Generated: "Generated Schedule" };
-
 /**
  * The question's heading: "Publish Week 1?"; "Publish Week 1 again?" when this screen's schedule
  * is the one published; "Replace Week 1's published schedule (from Manual Build)?" when another
@@ -248,7 +243,7 @@ function headingOf(preview, origin, weekName, t) {
   if (!origin || !from || from === origin) {
     return `Publish ${weekName} again?`;
   }
-  const screen = FROM_SCREEN[from];
+  const screen = screenOf(from);
   return `Replace ${weekName}'s ${t.sIn("PublishedSchedule")}${screen ? ` (from ${screen})` : ""}?`;
 }
 

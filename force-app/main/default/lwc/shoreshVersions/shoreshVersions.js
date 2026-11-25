@@ -2,6 +2,10 @@ import { LightningElement, api } from "lwc";
 import { canDelete, isAutomatic, metaOf } from "./words";
 import { campZone } from "c/shoreshCampClock";
 
+// Publish says the screen a week was published from in the same words (shoreshPublish), and every
+// screen with Versions says a failed rename the same way.
+export { notRenamed, screenOf } from "./words";
+
 /**
  * Ctrl or Cmd with Z or Y in a name box is the box's own Undo: it goes no further, so the week
  * editor around this panel (which can't see into it) doesn't undo a schedule change as well.
