@@ -213,3 +213,8 @@ These never bend for Shoresh.
   `docs/samples`; every button it names MUST be one the screens have, in the camp's words. About MUST
   stay as it is (Greg's exception to "no help", 2026-11-21: the guide and the sample camp together, as the demo, nothing preloaded). Tests: shoreshGuide.test.js;
   shoreshLearned.test.js "CORE-6.17".
+- **CORE-6.18** What didn't happen MUST be said whole, ahead of why: a camp's names may hold a
+  full stop ("Dr. Seuss Day wasn't put on a day.", a version named "Week 1. Rainy plan"), so the
+  sentence is never cut at one. A stored value Shoresh has no words for (a version's origin) MUST
+  be left out, never shown as stored (review 2026-11-25 wave 2, lwc-screens-b findings 5 and 7).
+  Tests: shoreshErrors.test.js "CORE-6.18"; shoreshVersions words.test.js "CORE-6.18".
