@@ -311,6 +311,8 @@ async function callOnce(
     return undo ? { ...response, undo } : response;
   };
   const said = await camp(org, asked);
+  // Not read: where Shoresh is (its namespace) isn't known, so nothing is sent (API-1.155).
+  if (said.read === false) return campUnread(said.response);
   const old = tooOld(said);
   if (old) return { ok: false, status: 400, text: old };
   const { namespace } = said;
@@ -592,6 +594,16 @@ async function campFor(org, asked) {
   return camps.get(org);
 }
 
+/**
+ * Why nothing was sent when the camp couldn't be read (API-1.155): Salesforce's own refusal (a
+ * sign-in or access it refused) as any answer says it; otherwise it didn't answer.
+ */
+function campUnread(response) {
+  const status = response ? response.status : 0;
+  if (status === 401 || status === 403) return answer(response);
+  return { ok: false, status: 503, text: CAMP_UNREAD };
+}
+
 /** One request as the person; Salesforce's status and Shoresh's answer. */
 async function ask(request, org, run) {
   const out = await run(sfArgs(request, org), request.body);
@@ -622,6 +634,10 @@ const SIGNED_OUT =
 // Signed in, but Salesforce didn't answer (API-1.126): never a sign-in, and never "nothing changed".
 const NO_ANSWER =
   "Salesforce didn't answer just now, so Shoresh can't tell whether this was done. Try again in a moment; if it was a change, read first to see whether it went through.";
+
+// Salesforce didn't say where Shoresh is, so the action was never sent (API-1.155).
+const CAMP_UNREAD =
+  "Salesforce didn't answer just now. Try again in a moment; nothing was changed.";
 
 // The screens' own sentence for it (shoreshErrors TOO_BIG; connect.test.js keeps the two the same).
 const TOO_BIG =
@@ -1368,6 +1384,13 @@ async function check({ org, run = runSf } = {}) {
       body: ""
     };
   const said = await campOf(asked);
+  // Salesforce answered, but not with where Shoresh is: the test can't say Shoresh isn't there.
+  if (said.read === false && said.response && said.response.status >= 500) {
+    return {
+      ok: false,
+      text: "Salesforce didn't answer just now. Try the test again in a moment."
+    };
+  }
   const old = tooOld(said);
   if (old) return { ok: false, text: old };
   const request = requestFor(byName("read_group_schedule"), {}, said.namespace);

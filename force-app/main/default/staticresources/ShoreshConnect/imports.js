@@ -259,6 +259,13 @@ function savedWords(result, t, m) {
   return [said, startsFrom, ...m.seededLines(seed, "", t)].join(" ");
 }
 
+/** A field that must be JSON, sent as text that isn't: refused, nothing read or sent (API-1.155). */
+function notJson(field) {
+  return refused(
+    `${field} isn't JSON Shoresh can read, so nothing was imported.`
+  );
+}
+
 /** The command line gives every field as text: save as "true", answers as JSON. */
 function fromCommandLine(given) {
   const input = {
@@ -269,7 +276,8 @@ function fromCommandLine(given) {
     try {
       input.answers = JSON.parse(given.answers);
     } catch {
-      input.answers = null;
+      // Said, never read as no answers (API-1.155).
+      input.unreadable = "answers";
     }
   }
   return input;
@@ -277,6 +285,7 @@ function fromCommandLine(given) {
 
 async function importFile(capability, given, { read, send, answer, load }) {
   const input = fromCommandLine(given);
+  if (input.unreadable) return notJson(input.unreadable);
   const workbook = capability.importsWorkbook;
   if (input.save && !String(input.seen ?? "").trim()) {
     return refused(
@@ -479,6 +488,7 @@ async function undoImport(capability, input, { send, answer, load }) {
 }
 
 module.exports = {
+  notJson,
   importFile,
   undoImport,
   fileOf,

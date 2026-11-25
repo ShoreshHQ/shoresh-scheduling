@@ -558,11 +558,13 @@ describe("the screens' files, made on this computer", () => {
         "-e",
         `const { call } = require(${JSON.stringify(path.join(TO, "client.js"))});
 const read = process.argv[1];
-const run = async () => "HTTP/1.1 200\\n\\n" + read;
+// Where Shoresh is (camp.js), as Salesforce answers it: no namespace.
+const at = (body) => async (args) =>
+  "HTTP/1.1 200\\n\\n" + (args[3].startsWith("/services/data/") ? '{"records":[]}' : body);
 Promise.all([
-  call("download_setup", { list: "groups" }, { run, folder: process.argv[2] }),
+  call("download_setup", { list: "groups" }, { run: at(read), folder: process.argv[2] }),
   call("download_schedule", { week: "Week 1", as: "print" }, {
-    run: async () => "HTTP/1.1 200\\n\\n" + process.argv[3],
+    run: at(process.argv[3]),
     folder: process.argv[2]
   })
 ]).then((a) => process.stdout.write(JSON.stringify(a)));`,
