@@ -1,6 +1,6 @@
 /**
  * Finalizing elective seats and reopening them through an AI (docs/protocol/api.md API-1.23,
- * API-1.66), and a big save the AI reads while it is still being written or after it stopped, on
+ * API-1.70), and a big save or clear the AI reads (API-1.66, API-1.71) while it is still being written or after it stopped, on
  * AgentElectivesTestData's camp (two campers, both choosing Drama). Records are made inside the
  * scheduler's runAs.
  */
@@ -63,7 +63,39 @@ private class AgentFinalizeTest {
     }
   }
 
-  // API-1.66: seats still being worked on can't be reopened as a new draft; nothing is made.
+  // API-1.23: with no elective set named, a season with two is asked which, naming both, and
+  // nothing is finalized.
+  @IsTest
+  static void finalizeAsksWhichSetWhenTheSeasonHasTwo() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      AgentElectivesTestData.camp();
+      AgentElectivesTestData.assigned();
+      Database.insert(
+        new ElectiveSet__c(
+          Season__c = AgentElectivesTestData.ids.get('Season'),
+          Name = 'Evening'
+        ),
+        AccessLevel.USER_MODE
+      );
+      Map<String, Object> noSet = AgentElectivesTestData.asked(NONE);
+      noSet.remove('elective_set');
+      Test.startTest();
+      List<Object> asked = AgentElectivesTestData.send(
+        'finalize_electives',
+        'POST',
+        noSet
+      );
+      Test.stopTest();
+      Assert.areEqual(400, asked[0], String.valueOf(asked[1]));
+      Assert.areEqual(
+        'Say which elective set (elective_set): Chugim, Evening.',
+        asked[1]
+      );
+      Assert.areEqual(ElectiveRunState.COMMITTED, status());
+    }
+  }
+
+  // API-1.70: seats still being worked on can't be reopened as a new draft; nothing is made.
   @IsTest
   static void seatsStillADraftAreNotReopened() {
     System.runAs(ShoreshTestData.scheduler()) {
@@ -122,63 +154,80 @@ private class AgentFinalizeTest {
     )[1];
   }
 
-  // API-1.66: a big save of seats is read as still going, with how far it has got, or as stopped,
-  // with how far it got and why.
+  // API-1.66: a big save of seats still being written is read with how far it has got.
   @IsTest
-  static void aBigSaveIsReadAsGoingOrStopped() {
+  static void aBigSaveStillGoingIsReadWithHowFar() {
     System.runAs(ShoreshTestData.scheduler()) {
       AgentElectivesTestData.camp();
       bigSave(9000, 12000, null);
       Test.startTest();
-      String going = seatsNow();
-      bigSave(9000, 12000, 'Salesforce stopped it before the end.');
-      String stopped = seatsNow();
+      String read = seatsNow();
       Test.stopTest();
       Assert.isTrue(
-        going.contains('Still saving: 9,000 of 12,000 written.'),
-        going
-      );
-      Assert.isTrue(
-        stopped.contains(
-          'The last save stopped after 9,000 of 12,000: Salesforce stopped it before the end.'
-        ),
-        stopped
+        read.contains('Still saving: 9,000 of 12,000 written.'),
+        read
       );
     }
   }
 
-  // API-1.66: a big clear is read as still going, or as stopped with why, on the clear's read.
+  // API-1.66: a big save that stopped is read with how far it got and why.
   @IsTest
-  static void aBigClearIsReadAsGoingOrStopped() {
+  static void aBigSaveThatStoppedIsReadWithWhy() {
     System.runAs(ShoreshTestData.scheduler()) {
       AgentElectivesTestData.camp();
-      AgentElectivesTestData.finalized();
-      Map<String, Object> season = new Map<String, Object>{
-        'season' => AgentElectivesTestData.asked(NONE).get('season')
-      };
-      bigSave(9000, 12000, null);
-      Test.startTest();
-      String going = (String) AgentElectivesTestData.send(
-        'electives_to_clear',
-        'GET',
-        season
-      )[1];
       bigSave(9000, 12000, 'Salesforce stopped it before the end.');
-      String stopped = (String) AgentElectivesTestData.send(
-        'electives_to_clear',
-        'GET',
-        season
-      )[1];
+      Test.startTest();
+      String read = seatsNow();
       Test.stopTest();
       Assert.isTrue(
-        going.contains('Still clearing: 9,000 of 12,000 gone.'),
-        going
+        read.contains(
+          'The last save stopped after 9,000 of 12,000: Salesforce stopped it before the end.'
+        ),
+        read
       );
+    }
+  }
+
+  /** The end-of-season Clear's read, of a finalized week whose clear is part way. */
+  private static String clearNow(String problem) {
+    AgentElectivesTestData.camp();
+    AgentElectivesTestData.finalized();
+    bigSave(9000, 12000, problem);
+    Map<String, Object> season = new Map<String, Object>{
+      'season' => AgentElectivesTestData.asked(NONE).get('season')
+    };
+    Test.startTest();
+    String read = (String) AgentElectivesTestData.send(
+      'electives_to_clear',
+      'GET',
+      season
+    )[1];
+    Test.stopTest();
+    return read;
+  }
+
+  // API-1.71: a big clear still going is read with how far it has got.
+  @IsTest
+  static void aBigClearStillGoingIsReadWithHowFar() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      String read = clearNow(null);
       Assert.isTrue(
-        stopped.contains(
+        read.contains('Still clearing: 9,000 of 12,000 gone.'),
+        read
+      );
+    }
+  }
+
+  // API-1.71: a big clear that stopped is read with how far it got and why.
+  @IsTest
+  static void aBigClearThatStoppedIsReadWithWhy() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      String read = clearNow('Salesforce stopped it before the end.');
+      Assert.isTrue(
+        read.contains(
           'The last clear stopped after 9,000 of 12,000: Salesforce stopped it before the end.'
         ),
-        stopped
+        read
       );
     }
   }

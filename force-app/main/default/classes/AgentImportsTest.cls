@@ -303,8 +303,8 @@ private class AgentImportsTest {
     }
   }
 
-  // API-2.6, API-1.82: an outside system's last batch is listed with its own Undo, named by where
-  // it came from, at the read's web address.
+  // API-1.82: an outside system's last batch is listed for its own Undo, named by where it came
+  // from, at the read's web address.
   @IsTest
   static void anOutsideSystemsLastBatchIsListedWithWhereItCameFrom() {
     System.runAs(ShoreshTestData.scheduler()) {

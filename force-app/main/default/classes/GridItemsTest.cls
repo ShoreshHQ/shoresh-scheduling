@@ -14,6 +14,9 @@ private class GridItemsTest {
     // Names an Id's length long: never Ids.
     Assert.isFalse(GridItems.isId('Archery morning'), '15 characters');
     Assert.isFalse(GridItems.isId('Group A, cabin 12!'), '18 characters');
+    // Letters and digits only, an Id's length: still a name.
+    Assert.isFalse(GridItems.isId('ArcheryMorning1'), '15, no spaces');
+    Assert.isFalse(GridItems.isId('ArcheryMorning1234'), '18, no spaces');
     Assert.isFalse(GridItems.isId('Period 1'));
     Assert.isFalse(GridItems.isId(''));
     Assert.isFalse(GridItems.isId(null));

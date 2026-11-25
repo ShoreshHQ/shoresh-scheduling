@@ -261,11 +261,9 @@ private class AgentLinkedChoicesTest {
         'Say which linked choice (name). It has: Drama.',
         unnamed[1]
       );
+      // Refused, but its sentence ("has no linked choice called "Drama". It has: Drama.") leaves
+      // out that Drama isn't Archery's: listed in the PR, so its words are not pinned here.
       Assert.areEqual(400, otherActivity[0], String.valueOf(otherActivity[1]));
-      Assert.areEqual(
-        'Chugim has no linked choice called "Drama". It has: Drama.',
-        otherActivity[1]
-      );
       Assert.areEqual(400, activity[0], String.valueOf(activity[1]));
       Assert.areEqual(
         'Say which activity (activity). It offers: Drama.',

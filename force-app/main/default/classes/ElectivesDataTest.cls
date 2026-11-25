@@ -206,7 +206,7 @@ private class ElectivesDataTest {
   }
 
   // An elective set happens at one of its own season's time blocks: another season's is refused,
-  // in the camp's words, and the set is not made.
+  // and the set is not made.
   @IsTest
   static void aSetsTimeBlockIsOfItsOwnSeason() {
     System.runAs(ShoreshTestData.scheduler()) {

@@ -416,6 +416,16 @@ private class AgentCampSetupTest {
         .Location__c,
         'Swim moved to the place kept'
       );
+      Assert.areEqual(
+        0,
+        [
+          SELECT COUNT()
+          FROM Location__c
+          WHERE Id = :GeneratedTestData.ids.get('Pool')
+          WITH SYSTEM_MODE
+        ],
+        '"Pool" deleted'
+      );
     }
   }
 

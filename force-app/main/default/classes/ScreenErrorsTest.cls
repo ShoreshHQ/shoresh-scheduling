@@ -356,4 +356,31 @@ private class ScreenErrorsTest {
       ScreenErrors.overWeb = false;
     }
   }
+
+  /** A name typed too long for its field is said plainly, with what to do, never the platform's text. */
+  @IsTest
+  static void somethingTypedTooLongSaysToShortenIt() {
+    Camp__c camp = ShoreshTestData.camp('Camp Willow');
+    Season__c season = ShoreshTestData.season(camp.Id, 'Summer 2026');
+    try {
+      UserModeWrites.save(
+        new List<SObject>{
+          new Location__c(
+            Season__c = season.Id,
+            Name = 'Lake'.repeat(100),
+            GroupsThatFit__c = 1
+          )
+        }
+      );
+      Assert.fail('A name too long is not saved');
+    } catch (UserModeWrites.SaveException e) {
+      Assert.isTrue(
+        ScreenErrors.of(e)
+          .getMessage()
+          .endsWith('Something typed is too long. Shorten it and save again.'),
+        ScreenErrors.of(e).getMessage()
+      );
+    }
+    Assert.areEqual(0, [SELECT COUNT() FROM Location__c WITH SYSTEM_MODE]);
+  }
 }

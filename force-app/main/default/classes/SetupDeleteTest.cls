@@ -247,12 +247,6 @@ private class SetupDeleteTest {
         ),
         AccessLevel.USER_MODE
       );
-      Integer groups = [
-        SELECT COUNT()
-        FROM Group__c
-        WHERE Division__c = :ids.get('Seniors')
-        WITH SYSTEM_MODE
-      ];
       Test.startTest();
       SetupDelete.Preview seniors = SetupDelete.preview(ids.get('Seniors'));
       SetupDelete.Preview empty = SetupDelete.preview(teenSeniors);
@@ -260,15 +254,9 @@ private class SetupDeleteTest {
       SetupDelete.Preview noneKept = SetupDelete.preview(sand.Id);
       Test.stopTest();
       Assert.areEqual('Delete Seniors (Main)?', seniors.label);
-      Assert.isTrue(groups > 0, 'Seniors has groups');
+      // GeneratedTestData's Seniors holds Group C alone.
       Assert.isTrue(
-        String.join(seniors.lines, ' ')
-          .contains(
-            'Its ' +
-              groups +
-              (groups == 1 ? ' group is' : ' groups are') +
-              ' deleted too.'
-          ),
+        String.join(seniors.lines, ' ').contains('Its 1 group is deleted too.'),
         String.valueOf(seniors.lines)
       );
       Assert.areEqual('Delete Seniors (Teens)?', empty.label);

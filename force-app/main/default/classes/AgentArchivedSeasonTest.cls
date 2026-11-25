@@ -1,8 +1,9 @@
 /**
  * An archived season can't be changed (docs/protocol/week.md WEEK-1.10, WEEK-1.11): through an AI
  * (publish, unpublish, restore a version, rename in setup) and on the week's own screens (Undo of a
- * build, keeping a rainy-day copy) each change is refused in plain words, nothing saved, and
- * archive_season and bring_back_season answer at their web addresses. GeneratedTestData's camp,
+ * build, keeping a rainy-day copy) each change is refused in plain words, nothing saved;
+ * archive_season and bring_back_season answer at their web addresses; and an Undo from a week
+ * changed since is not done. GeneratedTestData's camp,
  * made inside the scheduler's runAs.
  */
 @IsTest
@@ -78,6 +79,7 @@ private class AgentArchivedSeasonTest {
       GeneratedScheduleController.saveVersion(draftId, 'Plain');
       SeasonArchive.archive(GeneratedTestData.ids.get('Season'));
       Integer before = versions();
+      String draftBefore = WeekTickets.stamp(ScheduleDays.read(draftId));
       Test.startTest();
       List<Object> published = post(
         'publish_week',
@@ -109,12 +111,17 @@ private class AgentArchivedSeasonTest {
         'Week 1 isn\'t published, so there is nothing to unpublish.',
         unpublished[1]
       );
-      Assert.areEqual(before, versions(), 'Nothing saved');
+      Assert.areEqual(before, versions(), 'Nothing published');
+      Assert.areEqual(
+        draftBefore,
+        WeekTickets.stamp(ScheduleDays.read(draftId)),
+        'The draft\'s days are not rewritten'
+      );
     }
   }
 
-  // WEEK-1.10: renaming in an archived season's setup is refused, nothing saved; a blank new name
-  // is asked for; the name it already has changes nothing.
+  // WEEK-1.10: renaming in an archived season's setup is refused, nothing saved. (In any season, a
+  // blank new name is asked for and the name it already has changes nothing.)
   @IsTest
   static void anArchivedSeasonsSetupIsNotRenamed() {
     System.runAs(ShoreshTestData.scheduler()) {
@@ -163,7 +170,7 @@ private class AgentArchivedSeasonTest {
   }
 
   // WEEK-1.10: on the week's own screens, a rainy-day copy and an Undo of a build are refused in
-  // an archived season with its words; an Undo from a week seen before a change is not done.
+  // an archived season with its words, and the draft's days are not rewritten.
   @IsTest
   static void theWeeksScreensRefuseAnArchivedSeason() {
     System.runAs(ShoreshTestData.scheduler()) {
@@ -171,13 +178,8 @@ private class AgentArchivedSeasonTest {
       Id draftId = GeneratedTestData.generated();
       Id mine = GeneratedScheduleController.saveVersion(draftId, 'Mine');
       String seen = WeekTickets.stamp(ScheduleDays.read(draftId));
-      Test.startTest();
-      Boolean stale = GeneratedUndoController.undoBuild(
-        draftId,
-        mine,
-        seen + 'x'
-      );
       SeasonArchive.archive(GeneratedTestData.ids.get('Season'));
+      Test.startTest();
       String keepRefused;
       try {
         RainyDayController.keepGeneratedWeek(draftId, 'Rainy Monday');
@@ -191,7 +193,6 @@ private class AgentArchivedSeasonTest {
         undoRefused = e.getMessage();
       }
       Test.stopTest();
-      Assert.isFalse(stale, 'A week changed since it was seen is not undone');
       Assert.isNotNull(keepRefused, 'The rainy-day copy is refused');
       Assert.isTrue(keepRefused.contains(archived()), keepRefused);
       Assert.isNotNull(undoRefused, 'The Undo is refused');
@@ -205,34 +206,67 @@ private class AgentArchivedSeasonTest {
           WITH SYSTEM_MODE
         ]
       );
+      Assert.areEqual(seen, WeekTickets.stamp(ScheduleDays.read(draftId)));
     }
   }
 
-  // WEEK-1.10, WEEK-1.11: at their web addresses, a season never published isn't archived (it can
-  // be deleted instead), and an archived one is brought back.
+  // An Undo of a build from a week seen before a change since is not done, and the week stays.
   @IsTest
-  static void archiveAndBringBackAnswerAtTheirAddresses() {
+  static void anUndoFromAWeekChangedSinceIsNotDone() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      GeneratedTestData.camp();
+      Id draftId = GeneratedTestData.generated();
+      Id mine = GeneratedScheduleController.saveVersion(draftId, 'Mine');
+      String now = WeekTickets.stamp(ScheduleDays.read(draftId));
+      Test.startTest();
+      Boolean undone = GeneratedUndoController.undoBuild(
+        draftId,
+        mine,
+        now + 'x'
+      );
+      Test.stopTest();
+      Assert.isFalse(undone, 'A week changed since it was seen is not undone');
+      Assert.areEqual(now, WeekTickets.stamp(ScheduleDays.read(draftId)));
+    }
+  }
+
+  // WEEK-1.10: at its web address, a season never published isn't archived (it can be deleted
+  // instead), and stays as it was.
+  @IsTest
+  static void aSeasonNeverPublishedIsNotArchived() {
     System.runAs(ShoreshTestData.scheduler()) {
       GeneratedTestData.camp();
       Map<String, Object> body = new Map<String, Object>{
         'season' => season()
       };
       Test.startTest();
-      List<Object> neverPublished = post('archive_season', body);
-      SeasonArchive.archive(GeneratedTestData.ids.get('Season'));
-      List<Object> back = post('bring_back_season', body);
+      List<Object> refused = post('archive_season', body);
       Test.stopTest();
-      Assert.areEqual(
-        400,
-        neverPublished[0],
-        String.valueOf(neverPublished[1])
-      );
+      Assert.areEqual(400, refused[0], String.valueOf(refused[1]));
       Assert.areEqual(
         '"' +
           season() +
           '" was never published, so it can\'t be archived. It can be deleted instead (delete_season).',
-        neverPublished[1]
+        refused[1]
       );
+      Assert.isFalse(
+        ArchivedSeasons.isArchived(GeneratedTestData.ids.get('Season'))
+      );
+    }
+  }
+
+  // WEEK-1.11: at its web address, an archived season is brought back and can be changed again.
+  @IsTest
+  static void anArchivedSeasonIsBroughtBack() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      GeneratedTestData.camp();
+      SeasonArchive.archive(GeneratedTestData.ids.get('Season'));
+      Map<String, Object> body = new Map<String, Object>{
+        'season' => season()
+      };
+      Test.startTest();
+      List<Object> back = post('bring_back_season', body);
+      Test.stopTest();
       Assert.areEqual(200, back[0], String.valueOf(back[1]));
       Assert.areEqual(
         'Brought back "' + season() + '". It can be changed again.',
