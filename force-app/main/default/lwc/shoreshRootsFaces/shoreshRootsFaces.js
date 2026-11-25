@@ -1,10 +1,11 @@
 import { FIELD } from "c/shoreshSchema";
 import { numberedWeekday } from "c/shoreshDayNames";
 import {
+  WEEKDAYS,
+  campFirstDay,
   holdsNoDivision,
   programDays,
-  realDivisionsOf,
-  weekOrder
+  realDivisionsOf
 } from "c/shoreshImportEngine";
 
 /**
@@ -22,11 +23,16 @@ export const W = 220;
 export const H = 128;
 
 /**
- * The camp's days, as the cards draw them: the days the season's programs run, in the order its
- * week runs (Sunday first for Sunday to Thursday); Monday to Friday before it has programs.
+ * The camp's days, as the cards draw them: the days the season's programs run, from the camp's
+ * first day of the week (Sunday first for Sunday to Thursday; for every day, the season's first
+ * day's weekday, where numbered days count from); Monday to Friday before it has programs.
  */
 export function campDays(setup) {
-  return weekOrder(programDays(setup));
+  const runs = programDays(setup);
+  const first = campFirstDay(setup) - 1;
+  return [...WEEKDAYS.slice(first), ...WEEKDAYS.slice(0, first)].filter((d) =>
+    runs.includes(d)
+  );
 }
 
 /**

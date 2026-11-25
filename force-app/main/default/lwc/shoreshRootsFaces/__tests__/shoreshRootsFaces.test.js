@@ -1,4 +1,5 @@
 import { setDayNaming } from "c/shoreshDayNames";
+import { nameDaysFor } from "c/shoreshImportEngine";
 import {
   clockOf,
   dayLetters,
@@ -710,25 +711,43 @@ describe("the days the cards draw (word walk W1)", () => {
     );
   });
 
-  it("fit a camp that runs every day of the week inside the card", () => {
-    const every = readCamp(
-      nsRecord({
-        season: { Id: "s1" },
-        programs: [
-          {
-            program: Object.fromEntries(
-              [...MON_FRI, "Saturday", "Sunday"].map((d) => [`${d}__c`, true])
-            )
-          }
+  // A camp running every day, its season starting on a Sunday: its week starts on Sunday, where
+  // "Fill in weeks" starts it and numbered days count from.
+  const EVERY_DAY = nsRecord({
+    season: { Id: "s1", StartDate__c: "2027-06-27", NumberedDays__c: true },
+    programs: [
+      {
+        program: Object.fromEntries(
+          [...MON_FRI, "Saturday", "Sunday"].map((d) => [`${d}__c`, true])
+        ),
+        recurringActivities: [
+          { Name: "Swim", Sunday__c: true, Friday__c: true },
+          { Name: "Morning meeting", Monday__c: true }
         ]
-      }),
-      {}
-    );
+      }
+    ]
+  });
+
+  it("start where the camp's week starts for a camp that runs every day", () => {
+    nameDaysFor(EVERY_DAY);
+    const every = readCamp(EVERY_DAY, {});
+    expect(every.days[0]).toBe("Sunday");
+    expect(dayLetters(every.days)).toEqual(["1", "2", "3", "4", "5", "6", "7"]);
+  });
+
+  it("fit a camp that runs every day of the week inside the card", () => {
+    const every = readCamp(EVERY_DAY, {});
     expect(every.days).toHaveLength(7);
-    ["programs", "recurringActivities"].forEach((key) => {
-      const rects = glimpseOf(key, every).shapes.filter((s) => s.rect);
-      expect(rects.length).toBeGreaterThan(0);
-      rects.forEach((r) => expect(r.x + r.w).toBeLessThanOrEqual(W + 0.5));
-    });
+    const empty = { ...every, programs: [], recurring: [] };
+    [every, empty].forEach((camp) =>
+      ["programs", "recurringActivities"].forEach((key) =>
+        [0, 14].forEach((f) => {
+          const rects = glimpseOf(key, camp, f).shapes.filter((s) => s.rect);
+          expect(rects.length).toBeGreaterThan(0);
+          // A recurring activity's last tile already ends 1 px past the card at five days.
+          rects.forEach((r) => expect(r.x + r.w).toBeLessThanOrEqual(W + 1));
+        })
+      )
+    );
   });
 });

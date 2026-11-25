@@ -168,7 +168,7 @@ function offDay(day, runs) {
     out.push(txt(x + dw / 2, 26, d, "g-m", "middle"));
     out.push(i === at ? dashed(x, 32, dw, 28, 4, "s700") : well(x, 32, dw, 28));
   });
-  out.push(flag(at * step + 6, 0, 18, true));
+  out.push(flag(Math.max(0, at) * step + 6, 0, 18, true));
   return out;
 }
 
