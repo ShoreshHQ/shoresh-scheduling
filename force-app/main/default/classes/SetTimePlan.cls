@@ -179,7 +179,11 @@ public with sharing class SetTimePlan {
     }
   }
 
-  /** Whether a group is at camp in a time block: all day, or the part of day it comes for. */
+  /**
+   * Whether a group is at camp in a time block: all day, or only in the part of day it comes for.
+   * The screens' c/shoreshSetupRules atCamp is the same rule: both pass the shared examples
+   * (staticresources/ShoreshRuleExamples.json, atCamp; RuleExamplesTest).
+   */
   public static Boolean atCamp(Group__c grp, TimeBlock__c block) {
     return grp.Availability__c == 'MorningOnly'
       ? block.PartOfDay__c == 'Morning'
