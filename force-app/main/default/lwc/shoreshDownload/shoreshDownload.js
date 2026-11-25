@@ -19,8 +19,8 @@ const FILE_TYPE = "application/octet-stream";
 
 /**
  * SheetJS, its static resource loaded for the component the first time it is needed (the
- * platform loads a script once): for saving a file here, and for reading one on the three import
- * screens (c/shoreshImportEngine readImportFile).
+ * platform loads a script once): for saving a file here, and for reading one on the import screens
+ * and Special schedule (c/shoreshImportEngine readImportFile).
  */
 export async function loadSheetJs(component) {
   await loadScript(component, SHEETJS);

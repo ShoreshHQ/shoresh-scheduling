@@ -1,6 +1,4 @@
 import { LightningElement, api } from "lwc";
-import { loadScript } from "lightning/platformResourceLoader";
-import SHEETJS from "@salesforce/resourceUrl/SheetJS";
 import openPlan from "@salesforce/apex/SpecialScheduleController.openPlan";
 import saveCells from "@salesforce/apex/SpecialScheduleController.saveCells";
 import changeFrame from "@salesforce/apex/SpecialScheduleController.changeFrame";
@@ -8,7 +6,7 @@ import addActivity from "@salesforce/apex/SpecialScheduleController.addActivity"
 import importPlan from "@salesforce/apex/SpecialScheduleController.importPlan";
 import { failed, reasonOf } from "c/shoreshErrors";
 import { article } from "c/shoreshTerms";
-import { downloadWorkbook, fileNameOf } from "c/shoreshDownload";
+import { downloadWorkbook, fileNameOf, loadSheetJs } from "c/shoreshDownload";
 import { offeringNames } from "c/shoreshElectiveDetails";
 import { scheduleSheets } from "c/shoreshScheduleExport";
 import { shortClock } from "c/shoreshScheduleViews";
@@ -573,11 +571,7 @@ export default class ShoreshSpecialSchedule extends LightningElement {
   }
 
   readFile(file) {
-    return readImportFile(file, async () => {
-      await loadScript(this, SHEETJS);
-      // SheetJS puts itself on window when its script runs.
-      return window.XLSX;
-    });
+    return readImportFile(file, () => loadSheetJs(this));
   }
 
   /** What an import did and left out, line by line, in the camp's words. */
