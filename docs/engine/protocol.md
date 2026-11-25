@@ -256,10 +256,18 @@ Every other camp in the library keeps every settled rule.
 first 100; `npm run test:engine:full` all 400, `jest/sample.js`) in this engine
 and in a vendored copy of the desktop's (`jest/desktop-engine/`), and compares outcomes, never
 cells: sessions per group and activity, minimums met, early-week goals met, cells left empty,
-cells filled by bending a rule. It reports differences as data (run it with
-`DESKTOP_DIFF_REPORT=<file>` for every camp's row) and fails only if a camp can't be built or the
-counts don't add up. Drawn only from what both engines share: no overlapping blocks, other
-programs, same-division activities, locks, electives or special days.
+cells filled by bending a rule (run it with `DESKTOP_DIFF_REPORT=<file>` for every camp's row).
+Drawn only from what both engines share: no overlapping blocks, other programs, same-division
+activities, locks, electives or special days. It fails where Shoresh does worse than the desktop
+on the same camp (since 2026-11-25; before, it only reported):
+
+| #   | Promise                                                                                                                                                                                                                                                           | Test (`desktopDifferential.test.js`)                                                  |
+| --- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------- |
+| D.1 | In each engine, every cell to fill is filled or reported Open (filled plus Open equals the cells to fill), so no cell is left blank without a word.                                                                                                               | "adds up: every cell to fill is filled or reported Open"                              |
+| D.2 | The comparison reads the camp the same way in both engines: the desktop's own input checks are on (`jest/desktop-engine/README.md`), and it places nothing a group isn't set up for.                                                                              | "the desktop engine's own input checks are on…", "reads the camp the same way…"       |
+| D.3 | Shoresh never leaves more groups short of a weekly minimum than the desktop on the same camp, except the camps listed in the test with why (234 and 343, below).                                                                                                  | "never leaves more groups short of a weekly minimum than the desktop"                 |
+| D.4 | Shoresh never leaves more cells Open than the desktop leaves empty on the same camp (no camp listed).                                                                                                                                                             | "never leaves more cells Open than the desktop leaves empty"                          |
+| D.5 | Early-week goals short, in all, over the camps both engines read the same (every goal's day in the week): Shoresh's at most the desktop's plus a pinned margin of 3. The two draw ties differently, so single camps differ either way; the margin only goes down. | "leaves no more early-week goals short in all than the desktop, past a pinned margin" |
 
 Known, expected differences:
 
@@ -277,8 +285,8 @@ PR 4 (search), since a never-blank bend can take a cell a minimum needed. Early-
 camps the same; 72 differ in a week missing the desktop's target day (likely the reading above;
 the cause is assumed, not shown); 48 short more on the desktop; 15 short more here.
 
-The check that counts add up is one-sided (filled plus empty never exceed the cells to fill), so
-it would not catch an undercount.
+The check that counts add up was one-sided then (filled plus empty never exceed the cells to
+fill); since 2026-11-25 it is equality (D.1).
 
 After PR 3 (2026-10-25, same 400 camps; never-blank bends only the weekly max): **this engine
 leaves 4,063 of 17,686 cells empty (23%), in 205 camps; the desktop leaves 5,355 (30%), in 233.**
@@ -330,6 +338,19 @@ fewer minimums than the desktop (was 4: 254 and 270 now meet at least as many as
 minimums short in all 2,328 (was 2,335); Open cells 3,833 (was 3,824): the 9 more are exactly
 the cells left Open on purpose, in 5 camps (40: 2, 76: 1, 98: 1, 254: 3, 270: 2), each saying which group gets which activity. With the minimum repair's own such cells saying so too (they said "Everything for Bunk 5 is taken then" before), 57 Open cells say the trade, in 24 camps: 9 from this pass and 48 from the repair (each checked to still hold as the week ends; 3 more the repair left no longer did, and keep their own reason); nothing else changed; cells where the search ran out of work 118 (was 116: the search
 again on a day a trade changed ran out twice).** Early-week goals short 796 (was 797).
+
+When the differential became a check (D.1–D.5; 2026-11-25, same 400 camps, today's engine):
+every camp adds up exactly in both engines; the desktop places nothing a group isn't set up for;
+**2 camps meet fewer minimums than the desktop (234 and 343, as above, listed in the test); no
+camp leaves more Open; minimums short 2,322 against 2,634; Open 4,137 against the desktop's
+5,355 empty.** Early-week goals short 849 here against 585, but on the 262 camps where both
+engines read every goal (its day in the week) 475 here against 507; the rest is the reading
+difference above. On CI's first 100, 10 camps are short of more early-week goals here (3, 5, 13,
+38, 48, 53, 58, 61, 66, 74) and 7 on the desktop; over the camps read the same, 128 here against 125. None is a regression: with step 8's search switched off, 8 of the 10 are already short of
+the same goals, so the difference is where the two engines' tie draws put the first sessions
+(each follows 4.3 and 4.5, with different draws); in 13 and 58 the search gives up one early
+goal each to meet 3 and 2 more minimums (8.27: minimums first). Seeds 5 and 38 meet the same
+minimums and Open cells as the desktop and are one goal short more, by the draw alone.
 
 ### Step 8 budget
 
