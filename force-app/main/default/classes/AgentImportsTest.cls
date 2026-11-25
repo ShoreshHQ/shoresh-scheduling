@@ -99,7 +99,8 @@ private class AgentImportsTest {
     Map<String, Object> answer = (Map<String, Object>) first[1];
     Assert.areEqual(200, first[0]);
     Assert.isTrue(
-      reading < 49,
+      // Bound: measured 32 (2026-11-25).
+      reading < 37,
       'one read stays well under the limit: ' + reading
     );
     Assert.isNotNull(answer.get('setup'));
@@ -130,7 +131,8 @@ private class AgentImportsTest {
       Assert.areEqual(16, seen.length());
       Assert.areEqual(200, saved[0], String.valueOf(saved[1]));
       Assert.isTrue(
-        saving < 46,
+        // Bound: measured 18 (2026-11-25).
+        saving < 23,
         'a save stays well under the limit: ' + saving
       );
       Map<String, Object> result = (Map<String, Object>) JSON.deserializeUntyped(

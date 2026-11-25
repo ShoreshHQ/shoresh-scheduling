@@ -225,9 +225,9 @@ private class ImportElectivesTest {
       Assert.areEqual(1, result.added.get('ElectiveSet'));
       Assert.areEqual(2, result.added.get('Offering'));
       Assert.areEqual(2, result.added.get('LinkedChoice'));
-      // Bound: the screen's own save of sets, offerings and linked choices: measured 55
-      // (2026-11-25), over the 50 the bar asks; not cut down here.
-      Assert.isTrue(queries < 60, 'queries: ' + queries);
+      // Bound: the screen's own save of sets, offerings and linked choices: measured 45
+      // (2026-11-25).
+      Assert.isTrue(queries < 50, 'queries: ' + queries);
       ElectiveSet__c chugim = [
         SELECT
           Id,

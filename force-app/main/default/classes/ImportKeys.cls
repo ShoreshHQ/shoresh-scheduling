@@ -13,74 +13,89 @@ public with sharing class ImportKeys {
       'The import refers to something that is not in this ' +
       labels.singularInSentence('Season') +
       '. Start it again.';
-    List<List<SObject>> lists = new List<List<SObject>>{
-      [SELECT Id FROM Program__c WHERE Season__c = :seasonId WITH USER_MODE],
-      [
-        SELECT Id
-        FROM TimeBlock__c
-        WHERE Program__r.Season__c = :seasonId
-        WITH USER_MODE
-      ],
-      [
-        SELECT Id
-        FROM Division__c
-        WHERE Program__r.Season__c = :seasonId
-        WITH USER_MODE
-      ],
-      [
-        SELECT Id
-        FROM Group__c
-        WHERE Division__r.Program__r.Season__c = :seasonId
-        WITH USER_MODE
-      ],
-      [
-        SELECT Id
-        FROM LocationType__c
-        WHERE Season__c = :seasonId
-        WITH USER_MODE
-      ],
-      [SELECT Id FROM Location__c WHERE Season__c = :seasonId WITH USER_MODE],
-      [SELECT Id FROM Activity__c WHERE Season__c = :seasonId WITH USER_MODE],
-      [
-        SELECT Id
-        FROM FixedActivity__c
-        WHERE Program__r.Season__c = :seasonId
-        WITH USER_MODE
-      ],
-      [
-        SELECT Id
-        FROM RecurringActivity__c
-        WHERE Program__r.Season__c = :seasonId
-        WITH USER_MODE
-      ],
-      [SELECT Id FROM Week__c WHERE Season__c = :seasonId WITH USER_MODE],
-      [
-        SELECT Id
-        FROM ElectiveSet__c
-        WHERE Season__c = :seasonId
-        WITH USER_MODE
-      ],
-      [
-        SELECT Id
-        FROM Offering__c
-        WHERE ElectiveSet__r.Season__c = :seasonId
-        WITH USER_MODE
-      ],
-      [
-        SELECT Id
-        FROM SpecialDay__c
-        WHERE Season__c = :seasonId
-        WITH USER_MODE
-      ],
-      [
-        SELECT Id
-        FROM SpecialEvent__c
-        WHERE Season__c = :seasonId
-        WITH USER_MODE
-      ]
-    };
-    for (List<SObject> records : lists) {
-      for (SObject record : records) {
+    // Four reads, each with the lists inside it (a list inside a read is not a query of its own),
+    // walked in loops so a list of any length reads in parts.
+    for (Season__c season : [
+      SELECT
+        Id,
+        (SELECT Id FROM Programs__r),
+        (SELECT Id FROM LocationTypes__r),
+        (SELECT Id FROM Locations__r),
+        (SELECT Id FROM Activities__r),
+        (SELECT Id FROM Weeks__r),
+        (SELECT Id FROM ElectiveSets__r),
+        (SELECT Id FROM SpecialDays__r),
+        (SELECT Id FROM SpecialEvents__r)
+      FROM Season__c
+      WHERE Id = :seasonId
+      WITH USER_MODE
+    ]) {
+      for (SObject record : season.Programs__r) {
+        inSeason.add(record.Id);
+      }
+      for (SObject record : season.LocationTypes__r) {
+        inSeason.add(record.Id);
+      }
+      for (SObject record : season.Locations__r) {
+        inSeason.add(record.Id);
+      }
+      for (SObject record : season.Activities__r) {
+        inSeason.add(record.Id);
+      }
+      for (SObject record : season.Weeks__r) {
+        inSeason.add(record.Id);
+      }
+      for (SObject record : season.ElectiveSets__r) {
+        inSeason.add(record.Id);
+      }
+      for (SObject record : season.SpecialDays__r) {
+        inSeason.add(record.Id);
+      }
+      for (SObject record : season.SpecialEvents__r) {
+        inSeason.add(record.Id);
+      }
+    }
+    for (Program__c program : [
+      SELECT
+        Id,
+        (SELECT Id FROM TimeBlocks__r),
+        (SELECT Id FROM Divisions__r),
+        (SELECT Id FROM FixedActivities__r),
+        (SELECT Id FROM RecurringActivities__r)
+      FROM Program__c
+      WHERE Season__c = :seasonId
+      WITH USER_MODE
+    ]) {
+      for (SObject record : program.TimeBlocks__r) {
+        inSeason.add(record.Id);
+      }
+      for (SObject record : program.Divisions__r) {
+        inSeason.add(record.Id);
+      }
+      for (SObject record : program.FixedActivities__r) {
+        inSeason.add(record.Id);
+      }
+      for (SObject record : program.RecurringActivities__r) {
+        inSeason.add(record.Id);
+      }
+    }
+    for (Division__c division : [
+      SELECT Id, (SELECT Id FROM Groups__r)
+      FROM Division__c
+      WHERE Program__r.Season__c = :seasonId
+      WITH USER_MODE
+    ]) {
+      for (SObject record : division.Groups__r) {
+        inSeason.add(record.Id);
+      }
+    }
+    for (ElectiveSet__c electiveSet : [
+      SELECT Id, (SELECT Id FROM Offerings__r)
+      FROM ElectiveSet__c
+      WHERE Season__c = :seasonId
+      WITH USER_MODE
+    ]) {
+      for (SObject record : electiveSet.Offerings__r) {
         inSeason.add(record.Id);
       }
     }

@@ -82,9 +82,8 @@ private class AgentImportsMoreTest {
         save(seen, ImportTestPlans.newCamp(seasonId))
       );
       Assert.areEqual(200, saved[0], String.valueOf(saved[1]));
-      // Bound: the screen's own save: measured 68 (2026-11-25), over the 50 the bar asks; not cut
-      // down here.
-      Assert.isTrue(saving < 73, 'one save within the limit: ' + saving);
+      // Bound: the screen's own save: measured 41 (2026-11-25).
+      Assert.isTrue(saving < 46, 'one save within the limit: ' + saving);
       Map<String, Object> result = (Map<String, Object>) JSON.deserializeUntyped(
         (String) saved[1]
       );
@@ -119,10 +118,9 @@ private class AgentImportsMoreTest {
       Integer saving = Limits.getQueries();
       Test.stopTest();
       Assert.areEqual(200, saved[0], String.valueOf(saved[1]));
-      // Bound: the screen's own save of a large worksheet: measured 54 (2026-11-25), over the 50
-      // the bar asks; not cut down here.
+      // Bound: the screen's own save of a large worksheet: measured 31 (2026-11-25).
       Assert.isTrue(
-        saving < 59,
+        saving < 36,
         'a large worksheet keeps room under the 100-query limit: ' + saving
       );
       Assert.areEqual(
