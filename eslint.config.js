@@ -169,5 +169,22 @@ module.exports = defineConfig([
       eslintJs
     },
     extends: ["eslintJs/recommended"]
+  },
+
+  // Every test file: no test left focused (`it.only` would run alone, and CI would stay green) or
+  // switched off, and every test asserts something: expect, or one of the repository's helpers
+  // that does (expectCleanGrid and expectFocusInGrid in jest/week-editor.js, a suite's own
+  // expect... helper, version.test.js's checkGrid). A new helper that asserts goes in this list.
+  {
+    files: ["**/__tests__/**/*.js"],
+    plugins: { jest: jestPlugin },
+    rules: {
+      "jest/no-focused-tests": "error",
+      "jest/no-disabled-tests": "error",
+      "jest/expect-expect": [
+        "error",
+        { assertFunctionNames: ["expect", "expect*", "checkGrid"] }
+      ]
+    }
   }
 ]);
