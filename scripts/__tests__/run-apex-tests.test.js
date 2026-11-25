@@ -413,6 +413,45 @@ describe("run-apex-tests.mjs", () => {
     expect(code).toBe(0);
   });
 
+  it("a pinned class exactly at its floor passes", async () => {
+    writeFloors({ Widget: 80 });
+    const { code } = await run();
+    expect(code).toBe(0);
+  });
+
+  it("with no floors file every class needs 90%", async () => {
+    fs.rmSync(path.join(work, "scripts", "apex-coverage-floors.json"));
+    const { code, out } = await run();
+    expect(out).toContain("Widget 80.0% (needs 90%)");
+    expect(code).toBe(1);
+  });
+
+  it.each([
+    ["not JSON", "{ Widget: 80"],
+    ["a floor that isn't a number", JSON.stringify({ Widget: "eighty" })],
+    ["a floor of 90 or more", JSON.stringify({ Widget: 90 })],
+    ["not a list of classes", "null"]
+  ])("stops on a floors file with %s", async (_, text) => {
+    fs.writeFileSync(
+      path.join(work, "scripts", "apex-coverage-floors.json"),
+      text
+    );
+    const { code, out } = await run();
+    expect(out).toMatch(/apex-coverage-floors\.json/);
+    expect(out).not.toContain("Apex tests passed");
+    expect(code).toBe(1);
+  });
+
+  it("a class no test ran fails its own check at 0%", async () => {
+    fs.writeFileSync(
+      path.join(work, "force-app", "main", "default", "classes", "Unrun.cls"),
+      "public class Unrun {\n  public void a() {\n    b();\n  }\n}\n"
+    );
+    const { code, out } = await run();
+    expect(out).toContain("Unrun 0.0% (needs 90%)");
+    expect(code).toBe(1);
+  });
+
   it("--class-names does not check any class's floor", async () => {
     writeFloors({});
     const { code } = await run({}, ["--class-names", "BetaTest"]);

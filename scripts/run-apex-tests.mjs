@@ -31,8 +31,9 @@ const { hasTestMethods } = ciApexTests;
 
 const MIN_COVERAGE = 75;
 const MIN_CLASS_COVERAGE = 90;
-// Classes under 90% when the per-class check came in, each pinned at its coverage then. A floor
-// may only go up: raise it as tests are added, and take the class out once it reaches 90%.
+// Classes under 90% when the per-class check came in, each pinned at its coverage then (rounded
+// down). A floor may only go up: raise it as tests are added (the run names the ones that can
+// be), and take the class out once it reaches 90%. Lowering one is a change reviewers see.
 const FLOORS_FILE = "scripts/apex-coverage-floors.json";
 const CLASS_TIMEOUT_MS = 10 * 60 * 1000;
 const CLI_TIMEOUT_MS = 2 * 60 * 1000;
@@ -399,10 +400,15 @@ function coverage(lines) {
   };
 }
 
-/** Class name -> its pinned floor (%), from FLOORS_FILE; none when there is no file. */
+/**
+ * Class name -> its pinned floor (%), from FLOORS_FILE; none when there is no file. Stops the run
+ * on a file that isn't { "Class": a number from 0 to 89 }, so a typo can't switch a class's
+ * check off.
+ */
 function floors() {
+  let pinned;
   try {
-    return JSON.parse(readFileSync(FLOORS_FILE, "utf8"));
+    pinned = JSON.parse(readFileSync(FLOORS_FILE, "utf8"));
   } catch (e) {
     if (e.code === "ENOENT") {
       return {};
@@ -410,7 +416,26 @@ function floors() {
     console.log(`Could not read ${FLOORS_FILE}: ${e.message}`);
     process.exit(1);
   }
+  const wrong =
+    pinned === null || typeof pinned !== "object" || Array.isArray(pinned)
+      ? ["(not a list of classes)"]
+      : Object.keys(pinned).filter(
+          (name) =>
+            !Number.isFinite(pinned[name]) ||
+            pinned[name] < 0 ||
+            pinned[name] >= MIN_CLASS_COVERAGE
+        );
+  if (wrong.length > 0) {
+    console.log(
+      `${FLOORS_FILE} needs a number from 0 to ${MIN_CLASS_COVERAGE - 1} for each class: ${wrong.join(", ")}`
+    );
+    process.exit(1);
+  }
+  return pinned;
 }
+
+/** A percentage to one decimal, rounded down, so 89.96% doesn't show as 90.0%. */
+const shown = (percent) => (Math.floor(percent * 10) / 10).toFixed(1);
 
 const classes = only
   ? testClasses().filter((name) => only.includes(name))
@@ -450,7 +475,7 @@ perClass
   .sort((a, b) => a.percent - b.percent || a.name.localeCompare(b.name))
   .forEach((c) =>
     console.log(
-      `  ${c.percent.toFixed(1).padStart(5)}%  ${c.name}` +
+      `  ${shown(c.percent).padStart(5)}%  ${c.name}` +
         (pinned[c.name] === undefined ? "" : ` (pinned at ${pinned[c.name]}%)`)
     )
   );
@@ -471,8 +496,7 @@ if (underFloor.length > 0) {
     `Under ${MIN_CLASS_COVERAGE}% (or under its floor in ${FLOORS_FILE}): ` +
       underFloor
         .map(
-          (c) =>
-            `${c.name} ${c.percent.toFixed(1)}% (needs ${floorOf(c.name)}%)`
+          (c) => `${c.name} ${shown(c.percent)}% (needs ${floorOf(c.name)}%)`
         )
         .join(", ")
   );

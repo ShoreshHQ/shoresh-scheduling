@@ -197,11 +197,13 @@ private class AgentSpecialScheduleTest {
       List<Object> read = readSchedule(
         colorWar(season, new Map<String, Object>())
       );
+      Integer queries = Limits.getQueries();
       List<Object> blank = readSchedule(
         new Map<String, Object>{ 'season' => season, 'special' => 'tug of war' }
       );
       Test.stopTest();
       Assert.areEqual(200, read[0], String.valueOf(read[1]));
+      Assert.isTrue(queries < 10, 'The read used ' + queries + ' queries');
       Assert.areEqual(
         '"Color War" (special event). Columns: Blue, Gold. Times: ' +
           '9:00 AM – 9:45 AM (09:00-09:45): Blue Open; Gold Open | ' +
