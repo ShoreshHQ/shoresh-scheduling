@@ -822,6 +822,23 @@ describe("c-shoresh-choices-import", () => {
     console.error.mockRestore();
   });
 
+  it("INGEST-1.9: an import Shoresh's server answered with its support code imported nothing, and says so", async () => {
+    bringInChoices.mockRejectedValue({
+      body: {
+        message: "Shoresh couldn't tell why. Try again. For support: K7Q-4MX."
+      }
+    });
+    const element = await render();
+    await choose(element, "chugim-week1.csv", SHEET);
+    await click(element, '[data-id="primary"]');
+    await click(element, '[data-settle="potterywheel"] [data-answer="leave"]');
+    await click(element, '[data-id="primary"]');
+    await click(element, '[data-id="primary"]');
+    expect($(element, '[data-id="error"]').textContent).toBe(
+      "Nothing was imported. Shoresh couldn't tell why. Try again. For support: K7Q-4MX."
+    );
+  });
+
   it("shows the server's reason when the save is refused, and stays on the card", async () => {
     bringInChoices.mockRejectedValue({
       body: {

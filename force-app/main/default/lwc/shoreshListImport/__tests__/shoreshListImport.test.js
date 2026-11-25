@@ -498,6 +498,20 @@ describe("c-shoresh-list-import", () => {
     console.error.mockRestore();
   });
 
+  it("INGEST-1.9: a save Shoresh's server answered with its support code saved nothing, and says so", async () => {
+    saveList.mockRejectedValue({
+      body: {
+        message: "Shoresh couldn't tell why. Try again. For support: K7Q-4MX."
+      }
+    });
+    const element = await openWith(["Activity", "Canoeing"].join("\n"));
+    saveOf(element).click();
+    await flush();
+    expect($(element, '[data-id="error"]').textContent).toBe(
+      "Nothing was saved. Shoresh couldn't tell why. Try again. For support: K7Q-4MX."
+    );
+  });
+
   it("says why nothing was saved when the server refuses", async () => {
     saveList.mockRejectedValue({
       body: { message: "Canoeing: Must be 1 or more." }

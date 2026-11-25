@@ -181,5 +181,5 @@ Each rule is clue, meaning, example, test.
    director to Roots", "INGEST-1.9: never says nothing was imported when the import's outcome is
    unknown" (Bring in choices); counter-cases "shows a save the server refused, and stays on the
    page", "says why nothing was saved when the server refuses", "INGEST-1.9: a save Shoresh's
-   server answered with its support code saved nothing, and says so", "INGEST-1.9: a save
+   server answered with its support code saved nothing, and says so" (Import last year, Import a list), "INGEST-1.9: an import Shoresh's server answered with its support code imported nothing, and says so" (Bring in choices), "INGEST-1.9: a save
    Salesforce's limit stopped saved nothing, and says so".
