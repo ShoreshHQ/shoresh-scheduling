@@ -652,7 +652,8 @@ export default class ShoreshChoicesImport extends LightningElement {
   }
   /**
    * An answer counts again with it (hand changes kept, who is on the sheet), in place. Only the
-   * latest count is kept, and Import waits for it.
+   * latest count is kept, and Import waits for it. A count that fails takes the old one away, so
+   * Import never brings in something other than what the card says.
    */
   async handleWhich(event) {
     const key = event.currentTarget.dataset.key;
@@ -666,6 +667,7 @@ export default class ShoreshChoicesImport extends LightningElement {
       if (mine === this.recounts) this.check = check;
     } catch (e) {
       if (mine === this.recounts) {
+        this.check = null;
         this.error = failed("Couldn't count what this sheet imports.", e);
       }
     } finally {

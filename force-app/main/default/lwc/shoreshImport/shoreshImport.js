@@ -33,7 +33,7 @@ import {
   keptNow,
   layoutWords,
   leaveable,
-  planNow,
+  planOrFail,
   proposalWith,
   recomputed,
   saveLabel,
@@ -101,6 +101,8 @@ export default class ShoreshImport extends LightningElement {
   versionUses = {};
   // The questions left open when Add was pressed, for the page after it (INGEST-5.5).
   savedOpen = [];
+  // Why the plan Add would save couldn't be worked out (shown while Add is off for it).
+  planError = null;
   // Where the cursor goes at the next render: { key } (that choice, if it is still there, else
   // the next question still open after { after }), { question }, { bringBack } or { selector }.
   focusNext = null;
@@ -480,9 +482,28 @@ export default class ShoreshImport extends LightningElement {
     this.kept = keptNow(this.flowInput, this.proposal, this.answers);
   }
 
-  /** The plan Add would save, for the counts; null if it cannot be made yet. */
+  /**
+   * The plan Add would save, for the counts; null if it cannot be made yet. When working it out
+   * fails, the screen says so with a support code, never a greyed Add with no reason.
+   */
   planNow(fileData) {
-    return planNow(this.flowInput, this.proposal, this.answers, fileData);
+    try {
+      const plan = planOrFail(
+        this.flowInput,
+        this.proposal,
+        this.answers,
+        fileData
+      );
+      if (this.planError && this.error === this.planError) {
+        this.error = null;
+      }
+      this.planError = null;
+      return plan;
+    } catch (e) {
+      this.planError = failed("This file can't be added yet.", e);
+      this.error = this.planError;
+      return null;
+    }
   }
 
   get seasonId() {
@@ -981,6 +1002,7 @@ export default class ShoreshImport extends LightningElement {
     this.files = [];
     this.proposal = null;
     this.plan = null;
+    this.planError = null;
     this.kept = null;
     this.openKind = null;
     this.openReadAs = null;
