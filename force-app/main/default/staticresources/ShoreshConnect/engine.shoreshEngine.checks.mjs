@@ -31,7 +31,8 @@ import {
   owner,
   slots
 } from "./engine.shoreshEngine.grid.mjs";
-import { compareText, earlyDates, minutes, weekdayOf } from "./engine.shoreshEngine.setup.mjs";
+import { compareText } from "./engine.shoreshTerms.shoreshTerms.mjs";
+import { earlyDates, minutes, weekdayOf } from "./engine.shoreshEngine.setup.mjs";
 import { BUSY, RELAX_ORDER, RULE as RULES } from "./engine.shoreshEngine.week.mjs";
 import { reasonFor } from "./engine.shoreshEngine.words.mjs";
 

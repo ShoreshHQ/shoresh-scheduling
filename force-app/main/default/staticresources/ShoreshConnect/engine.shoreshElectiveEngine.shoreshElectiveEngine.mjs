@@ -1,4 +1,4 @@
-import { article, buildTerms } from "./engine.shoreshTerms.shoreshTerms.mjs";
+import { article, buildTerms, compareText } from "./engine.shoreshTerms.shoreshTerms.mjs";
 import { hasOrderingEvidence } from "./engine.shoreshElectiveEngine.rankKind.mjs";
 import { minCostAssign } from "./engine.shoreshElectiveEngine.minCostAssign.mjs";
 
@@ -881,16 +881,6 @@ export function linkedSetPlan({
     }
   }
   return { sets, setAside, asideIds: new Set(setAside.map((a) => a.id)) };
-}
-
-/** Code-unit order: the same in every browser and locale. */
-function compareText(a, b) {
-  const x = a ?? "";
-  const y = b ?? "";
-  if (x < y) {
-    return -1;
-  }
-  return x > y ? 1 : 0;
 }
 
 function compareNumber(a, b) {
