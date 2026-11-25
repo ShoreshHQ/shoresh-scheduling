@@ -170,6 +170,7 @@ describe("The camp's Salesforce address", () => {
     expect(seen).toHaveLength(1);
   });
 
+  // API-1.156
   it("olderConnectorSaysSo: a downloaded copy older than the camp's does nothing and says to download it again", async () => {
     expect(notCampsOwn({ version: "1.0.50" }, "1.0.48")).toBe(
       "This copy of Shoresh's connector (1.0.48) is older than your camp's Shoresh (1.0.50), so nothing was done. Download it again from Settings in Shoresh."
@@ -189,6 +190,7 @@ describe("The camp's Salesforce address", () => {
     expect(ownVersion(path.join(dir, "none"))).toBeNull();
   });
 
+  // API-1.156
   it("newerConnectorSaysSo: a copy newer than the camp's does nothing and says so", async () => {
     expect(notCampsOwn({ version: "1.0.50" }, "1.0.52")).toBe(
       "This copy of Shoresh's connector (1.0.52) is newer than your camp's Shoresh (1.0.50) and works differently from its screens, so nothing was done. Download it again from Settings in Shoresh."
