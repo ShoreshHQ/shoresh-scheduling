@@ -35,7 +35,7 @@ const undoHeld = require("./undo");
 const { forAi } = require("./screenWords");
 const {
   campOf,
-  tooOld,
+  notCampsOwn,
   downloadAgain,
   read,
   send,
@@ -313,7 +313,7 @@ async function callOnce(
   const said = await camp(org, asked);
   // Not read: where Shoresh is (its namespace) isn't known, so nothing is sent (API-1.155).
   if (said.read === false) return campUnread(said.response);
-  const old = tooOld(said);
+  const old = notCampsOwn(said);
   if (old) return { ok: false, status: 400, text: old };
   const { namespace } = said;
   const at = {
@@ -1391,7 +1391,7 @@ async function check({ org, run = runSf } = {}) {
       text: "Salesforce didn't answer just now. Try the test again in a moment."
     };
   }
-  const old = tooOld(said);
+  const old = notCampsOwn(said);
   if (old) return { ok: false, text: old };
   const request = requestFor(byName("read_group_schedule"), {}, said.namespace);
   const out = await run(sfArgs(request, org));
