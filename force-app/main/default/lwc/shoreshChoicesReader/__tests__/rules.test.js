@@ -364,6 +364,25 @@ describe("reading", () => {
     ]);
   });
 
+  it("ELECT-2.9: marks every row whose choice for a rank is not kept, not only the first", () => {
+    const reading = read(
+      lines(
+        "ID,Name,#1,#2",
+        "101,Maya Elderglen,Archery,Drama",
+        "101,Maya Elderglen,Swim,Drama",
+        "101,Maya Elderglen,Pottery,Drama"
+      )
+    );
+    expect(reading.campers[0].choices.map((c) => [c.name, c.rank])).toEqual([
+      ["Archery", 1],
+      ["Drama", 2]
+    ]);
+    expect(reading.toCheck).toEqual([
+      expect.objectContaining({ kind: "sameRankTwice", row: 3, number: "101" }),
+      expect.objectContaining({ kind: "sameRankTwice", row: 4, number: "101" })
+    ]);
+  });
+
   it("says when one camper's rows give two divisions, and keeps the first", () => {
     const reading = read(
       lines(

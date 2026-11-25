@@ -545,6 +545,21 @@ describe("c-shoresh-manual-build: versions and Start from another week", () => {
     );
   });
 
+  it("says when the other weeks couldn't be listed, with a support code, and still offers a blank week", async () => {
+    jest.spyOn(console, "error").mockImplementation(() => {});
+    getWeekSources.mockRejectedValue(new Error("timed out"));
+    const element = await render(null);
+    expect(q(element, '[data-id="start-from"]')).toBeNull();
+    expect(q(element, '[data-id="start-week"]')).not.toBeNull();
+    expect(
+      q(element, '[data-id="start-from-error"]').textContent.trim()
+    ).toMatch(
+      /^Other weeks couldn't be listed\. Try again\. For support: [A-Z0-9]{3}-[A-Z0-9]{3}\.$/
+    );
+    await expect(element).toBeAccessible();
+    console.error.mockRestore();
+  });
+
   it("versions with the same name are told apart by when they were saved", async () => {
     // Published twice, then unpublished: two kept copies with the same name.
     const first = new Date(2026, 5, 29, 9, 0).toISOString();

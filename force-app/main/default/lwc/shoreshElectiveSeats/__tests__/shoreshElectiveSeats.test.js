@@ -221,6 +221,30 @@ describe("the start", () => {
       expect(opened()).toEqual(["rA"]);
     });
 
+    it("a slow read of a run already left that fails says nothing over the run now shown", async () => {
+      const element = await render({ setup: TWO, situation });
+      let failSlow;
+      openRun.mockReturnValueOnce(
+        new Promise((_, fail) => {
+          failSlow = fail;
+        })
+      );
+      const picker = () =>
+        $(element, 'c-shoresh-rail-picker[data-id="schedule"]');
+      picker().dispatchEvent(
+        new CustomEvent("change", { detail: { value: "s1" } })
+      );
+      await flush();
+      picker().dispatchEvent(
+        new CustomEvent("change", { detail: { value: "s2" } })
+      );
+      await flush();
+      expect(shown(element)).toBe("s2");
+      failSlow(new Error("timed out"));
+      await flush();
+      expect($(element, '[data-id="error"]')).toBeNull();
+    });
+
     it("drawn fresh, opens on the exact run asked for", async () => {
       const element = await render({
         setup: TWO,
@@ -1066,6 +1090,33 @@ describe("Finalize, Final, and a new version", () => {
       "true",
       "false"
     ]);
+  });
+
+  it("says when the run's menu couldn't be read again after a save, with a support code", async () => {
+    const final = assignedView({
+      run: { ...RUN_INFO, status: "Final", finalizedBy: "Greg Feitel" }
+    });
+    const element = await render({
+      situation: { runs: [final.run] },
+      view: final
+    });
+    jest.spyOn(console, "error").mockImplementation(() => {});
+    startNewVersion.mockResolvedValue(
+      runView({
+        run: { ...RUN_INFO, id: "r2", newVersionOf: "r1" },
+        revision: 1
+      })
+    );
+    seatsSetup.mockRejectedValue(new Error("timed out"));
+    $(element, 'c-shoresh-rail-pop[data-id="state"]').dispatchEvent(
+      new CustomEvent("select", { detail: { value: "new" } })
+    );
+    await flush();
+    expect(startNewVersion).toHaveBeenCalled();
+    expect(text($(element, '[data-id="error"]'))).toMatch(
+      /^Done, but the screen couldn't show it yet\. Reload the page\. Try again\. For support: [A-Z0-9]{3}-[A-Z0-9]{3}\.$/
+    );
+    console.error.mockRestore();
   });
 });
 

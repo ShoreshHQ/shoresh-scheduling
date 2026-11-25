@@ -739,6 +739,18 @@ describe("c-shoresh-import", () => {
       );
     });
 
+    it("INGEST-5.8: says when what earlier imports brought in couldn't be read, and still opens the review", async () => {
+      jest.spyOn(console, "error").mockImplementation(() => {});
+      getImported.mockRejectedValue(new Error("timed out"));
+      const element = await render();
+      await choose(element, ["maple-grove-2026-all-camp.xlsx"]);
+      expect($(element, '[data-id="error"]').textContent).toMatch(
+        /^What earlier imports brought in couldn't be read\. Try again\. For support: [A-Z0-9]{3}-[A-Z0-9]{3}\.$/
+      );
+      expect(similarId(element)).toBeTruthy();
+      console.error.mockRestore();
+    });
+
     it("INGEST-5.8: Remove says the cells it also takes out of a superseded imported week", async () => {
       getImported.mockResolvedValue({
         untouched: ["a2"],

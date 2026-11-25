@@ -358,6 +358,8 @@ export default class ShoreshElectiveSeats extends LightningElement {
         }
       }
     } catch (e) {
+      // A run already left says nothing over the run now shown.
+      if (ticket !== this.loadTicket) return;
       this.error = failed(
         `Couldn't open these ${this.t.sIn("Elective")} ${this.t.pIn("Seats")}.`,
         e
@@ -876,8 +878,12 @@ export default class ShoreshElectiveSeats extends LightningElement {
   async refreshRuns() {
     try {
       this.situation = await seatsSetup({ seasonId: this._setup.season.Id });
-    } catch {
-      // The run on screen is already right; the menu catches up on the next read.
+    } catch (e) {
+      // The run on screen is already right; its menu isn't, and the screen says so.
+      this.error = failed(
+        "Done, but the screen couldn't show it yet. Reload the page.",
+        e
+      );
     }
   }
 

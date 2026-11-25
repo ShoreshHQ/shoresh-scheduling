@@ -404,15 +404,22 @@ export default class ShoreshImport extends LightningElement {
     }
   }
 
-  /** What earlier imports brought in and no one changed since; none if it cannot be read. */
+  /**
+   * What earlier imports brought in and no one changed since; none if it cannot be read, and the
+   * screen says so (nothing is then listed as not in these files).
+   */
   async importedBefore() {
     if (!this.seasonId) {
       return {};
     }
     try {
       return (await getImported({ seasonId: this.seasonId })) || {};
-    } catch {
+    } catch (e) {
       // Without it, everything the camp has is asked about and nothing is listed: never changed.
+      this.error = failed(
+        "What earlier imports brought in couldn't be read.",
+        e
+      );
       return {};
     }
   }
