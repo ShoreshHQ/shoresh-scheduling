@@ -5255,6 +5255,49 @@ describe("c-shoresh-camp-setup", () => {
       expect(getSeasonSetup.mock.calls.length).toBe(reads + 1);
     });
 
+    it("WEEK-6.11: a schedule saved, then left through the menu, a read of the season that fails is said", async () => {
+      const element = await renderSpecial();
+      openPlan.mockResolvedValue({
+        itemId: "se1",
+        kind: "SpecialEvent",
+        name: "Carnival",
+        revision: null,
+        schedule: {
+          schedule: { id: "se1", name: "Carnival" },
+          days: [
+            {
+              dateValue: "2000-01-03",
+              blocks: [],
+              groups: [],
+              items: [],
+              rows: [],
+              locks: []
+            }
+          ]
+        },
+        activities: []
+      });
+      list(element, "events")
+        .shadowRoot.querySelector('[data-id="details"][data-row-key="row-se1"]')
+        .click();
+      await flush();
+      q(element, "c-shoresh-special-details")
+        .shadowRoot.querySelector('[data-id="open-schedule"]')
+        .click();
+      await flush();
+      getSeasonSetup.mockRejectedValue({ body: { message: "Offline." } });
+      q(element, "c-shoresh-special-schedule").dispatchEvent(
+        new CustomEvent("changed")
+      );
+      q(element, "c-shoresh-menu").dispatchEvent(
+        new CustomEvent("navigate", { detail: { screen: "groups" } })
+      );
+      await flush();
+      expect(q(element, '[data-id="error"]').textContent.trim()).toBe(
+        "Done, but the screen couldn't show it yet. Reload the page. Offline."
+      );
+    });
+
     it("a row's delete asks, then deletes it and reads the season again", async () => {
       const element = await renderSpecial();
       deleteRecord.mockResolvedValue();
@@ -6090,6 +6133,35 @@ describe("a change on one screen shows on the others", () => {
       expect(error(element)).toBe(
         "Couldn't show the season's latest changes here. Offline."
       );
+    });
+
+    it("as Bring in choices opens, with a support code when Shoresh can't say why", async () => {
+      getSeasonSetup.mockResolvedValue(season([]));
+      const element = await render();
+      getSeasonSetup.mockRejectedValue(new Error("network"));
+      await go(element, "bringInChoices");
+      expect(error(element)).toMatch(
+        /^Couldn't show the season's latest changes here\. Try again\. For support: [\w-]+\.$/
+      );
+    });
+
+    it("a read replaced by a newer one that then fails says nothing", async () => {
+      getSeasonSetup.mockResolvedValue(season([]));
+      const element = await render();
+      let failOlder;
+      getSeasonSetup.mockReturnValueOnce(
+        new Promise((resolve, reject) => {
+          failOlder = reject;
+        })
+      );
+      q(element, "c-shoresh-manual-build").dispatchEvent(
+        new CustomEvent("seasonchanged")
+      );
+      getSeasonSetup.mockResolvedValueOnce(season([]));
+      await changedOn(element, "c-shoresh-manual-build", true);
+      failOlder({ body: { message: "Offline." } });
+      await flush();
+      expect(error(element)).toBeUndefined();
     });
   });
 });

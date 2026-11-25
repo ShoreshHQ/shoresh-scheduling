@@ -3731,7 +3731,14 @@ export default class ShoreshCampSetup extends LightningElement {
    * left showing the old season with no word.
    */
   readSeasonAgain(what = this.refreshFailed) {
-    this.loadSeason().catch((e) => this.showError(e, what));
+    const read = this.loadSeason();
+    const ticket = this.loadTicket;
+    read.catch((e) => {
+      // A newer read (or another season) replaced this one: its failure isn't what's shown.
+      if (ticket === this.loadTicket) {
+        this.showError(e, what);
+      }
+    });
   }
 
   /** The change was saved, but showing the season again failed. */
