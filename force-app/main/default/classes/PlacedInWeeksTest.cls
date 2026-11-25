@@ -168,4 +168,62 @@ private class PlacedInWeeksTest {
       }
     }
   }
+
+  private static String refusal(Camp c) {
+    try {
+      RunsInController.placedInWeeks(
+        new List<RunsIn.WeekOff>{ ask(c.ids.get('Group A'), c.weeks[0].Id) }
+      );
+    } catch (AuraHandledException e) {
+      return e.getMessage()
+        .replaceAll(' For support: [A-Z0-9]{3}-[A-Z0-9]{3}\\.$', '');
+    }
+    return null;
+  }
+
+  // CORE-6.19: a day that can't be read is said, never counted as nothing (the question would go missing).
+  @IsTest
+  static void aDayThatCantBeReadIsSaid() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      Camp c = camp();
+      draftWithSwim(c, c.weeks[0], 'Draft/Manual');
+      ScheduleDay__c day = [
+        SELECT Id, Schedule__r.Week__r.Name
+        FROM ScheduleDay__c
+        WHERE Schedule__r.Week__c = :c.weeks[0].Id
+        WITH USER_MODE
+        LIMIT 1
+      ];
+      Database.update(
+        new ScheduleDay__c(Id = day.Id, Grid__c = 'not a grid'),
+        AccessLevel.SYSTEM_MODE
+      );
+      Test.startTest();
+      String said = refusal(c);
+      Test.stopTest();
+      Assert.areEqual(
+        'Shoresh couldn\'t read a day of ' +
+          day.Schedule__r.Week__r.Name +
+          '\'s schedules, so it can\'t say what is placed there.',
+        said
+      );
+    }
+  }
+
+  // CORE-6.19: days past the query cap are said, never left out of the count.
+  @IsTest
+  static void daysPastTheCapAreSaid() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      Camp c = camp();
+      draftWithSwim(c, c.weeks[0], 'Draft/Manual');
+      PlacedInWeeks.queryBudget = 0;
+      Test.startTest();
+      String said = refusal(c);
+      Test.stopTest();
+      Assert.areEqual(
+        'Shoresh couldn\'t count every cell placed in these weeks. Turn them off a few weeks at a time.',
+        said
+      );
+    }
+  }
 }

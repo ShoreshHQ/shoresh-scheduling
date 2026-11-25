@@ -196,6 +196,13 @@ These never bend for Shoresh.
   gave MUST NOT be given a second (ADR 0030; Greg 2026-11-21). Tests: ErrorCodesTest;
   ScreenErrorsTest anythingElseSaysShoreshCouldNotTellWhy; shoreshErrors.test.js "support codes
   (CORE-6.15)".
+- **CORE-6.19** A count Shoresh can't make MUST be said, never shown as a smaller number or a
+  question left out: a schedule day it can't read, or more days than one request reads, stops
+  "Placed in N cells" with why; a failed count of the schedules a bunk or activity is in is said
+  ("Shoresh couldn't count…") and its why kept for support (CORE-6.15). A holding record a
+  change can't clean up is kept for support with why (review 2026-11-25 wave 2, apex-core
+  findings 6 and 10, apex-tests finding 6). Tests: PlacedInWeeksTest aDayThatCantBeReadIsSaid,
+  daysPastTheCapAreSaid; SetupDeleteTest aCountThatFailsIsSaidAndKeptForSupport.
 - **CORE-6.16** Help in Settings MUST show the installed version, "Version 1.4", beside support's
   address; outside an installed package it MUST show none. The About page MUST stay as it is
   (ADR 0030; Greg 2026-11-21). Tests: ShoreshVersionTest; shoreshLearned.test.js "CORE-6.16".

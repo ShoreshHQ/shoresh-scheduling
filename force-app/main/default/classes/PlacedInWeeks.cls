@@ -4,9 +4,18 @@
  * ExclusionConfirmDialog.jsx: "Placed in N slots in <week>.", shown as "cells", the design guide's word). As on the desktop, a cell is one
  * time block of one group: an activity two blocks long counts two. A location counts the cells
  * of the activities that use it. Versions and published schedules are not counted: they don't
- * change. Read in user mode; a day that can't be read counts nothing.
+ * change. Read in user mode: the days are listed first (their Ids only), then their text is read
+ * a few at a time with a cap on queries, as GroupPlacements does. A day that can't be read, or
+ * days past the cap, are said, never counted as nothing (the question would be missing).
  */
 public with sharing class PlacedInWeeks {
+  // Day parts read at once: 25 at the longest (131,072 characters) is about 3.3 million.
+  @TestVisible
+  private static Integer partsAtOnce = 25;
+  // Queries for the text, after the ones that find the locations and list the days.
+  @TestVisible
+  private static Integer queryBudget = 60;
+
   public class Placed {
     @AuraEnabled
     public Id target { get; set; }
@@ -51,20 +60,44 @@ public with sharing class PlacedInWeeks {
     Map<Id, Id> locationOf
   ) {
     Map<Id, Map<Id, Integer>> byWeek = new Map<Id, Map<Id, Integer>>();
-    for (ScheduleDay__c day : [
-      SELECT Grid__c, Schedule__r.Week__c
+    List<Id> partIds = new List<Id>();
+    for (ScheduleDay__c part : [
+      SELECT Id
       FROM ScheduleDay__c
       WHERE
         Schedule__r.Week__c IN :weekIds
         AND Schedule__r.Status__c = 'Draft'
         AND Schedule__r.Origin__c IN ('Manual', 'Generated')
       WITH USER_MODE
+      ORDER BY Id
     ]) {
-      Id weekId = day.Schedule__r.Week__c;
-      if (!byWeek.containsKey(weekId)) {
-        byWeek.put(weekId, new Map<Id, Integer>());
+      partIds.add(part.Id);
+    }
+    Integer queries = 0;
+    for (Integer i = 0; i < partIds.size(); i += partsAtOnce) {
+      if (queries == queryBudget) {
+        // Shoresh's own refusal (CORE-6.15): no support code.
+        throw new ShoreshException(
+          'Shoresh couldn\'t count every cell placed in these weeks. Turn them off a few weeks at a time.'
+        );
       }
-      tally(day.Grid__c, locationOf, byWeek.get(weekId));
+      List<Id> batch = new List<Id>();
+      for (Integer j = i; j < Math.min(i + partsAtOnce, partIds.size()); j++) {
+        batch.add(partIds[j]);
+      }
+      for (ScheduleDay__c day : [
+        SELECT Id, Grid__c, Schedule__r.Week__c, Schedule__r.Week__r.Name
+        FROM ScheduleDay__c
+        WHERE Id IN :batch
+        WITH USER_MODE
+      ]) {
+        Id weekId = day.Schedule__r.Week__c;
+        if (!byWeek.containsKey(weekId)) {
+          byWeek.put(weekId, new Map<Id, Integer>());
+        }
+        tally(day, locationOf, byWeek.get(weekId));
+      }
+      queries++;
     }
     return byWeek;
   }
@@ -94,15 +127,22 @@ public with sharing class PlacedInWeeks {
 
   /** Adds one day part's cells to each group, activity, and location they belong to. */
   private static void tally(
-    String text,
+    ScheduleDay__c day,
     Map<Id, Id> locationOf,
     Map<Id, Integer> counts
   ) {
     ScheduleGrid grid;
     try {
-      grid = ScheduleGrid.fromText(text);
+      grid = ScheduleGrid.fromText(day.Grid__c);
     } catch (Exception e) {
-      return;
+      throw new ShoreshException(
+        ErrorCodes.said(
+          'Shoresh couldn\'t read a day of ' +
+            day.Schedule__r.Week__r.Name +
+            '\'s schedules, so it can\'t say what is placed there.',
+          'PlacedInWeeks: day ' + day.Id + ': ' + ErrorCodes.detailOf(e)
+        )
+      );
     }
     for (Integer g = 0; g < grid.groups.size(); g++) {
       Id groupId = asId(grid.groups[g].id);

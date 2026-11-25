@@ -142,7 +142,8 @@ Each rule is clue, meaning, example, test.
    since the newest imported week is the one that counts (engine protocol 8.9). Remove is then
    offered and says so ("Arhcery · also taken out of Imported from maple.xlsx"); removing it
    takes its cells out of those weeks (`ImportSupersededCells`), and Undo puts the item and those
-   days back exactly (a day changed since is kept and named). Any other imported week, a draft,
+   days back exactly (a day changed since, even only in capitals, is kept and named; one deleted
+   since is named as deleted). Any other imported week, a draft,
    or a published schedule keeps it ("Arhcery is on Imported from maple.xlsx"). The save
    checks the same. A season with more schedule days than are read (5,000) keeps every item not
    already found in use ("Arhcery may be on one of the season's many schedules"), never offered
@@ -159,6 +160,7 @@ Each rule is clue, meaning, example, test.
    this import brings in again supersedes it"; counter-case "an imported week this import does
    not bring in keeps it, with why"; Apex
    `ingest58CellsOnlyInASupersededImportedWeekGoWithTheItemAndUndoPutsThemBack`,
+   `ingest58UndoKeepsADayChangedOnlyInCapitals`, `ingest58UndoNamesADayDeletedSince`,
    `ingest58AnImportedWeekNotBroughtInAgainKeepsTheItem`; screen
    "INGEST-5.8: what an earlier import brought in and these files lack"; Apex `ImportReviewTest`
    `ingest58RemovesWhatAnImportBroughtInAndUndoBringsItBack`,
@@ -187,7 +189,8 @@ Each rule is clue, meaning, example, test.
     from what is put back. One import log (`ImportLogEntries`) records all of it as the import saves,
     and `ImportUndoLog` reverses it. Undoing a copy takes the new season away with everything in it, and the
     screen goes back to the camp. Anything changed since, or in use by something the import did
-    not make, is kept and named, never removed silently: that includes every group, time block,
+    not make, is kept and named, never removed silently (every later import still standing is
+    read for what it changed, however many there are): that includes every group, time block,
     activity and place named by a schedule built, locked, placed by hand or published since. The
     import's own kept version is the import's, and goes with it. A copied season that keeps
     anything stays, with what it keeps. A holding record of a group with no division (DIV-1.1) comes back
@@ -198,7 +201,8 @@ Each rule is clue, meaning, example, test.
     Example: copy "Summer 2026" to "Summer 2027", then Undo last import in "Summer 2027": the
     camp holds exactly what it held before the copy. Edit a copied activity first, and Undo keeps
     it, and "Summer 2027" with it, and says so.
-    Test: Apex `ImportUndoBuiltWeeksTest` `undoKeepsWhatAWeekBuiltSinceUses`; `ImportUndoAsItWasTest`
+    Test: Apex `ImportUndoBuiltWeeksTest` `undoKeepsWhatAWeekBuiltSinceUses`;
+    `ImportUndoLaterTest` `everyLaterImportIsRead`; `ImportUndoAsItWasTest`
     `ingest510UndoingCopySeasonTakesTheWholeCopyAway`,
     `ingest510ACopyChangedSinceKeepsTheChangeAndItsSeason`,
     `ingest510WhatTriggersWorkedOutGoesBackToo`; `AgentCopyAndMatchTest`

@@ -5,12 +5,11 @@
  * edited since is.
  */
 public with sharing class ImportUndoLater {
-  // Later imports read for what they changed: more than stand at once in a season.
-  private static final Integer LATER_LIMIT = 50;
   private Set<Id> changed = new Set<Id>();
 
+  /** Every later import standing, read a part at a time (each log can be long). */
   public ImportUndoLater(Import__c done) {
-    for (Import__c later : [
+    for (List<Import__c> part : [
       SELECT Changed__c
       FROM Import__c
       WHERE
@@ -20,10 +19,11 @@ public with sharing class ImportUndoLater {
         AND UndoneAt__c = NULL
       WITH USER_MODE
       ORDER BY CreatedDate DESC
-      LIMIT :LATER_LIMIT
     ]) {
-      if (String.isNotBlank(later.Changed__c)) {
-        addIds(ImportLogEntries.read(later.Changed__c).recordValues);
+      for (Import__c later : part) {
+        if (String.isNotBlank(later.Changed__c)) {
+          addIds(ImportLogEntries.read(later.Changed__c).recordValues);
+        }
       }
     }
   }
