@@ -205,7 +205,7 @@ describe("generateWeek on random small camps", () => {
 
 /**
  * Weekly maximums are soft (Greg, 2026-10-17): over them before anything else, smallest overage
- * first. Random camps where only maximums press (one division, no places, no limit at once, every
+ * first (a maximum of 0 is never gone over, LOCK-4.12). Random camps where only maximums press (one division, no places, no limit at once, every
  * activity for everyone, one block long). A bunk two or more over on an activity is wrong when,
  * at every cell that activity holds for it, another activity was there to take at most one over
  * (at or under its maximum in the finished week, so at most one over when chosen, and not on that
@@ -254,6 +254,7 @@ describe("going over weekly maximums, on random camps", () => {
                 acts.some(
                   (b) =>
                     b.id !== a.id &&
+                    b.max !== 0 &&
                     (b.max === null || count(b.id) <= b.max) &&
                     !d[g.id].some((x) => x && x.id === b.id)
                 )

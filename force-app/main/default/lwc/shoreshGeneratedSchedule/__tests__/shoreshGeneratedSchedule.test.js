@@ -650,14 +650,15 @@ describe("c-shoresh-generated-schedule", () => {
       __dirname,
       "../../../staticresources/ShoreshConnect"
     );
-    // Swim owed three times in two days (under its goal); Hike may not run at all (over).
+    // Swim owed three times in two days (under its goal); Hike at most once, so its second day is
+    // over (a max of 0 would never be placed at all, LOCK-4.12).
     const inputs = {
       ...camp({
         ...SMALL,
         scheduleId: SCHEDULE,
         activities: [
           { name: "Swim", min: 3, max: 3, atOnce: 2 },
-          { name: "Hike", min: 0, max: 0, atOnce: 2 },
+          { name: "Hike", min: 0, max: 1, atOnce: 2 },
           { name: "Art", min: 3, max: 3, atOnce: 2 }
         ]
       }),
@@ -1495,11 +1496,12 @@ describe("c-shoresh-generated-schedule", () => {
   });
 
   it("lists a cell that bends a rule, never on the grid, worked out again on load", async () => {
-    // One activity with a weekly max of 0: never blank goes over the limit on the first day shown
-    // (it never doubles up in a day: once a day is a limit, Greg 2026-10-25).
+    // One activity with a weekly max of 1: never blank goes over the limit on the second day
+    // (it never doubles up in a day: once a day is a limit, Greg 2026-10-25; a max of 0 is never
+    // gone over, LOCK-4.12).
     const inputs = camp({
       ...SMALL,
-      activities: [{ name: "Swim", min: 0, max: 0, atOnce: 2 }]
+      activities: [{ name: "Swim", min: 0, max: 1, atOnce: 2 }]
     });
     const element = await render(inputs);
     await generate(element);
@@ -1512,7 +1514,7 @@ describe("c-shoresh-generated-schedule", () => {
     const days = sent().days;
     const saved = camp({
       ...SMALL,
-      activities: [{ name: "Swim", min: 0, max: 0, atOnce: 2 }],
+      activities: [{ name: "Swim", min: 0, max: 1, atOnce: 2 }],
       scheduleId: SCHEDULE
     });
     saved.days = saved.days.map((day, i) => ({

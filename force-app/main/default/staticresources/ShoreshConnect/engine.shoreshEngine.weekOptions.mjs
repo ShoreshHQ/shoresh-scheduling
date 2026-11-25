@@ -194,6 +194,10 @@ export function check(st, act, g, d, b, all) {
   };
   const group = st.groups.get(g);
   if (act.max != null && st.getCount(g, act.id) >= act.max) {
+    // At most 0 times a week is a limit, not a preference: a build never spreads it (LOCK-4.12).
+    if (act.max === 0) {
+      return all ? null : RULE.WEEKLY_MAX;
+    }
     if (!all) {
       return RULE.WEEKLY_MAX;
     }

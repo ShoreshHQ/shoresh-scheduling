@@ -8,8 +8,8 @@
  *                  setup fields counted here);
  *   gapIsABug      every Open cell is proven unfillable: nothing allowed is physically free there,
  *                  and (small camps) no week fills more cells within the hard limits.
- * Weekly maximums are a preference (step 7), so they never make a cell unfillable; once a day is
- * a limit (Greg, 2026-10-25).
+ * Weekly maximums are a preference (step 7), so they never make a cell unfillable, except a
+ * maximum of 0, which a build never spreads (LOCK-4.12); once a day is a limit (Greg, 2026-10-25).
  */
 import { cellsOf } from "./camp";
 import { busiestOther, problems } from "./check";
@@ -225,7 +225,11 @@ function ledger(spec, m, cells) {
 /** Could act start at cell (d, g, b) of grid `cells` within the hard limits? */
 function fitsAt(m, led, cells, act, d, g, b, isFree) {
   const group = m.groups.get(g);
-  if (!eligible(act, group) || b + act.span > m.blocks.length) {
+  if (
+    !eligible(act, group) ||
+    act.max === 0 ||
+    b + act.span > m.blocks.length
+  ) {
     return false;
   }
   // Once a day: the group doesn't already have it that day.
