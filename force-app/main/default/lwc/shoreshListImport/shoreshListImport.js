@@ -956,15 +956,6 @@ export default class ShoreshListImport extends LightningElement {
     ];
   }
 
-  rowsOf(p, status) {
-    return (p.rows || []).filter((r) => r.status === status);
-  }
-
-  /** Rows of a status across every list. */
-  rowsWith(status) {
-    return this.proposals.flatMap((p) => this.rowsOf(p, status));
-  }
-
   /**
    * What the camp deleted before and this list leaves out (Greg, decision 45), each with Bring
    * back: rows of the list, and places or kinds of place its rows name.

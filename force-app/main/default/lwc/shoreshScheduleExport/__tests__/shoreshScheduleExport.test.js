@@ -3,9 +3,9 @@ import {
   EVERY,
   blockText,
   pagesFor,
-  printTable,
   scheduleSheets
 } from "c/shoreshScheduleExport";
+import { printTable } from "../table";
 import { buildTerms } from "c/shoreshTerms";
 import {
   LABELS,

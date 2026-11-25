@@ -6,20 +6,10 @@
  * words, the same week and choice always giving the same file and the same pages.
  */
 export { CANT_BE_SHOWN } from "./removed";
-export { printTable } from "./table";
-export {
-  blockText,
-  fileTitle,
-  itemText,
-  scheduleSheets,
-  sheetsFor
-} from "./sheets";
+export { blockText, fileTitle, scheduleSheets, sheetsFor } from "./sheets";
 export {
   EVERY,
-  PAGE_COLUMNS,
   campPlaces,
-  choiceLabel,
-  dayPieces,
   noScheduleYet,
   pagesFor,
   printChoices
