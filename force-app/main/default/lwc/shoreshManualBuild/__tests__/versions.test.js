@@ -560,6 +560,36 @@ describe("c-shoresh-manual-build: versions and Start from another week", () => {
     console.error.mockRestore();
   });
 
+  it("WEEK-6.11: a late failure listing a week already left changes nothing on the week shown", async () => {
+    jest.spyOn(console, "error").mockImplementation(() => {});
+    let failSlow;
+    getWeekSources.mockReturnValueOnce(
+      new Promise((_, fail) => {
+        failSlow = fail;
+      })
+    );
+    const element = await render(
+      null,
+      nsRecord({
+        ...SETUP,
+        weeks: [...SETUP.weeks, { Id: "w2", Name: "Week 2" }]
+      })
+    );
+    getWeekSources.mockResolvedValue([
+      { id: "d9", weekName: "Week 1", name: "Manual Build", isVersion: false }
+    ]);
+    q(element, '[data-id="week"]').dispatchEvent(
+      new CustomEvent("change", { detail: { value: "w2" } })
+    );
+    await flush();
+    expect(q(element, '[data-id="start-from"]')).not.toBeNull();
+    failSlow(new Error("timed out"));
+    await flush();
+    expect(q(element, '[data-id="start-from"]')).not.toBeNull();
+    expect(q(element, '[data-id="start-from-error"]')).toBeNull();
+    console.error.mockRestore();
+  });
+
   it("versions with the same name are told apart by when they were saved", async () => {
     // Published twice, then unpublished: two kept copies with the same name.
     const first = new Date(2026, 5, 29, 9, 0).toISOString();

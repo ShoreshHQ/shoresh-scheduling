@@ -221,7 +221,7 @@ describe("the start", () => {
       expect(opened()).toEqual(["rA"]);
     });
 
-    it("a slow read of a run already left that fails says nothing over the run now shown", async () => {
+    it("ELECT-5.11: a slow read of a run already left that fails says nothing over the run now shown", async () => {
       const element = await render({ setup: TWO, situation });
       let failSlow;
       openRun.mockReturnValueOnce(
@@ -240,6 +240,29 @@ describe("the start", () => {
       );
       await flush();
       expect(shown(element)).toBe("s2");
+      failSlow(new Error("timed out"));
+      await flush();
+      expect($(element, '[data-id="error"]')).toBeNull();
+    });
+
+    it("ELECT-5.11: a slow failed read of a run left for a schedule with no run says nothing", async () => {
+      const element = await render({ setup: TWO, situation: { runs: [A] } });
+      const pick = (value) =>
+        $(element, 'c-shoresh-rail-picker[data-id="schedule"]').dispatchEvent(
+          new CustomEvent("change", { detail: { value } })
+        );
+      pick("s2");
+      await flush();
+      let failSlow;
+      openRun.mockReturnValueOnce(
+        new Promise((_, fail) => {
+          failSlow = fail;
+        })
+      );
+      pick("s1");
+      await flush();
+      pick("s2");
+      await flush();
       failSlow(new Error("timed out"));
       await flush();
       expect($(element, '[data-id="error"]')).toBeNull();
@@ -811,6 +834,48 @@ describe("Assign seats", () => {
     }
   });
 
+  it("ELECT-5.11: a stopped save keeps saying why when the menu then can't be read again", async () => {
+    const element = await render();
+    jest.useFakeTimers();
+    try {
+      assignSeats.mockResolvedValue(runView({ save: { done: 0, total: 8 } }));
+      openRun.mockResolvedValueOnce(
+        runView({
+          save: {
+            done: 6,
+            total: 8,
+            problem: "That was removed. Reload the page."
+          }
+        })
+      );
+      seatsSetup.mockRejectedValue(new Error("timed out"));
+      $(element, '[data-id="primary"]').click();
+      await flush();
+      jest.advanceTimersByTime(3000);
+      await flush();
+      expect(text($(element, '[data-id="error"]'))).toBe(
+        "Saving stopped after 6 of 8. That was removed. Reload the page."
+      );
+      expect(text($(element, '[data-id="error-action"]'))).toBe("Assign again");
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  it("ELECT-5.11: after Assign, a menu that can't be read again is said, with a support code", async () => {
+    const element = await render();
+    jest.spyOn(console, "error").mockImplementation(() => {});
+    assignSeats.mockResolvedValue(assignedView());
+    seatsSetup.mockRejectedValue(new Error("timed out"));
+    $(element, '[data-id="primary"]').click();
+    await flush();
+    expect(text($(element, '[data-id="status"]'))).toBe("3 of 4 placed.");
+    expect(text($(element, '[data-id="error"]'))).toMatch(
+      /^Done, but the screen couldn't show it yet\. Reload the page\. Try again\. For support: /
+    );
+    console.error.mockRestore();
+  });
+
   it("opened while a large save goes on, its buttons wait and it says how far it got", async () => {
     jest.useFakeTimers();
     try {
@@ -1092,7 +1157,7 @@ describe("Finalize, Final, and a new version", () => {
     ]);
   });
 
-  it("says when the run's menu couldn't be read again after a save, with a support code", async () => {
+  it("ELECT-5.11: says when the run's menu couldn't be read again after a save, with a support code", async () => {
     const final = assignedView({
       run: { ...RUN_INFO, status: "Final", finalizedBy: "Greg Feitel" }
     });

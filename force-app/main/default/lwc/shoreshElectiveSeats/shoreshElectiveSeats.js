@@ -336,11 +336,12 @@ export default class ShoreshElectiveSeats extends LightningElement {
   async loadRun() {
     const runId = this.runId;
     this.openCell = null;
+    // Taken before "no run", so a slow read of a run already left never lands over this.
+    const ticket = ++this.loadTicket;
     if (!runId) {
       this.view = null;
       return;
     }
-    const ticket = ++this.loadTicket;
     try {
       const view = await openRun({ runId });
       if (ticket !== this.loadTicket) return;
@@ -876,10 +877,13 @@ export default class ShoreshElectiveSeats extends LightningElement {
 
   /** The season's runs read again after a save (a run's state changed, or one was added). */
   async refreshRuns() {
+    const ticket = this.loadTicket;
     try {
       this.situation = await seatsSetup({ seasonId: this._setup.season.Id });
     } catch (e) {
-      // The run on screen is already right; its menu isn't, and the screen says so.
+      // The run on screen is already right; its menu isn't, and the screen says so: never over
+      // a run opened since, nor over what is already said (a save that stopped says why).
+      if (ticket !== this.loadTicket || this.error) return;
       this.error = failed(
         "Done, but the screen couldn't show it yet. Reload the page.",
         e
