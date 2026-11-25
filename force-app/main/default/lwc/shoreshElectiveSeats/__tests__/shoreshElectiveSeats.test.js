@@ -862,6 +862,24 @@ describe("Assign seats", () => {
     }
   });
 
+  it("ELECT-5.11: an Assign left for another week says nothing there when its menu can't be read again", async () => {
+    const element = await render();
+    jest.useFakeTimers();
+    try {
+      assignSeats.mockResolvedValue(runView({ save: { done: 0, total: 8 } }));
+      $(element, '[data-id="primary"]').click();
+      await flush();
+      seatsSetup.mockRejectedValue(new Error("timed out"));
+      element.openWeek("w2", "e1");
+      await flush();
+      jest.advanceTimersByTime(3000);
+      await flush();
+      expect($(element, '[data-id="error"]')).toBeNull();
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
   it("ELECT-5.11: after Assign, a menu that can't be read again is said, with a support code", async () => {
     const element = await render();
     jest.spyOn(console, "error").mockImplementation(() => {});

@@ -788,6 +788,8 @@ export default class ShoreshElectiveSeats extends LightningElement {
    */
   async assign(focusAfter = PRIMARY) {
     if (this.busy || !this.view) return;
+    // The run this save is for: a run opened meanwhile never hears about its menu.
+    const ticket = this.loadTicket;
     this.busy = true;
     this.error = null;
     this.errorAction = null;
@@ -805,7 +807,7 @@ export default class ShoreshElectiveSeats extends LightningElement {
         const board = buildBoard(readRun(view), this.t);
         this.status = `${board.counter.placed} of ${board.counter.total} placed.`;
       }
-      await this.refreshRuns();
+      await this.refreshRuns(ticket);
     } catch (e) {
       this.error = failed(`${this.t.p("Seats")} weren't assigned.`, e);
       this.status = "";
@@ -817,6 +819,8 @@ export default class ShoreshElectiveSeats extends LightningElement {
 
   async finalize() {
     if (this.busy) return;
+    // The run this save is for: a run opened meanwhile never hears about its menu.
+    const ticket = this.loadTicket;
     this.busy = true;
     this.error = null;
     this.errorAction = null;
@@ -833,7 +837,7 @@ export default class ShoreshElectiveSeats extends LightningElement {
         return;
       }
       this.status = `Finalized: ${this.stateLabel}.`;
-      await this.refreshRuns();
+      await this.refreshRuns(ticket);
       // Finalize kept the week as a version: every screen's Versions lists it (WEEK-6.7).
       const schedule = this.scheduleOptions.find(
         (o) => o.value === this.scheduleId
@@ -860,13 +864,15 @@ export default class ShoreshElectiveSeats extends LightningElement {
 
   async newVersion() {
     if (this.busy) return;
+    // The run this save is for: a run opened meanwhile never hears about its menu.
+    const ticket = this.loadTicket;
     this.busy = true;
     this.error = null;
     try {
       this.view = await startNewVersion({ runId: this.view.run.id });
       this.runId = this.view.run.id;
       this.status = `A new draft of these ${this.t.pIn("Seats")}, with the choices, locks and moves made by hand.`;
-      await this.refreshRuns();
+      await this.refreshRuns(ticket);
     } catch (e) {
       this.error = failed(`${this.t.p("Seats")} not reopened.`, e);
     } finally {
@@ -876,8 +882,7 @@ export default class ShoreshElectiveSeats extends LightningElement {
   }
 
   /** The season's runs read again after a save (a run's state changed, or one was added). */
-  async refreshRuns() {
-    const ticket = this.loadTicket;
+  async refreshRuns(ticket = this.loadTicket) {
     try {
       this.situation = await seatsSetup({ seasonId: this._setup.season.Id });
     } catch (e) {
