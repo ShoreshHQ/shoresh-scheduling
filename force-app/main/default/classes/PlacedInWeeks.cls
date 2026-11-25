@@ -85,21 +85,30 @@ public with sharing class PlacedInWeeks {
       for (Integer j = i; j < Math.min(i + partsAtOnce, partIds.size()); j++) {
         batch.add(partIds[j]);
       }
-      for (ScheduleDay__c day : [
-        SELECT Id, Grid__c, Schedule__r.Week__c, Schedule__r.Week__r.Name
-        FROM ScheduleDay__c
-        WHERE Id IN :batch
-        WITH USER_MODE
-      ]) {
-        Id weekId = day.Schedule__r.Week__c;
-        if (!byWeek.containsKey(weekId)) {
-          byWeek.put(weekId, new Map<Id, Integer>());
-        }
-        tally(day, locationOf, byWeek.get(weekId));
-      }
+      tallyParts(batch, locationOf, byWeek);
       queries++;
     }
     return byWeek;
+  }
+
+  /** These day parts' cells, added to their weeks' counts. */
+  private static void tallyParts(
+    List<Id> partIds,
+    Map<Id, Id> locationOf,
+    Map<Id, Map<Id, Integer>> byWeek
+  ) {
+    for (ScheduleDay__c day : [
+      SELECT Id, Grid__c, Schedule__r.Week__c, Schedule__r.Week__r.Name
+      FROM ScheduleDay__c
+      WHERE Id IN :partIds
+      WITH USER_MODE
+    ]) {
+      Id weekId = day.Schedule__r.Week__c;
+      if (!byWeek.containsKey(weekId)) {
+        byWeek.put(weekId, new Map<Id, Integer>());
+      }
+      tally(day, locationOf, byWeek.get(weekId));
+    }
   }
 
   /** Each week off asked about whose target has cells placed that week. */

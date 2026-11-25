@@ -63,10 +63,6 @@ public with sharing class SetupDelete {
     public ScheduleUses.Count uses = new ScheduleUses.Count();
   }
 
-  // Tests only: the schedule count refused.
-  @TestVisible
-  private static Boolean refuseCount = false;
-
   public static Preview preview(Id recordId) {
     requireDeletable(recordId);
     Preview result = new Preview();
@@ -89,9 +85,6 @@ public with sharing class SetupDelete {
     if (kind == Group__c.SObjectType || kind == Activity__c.SObjectType) {
       // A count that couldn't be made is said so, never left out quietly.
       try {
-        if (refuseCount) {
-          throw new ShoreshException('Refused.');
-        }
         result.uses = ScheduleUses.count(recordId);
       } catch (Exception e) {
         // Why is kept for support; the person is told the count couldn't be made.

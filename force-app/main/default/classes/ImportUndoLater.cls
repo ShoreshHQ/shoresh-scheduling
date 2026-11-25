@@ -41,17 +41,22 @@ public with sharing class ImportUndoLater {
       for (Integer j = i; j < Math.min(i + logsAtOnce, laterIds.size()); j++) {
         batch.add(laterIds[j]);
       }
-      for (Import__c later : [
-        SELECT Changed__c
-        FROM Import__c
-        WHERE Id IN :batch
-        WITH USER_MODE
-      ]) {
-        if (String.isNotBlank(later.Changed__c)) {
-          addIds(ImportLogEntries.read(later.Changed__c).recordValues);
-        }
-      }
+      readLogs(batch);
       queries++;
+    }
+  }
+
+  /** What these imports changed, from their logs. */
+  private void readLogs(List<Id> importIds) {
+    for (Import__c later : [
+      SELECT Changed__c
+      FROM Import__c
+      WHERE Id IN :importIds
+      WITH USER_MODE
+    ]) {
+      if (String.isNotBlank(later.Changed__c)) {
+        addIds(ImportLogEntries.read(later.Changed__c).recordValues);
+      }
     }
   }
 

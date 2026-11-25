@@ -148,7 +148,8 @@ private class SetupDeleteTest {
   static void aCountThatFailsIsSaidAndKeptForSupport() {
     System.runAs(ShoreshTestData.scheduler()) {
       Map<String, Id> ids = GeneratedTestData.camp();
-      SetupDelete.refuseCount = true;
+      // A count Salesforce refuses: no rows asked for at all (LIMIT -1).
+      ScheduleUses.rowBudget = -2;
       ErrorCodes.thisRequest = null;
       Test.startTest();
       SetupDelete.Preview preview = SetupDelete.preview(ids.get('Group B'));
