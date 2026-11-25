@@ -25,7 +25,7 @@ export function resolveFixedEventGroupIds(fixedEvent, groups) {
     return groups.filter((g) => g.tier_id === fixedEvent.unit_id).map((g) => g.id)
   }
   if (fixedEvent.is_all_groups) return groups.map((g) => g.id)
-  if (false /* vendored: was import.meta.env?.DEV */) assertIdListShape(fixedEvent.group_ids, 'group_ids', fixedEvent.id)
+  if (true /* vendored: was import.meta.env?.DEV */) assertIdListShape(fixedEvent.group_ids, 'group_ids', fixedEvent.id)
   return fixedEvent.group_ids || []
 }
 
