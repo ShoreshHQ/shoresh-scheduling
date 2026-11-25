@@ -324,7 +324,10 @@ export const BuildScreen = (Base) =>
     get editable() {
       return !this.readOnly;
     }
-    /** Save version (c/shoreshBuildWeek): the week as it is now, kept under a name. */
+    /**
+     * Save version (c/shoreshBuildWeek): the week as it is now, kept under a name (on Generated
+     * Schedule, its locks and option too).
+     */
     handleSaveVersion(event) {
       const { name, onDone } = event.detail;
       return this.buildWeek.saveVersion(name, onDone);
