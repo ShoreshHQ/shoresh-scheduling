@@ -6,10 +6,12 @@
  * is still as read_setup_changes read it (seen), with the week locked as its screen's save locks
  * it; otherwise refused (409), nothing changed. As on the screen, the update keeps a version
  * ("Before Update to match setup", Auto-saved) only when a change replaces a placement made by
- * hand, and the screen has no Undo for it: that version is the way back (API-1.14).
+ * hand, and the screen has no Undo for it: that version is the way back (API-1.14). A change that
+ * replaces a placement made by hand, locked or not, is the person's own work: Shoresh asks first
+ * (API-1.106), naming each cell it replaces.
  */
 @RestResource(urlMapping='/v1/update_to_match_setup')
-global with sharing class AgentUpdateToMatch implements AgentRequest.Change {
+global with sharing class AgentUpdateToMatch implements AgentRequest.Change, AgentAskFirst.Preview {
   private static final Set<String> FIELDS = new Set<String>{
     'season',
     'week',
@@ -26,6 +28,44 @@ global with sharing class AgentUpdateToMatch implements AgentRequest.Change {
 
   public Set<String> fields() {
     return FIELDS;
+  }
+
+  /**
+   * Asked only when a change named replaces a placement made by hand, on the week as read (seen):
+   * each such cell, before and after. A week changed since, or a change no longer offered, asks
+   * nothing here: the update refuses it.
+   */
+  public String preview(Map<String, Object> body) {
+    Set<String> keys = new Set<String>(keysOf(body.get('changes')));
+    String seen = AgentFields.text(body, 'seen');
+    AgentWeeks.Week week = AgentSchedules.placeOfEither(body);
+    if (String.isBlank(seen) || week.draft == null) {
+      return null;
+    }
+    SetupMatch.Preview shown = SetupMatchController.getSetupChanges(
+      week.draft.Id
+    );
+    if (!WeekTickets.seenBlankNever(seenOf(shown.revisions), seen)) {
+      return null;
+    }
+    List<String> replaced = new List<String>();
+    for (SetupMatch.Change change : shown.changes) {
+      if (change.takesChoices && keys.contains(change.key)) {
+        replaced.add(cellsOf(change));
+      }
+    }
+    if (replaced.isEmpty()) {
+      return null;
+    }
+    return 'Update ' +
+      week.name +
+      ' on ' +
+      AgentSchedules.screenOf(week) +
+      ' to match setup, replacing what was placed by hand: ' +
+      String.join(replaced, '; ') +
+      '. A lock on a replaced cell goes with it. The week as it is now is kept in Versions as "' +
+      SetupMatch.BEFORE_UPDATE +
+      '".';
   }
 
   public String run(Map<String, Object> body) {
@@ -98,6 +138,17 @@ global with sharing class AgentUpdateToMatch implements AgentRequest.Change {
 
   /** A change as read_setup_changes says it: its key, summary, and each cell before and after. */
   public static String said(SetupMatch.Change change) {
+    return '[' +
+      change.key +
+      '] ' +
+      (String.isBlank(change.summary) ? '' : change.summary + ': ') +
+      cellsOf(change) +
+      (change.takesChoices ? ' (replaces a placement made by hand)' : '') +
+      '.';
+  }
+
+  /** Each cell of a change, before and after and why. */
+  private static String cellsOf(SetupMatch.Change change) {
     List<String> lines = new List<String>();
     for (SetupMatch.Line line : change.lines) {
       lines.add(
@@ -109,13 +160,7 @@ global with sharing class AgentUpdateToMatch implements AgentRequest.Change {
           (String.isBlank(line.reason) ? '' : ' (' + line.reason + ')')
       );
     }
-    return '[' +
-      change.key +
-      '] ' +
-      (String.isBlank(change.summary) ? '' : change.summary + ': ') +
-      String.join(lines, '; ') +
-      (change.takesChoices ? ' (replaces a placement made by hand)' : '') +
-      '.';
+    return String.join(lines, '; ');
   }
 
   /** The week as read: its days' revisions, short. */

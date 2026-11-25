@@ -1817,7 +1817,7 @@ const CAPABILITIES = [
     api: "update_to_match_setup",
     method: "POST",
     description:
-      'Update a week to match setup, as Generated Schedule\'s or Manual Build\'s "Update to match setup" does, for the changes named by key. Read them first with read_setup_changes and send its seen. A change marked as replacing a placement made by hand takes away someone\'s choice: ask the person first. It is done as you, with your own access. As on the screen, it keeps the week as it was in Versions ("Before Update to match setup") only when a change replaces a placement made by hand, and there is no Undo: restore that version to go back. If someone changed the week or setup since, nothing is updated and Shoresh says so.',
+      'Update a week to match setup, as Generated Schedule\'s or Manual Build\'s "Update to match setup" does, for the changes named by key. Read them first with read_setup_changes and send its seen. A change marked as replacing a placement made by hand takes away the person\'s own choice, locked or not, so Shoresh asks before it (and only then). It is done as you, with your own access. As on the screen, it keeps the week as it was in Versions ("Before Update to match setup") only when a change replaces a placement made by hand, and there is no Undo: restore that version to go back. If someone changed the week or setup since, nothing is updated and Shoresh says so.',
     inputSchema: {
       type: "object",
       properties: {
@@ -2124,7 +2124,7 @@ const CAPABILITIES = [
     method: "POST",
     importsSpecialSchedule: true,
     description:
-      "Fill a special day's or event's own schedule from a file, as Import on its page does: the file is read with the same code (times down the side or across the top, its time blocks, and its columns: a special day's groups, an event's stations) and saved as its schedule; activities it names that the season lacks are added. Only a schedule with nothing typed in it can be filled (clear it first with change_special_schedule_frame, after asking the person). Read it first with read_special_schedule and send its seen. If the file renames or removes time blocks or stations the person changed, nothing is saved and the answer is the page's question: ask the person, then send the same file with replace_edited: true. There is no undo. If someone changed it since, nothing is saved.",
+      "Fill a special day's or event's own schedule from a file, as Import on its page does: the file is read with the same code (times down the side or across the top, its time blocks, and its columns: a special day's groups, an event's stations) and saved as its schedule; activities it names that the season lacks are added. Only a schedule with nothing typed in it can be filled (clear it first with change_special_schedule_frame). Read it first with read_special_schedule and send its seen. If the file renames or removes time blocks or stations the person changed, nothing is saved and the answer is the page's question; to go ahead, send the same file with replace_edited: true, and Shoresh asks before replacing them (and only then). There is no undo. If someone changed it since, nothing is saved.",
     inputSchema: {
       type: "object",
       properties: {
@@ -2160,7 +2160,7 @@ const CAPABILITIES = [
         replace_edited: {
           type: "boolean",
           description:
-            "true once the person said yes to replacing time blocks or stations they changed."
+            "true to replace time blocks or stations the person changed, after the page's question; Shoresh asks them first."
         }
       },
       required: ["special", "seen", "file_name"],
@@ -2496,6 +2496,9 @@ const ASKS_FIRST = [
   "change_special_schedule_frame",
   "assign_elective_seats",
   "apply_to_other_weeks",
+  // Only when it replaces a placement made by hand, or time blocks or stations the person changed.
+  "update_to_match_setup",
+  "import_special_schedule",
   // Only for a fixed activity over a recurring one (API-1.147), as Camp Setup asks.
   "add_to_setup",
   "change_in_setup"

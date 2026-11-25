@@ -3,7 +3,8 @@
  * Import on its page does. The file the agent gives as data is read with the page's own module
  * (c/shoreshSpecialSchedule fromFile.js: pagesOf, planFromPage), refused in the page's words when
  * its times can't be told, and sent to the page's own save (POST /v1/import_special_schedule) with
- * the revision read (seen).
+ * the revision read (seen). replace_edited asks first (API-1.106): the person's yes comes back as
+ * Shoresh's confirm, sent with the same file read the same way.
  */
 const { fileOf } = require("./imports");
 const { refused } = require("./common");
@@ -32,7 +33,7 @@ async function importSpecialSchedule(
   const { imported, noTimes, places } = m.planFromPage(pages[0]);
   if (!imported.blocks.length) return refused(noSide);
   const fields = {};
-  for (const field of ["season", "special", "kind", "seen"]) {
+  for (const field of ["season", "special", "kind", "seen", "confirm"]) {
     if (input[field] !== undefined) fields[field] = input[field];
   }
   return answer(
