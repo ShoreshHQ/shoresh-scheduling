@@ -174,8 +174,9 @@ Recommended:Security`), and fails on moderate (3) or worse. A second step runs t
 - **Every test asserts, and none is focused or switched off** (`npm run lint`, for every
   `__tests__` folder: the screens', the connector's, the scripts' and `jest/__tests__`).
   `it.only` would run that test alone and CI would stay green; `it.skip`/`xit` would stop one
-  quietly. A test must call `expect`, or one of the helpers listed in `eslint.config.js` that does
-  (`expect...`, `checkGrid`); a new asserting helper is added to that list.
+  quietly. A test must complete an `expect(...).toX(...)`, or call one of the helpers listed in
+  `eslint.config.js` that does (`expectCleanGrid`, `checkGrid`, ...); a new asserting helper is
+  added to that list by name.
 - **Every Apex class and trigger has its `-meta.xml`** (`npm run check:meta`,
   `scripts/apex-meta-files.js`), and no `-meta.xml` is left without its file. Without one, a class
   is left out of every deploy and dry-run with no error, so it never compiles (#55).

@@ -172,9 +172,9 @@ module.exports = defineConfig([
   },
 
   // Every test file: no test left focused (`it.only` would run alone, and CI would stay green) or
-  // switched off, and every test asserts something: expect, or one of the repository's helpers
-  // that does (expectCleanGrid and expectFocusInGrid in jest/week-editor.js, a suite's own
-  // expect... helper, version.test.js's checkGrid). A new helper that asserts goes in this list.
+  // switched off, and every test asserts something: a complete expect(...).toX(...), or one of the
+  // repository's helpers that does (jest/week-editor.js's two, shoreshLists' roundtrip and
+  // noDivision suites', version.test.js's checkGrid). A new helper that asserts goes in this list.
   {
     files: ["**/__tests__/**/*.js"],
     plugins: { jest: jestPlugin },
@@ -183,8 +183,18 @@ module.exports = defineConfig([
       "jest/no-disabled-tests": "error",
       "jest/expect-expect": [
         "error",
-        { assertFunctionNames: ["expect", "expect*", "checkGrid"] }
-      ]
+        {
+          assertFunctionNames: [
+            "expect",
+            "expectCleanGrid",
+            "expectFocusInGrid",
+            "expectNoChanges",
+            "expectInNone",
+            "checkGrid"
+          ]
+        }
+      ],
+      "jest/valid-expect": "error"
     }
   }
 ]);
