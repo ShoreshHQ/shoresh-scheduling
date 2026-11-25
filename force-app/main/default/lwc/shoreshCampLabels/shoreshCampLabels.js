@@ -285,8 +285,9 @@ export default class ShoreshCampLabels extends LightningElement {
   /**
    * After a save, which word has a saved record of its own: a word typed for the first time
    * gets one, a word put back loses it. Without this, putting back a word just typed would send
-   * no record to remove, and the camp's word would stay. Only the records are read: what is on
-   * screen stays as typed. If they can't be read, the next save still sends every word.
+   * no record to remove. Only the records are read: what is on screen stays as typed. If they
+   * can't be read, the next save still sends every word, and the server finds a word's record
+   * by its camp and term (CORE-1.37), so clearing or changing it still does what it shows.
    */
   async readIds() {
     try {
@@ -299,7 +300,7 @@ export default class ShoreshCampLabels extends LightningElement {
         labelId: ids.has(row.term) ? ids.get(row.term) : row.labelId
       }));
     } catch {
-      // Kept as they were; the words themselves were saved.
+      // Kept as they were: the words were saved, and the next save finds their records anyway.
     }
   }
 

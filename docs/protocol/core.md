@@ -26,6 +26,11 @@ Each term has one meaning. The words in "Avoid" do not appear on screens.
 - **CORE-1.36** An offering (an elective on its set) MUST be said in the camp's Elective words
   on every screen and to an AI ("Added 3 electives", "Added 3 chugim"), never "offering" (word
   walk W2; Hermes test 2026-11-14, where importing an Electives list said "Added 3 offerings").
+- **CORE-1.37** A camp word MUST be saved, changed or cleared as the screen shows it, even when the
+  screen couldn't read the word's record back after an earlier save: the server finds the camp's
+  saved word by its term, so clearing it goes back to the standard word everywhere and typing
+  another changes it, never refused as a second word (review 2026-11-25 wave 2, lwc-screens-b
+  finding 2). Apex CampLabelsTest "aWordSentWithoutItsRecordStillChangesOrClearsIt".
 
 | ID        | Term                   | Definition                                                                                                                                                                                                      | Avoid                          |
 | --------- | ---------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------ |
