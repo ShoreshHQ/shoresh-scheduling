@@ -8,18 +8,11 @@
  * cell is one time block of one group, so an activity two blocks long counts two.
  *
  * Runs in user mode: only schedules the director can see are read. The days are listed first
- * (their Ids only), then their text is read a few at a time, as ScheduleUses does, with a cap on
- * queries; past it the answer says it is not complete and the screen says so.
+ * (their Ids and dates), then their text is read a few at a time (ScheduleDayTexts, as ScheduleUses
+ * does); past its budget, or at a day that can't be read, the answer says it is not complete and
+ * the screen says so, never a smaller count (CORE-6.19).
  */
 public with sharing class GroupPlacements {
-  // Day parts read at once: 25 at the longest (131,072 characters) is about 3.3 million.
-  @TestVisible
-  private static Integer partsAtOnce = 25;
-  // Queries for the text, after the two that find the program and list the days: with them, under
-  // the 50 a request may use (half of Salesforce's 100).
-  @TestVisible
-  private static Integer queryBudget = 40;
-
   public class Placed {
     @AuraEnabled
     public Id activity;
@@ -49,79 +42,54 @@ public with sharing class GroupPlacements {
       return result;
     }
     Id programId = found[0].Division__r.Program__c;
-    List<Id> partIds = new List<Id>();
-    for (ScheduleDay__c part : [
-      SELECT Id
-      FROM ScheduleDay__c
-      WHERE
-        Schedule__r.Program__c = :programId
-        AND Schedule__r.Status__c = 'Draft'
-        AND Schedule__r.Origin__c IN ('Manual', 'Generated')
-      WITH USER_MODE
-      ORDER BY Id
-    ]) {
-      partIds.add(part.Id);
-    }
-    Map<Id, Integer> cells = new Map<Id, Integer>();
-    Integer queries = 0;
-    for (Integer i = 0; i < partIds.size(); i += partsAtOnce) {
-      if (queries == queryBudget) {
-        result.complete = false;
-        break;
-      }
-      List<Id> batch = new List<Id>();
-      for (Integer j = i; j < Math.min(i + partsAtOnce, partIds.size()); j++) {
-        batch.add(partIds[j]);
-      }
-      tallyParts(batch, groupId, cells);
-      queries++;
-    }
-    for (Id activityId : cells.keySet()) {
+    Tally tally = new Tally(groupId);
+    tally.read(
+      [
+        SELECT Id, Schedule__c, Date__c
+        FROM ScheduleDay__c
+        WHERE
+          Schedule__r.Program__c = :programId
+          AND Schedule__r.Status__c = 'Draft'
+          AND Schedule__r.Origin__c IN ('Manual', 'Generated')
+        WITH USER_MODE
+        ORDER BY Schedule__c, Date__c, Part__c
+      ]
+    );
+    result.complete = tally.complete && !tally.unreadable;
+    for (Id activityId : tally.cells.keySet()) {
       Placed placed = new Placed();
       placed.activity = activityId;
-      placed.cells = cells.get(activityId);
+      placed.cells = tally.cells.get(activityId);
       result.placed.add(placed);
     }
     return result;
   }
 
-  private static void tallyParts(
-    List<Id> partIds,
-    Id groupId,
-    Map<Id, Integer> cells
-  ) {
+  /** The group's activity cells, by activity, in the days that name the group. */
+  private with sharing class Tally extends ScheduleDayTexts.Reader {
+    private Id groupId;
     // Both 15- and 18-character Ids hold the first 15.
-    String key = String.valueOf(groupId).left(15);
-    for (ScheduleDay__c part : [
-      SELECT Grid__c
-      FROM ScheduleDay__c
-      WHERE Id IN :partIds
-      WITH USER_MODE
-    ]) {
-      if (part.Grid__c != null && part.Grid__c.contains(key)) {
-        tally(part.Grid__c, groupId, cells);
-      }
-    }
-  }
+    private String key;
+    private Map<Id, Integer> cells = new Map<Id, Integer>();
 
-  /** Adds the group's activity cells in one day part; a part that can't be read adds nothing. */
-  private static void tally(String text, Id groupId, Map<Id, Integer> cells) {
-    ScheduleGrid grid = readGrid(text);
-    if (grid == null) {
-      return;
+    private Tally(Id groupId) {
+      this.groupId = groupId;
+      this.key = String.valueOf(groupId).left(15);
     }
-    for (Integer g = 0; g < grid.groups.size(); g++) {
-      if (asId(grid.groups[g].id) == groupId) {
-        tallyRow(grid, g, cells);
-      }
-    }
-  }
 
-  private static ScheduleGrid readGrid(String text) {
-    try {
-      return ScheduleGrid.fromText(text);
-    } catch (Exception e) {
-      return null;
+    public override void take(List<ScheduleDay__c> parts) {
+      if (!ScheduleDayTexts.names(parts, key)) {
+        return;
+      }
+      ScheduleGrid grid = gridOf(parts).grid;
+      if (grid == null) {
+        return;
+      }
+      for (Integer g = 0; g < grid.groups.size(); g++) {
+        if (asId(grid.groups[g].id) == groupId) {
+          tallyRow(grid, g, cells);
+        }
+      }
     }
   }
 

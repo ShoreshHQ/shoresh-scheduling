@@ -207,8 +207,14 @@ These never bend for Shoresh.
   "Placed in N cells" with why; a failed count of the schedules a bunk or activity is in is said
   ("Shoresh couldn't count…") and its why kept for support (CORE-6.15). A holding record a
   change can't clean up is kept for support with why (review 2026-11-25 wave 2, apex-core
-  findings 6 and 10, apex-tests finding 6). Tests: PlacedInWeeksTest aDayThatCantBeReadIsSaid,
-  daysPastTheCapAreSaid; SetupDeleteTest aCountThatFailsIsSaidAndKeptForSupport.
+  findings 6 and 10, apex-tests finding 6). Every count read from many schedule days reads them
+  through one reader with one budget (ScheduleDayTexts), and says a day it can't read (review
+  2026-11-25 wave 4, apex-core finding 5). Tests: PlacedInWeeksTest aDayThatCantBeReadIsSaid,
+  aDaySavedByANewerShoreshIsSaid, daysPastTheCapAreSaid; GroupPlacementsTest
+  aDayThatCantBeReadSaysTheCountIsNotComplete; LinkedChoicesTest
+  aDayThatCantBeReadSaysTheWeekIsNotComplete; SetupTablesTest
+  aCountLateInARequestStillStopsUnderHalfTheQueryLimit; SetupDeleteTest
+  aCountThatFailsIsSaidAndKeptForSupport.
 - **CORE-6.16** Help in Settings MUST show the installed version, "Version 1.4", beside support's
   address; outside an installed package it MUST show none. The About page MUST stay as it is
   (ADR 0030; Greg 2026-11-21). Tests: ShoreshVersionTest; shoreshLearned.test.js "CORE-6.16".

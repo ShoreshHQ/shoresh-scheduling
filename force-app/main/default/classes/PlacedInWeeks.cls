@@ -4,18 +4,12 @@
  * ExclusionConfirmDialog.jsx: "Placed in N slots in <week>.", shown as "cells", the design guide's word). As on the desktop, a cell is one
  * time block of one group: an activity two blocks long counts two. A location counts the cells
  * of the activities that use it. Versions and published schedules are not counted: they don't
- * change. Read in user mode: the days are listed first (their Ids only), then their text is read
- * a few at a time with a cap on queries, as GroupPlacements does. A day that can't be read, or
- * days past the cap, are said, never counted as nothing (the question would be missing).
+ * change. Read in user mode: the days are listed first (their Ids and dates), then their text is
+ * read a few at a time (ScheduleDayTexts), as GroupPlacements does. A day that can't be read, or
+ * days past the reader's budget, are said, never counted as nothing (the question would be
+ * missing; CORE-6.19).
  */
 public with sharing class PlacedInWeeks {
-  // Day parts read at once: 25 at the longest (131,072 characters) is about 3.3 million.
-  @TestVisible
-  private static Integer partsAtOnce = 25;
-  // Queries for the text, after the ones that find the locations and list the days.
-  @TestVisible
-  private static Integer queryBudget = 60;
-
   public class Placed {
     @AuraEnabled
     public Id target { get; set; }
@@ -59,55 +53,54 @@ public with sharing class PlacedInWeeks {
     Set<Id> weekIds,
     Map<Id, Id> locationOf
   ) {
-    Map<Id, Map<Id, Integer>> byWeek = new Map<Id, Map<Id, Integer>>();
-    List<Id> partIds = new List<Id>();
-    for (ScheduleDay__c part : [
-      SELECT Id
-      FROM ScheduleDay__c
-      WHERE
-        Schedule__r.Week__c IN :weekIds
-        AND Schedule__r.Status__c = 'Draft'
-        AND Schedule__r.Origin__c IN ('Manual', 'Generated')
-      WITH USER_MODE
-      ORDER BY Id
-    ]) {
-      partIds.add(part.Id);
+    Tally tally = new Tally(locationOf);
+    tally.read(
+      [
+        SELECT Id, Schedule__c, Date__c
+        FROM ScheduleDay__c
+        WHERE
+          Schedule__r.Week__c IN :weekIds
+          AND Schedule__r.Status__c = 'Draft'
+          AND Schedule__r.Origin__c IN ('Manual', 'Generated')
+        WITH USER_MODE
+        ORDER BY Schedule__c, Date__c, Part__c
+      ]
+    );
+    if (!tally.complete) {
+      // Shoresh's own refusal (CORE-6.15): no support code.
+      throw new ShoreshException(
+        'Shoresh couldn\'t count every cell placed in these weeks. Turn them off a few weeks at a time.'
+      );
     }
-    Integer queries = 0;
-    for (Integer i = 0; i < partIds.size(); i += partsAtOnce) {
-      if (queries == queryBudget) {
-        // Shoresh's own refusal (CORE-6.15): no support code.
-        throw new ShoreshException(
-          'Shoresh couldn\'t count every cell placed in these weeks. Turn them off a few weeks at a time.'
-        );
-      }
-      List<Id> batch = new List<Id>();
-      for (Integer j = i; j < Math.min(i + partsAtOnce, partIds.size()); j++) {
-        batch.add(partIds[j]);
-      }
-      tallyParts(batch, locationOf, byWeek);
-      queries++;
-    }
-    return byWeek;
+    return tally.byWeek;
   }
 
-  /** These day parts' cells, added to their weeks' counts. */
-  private static void tallyParts(
-    List<Id> partIds,
-    Map<Id, Id> locationOf,
-    Map<Id, Map<Id, Integer>> byWeek
-  ) {
-    for (ScheduleDay__c day : [
-      SELECT Id, Grid__c, Schedule__r.Week__c, Schedule__r.Week__r.Name
-      FROM ScheduleDay__c
-      WHERE Id IN :partIds
-      WITH USER_MODE
-    ]) {
-      Id weekId = day.Schedule__r.Week__c;
+  /** Each day's cells, added to its week's counts; a day that can't be read is said. */
+  private with sharing class Tally extends ScheduleDayTexts.Reader {
+    private Map<Id, Id> locationOf;
+    private Map<Id, Map<Id, Integer>> byWeek = new Map<Id, Map<Id, Integer>>();
+
+    private Tally(Map<Id, Id> locationOf) {
+      this.locationOf = locationOf;
+    }
+
+    public override void take(List<ScheduleDay__c> parts) {
+      ScheduleDays.DayGrid day = gridOf(parts);
+      if (day.grid == null) {
+        throw new ShoreshException(
+          ErrorCodes.said(
+            'Shoresh couldn\'t read a day of ' +
+              parts[0].Schedule__r.Week__r.Name +
+              '\'s schedules, so it can\'t say what is placed there.',
+            'PlacedInWeeks: day ' + parts[0].Id + ': ' + day.problem
+          )
+        );
+      }
+      Id weekId = parts[0].Schedule__r.Week__c;
       if (!byWeek.containsKey(weekId)) {
         byWeek.put(weekId, new Map<Id, Integer>());
       }
-      tally(day, locationOf, byWeek.get(weekId));
+      tally(day.grid, locationOf, byWeek.get(weekId));
     }
   }
 
@@ -134,25 +127,12 @@ public with sharing class PlacedInWeeks {
     return result;
   }
 
-  /** Adds one day part's cells to each group, activity, and location they belong to. */
+  /** Adds one day's cells to each group, activity, and location they belong to. */
   private static void tally(
-    ScheduleDay__c day,
+    ScheduleGrid grid,
     Map<Id, Id> locationOf,
     Map<Id, Integer> counts
   ) {
-    ScheduleGrid grid;
-    try {
-      grid = ScheduleGrid.fromText(day.Grid__c);
-    } catch (Exception e) {
-      throw new ShoreshException(
-        ErrorCodes.said(
-          'Shoresh couldn\'t read a day of ' +
-            day.Schedule__r.Week__r.Name +
-            '\'s schedules, so it can\'t say what is placed there.',
-          'PlacedInWeeks: day ' + day.Id + ': ' + ErrorCodes.detailOf(e)
-        )
-      );
-    }
     for (Integer g = 0; g < grid.groups.size(); g++) {
       Id groupId = asId(grid.groups[g].id);
       for (ScheduleGrid.Item item : ScheduleGridCells.itemsIn(grid, g)) {

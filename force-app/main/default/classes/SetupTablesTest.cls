@@ -168,7 +168,7 @@ private class SetupTablesTest {
     ids = KeptCamp.keptIds();
     System.runAs(scheduler()) {
       bigSeason();
-      ScheduleUses.partsAtOnce = 1;
+      ScheduleDayTexts.partsAtOnce = 1;
       Test.startTest();
       ScheduleUses.Count count = ScheduleUses.count(ids.get('Group A'));
       Integer queries = Limits.getQueries();
@@ -176,6 +176,29 @@ private class SetupTablesTest {
       Assert.isFalse(count.complete);
       Assert.isTrue(count.schedules >= 1, 'Found: ' + count.schedules);
       Assert.isTrue(queries < 50, 'Counting used ' + queries + ' queries');
+    }
+  }
+
+  /**
+   * The budget is the request's, not the count's own: a count that starts after a request has
+   * used queries already still stops under half of the 100 (ScheduleDayTexts).
+   */
+  @IsTest
+  static void aCountLateInARequestStillStopsUnderHalfTheQueryLimit() {
+    ids = KeptCamp.keptIds();
+    System.runAs(scheduler()) {
+      bigSeason();
+      ScheduleDayTexts.partsAtOnce = 1;
+      Test.startTest();
+      for (Integer i = 0; i < 20; i++) {
+        Assert.isNotNull([SELECT Id FROM Season__c WITH USER_MODE LIMIT 1]);
+      }
+      ScheduleUses.Count count = ScheduleUses.count(ids.get('Group A'));
+      Integer queries = Limits.getQueries();
+      Test.stopTest();
+      Assert.isFalse(count.complete);
+      Assert.isTrue(count.schedules >= 1, 'Found: ' + count.schedules);
+      Assert.isTrue(queries < 50, 'The request used ' + queries + ' queries');
     }
   }
 
@@ -187,8 +210,8 @@ private class SetupTablesTest {
     System.runAs(scheduler()) {
       bigSeason();
       {
-        ScheduleUses.partsAtOnce = 10;
-        ScheduleUses.queryBudget = 2;
+        ScheduleDayTexts.partsAtOnce = 10;
+        ScheduleDayTexts.queryBudget = 2;
         ScheduleUses.Count count = ScheduleUses.count(ids.get('Group A'));
         // Two reads of 10 days each: some schedules found, the rest not read.
         Assert.isTrue(
@@ -196,13 +219,13 @@ private class SetupTablesTest {
           'Found: ' + count.schedules
         );
         Assert.isFalse(count.complete);
-        ScheduleUses.queryBudget = 40;
+        ScheduleDayTexts.queryBudget = 40;
         ScheduleUses.rowBudget = 100;
         count = ScheduleUses.count(ids.get('Soccer'));
         Assert.areEqual(0, count.schedules);
         Assert.isFalse(count.complete);
         ScheduleUses.rowBudget = 40000;
-        ScheduleUses.textBudget = 1;
+        ScheduleDayTexts.textBudget = 1;
         count = ScheduleUses.count(ids.get('Swim'));
         Assert.isFalse(count.complete);
       }
