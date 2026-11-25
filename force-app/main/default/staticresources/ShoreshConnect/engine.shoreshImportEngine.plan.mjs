@@ -11,6 +11,7 @@ import { broughtBack } from "./engine.shoreshImportEngine.deleted.mjs";
 import { clock, shortClock } from "./engine.shoreshImportEngine.text.mjs";
 import { programDays } from "./engine.shoreshImportEngine.weeks.mjs";
 import { dayList, nameList } from "./engine.shoreshImportEngine.questions.mjs";
+import { compareNames, compareText } from "./engine.shoreshImportEngine.order.mjs";
 
 /** The highest place in order among records, by the records' own sort-order field. */
 function maxSort(records, sortOrder) {
@@ -577,7 +578,7 @@ export function unplacedLines(proposal, t) {
   }
   return [...groups.values()]
     .map((entry) => ({ ...entry, whereText: entry.where.join("; ") }))
-    .sort((a, b) => a.name.localeCompare(b.name) || a.why.localeCompare(b.why));
+    .sort((a, b) => compareNames(a.name, b.name) || compareText(a.why, b.why));
 }
 
 /** Things the director should know that are not questions: [{ key, text }]. */

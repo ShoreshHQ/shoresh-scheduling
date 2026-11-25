@@ -507,4 +507,47 @@ describe("same files, same reading", () => {
     );
     expect(b).toEqual(a);
   });
+
+  /** Runs `read` as a browser set to `language` would: its own order for text. */
+  function inLanguage(language, read) {
+    const own = String.prototype.localeCompare;
+    // eslint-disable-next-line no-extend-native
+    String.prototype.localeCompare = function (that, locales, options) {
+      return new Intl.Collator(locales || language, options).compare(
+        String(this),
+        String(that)
+      );
+    };
+    try {
+      return read();
+    } finally {
+      // eslint-disable-next-line no-extend-native
+      String.prototype.localeCompare = own;
+    }
+  }
+
+  it("INGEST-5.12: in any browser language: a list mixing Hebrew and English makes the same plan, and finds the camp's set again", () => {
+    // A Hebrew browser puts Hebrew before English, an English one after; Swedish puts Ä after Z.
+    const mixed = withCells(
+      (g, d, b) => d === 3 && b <= 1,
+      '"Zumba, שירה, Ärt, Arts"'
+    );
+    const existing = existingSetup({ weeks: [WEEK1] });
+    const plans = ["en", "he", "sv"].map((language) =>
+      inLanguage(language, () =>
+        planFor(propose(mixed, {}, existing), existing, "s")
+      )
+    );
+    expect(plans[1]).toEqual(plans[0]);
+    expect(plans[2]).toEqual(plans[0]);
+    const name = "Electives (Arts, Zumba, Ärt, שירה)";
+    expect(plans[0].electiveSets.map((s) => s.name)).toContain(name);
+    // Next year, from a Hebrew browser, the set the camp has is found by that name.
+    const camp = existingSetup({
+      weeks: [WEEK1],
+      electives: { sets: [{ Id: "set-1", Name: name }] }
+    });
+    const again = inLanguage("he", () => propose(mixed, {}, camp));
+    expect(setNamed(again, name)).toMatchObject({ key: "set-1", isNew: false });
+  });
 });

@@ -28,6 +28,7 @@ import { COLOUR_ADD } from "./reading-constants";
 import { WEEKDAYS, looseKey } from "./text";
 import { versionsFor } from "./version";
 import { settleClashes, specialByAnswer } from "./clashes";
+import { compareNames, compareText } from "./order";
 
 const MS_PER_MINUTE = 60000;
 
@@ -454,7 +455,7 @@ function deletedItems(decisions, groups, timetables, places) {
   const byKey = new Map();
   all.forEach((item) => byKey.set(item.key, byKey.get(item.key) || item));
   return [...byKey.values()].sort(
-    (a, b) => a.name.localeCompare(b.name) || a.key.localeCompare(b.key)
+    (a, b) => compareNames(a.name, b.name) || compareText(a.key, b.key)
   );
 }
 
@@ -482,7 +483,7 @@ function notedList(usable, noted) {
       days: WEEKDAYS.filter((d) => e.days.has(d)),
       groups: e.groups.size
     }))
-    .sort((a, b) => a.name.localeCompare(b.name));
+    .sort((a, b) => compareNames(a.name, b.name));
 }
 
 /**

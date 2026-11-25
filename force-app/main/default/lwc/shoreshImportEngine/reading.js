@@ -33,6 +33,7 @@ import { countDaysFrom } from "c/shoreshDayNames";
 import { campFirstDay, firstDayOnceSaved } from "./weeks";
 import { groupDivisionName } from "./noDivision";
 import { oneGroupDivisions } from "./together";
+import { compareNames, compareText } from "./order";
 
 export { LEAVE_OUT } from "./reading-constants";
 import { LEAVE_OUT } from "./reading-constants";
@@ -317,7 +318,7 @@ function emojiNotes(placements) {
       name: p.text
     });
   }
-  return [...seen.values()].sort((a, b) => a.name.localeCompare(b.name));
+  return [...seen.values()].sort((a, b) => compareNames(a.name, b.name));
 }
 
 /**
@@ -446,7 +447,7 @@ function answersFor(readAsNames) {
 function byNameThenContent(a, b) {
   const content = (f) =>
     JSON.stringify((f.sheets || []).map((sheet) => [sheet.name, sheet.rows]));
-  return a.name.localeCompare(b.name) || content(a).localeCompare(content(b));
+  return compareNames(a.name, b.name) || compareText(content(a), content(b));
 }
 
 /**
