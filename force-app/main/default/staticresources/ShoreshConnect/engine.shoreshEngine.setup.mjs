@@ -1,4 +1,5 @@
 import { FIELD } from "./engine.shoreshSchema.shoreshSchema.mjs";
+import { compareText } from "./engine.shoreshTerms.shoreshTerms.mjs";
 import { readRow } from "./engine.shoreshEngine.grid.mjs";
 
 /**
@@ -24,15 +25,9 @@ const WEEKDAYS = {
   Sunday: 7
 };
 
-/** Text compared by character code, never by locale: the same order in every browser. */
-export function compareText(a, b) {
-  const x = String(a == null ? "" : a);
-  const y = String(b == null ? "" : b);
-  if (x < y) {
-    return -1;
-  }
-  return x > y ? 1 : 0;
-}
+// Text compared by character code, never by locale: the week engine's and the import engine's one
+// order (c/shoreshTerms).
+export { compareText };
 
 function sortValue(record, field) {
   const value = record ? record[field] : null;

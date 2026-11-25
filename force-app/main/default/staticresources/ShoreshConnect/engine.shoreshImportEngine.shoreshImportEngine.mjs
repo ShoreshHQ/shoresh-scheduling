@@ -255,3 +255,4 @@ export {
   realDivisionsOf,
   shownDivisionName
 } from "./engine.shoreshImportEngine.noDivision.mjs";
+export { compareNames } from "./engine.shoreshImportEngine.order.mjs";

@@ -9,6 +9,7 @@
 import { foldName } from "./engine.shoreshImportEngine.names.mjs";
 import { LEAVE_OUT } from "./engine.shoreshImportEngine.reading-constants.mjs";
 import { WEEKDAYS, looseKey, timeRange, tidy, withoutTimes } from "./engine.shoreshImportEngine.text.mjs";
+import { compareNames, compareNumbered } from "./engine.shoreshImportEngine.order.mjs";
 
 export const CHANGE_OVER_MAX_MINUTES = 10;
 
@@ -127,7 +128,7 @@ function mostSeen(placements, pageIndex, row) {
     .filter((p) => p.page === pageIndex && p.row === row)
     .forEach((p) => counts.set(p.text, (counts.get(p.text) || 0) + 1));
   const [top] = [...counts].sort(
-    (a, b) => b[1] - a[1] || a[0].localeCompare(b[0])
+    (a, b) => b[1] - a[1] || compareNames(a[0], b[0])
   );
   return top ? top[0] : null;
 }
@@ -821,8 +822,7 @@ export function collectGroups(noted, timetableOfPage) {
   }
   // Groups only ever listed inside cells (by-activity files) come in no order of their own:
   // they follow the others, in natural order ("Bunk 2" before "Bunk 10").
-  const natural = (a, b) =>
-    a.name.localeCompare(b.name, undefined, { numeric: true });
+  const natural = (a, b) => compareNumbered(a.name, b.name);
   const listed = [...byName.values()];
   const ordered = [
     ...listed.filter((g) => !g.onlyInCells),

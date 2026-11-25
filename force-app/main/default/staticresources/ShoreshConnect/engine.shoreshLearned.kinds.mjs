@@ -10,7 +10,7 @@
 import { article, capital } from "./engine.shoreshTerms.shoreshTerms.mjs";
 import { UNUSED, listScreen } from "./engine.shoreshLists.shoreshLists.mjs";
 import { keyParts } from "./engine.shoreshPatterns.shoreshPatterns.mjs";
-import { clockText } from "./engine.shoreshImportEngine.shoreshImportEngine.mjs";
+import { clockText, compareNames } from "./engine.shoreshImportEngine.shoreshImportEngine.mjs";
 
 export const GROUPS = [
   { key: "classify", label: "Classification" },
@@ -96,13 +96,11 @@ function classification(p, t) {
 }
 
 // "similar|<kind>|<fold>|<fold>|<name>|<name>". The import's pair puts the file's two names in
-// localeCompare order (c/shoreshImportEngine names.js similarPairs): "a" keeps the first, "b"
+// its own order (c/shoreshImportEngine names.js similarPairs, INGEST-5.12): "a" keeps the first, "b"
 // the second (mergesFrom). When one of them is a name the camp has, the import keeps the camp's
 // spelling whichever "same" is chosen (its one "same" keeps the answer's letter), so there is one.
 function similar(p, answer, spell) {
-  const [first, second] = [p[4] || p[2], p[5] || p[3]].sort((x, y) =>
-    x.localeCompare(y)
-  );
+  const [first, second] = [p[4] || p[2], p[5] || p[3]].sort(compareNames);
   const name = `${quoted(first)} and ${quoted(second)}`;
   const different = "Different: keep both";
   const isCamp = spell.isCamp || (() => false);

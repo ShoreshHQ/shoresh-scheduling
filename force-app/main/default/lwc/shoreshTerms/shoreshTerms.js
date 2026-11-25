@@ -144,6 +144,19 @@ export function article(word) {
   return `${vowelSound ? "an" : "a"} ${word}`;
 }
 
+/**
+ * Text compared by character code, never by locale: the same order in every browser and language
+ * (the week engine's rule 1.1, INGEST-5.12).
+ */
+export function compareText(a, b) {
+  const x = String(a == null ? "" : a);
+  const y = String(b == null ? "" : b);
+  if (x < y) {
+    return -1;
+  }
+  return x > y ? 1 : 0;
+}
+
 export function capital(text) {
   return text.charAt(0).toUpperCase() + text.slice(1);
 }

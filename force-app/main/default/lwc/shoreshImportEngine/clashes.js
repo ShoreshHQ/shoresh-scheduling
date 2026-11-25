@@ -10,6 +10,7 @@ import { FIELD } from "c/shoreshSchema";
 import { blockRecordKey } from "./items";
 import { LEAVE_OUT, blocksOf } from "./reading-constants";
 import { WEEKDAYS } from "./text";
+import { compareNames } from "./order";
 
 /** Recurring at its other time blocks, not the fixed activity's. */
 export const AROUND = "around";
@@ -149,7 +150,7 @@ function byDayAndBlock(a, b) {
   return (
     WEEKDAYS.indexOf(a.days[0]) - WEEKDAYS.indexOf(b.days[0]) ||
     a.blocks[0] - b.blocks[0] ||
-    a.name.localeCompare(b.name)
+    compareNames(a.name, b.name)
   );
 }
 

@@ -14,6 +14,7 @@
  * ("Gym games", now "Gaga") is asked about as the camp's name now, never added again unasked.
  */
 import { FIELD } from "c/shoreshSchema";
+import { compareNames, compareText } from "./order";
 
 /** Letters and digits only, lower case, with "&" and "+" read as "and". */
 export function foldName(name) {
@@ -182,7 +183,7 @@ export function formerNamesOf(kind, records) {
  */
 export function similarPairs(kind, fileNames, campNames, formerNames) {
   const files = [...(fileNames || [])].sort((x, y) =>
-    x.name.localeCompare(y.name)
+    compareNames(x.name, y.name)
   );
   const camp = new Set(campNames || []);
   const pairs = [];
@@ -228,7 +229,7 @@ export function similarPairs(kind, fileNames, campNames, formerNames) {
       }
     }
   }
-  return pairs.sort((x, y) => x.id.localeCompare(y.id));
+  return pairs.sort((x, y) => compareText(x.id, y.id));
 }
 
 /** The names the camp has now for records once called this name (capitals and spacing aside). */
@@ -256,7 +257,7 @@ function keptSpelling(members, votes, campNames) {
     return camp[0];
   }
   return [...members].sort(
-    (x, y) => (votes.get(y) || 0) - (votes.get(x) || 0) || x.localeCompare(y)
+    (x, y) => (votes.get(y) || 0) - (votes.get(x) || 0) || compareNames(x, y)
   )[0];
 }
 
