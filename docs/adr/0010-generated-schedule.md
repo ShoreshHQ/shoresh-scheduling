@@ -1391,7 +1391,8 @@ id]], floor, cut }`). The words are worked out when shown (`whyOf`, with `words.
 4. **The server keeps, never trusts** (`GeneratedEngineNotes.kept`): notes longer than the field,
    not JSON, another version, or not lists of rows of text are not kept (the week is saved
    anyway). Nothing reads them but the screen, only to word the Why list (`readNotes` drops
-   unknown codes and shapes; nothing is shown as stored). User mode; the field is in the Shoresh
+   unknown codes and shapes; nothing is shown as stored, and the Why list says what
+   couldn't be read, protocol 10.15, 2026-11-25). User mode; the field is in the Shoresh
    Scheduler permission set. The save's answer carries the notes it kept
    (`GeneratedWeek.Result.engineNotes`, null for none), and the screen goes on with those, never
    its own copy: the next build and the Why list are the ones a reload or an agent gets (protocol
