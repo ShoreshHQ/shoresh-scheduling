@@ -132,11 +132,21 @@ public with sharing class SetupMatch {
   /** What setup changed since the draft's week started (Manual Build's or Generated Schedule's). */
   public static Preview of(Id draftId) {
     Schedule__c draft = draftOf(draftId);
-    return planFor(
-        new GeneratedSetup(draft.Program__c, draft.Week__c),
-        ScheduleDays.read(draftId)
-      )
-      .preview;
+    return of(
+      new GeneratedSetup(draft.Program__c, draft.Week__c),
+      ScheduleDays.read(draftId)
+    );
+  }
+
+  /**
+   * The same, on a draft's days and its program's setup for the week, both as a request has
+   * already read them (AgentChecks): nothing read again.
+   */
+  public static Preview of(
+    GeneratedSetup setup,
+    List<ScheduleDays.DayGrid> draftDays
+  ) {
+    return planFor(setup, draftDays).preview;
   }
 
   /**
@@ -258,7 +268,7 @@ public with sharing class SetupMatch {
     plan.preview.revisions = WeekTickets.stamp(draftDays);
     BlankWeek.Week target;
     try {
-      target = setup.blankWeek();
+      target = blankWeek(setup);
     } catch (ShoreshException e) {
       // The week can't be laid out from setup now (no time blocks, no group at camp, no day it
       // runs, or no access to its set-time items): said, never guessed at.
@@ -293,6 +303,26 @@ public with sharing class SetupMatch {
       plan.preview.dots.addAll(compared.dots);
     }
     return plan;
+  }
+
+  /**
+   * The week setup makes now, on the program's own fixed and recurring activities as Manual
+   * Build's open reads them (SetTimePlanReader.planOf), not the whole season's: the same week
+   * (only this program's items run in it) in fewer queries. Without access to them, refused in
+   * Start a blank week's words, as before.
+   */
+  private static BlankWeek.Week blankWeek(GeneratedSetup setup) {
+    if (!SetTimeAccess.canRead()) {
+      return setup.blankWeek();
+    }
+    return BlankWeek.build(
+      setup,
+      SetTimePlanReader.planOf(
+        setup,
+        setup.fixedActivityRecords(),
+        setup.recurringActivityRecords()
+      )
+    );
   }
 
   /** A Manual Build or Generated Schedule draft the user can see, or refused. */
