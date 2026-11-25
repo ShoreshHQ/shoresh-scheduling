@@ -188,6 +188,111 @@ private class AgentLinkedChoicesTest {
     }
   }
 
+  // API-1.132, API-1.133: what an AI names that isn't there is refused, saying what is (the
+  // elective set, the activity, the linked choice), and so is a kind of "applies to" the editor
+  // doesn't have; nothing is made or changed.
+  @IsTest
+  static void whatIsntThereIsRefusedSayingWhatIs() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      LinkedChoicesMenu menu = new LinkedChoicesMenu();
+      made(menu);
+      Map<String, Object> times = new Map<String, Object>{
+        'times' => LinkedChoicesMenu.periods('Monday', 'Period 1')
+      };
+      Map<String, Object> noSuchSet = menu.at(
+        new Map<String, Object>{ 'name' => 'Drama', 'elective_set' => 'Sports' }
+      );
+      Map<String, Object> noActivity = menu.at(
+        new Map<String, Object>{ 'name' => 'Art', 'activity' => '' }
+      );
+      noActivity.putAll(times);
+      Map<String, Object> oddKind = menu.at(
+        new Map<String, Object>{
+          'activity' => 'Drama',
+          'name' => 'Drama 2',
+          'applies_to' => 'sometimes'
+        }
+      );
+      oddKind.putAll(times);
+      Test.startTest();
+      List<Object> wrongSet = LinkedChoicesMenu.sent(
+        new AgentChangeLinkedChoice(),
+        noSuchSet
+      );
+      List<Object> choice = LinkedChoicesMenu.sent(
+        new AgentChangeLinkedChoice(),
+        menu.at(new Map<String, Object>{ 'name' => 'Nope', 'new_name' => 'X' })
+      );
+      List<Object> unnamed = LinkedChoicesMenu.sent(
+        new AgentChangeLinkedChoice(),
+        menu.at(new Map<String, Object>{ 'new_name' => 'X' })
+      );
+      List<Object> otherActivity = LinkedChoicesMenu.sent(
+        new AgentChangeLinkedChoice(),
+        menu.at(
+          new Map<String, Object>{
+            'name' => 'Drama',
+            'activity' => 'Archery',
+            'new_name' => 'X'
+          }
+        )
+      );
+      List<Object> activity = LinkedChoicesMenu.sent(
+        new AgentMakeLinkedChoice(),
+        noActivity
+      );
+      List<Object> kind = LinkedChoicesMenu.sent(
+        new AgentMakeLinkedChoice(),
+        oddKind
+      );
+      Test.stopTest();
+      Assert.areEqual(400, wrongSet[0], String.valueOf(wrongSet[1]));
+      Assert.areEqual(
+        'No elective set called "Sports". There are: Chugim.',
+        wrongSet[1]
+      );
+      Assert.areEqual(400, choice[0], String.valueOf(choice[1]));
+      Assert.areEqual(
+        'Chugim has no linked choice called "Nope". It has: Drama.',
+        choice[1]
+      );
+      Assert.areEqual(400, unnamed[0], String.valueOf(unnamed[1]));
+      Assert.areEqual(
+        'Say which linked choice (name). It has: Drama.',
+        unnamed[1]
+      );
+      Assert.areEqual(400, otherActivity[0], String.valueOf(otherActivity[1]));
+      Assert.areEqual(
+        'Chugim has no linked choice called "Drama". It has: Drama.',
+        otherActivity[1]
+      );
+      Assert.areEqual(400, activity[0], String.valueOf(activity[1]));
+      Assert.areEqual(
+        'Say which activity (activity). It offers: Drama.',
+        activity[1]
+      );
+      Assert.areEqual(400, kind[0], String.valueOf(kind[1]));
+      Assert.areEqual(
+        'It applies to All, Only these or All except (applies_to).',
+        kind[1]
+      );
+      Assert.areEqual(
+        1,
+        [SELECT COUNT() FROM LinkedChoice__c WITH SYSTEM_MODE],
+        'Only the one made'
+      );
+      Assert.areEqual(
+        1,
+        [
+          SELECT COUNT()
+          FROM LinkedChoice__c
+          WHERE Name = 'Drama'
+          WITH SYSTEM_MODE
+        ]
+      );
+    }
+  }
+
   // API-1.132
   @IsTest
   static void aSetOnNoScheduleHasNothingToMakeOneOn() {

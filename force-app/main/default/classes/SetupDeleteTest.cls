@@ -217,6 +217,73 @@ private class SetupDeleteTest {
     }
   }
 
+  // Word walk W4: deleting a division takes its groups, and the question says how many; a name
+  // another program's division shares is named with its program. A location type with one location
+  // keeps it, said in the singular; one with none says nothing more.
+  @IsTest
+  static void aDivisionsQuestionCountsTheGroupsItTakes() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      Map<String, Id> ids = GeneratedTestData.camp();
+      Id teens = ShoreshTestData.program(ids.get('Season'), 'Teens').Id;
+      Id teenSeniors = ShoreshTestData.division(teens, 'Seniors').Id;
+      LocationType__c water = new LocationType__c(
+        Season__c = ids.get('Season'),
+        Name = 'Water'
+      );
+      LocationType__c sand = new LocationType__c(
+        Season__c = ids.get('Season'),
+        Name = 'Sand'
+      );
+      Database.insert(
+        new List<LocationType__c>{ water, sand },
+        AccessLevel.USER_MODE
+      );
+      Database.insert(
+        new Location__c(
+          Season__c = ids.get('Season'),
+          Name = 'Lake',
+          GroupsThatFit__c = 1,
+          LocationType__c = water.Id
+        ),
+        AccessLevel.USER_MODE
+      );
+      Integer groups = [
+        SELECT COUNT()
+        FROM Group__c
+        WHERE Division__c = :ids.get('Seniors')
+        WITH SYSTEM_MODE
+      ];
+      Test.startTest();
+      SetupDelete.Preview seniors = SetupDelete.preview(ids.get('Seniors'));
+      SetupDelete.Preview empty = SetupDelete.preview(teenSeniors);
+      SetupDelete.Preview oneKept = SetupDelete.preview(water.Id);
+      SetupDelete.Preview noneKept = SetupDelete.preview(sand.Id);
+      Test.stopTest();
+      Assert.areEqual('Delete Seniors (Main)?', seniors.label);
+      Assert.isTrue(groups > 0, 'Seniors has groups');
+      Assert.isTrue(
+        String.join(seniors.lines, ' ')
+          .contains(
+            'Its ' +
+              groups +
+              (groups == 1 ? ' group is' : ' groups are') +
+              ' deleted too.'
+          ),
+        String.valueOf(seniors.lines)
+      );
+      Assert.areEqual('Delete Seniors (Teens)?', empty.label);
+      Assert.isFalse(
+        String.join(empty.lines, ' ').contains('deleted too'),
+        String.valueOf(empty.lines)
+      );
+      Assert.areEqual(
+        new List<String>{ 'Its 1 location stays, with no location type.' },
+        oneKept.lines
+      );
+      Assert.isTrue(noneKept.lines.isEmpty(), String.valueOf(noneKept.lines));
+    }
+  }
+
   // ADR 0012 (4): what something still uses is refused in the preview and by the delete alike.
   @IsTest
   static void whatSomethingUsesIsRefusedBeforeAndAtTheDelete() {

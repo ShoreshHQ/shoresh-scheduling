@@ -323,6 +323,138 @@ private class AgentCampSetupTest {
     }
   }
 
+  /** "Pool" (1 fits, Swim happens there) and "pool" (2 fit), in that order in the table. */
+  private static Location__c twoPools(Season__c season, String otherName) {
+    Database.update(
+      new Location__c(Id = GeneratedTestData.ids.get('Pool'), SortOrder__c = 1),
+      AccessLevel.SYSTEM_MODE
+    );
+    Location__c other = new Location__c(
+      Season__c = season.Id,
+      Name = otherName,
+      GroupsThatFit__c = 2,
+      SortOrder__c = 2
+    );
+    Database.insert(other, AccessLevel.SYSTEM_MODE);
+    return other;
+  }
+
+  // API-1.58: the place asked to keep is kept, by its exact name; the ask and
+  // the answer say how many activities move; a merge with no seen, or a keep that names neither,
+  // is refused with nothing merged.
+  @IsTest
+  static void mergeKeepsThePlaceAskedForAndSaysWhatMoves() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      GeneratedTestData.camp();
+      Season__c season = season();
+      Location__c other = twoPools(season, 'pool');
+      Map<String, Object> seen = new Map<String, Object>{
+        'Pool' => '1',
+        'pool' => '2'
+      };
+      Map<String, Object> keepLower = new Map<String, Object>{
+        'season' => season.Name,
+        'name' => 'Pool',
+        'seen' => seen,
+        'keep' => 'pool'
+      };
+      Map<String, Object> keepNeither = new Map<String, Object>(keepLower);
+      keepNeither.put('keep', 'POOL');
+      Map<String, Object> noSeen = new Map<String, Object>(keepLower);
+      noSeen.remove('seen');
+      Test.startTest();
+      List<Object> unseen = ask(new AgentMergeLocations(), 'POST', noSeen);
+      List<Object> neither = ask(
+        new AgentMergeLocations(),
+        'POST',
+        keepNeither
+      );
+      RestContext.request = new RestRequest();
+      RestContext.request.httpMethod = 'POST';
+      RestContext.request.requestBody = Blob.valueOf(JSON.serialize(keepLower));
+      RestContext.response = new RestResponse();
+      AgentMergeLocations.post();
+      String asked = RestContext.response.responseBody.toString();
+      Integer afterAsk = [
+        SELECT COUNT()
+        FROM Location__c
+        WHERE Season__c = :season.Id AND Name IN ('Pool', 'pool')
+        WITH SYSTEM_MODE
+      ];
+      List<Object> merged = ask(new AgentMergeLocations(), 'POST', keepLower);
+      Test.stopTest();
+      Assert.areEqual(400, unseen[0], String.valueOf(unseen[1]));
+      Assert.areEqual(
+        'Nothing was merged. Say each location as read_same_locations said it (seen: {exact name: groups_that_fit}).',
+        unseen[1]
+      );
+      Assert.areEqual(400, neither[0], String.valueOf(neither[1]));
+      Assert.areEqual(
+        'Nothing was merged. Say which to keep by its exact name: "Pool", "pool".',
+        neither[1]
+      );
+      Assert.isTrue(
+        asked.contains(
+          'This merges into \\"pool\\" (groups that fit: 2): \\"Pool\\" will be deleted, and everything there (1 activity) moves to it.'
+        ),
+        asked
+      );
+      Assert.areEqual(2, afterAsk, 'Nothing merged on the ask');
+      Assert.areEqual(200, merged[0], String.valueOf(merged[1]));
+      Assert.areEqual(
+        'Merged into "pool" (groups that fit: 2): "Pool" deleted, and everything there (1 activity) moved to it.',
+        merged[1]
+      );
+      Assert.areEqual(
+        other.Id,
+        [
+          SELECT Location__c
+          FROM Activity__c
+          WHERE Id = :GeneratedTestData.ids.get('Swim')
+          WITH SYSTEM_MODE
+        ]
+        .Location__c,
+        'Swim moved to the place kept'
+      );
+    }
+  }
+
+  // API-1.58: two places called exactly the same can't be told apart by name,
+  // so they are merged on Camp Setup instead; nothing is merged.
+  @IsTest
+  static void twoPlacesCalledExactlyTheSameAreNotMergedByName() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      GeneratedTestData.camp();
+      Season__c season = season();
+      twoPools(season, 'Pool');
+      Test.startTest();
+      List<Object> refused = ask(
+        new AgentMergeLocations(),
+        'POST',
+        new Map<String, Object>{
+          'season' => season.Name,
+          'name' => 'Pool',
+          'seen' => new Map<String, Object>{ 'Pool' => '1' }
+        }
+      );
+      Test.stopTest();
+      Assert.areEqual(400, refused[0], String.valueOf(refused[1]));
+      Assert.areEqual(
+        'Nothing was merged. Two locations are called exactly "Pool"; merge them on Camp Setup, where each is its own row.',
+        refused[1]
+      );
+      Assert.areEqual(
+        2,
+        [
+          SELECT COUNT()
+          FROM Location__c
+          WHERE Season__c = :season.Id AND Name = 'Pool'
+          WITH SYSTEM_MODE
+        ]
+      );
+    }
+  }
+
   // CORE-1.0, CORE-1.34: "Same location?" says the camp's Location word and its groups that fit
   // in the camp's Group plural ("Edot that fit"), never the input's name groups_that_fit.
   @IsTest
