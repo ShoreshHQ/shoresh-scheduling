@@ -97,7 +97,8 @@ private class AgentReadTest {
   static void noSeasonNamedReadsTheSeasonTheScreensOpenOn() {
     IncomingTestData camp = new IncomingTestData();
     schedule(camp, 'Published', grid(camp));
-    User scheduler = camp.sender('Shoresh_Scheduler');
+    // A scheduler sees every season through the permission set, nothing shared by hand.
+    User scheduler = ShoreshTestData.userWith('Shoresh_Scheduler');
     System.runAs(scheduler) {
       Season__c older = ShoreshTestData.season(
         camp.season.Camp__c,
@@ -139,7 +140,8 @@ private class AgentReadTest {
   static void twoSeasonsNotEndedYetAreAskedAboutAndTheSeasonUsedIsSaid() {
     IncomingTestData camp = new IncomingTestData();
     schedule(camp, 'Published', grid(camp));
-    User scheduler = camp.sender('Shoresh_Scheduler');
+    // A scheduler sees every season through the permission set, nothing shared by hand.
+    User scheduler = ShoreshTestData.userWith('Shoresh_Scheduler');
     System.runAs(scheduler) {
       Map<String, Object> named = get(
         new OutgoingGroupSchedule(),
@@ -173,8 +175,9 @@ private class AgentReadTest {
   // API-1.108: a refusal made before the season is looked up still says the season asked for.
   @IsTest
   static void aRefusalBeforeTheSeasonIsFoundStillSaysIt() {
-    IncomingTestData camp = new IncomingTestData();
-    User scheduler = camp.sender('Shoresh_Scheduler');
+    new IncomingTestData();
+    // A scheduler sees every season through the permission set, nothing shared by hand.
+    User scheduler = ShoreshTestData.userWith('Shoresh_Scheduler');
     System.runAs(scheduler) {
       RestRequest request = new RestRequest();
       request.requestURI = '/services/apexrest/v1/update_to_match_setup';
@@ -206,8 +209,9 @@ private class AgentReadTest {
   // API-1.108: a read's refusal says the season it used too (here a season with no electives).
   @IsTest
   static void aReadsRefusalSaysTheSeasonItUsed() {
-    IncomingTestData camp = new IncomingTestData();
-    User scheduler = camp.sender('Shoresh_Scheduler');
+    new IncomingTestData();
+    // A scheduler sees every season through the permission set, nothing shared by hand.
+    User scheduler = ShoreshTestData.userWith('Shoresh_Scheduler');
     System.runAs(scheduler) {
       RestRequest request = new RestRequest();
       request.requestURI = '/services/apexrest/v1/elective_seats_now';
