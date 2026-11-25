@@ -277,7 +277,10 @@ public with sharing class ChoicesImport {
 
   /** Brings the sheet in, all or nothing. */
   public static Done bringIn(Request request) {
-    ChoicesImportPlace place = ChoicesImportPlace.held(request);
+    // ELECT-2.8: held before the run is read, so two imports (or an import and a seat save) take
+    // turns and the second sees the first's run and revision.
+    holdPlace(request?.electiveSetId, request?.weekId, request?.scheduleId);
+    ChoicesImportPlace place = new ChoicesImportPlace(request);
     place.refuseIfFinal();
     place.checkRevision();
     Savepoint before = Database.setSavepoint();
@@ -305,6 +308,34 @@ public with sharing class ChoicesImport {
   }
 
   // ---------------------------------------------------------------- helpers
+
+  /**
+   * Where a run is made (ELECT-2.8): that set, week and schedule's runs, then the set itself,
+   * since there may be no run yet to hold. Runs first, the order every other save takes (a seat
+   * save holds the run, ElectiveRunState.held, and a run's save also locks its set). Held until
+   * the request ends; how many rows were held.
+   */
+  private static Integer holdPlace(Id setId, Id weekId, Id scheduleId) {
+    return [
+        SELECT Id
+        FROM ElectiveRun__c
+        WHERE
+          ElectiveSet__c = :setId
+          AND Week__c = :weekId
+          AND Schedule__c = :scheduleId
+        WITH USER_MODE
+        FOR UPDATE
+      ]
+      .size() +
+      [
+        SELECT Id
+        FROM ElectiveSet__c
+        WHERE Id = :setId
+        WITH USER_MODE
+        FOR UPDATE
+      ]
+      .size();
+  }
 
   public static Season__c seasonOf(Id seasonId) {
     List<Season__c> seasons = [
