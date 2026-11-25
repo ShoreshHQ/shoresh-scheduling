@@ -30,7 +30,7 @@ public with sharing class ChoicesImportPlace {
   }
 
   /**
-   * The same, for a save (ELECT-2.8): the set, then this schedule's runs, are held before the runs
+   * The same, for a save (ELECT-2.8): this schedule's runs, then the set, are held before the runs
    * are read, as ElectiveRunState.held holds a run. Two imports of a set with no run yet take
    * turns, so the second sees the first's run; a seat save on the run takes turns with it too.
    */
@@ -52,15 +52,11 @@ public with sharing class ChoicesImportPlace {
     readRuns();
   }
 
-  /** Holds the set (there may be no run yet to hold) and this schedule's runs until the save ends. */
+  /**
+   * Holds this schedule's runs, then the set (there may be no run yet to hold), until the save
+   * ends: runs first, the order every other save takes (a run's save also locks its set).
+   */
   private void holdRuns() {
-    List<ElectiveSet__c> heldSet = [
-      SELECT Id
-      FROM ElectiveSet__c
-      WHERE Id = :electiveSet.Id
-      WITH USER_MODE
-      FOR UPDATE
-    ];
     List<ElectiveRun__c> heldRuns = [
       SELECT Id
       FROM ElectiveRun__c
@@ -68,6 +64,13 @@ public with sharing class ChoicesImportPlace {
         ElectiveSet__c = :electiveSet.Id
         AND Week__c = :week.Id
         AND Schedule__c = :schedule.Id
+      WITH USER_MODE
+      FOR UPDATE
+    ];
+    List<ElectiveSet__c> heldSet = [
+      SELECT Id
+      FROM ElectiveSet__c
+      WHERE Id = :electiveSet.Id
       WITH USER_MODE
       FOR UPDATE
     ];
