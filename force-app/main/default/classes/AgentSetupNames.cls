@@ -115,42 +115,22 @@ public with sharing class AgentSetupNames {
     }
   }
 
-  /** The one row of that name; none or two are refused (words: the kind, singular then plural). */
+  /**
+   * The one row of that name, found as API-1.25 finds a name; none or two are refused (words: the
+   * kind, singular then plural).
+   */
   private static Id onlyOne(
     List<SObject> rows,
     String asked,
     List<String> words
   ) {
-    String word = words[0];
-    List<String> names = new List<String>();
-    Id match;
-    for (SObject row : rows) {
-      String name = (String) row.get('Name');
-      names.add(name);
-      if (IncomingBatch.fold(name) != IncomingBatch.fold(asked)) {
-        continue;
-      }
-      if (match != null) {
-        throw new ShoreshException(
-          'More than one ' +
-            word +
-            ' is called "' +
-            asked.left(80) +
-            '", so Shoresh can\'t tell which you mean. Nothing was changed.'
-        );
-      }
-      match = row.Id;
+    List<SObject> found = AgentNamed.called(rows, asked);
+    if (found.size() == 1) {
+      return found[0].Id;
     }
-    if (match == null) {
-      throw new ShoreshException(
-        'There is no ' +
-          word +
-          ' called "' +
-          asked.left(80) +
-          '" that you can see. ' +
-          AgentWeeks.namesSaid(words[1], names)
-      );
+    if (!found.isEmpty()) {
+      throw new ShoreshException(AgentNamed.sameNameSaid(found, words[1]));
     }
-    return match;
+    throw new ShoreshException(AgentNamed.noneSaid(words, asked, rows));
   }
 }
