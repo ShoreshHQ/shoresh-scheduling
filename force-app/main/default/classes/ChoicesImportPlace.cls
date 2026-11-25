@@ -2,7 +2,8 @@
  * Where a choices sheet goes (ChoicesImport; repo ADR 0017 choices 14 and 17): the request's
  * season, elective set, week and schedule, checked to belong together, and the run they make. One
  * Committed run per set, week and schedule; a final one takes no new choices; a save whose check
- * saw another revision of the run is refused. In user mode.
+ * saw another revision of the run is refused. A save holds the place first (held), so two saves
+ * take turns and the second reads what the first wrote (ELECT-2.8). In user mode.
  */
 public with sharing class ChoicesImportPlace {
   public ChoicesImport.Request request;
@@ -25,6 +26,19 @@ public with sharing class ChoicesImportPlace {
   private Integer otherHere = 0;
 
   public ChoicesImportPlace(ChoicesImport.Request given) {
+    this(given, false);
+  }
+
+  /**
+   * The same, for a save (ELECT-2.8): the set, then this schedule's runs, are held before the runs
+   * are read, as ElectiveRunState.held holds a run. Two imports of a set with no run yet take
+   * turns, so the second sees the first's run; a seat save on the run takes turns with it too.
+   */
+  public static ChoicesImportPlace held(ChoicesImport.Request given) {
+    return new ChoicesImportPlace(given, true);
+  }
+
+  private ChoicesImportPlace(ChoicesImport.Request given, Boolean hold) {
     request = given;
     if (given == null || given.seasonId == null) {
       throw new ShoreshException('Choose the season first.');
@@ -32,7 +46,31 @@ public with sharing class ChoicesImportPlace {
     campId = ChoicesImport.seasonOf(given.seasonId).Camp__c;
     refuseIncomplete(given, campId);
     readPlace();
+    if (hold) {
+      holdRuns();
+    }
     readRuns();
+  }
+
+  /** Holds the set (there may be no run yet to hold) and this schedule's runs until the save ends. */
+  private void holdRuns() {
+    List<ElectiveSet__c> heldSet = [
+      SELECT Id
+      FROM ElectiveSet__c
+      WHERE Id = :electiveSet.Id
+      WITH USER_MODE
+      FOR UPDATE
+    ];
+    List<ElectiveRun__c> heldRuns = [
+      SELECT Id
+      FROM ElectiveRun__c
+      WHERE
+        ElectiveSet__c = :electiveSet.Id
+        AND Week__c = :week.Id
+        AND Schedule__c = :schedule.Id
+      WITH USER_MODE
+      FOR UPDATE
+    ];
   }
 
   /** The camp's words are read only for the refusal (the screens always send all four). */

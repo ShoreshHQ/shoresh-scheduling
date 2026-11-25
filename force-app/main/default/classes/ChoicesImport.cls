@@ -277,7 +277,7 @@ public with sharing class ChoicesImport {
 
   /** Brings the sheet in, all or nothing. */
   public static Done bringIn(Request request) {
-    ChoicesImportPlace place = new ChoicesImportPlace(request);
+    ChoicesImportPlace place = ChoicesImportPlace.held(request);
     place.refuseIfFinal();
     place.checkRevision();
     Savepoint before = Database.setSavepoint();
