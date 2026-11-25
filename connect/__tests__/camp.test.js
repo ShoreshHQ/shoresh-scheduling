@@ -1,6 +1,6 @@
 /**
  * The camp's Salesforce address (connect/camp.js): the namespace as Salesforce says it, every
- * action at its address with and without one (ADR 0024), and an older connector saying so.
+ * action at its address with and without one (ADR 0024), and a connector older or newer than the camp's saying so.
  * No Salesforce here: the sf command line is a stand-in.
  */
 const fs = require("fs");
@@ -189,13 +189,28 @@ describe("The camp's Salesforce address", () => {
     expect(ownVersion(path.join(dir, "none"))).toBeNull();
   });
 
-  it("newerConnectorSaysSo: a copy newer than the camp's does nothing and says it would build weeks unlike the screens", () => {
+  it("newerConnectorSaysSo: a copy newer than the camp's does nothing and says so", async () => {
     expect(notCampsOwn({ version: "1.0.50" }, "1.0.52")).toBe(
-      "This copy of Shoresh's connector (1.0.52) is newer than your camp's Shoresh (1.0.50) and would build weeks unlike its screens, so nothing was done. Download it again from Settings in Shoresh."
+      "This copy of Shoresh's connector (1.0.52) is newer than your camp's Shoresh (1.0.50) and works differently from its screens, so nothing was done. Download it again from Settings in Shoresh."
     );
     // Compared as numbers, not text: 1.0.10 is newer than 1.0.9.
     expect(notCampsOwn({ version: "1.0.9" }, "1.0.10")).toMatch(/is newer/);
 
+    // The built copy, with its manifest beside it, as a camp downloads it: nothing is sent.
+    const shipped = require("../../force-app/main/default/staticresources/ShoreshConnect/client.js");
+    const sent = [];
+    const run = async (args) => {
+      sent.push(args);
+      return "HTTP/1.1 200\ncontent-type: application/json\n\n{}";
+    };
+    const done = await shipped.call(
+      "build_week",
+      { season: "Summer 2026", week: "Week 1" },
+      { camp: async () => ({ namespace: "", version: "1.0.0" }), run }
+    );
+    expect(done.ok).toBe(false);
+    expect(done.text).toMatch(/is newer than your camp's Shoresh \(1\.0\.0\)/);
+    expect(sent).toHaveLength(0);
   });
 
   it("shipsItsVersion: the camp's static resource names the version its manifest has", () => {

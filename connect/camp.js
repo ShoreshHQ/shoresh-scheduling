@@ -65,8 +65,9 @@ async function campOf(ask) {
 }
 
 /**
- * Why this copy can't be used with the camp, or null: it is older than the camp's, or newer, so its
- * modules would build weeks unlike the camp's screens (API-1.156). Only the camp's own copy works.
+ * Why this copy can't be used with the camp, or null: it is older or newer than the camp's, so its
+ * modules (the build engine among them) aren't the camp's screens' (API-1.156). Only the camp's own
+ * copy works.
  */
 function notCampsOwn(camp, own = ownVersion()) {
   const ours = versionIn(own);
@@ -76,7 +77,7 @@ function notCampsOwn(camp, own = ownVersion()) {
   for (let i = 0; i < 3; i++) {
     if (mine[i] > theirs[i]) {
       return downloadAgain(
-        `(${own}) is newer than your camp's Shoresh (${camp.version}) and would build weeks unlike its screens, so nothing was done`
+        `(${own}) is newer than your camp's Shoresh (${camp.version}) and works differently from its screens, so nothing was done`
       );
     }
     if (mine[i] < theirs[i]) {

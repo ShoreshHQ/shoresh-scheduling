@@ -13,6 +13,8 @@
  * camp (Cedar Ridge, Hermes's) is ever read or changed. It holds the org lock
  * (/tmp/shoresh-test-org.lock) and refuses to start while a CI Scratch-org job is queued or
  * running. Files the downloads make in ~/Downloads are removed again. It prints a pass/fail table.
+ * The built copy must be the version the org holds (API-1.156): deploy this branch first, or every
+ * step is refused as older or newer than the camp's Shoresh.
  *
  * The ask-first round trip (preview, then the same request with its confirm) is done once, on a
  * version this check saved itself: here the check is the person saying yes. A product script must
