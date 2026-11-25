@@ -94,6 +94,9 @@ beforeEach(() => {
     path.join(classes, "Widget.cls"),
     "public class Widget {\n  public void a() {\n    b();\n  }\n}\n"
   );
+  // Widget runs at 80%, under the 90% every class needs, so it is pinned at its floor.
+  fs.mkdirSync(path.join(work, "scripts"));
+  writeFloors({ Widget: 80 });
   fs.writeFileSync(
     path.join(work, "sfdx-project.json"),
     JSON.stringify({ sourceApiVersion: "67.0" })
@@ -119,6 +122,13 @@ esac
 });
 
 afterEach(() => fs.rmSync(work, { recursive: true, force: true }));
+
+function writeFloors(floors) {
+  fs.writeFileSync(
+    path.join(work, "scripts", "apex-coverage-floors.json"),
+    JSON.stringify(floors)
+  );
+}
 
 /** Runs the script in the temp project; resolves { code, out }. */
 const run = (extraEnv = {}, args = []) =>
@@ -338,6 +348,74 @@ describe("run-apex-tests.mjs", () => {
     behave.perTest = [];
     const { code, out } = await run();
     expect(out).toContain("Coverage of this repository's Apex: 80%");
+    expect(code).toBe(0);
+  });
+
+  it("prints every class's coverage, lowest first", async () => {
+    behave.aggregate = [
+      {
+        ApexClassOrTriggerId: "code-6",
+        ApexClassOrTrigger: { Name: "Gadget" },
+        Coverage: { coveredLines: [1, 2, 3, 4, 5], uncoveredLines: [] }
+      }
+    ];
+    behave.perTest = [];
+    fs.writeFileSync(
+      path.join(work, "force-app", "main", "default", "classes", "Gadget.cls"),
+      "public class Gadget {\n  public void a() {\n    b();\n  }\n}\n"
+    );
+    const { code, out } = await run();
+    expect(out).toMatch(
+      /80\.0%  Widget \(pinned at 80%\)\n\s+100\.0%  Gadget\n/
+    );
+    expect(code).toBe(0);
+  });
+
+  it("fails a class under 90% that has no floor, even when the total is fine", async () => {
+    writeFloors({});
+    behave.perTest = [];
+    behave.aggregate = Array.from({ length: 4 }, (_, i) => ({
+      ApexClassOrTriggerId: `full-${i}`,
+      ApexClassOrTrigger: { Name: `Full${i}` },
+      Coverage: { coveredLines: [1, 2, 3, 4, 5], uncoveredLines: [] }
+    }));
+    behave.aggregate.forEach(({ ApexClassOrTrigger: { Name } }) =>
+      fs.writeFileSync(
+        path.join(
+          work,
+          "force-app",
+          "main",
+          "default",
+          "classes",
+          `${Name}.cls`
+        ),
+        `public class ${Name} {\n  public void a() {\n    b();\n  }\n}\n`
+      )
+    );
+    const { code, out } = await run();
+    expect(out).toContain("Coverage of this repository's Apex: 96%");
+    expect(out).toContain("Widget 80.0% (needs 90%)");
+    expect(code).toBe(1);
+  });
+
+  it("fails a pinned class that falls below its floor", async () => {
+    writeFloors({ Widget: 81 });
+    const { code, out } = await run();
+    expect(out).toContain("Widget 80.0% (needs 81%)");
+    expect(code).toBe(1);
+  });
+
+  it("names a pinned class whose floor can go up", async () => {
+    writeFloors({ Widget: 70 });
+    const { code, out } = await run();
+    expect(out).toContain("Above their floor");
+    expect(out).toContain("Widget 80%");
+    expect(code).toBe(0);
+  });
+
+  it("--class-names does not check any class's floor", async () => {
+    writeFloors({});
+    const { code } = await run({}, ["--class-names", "BetaTest"]);
     expect(code).toBe(0);
   });
 

@@ -83,7 +83,7 @@ It runs every class instead whenever in doubt: a test data builder (`*TestData`,
 test classes reached, or the selection itself failing. The log lists each chosen class with the
 chain that reached it (`AgentElectivesTest <- AgentElectives <- ElectiveClear`), and the
 summary says why. A pull request that runs only some classes shows coverage but doesn't
-require 75%: classes it didn't run would count as 0%. The nightly run checks coverage.
+require it: classes it didn't run would count as 0%. The nightly run checks coverage.
 
 ### The nightly full run on main (the safety net)
 
@@ -215,11 +215,16 @@ deleted after, and Bring in choices from Elective seats; `--only electives` runs
 
 ## Running Apex tests: one class at a time
 
-Run Apex tests with `node scripts/run-apex-tests.mjs` (add `--target-org shoresh-test` when the
-test org is not your default org). It runs each test class on its own, directly
-(synchronously), and prints one line per class, a summary, and the coverage of this
-repository's classes and triggers (the check fails below 75%). CI uses the same script. Add
-`--class-names A,B` to run only those classes (coverage is then shown, not required).
+Run Apex tests with `npm run test:apex` (`node scripts/run-apex-tests.mjs`; add
+`-- --target-org shoresh-test` when the test org is not your default org). It runs each test
+class on its own, directly (synchronously), and prints one line per class, a summary, and the
+coverage of each of this repository's classes and triggers, lowest first, and of all of them.
+The check fails below 75% in all, or below 90% in any one class. The classes that were under 90%
+when that check came in (2026-11-25) are pinned at their coverage then in
+`scripts/apex-coverage-floors.json`: each must stay at or above its floor, a floor may only go
+up, and a class leaves the file once it reaches 90%. The run names any class whose floor can be
+raised. CI uses the same script. Add `--class-names A,B` to run only those classes (coverage is
+then shown, not required).
 
 Why: a queued run (`sf apex run test --test-level RunLocalTests`) counts every test class
 against the test org's **daily allowance of 500 queued test classes** (a rolling 24 hours).
