@@ -51,7 +51,7 @@ describe("the shared rule examples", () => {
 
   // GEN-2.6
   it.each(atCampCases.map((e) => [e.availability, e.partOfDay, e.atCamp]))(
-    "a %s group in a %s block is at camp: %s",
+    "availability %s, part of day %s: at camp %s",
     (availability, partOfDay, there) => {
       expect(atCamp(availability, partOfDay)).toBe(there);
     }
