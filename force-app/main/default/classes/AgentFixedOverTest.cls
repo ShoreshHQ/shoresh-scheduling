@@ -123,7 +123,7 @@ private class AgentFixedOverTest {
         ),
         said
       );
-      Assert.isTrue(queries < 90, 'Queries: ' + queries);
+      Assert.isTrue(queries < 45, 'Queries: ' + queries);
       Assert.areEqual(
         ids.get('Period 2'),
         [

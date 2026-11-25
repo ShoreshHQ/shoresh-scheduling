@@ -3,10 +3,11 @@
  * divisions), 5 days, 8 time blocks, a fixed activity every morning, and another program sharing
  * the season's places (fixed and recurring activities, and a published week). Opening the week and each
  * kind of save use a small, fixed number of queries, whatever the size of the week (no query per
- * day, group or cell). Synthetic camp.
+ * day, group or cell). The same camp is the AI's (AgentLimitsTest builds it with bigCamp and
+ * seasonWith). Synthetic camp.
  */
 @IsTest
-private class GeneratedLimitsTest {
+public class GeneratedLimitsTest {
   // Each call is one request from the screen: Salesforce allows 100 queries in one. Measured
   // in shoresh-test (2026-10-18) on this camp with its two other programs: opening a week 22
   // (not generated yet) or 16 (generated), opening Manual Build 22, the first Generate 21. A
@@ -46,7 +47,8 @@ private class GeneratedLimitsTest {
     return ids;
   }
 
-  private static Map<String, Id> bigCamp() {
+  /** The big camp, made by whoever runs it (a scheduler, in System.runAs). */
+  public static Map<String, Id> bigCamp() {
     SetTimeGuard.defer();
     try {
       Camp__c camp = ShoreshTestData.camp('Camp Cedar');
@@ -99,6 +101,9 @@ private class GeneratedLimitsTest {
       groups[0].Name = 'Group A';
       Database.insert(groups, AccessLevel.SYSTEM_MODE);
       Map<String, Id> ids = ShoreshTestData.placesAndActivities(season.Id);
+      // The cell an AI's change types in (AgentChangesTest's, on this camp).
+      ids.put('Group A', groups[0].Id);
+      ids.put('Period 2', blocks[1].Id);
       ids.put('Camp', camp.Id);
       ids.put('Season', season.Id);
       ids.put('Main', program.Id);
@@ -500,7 +505,7 @@ private class GeneratedLimitsTest {
    * A season of its own for the one-or-three test: Main with 8 time blocks and 4 groups, the
    * season's places and activities, the Hall, and the named other programs.
    */
-  private static Map<String, Id> seasonWith(List<String> others) {
+  public static Map<String, Id> seasonWith(List<String> others) {
     Camp__c camp = ShoreshTestData.camp('Camp ' + others.size());
     Season__c season = ShoreshTestData.season(camp.Id, 'Summer 2026');
     Week__c week = ShoreshTestData.weeks(season.Id, 1)[0];

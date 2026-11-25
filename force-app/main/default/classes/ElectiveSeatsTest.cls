@@ -418,7 +418,7 @@ private class ElectiveSeatsTest {
       Integer used = Limits.getQueries() - before;
       Test.stopTest();
 
-      Assert.isTrue(used <= 50, 'Finalize stays bounded: ' + used);
+      Assert.isTrue(used <= 40, 'Finalize stays bounded: ' + used);
       Assert.areEqual('Final', view.run.status);
       Assert.isNotNull(view.run.finalizedAt);
       ElectiveRun__c run = [

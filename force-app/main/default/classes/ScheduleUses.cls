@@ -15,9 +15,10 @@ public with sharing class ScheduleUses {
   // Day parts read at once: 25 at the longest (131,072 characters) is about 3.3 million.
   @TestVisible
   private static Integer partsAtOnce = 25;
-  // Queries for the text, after the few that find the season and list the days.
+  // Queries for the text, after the few that find the season and list the days: with them, under
+  // the 50 a request may use (half of Salesforce's 100), so a Delete preview stays well inside.
   @TestVisible
-  private static Integer queryBudget = 90;
+  private static Integer queryBudget = 40;
   @TestVisible
   private static Integer rowBudget = 40000;
   @TestVisible

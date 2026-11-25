@@ -124,7 +124,7 @@ private class AgentCellsTest {
       Assert.areEqual(gym, afterMove[GeneratedTestData.LUNCH]);
       Assert.isTrue(lockedLunch, 'The moved cell is locked');
       Assert.areEqual(0, kept);
-      Assert.isTrue(used < 60, 'A move used ' + used + ' queries');
+      Assert.isTrue(used < 32, 'A move used ' + used + ' queries');
       Assert.areEqual(200, undone[0], String.valueOf(undone[1]));
       Assert.areEqual('Undone: ' + MOVED + '.', undone[1]);
       Assert.areEqual(gym, mondayA(draftId)[GeneratedTestData.PERIOD_2]);
