@@ -570,18 +570,38 @@ export class BuildWeek {
       });
       if (latest()) {
         screen.versions = rows || [];
+        this.versionsRead(null);
       }
-    } catch {
-      // The list shows as empty; the week itself is unaffected.
+    } catch (e) {
+      // Said, never hidden (WEEK-6.12): the list stays as last read, and says it couldn't be read
+      // rather than "None yet", which would look as if the week's versions were gone.
       if (latest()) {
-        screen.versions = [];
+        this.versionsRead(
+          failed(`Couldn't read the versions of ${screen.weekName}.`, e)
+        );
       }
     }
+  }
+
+  /**
+   * Versions read (problem null) or not: the list says so, and so does the error line unless
+   * another failure is shown there. Read again, its own line goes (any other error stays).
+   */
+  versionsRead(problem) {
+    const { screen } = this.adapter;
+    const shown = screen.error;
+    if (problem && !shown) {
+      this.adapter.showError(problem);
+    } else if (!problem && shown && shown === screen.versionsUnread) {
+      this.adapter.showError(null);
+    }
+    screen.versionsUnread = problem;
   }
 
   /** Another week is shown: the last one's versions go, and a list still on its way is dropped. */
   forgetVersions() {
     this.adapter.screen.versions = [];
+    this.adapter.screen.versionsUnread = null;
     this.versionsTicket += 1;
   }
 
