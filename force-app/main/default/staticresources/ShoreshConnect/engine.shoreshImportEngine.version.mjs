@@ -41,7 +41,7 @@ function seasonWeeks(existing) {
 }
 
 /** The date ("YYYY-MM-DD") of a weekday within a week's dates, or null. */
-export function dateIn(week, day) {
+function dateIn(week, day) {
   const [y, m, d] = String(week[WEEK.StartDate]).split("-").map(Number);
   const end = String(week[WEEK.EndDate]);
   for (let i = 0; i < 7; i++) {

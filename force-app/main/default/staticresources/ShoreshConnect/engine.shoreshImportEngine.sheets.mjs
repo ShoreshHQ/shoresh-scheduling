@@ -165,7 +165,7 @@ export function distinctName(fileName, prefix) {
   return /\s/.test(name) ? name : tidy(name.replace(/[-_]+/g, " "));
 }
 
-export function isGenericTitle(title) {
+function isGenericTitle(title) {
   return !tidy(title) || GENERIC_SHEET.test(tidy(title));
 }
 
@@ -490,7 +490,7 @@ function sidewaysLead(row) {
  * merged across time blocks runs down its group's column. The sheet unchanged when no grid is
  * on its side.
  */
-export function standUpright(table, merges) {
+function standUpright(table, merges) {
   const out = [];
   // Where each row that is not turned lands, and each turned cell: "row|column" -> [row, column].
   const rowTo = new Map();
@@ -705,7 +705,7 @@ function sharedCellTime(row) {
  * cell is the rest ("Art"). The first column keeps its name ("Period 1 (9-9:45)"). Read only when
  * two rows or more are written so; a row whose cells give different times is left as it is.
  */
-export function timesOutOfCells(table) {
+function timesOutOfCells(table) {
   const times = table.map(sharedCellTime);
   if (times.filter(Boolean).length < 2) {
     return table;
@@ -776,7 +776,7 @@ function readSheet(sheet, options) {
 }
 
 /** Whether a sheet has anything in it at all (empty sheets are skipped without a word). */
-export function sheetHasContent(sheet) {
+function sheetHasContent(sheet) {
   return (sheet.rows || []).some(
     (row) => Array.isArray(row) && row.some((c) => tidy(c) !== "")
   );

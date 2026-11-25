@@ -1,6 +1,6 @@
 import { streamFor } from "./engine.shoreshEngine.random.mjs";
 import { earlyDates } from "./engine.shoreshEngine.setup.mjs";
-import { LENGTH, OVERLAP, RULE, lexLess } from "./engine.shoreshEngine.weekRules.mjs";
+import { LENGTH, OVERLAP, PREFERENCES, RULE, lexLess } from "./engine.shoreshEngine.weekRules.mjs";
 
 /**
  * Step 3 of the protocol (docs/engine/protocol.md): each cell's options. Which of a group's
@@ -269,6 +269,58 @@ export function check(st, act, g, d, b, all) {
 export const blockedBy = (st, act, g, d, b) => check(st, act, g, d, b, false);
 export const canPlace = (st, act, g, d, b) =>
   check(st, act, g, d, b, false) === null;
+
+/** The bends placing `act` here would need: null when a limit forbids it (only PREFERENCES bend). */
+export function allowed(st, act, g, d, b) {
+  const bends = check(st, act, g, d, b, true);
+  if (bends === null || bends.some((r) => !PREFERENCES.includes(r))) {
+    return null;
+  }
+  return bends;
+}
+
+/** Whether the group holds anything at a time overlapping this cell. */
+export const busyAt = (st, g, d, b) =>
+  (st.peersByDay[d].get(b) || []).some((p) => {
+    const pk = st.cellKey(g, d, p);
+    return st.assigned.has(pk) || st.keptKeys.has(pk);
+  });
+
+/** The head cell of the placement covering k (k itself unless it is a tail). */
+export function headOf(st, k) {
+  if (!st.spanTails.has(k)) {
+    return k;
+  }
+  const [g, d, b] = st.splitKey(k);
+  for (let i = st.blockIdx(d, b) - 1; i >= 0; i--) {
+    const hk = st.cellKey(g, d, st.blocksOf(d)[i].id);
+    if (!st.spanTails.has(hk)) {
+      return hk;
+    }
+  }
+  return k;
+}
+
+/**
+ * How far these groups are from their weekly minimums: { count: [pairs short, sessions short],
+ * short: sessions short per "group|activity" pair }.
+ */
+export function shortfall(st, groups) {
+  let pairs = 0;
+  let sessions = 0;
+  const short = new Map();
+  for (const g of groups) {
+    for (const act of st.acts) {
+      const missing = act.min - st.getCount(g, act.id);
+      if (missing > 0 && st.eligibility.get(act.id).has(g)) {
+        pairs++;
+        sessions += missing;
+        short.set(`${g}|${act.id}`, missing);
+      }
+    }
+  }
+  return { count: [pairs, sessions], short };
+}
 
 /**
  * Early in the week (EarlyWeekCount by EarlyWeekByDay): the day indexes that count, for each

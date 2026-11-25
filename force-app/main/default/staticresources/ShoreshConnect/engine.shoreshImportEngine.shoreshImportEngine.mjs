@@ -47,7 +47,7 @@ function refusal(text) {
 }
 
 /** INGEST-1.1: refused on its size alone, before any of it is read. */
-export function checkFileSize(byteLength, limits = IMPORT_LIMITS) {
+function checkFileSize(byteLength, limits = IMPORT_LIMITS) {
   if (byteLength > limits.maxBytes) {
     throw refusal(
       `That file is too large to import (over ${Math.round(limits.maxBytes / (1024 * 1024))} MB). Nothing was imported.`
@@ -199,7 +199,7 @@ export function isReadable(name, types = FILE_TYPES.list) {
 }
 
 /** Whether a file is text (comma- or tab-separated) rather than an Excel workbook. */
-export function isCsv(name) {
+function isCsv(name) {
   return /\.(csv|tsv|txt)$/i.test(String(name || ""));
 }
 

@@ -52,7 +52,7 @@ function sharedPlaces(model) {
  * to the groups that fit at a place it has to itself), same division only, priority, early-week
  * goal, who it is for, and a place it shares with others.
  */
-export function settingsKeys(model) {
+function settingsKeys(model) {
   const keys = new Map();
   const { users, outside } = sharedPlaces(model);
   for (const a of model.acts) {
@@ -116,7 +116,7 @@ export function actsAsBuilt(model) {
 }
 
 /** The activities in settings-key order; the same key: by name, then Id. */
-export function inSettingsOrder(acts, keys) {
+function inSettingsOrder(acts, keys) {
   return [...acts].sort(
     (a, b) =>
       compareText(keys.get(a.id), keys.get(b.id)) ||

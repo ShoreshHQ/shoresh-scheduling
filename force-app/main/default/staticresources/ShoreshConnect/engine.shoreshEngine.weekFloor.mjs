@@ -1,8 +1,8 @@
 import { countedCells } from "./engine.shoreshEngine.checks.mjs";
 import { CARRIES_ON, slots, startsActivity } from "./engine.shoreshEngine.grid.mjs";
 import { readGrid } from "./engine.shoreshEngine.weekFixed.mjs";
-import { check } from "./engine.shoreshEngine.weekOptions.mjs";
-import { PREFERENCES, RULE } from "./engine.shoreshEngine.weekRules.mjs";
+import { allowed } from "./engine.shoreshEngine.weekOptions.mjs";
+import { RULE } from "./engine.shoreshEngine.weekRules.mjs";
 import { createWeekState } from "./engine.shoreshEngine.weekState.mjs";
 
 /**
@@ -129,8 +129,7 @@ export function seedFromImport(model, importDays, writeDays) {
     ) {
       continue;
     }
-    const bends = check(st, act, p.groupId, p.d, p.blockId, true);
-    if (bends === null || bends.some((r) => !PREFERENCES.includes(r))) {
+    if (!allowed(st, act, p.groupId, p.d, p.blockId)) {
       continue;
     }
     st.place(act, p.groupId, p.d, p.blockId);

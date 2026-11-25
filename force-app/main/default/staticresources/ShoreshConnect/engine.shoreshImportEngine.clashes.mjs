@@ -18,11 +18,11 @@ export const AROUND = "around";
 export const SPECIAL = "special";
 
 /** A name in one program: "Program|Name". */
-export function specialKey(t, name) {
+function specialKey(t, name) {
   return `${t.name}|${name}`;
 }
 
-export function clashId(t, name) {
+function clashId(t, name) {
   return `clash|${specialKey(t, name)}`;
 }
 

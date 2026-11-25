@@ -13,7 +13,7 @@
  */
 import { foldName } from "./engine.shoreshImportEngine.names.mjs";
 
-export const DELETED_PREFIX = "deleted|";
+const DELETED_PREFIX = "deleted|";
 export const DELETED = "deleted";
 export const BRING_BACK = "back";
 
