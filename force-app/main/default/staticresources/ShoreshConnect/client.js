@@ -22,6 +22,7 @@ const { importFile, undoImport } = require("./imports");
 const { importLastYear } = require("./lastYear");
 const { importSpecialSchedule } = require("./specialFile");
 const { makeFile } = require("./exports");
+const { foldName } = require("./common");
 const {
   readLearned,
   forgetPattern,
@@ -815,12 +816,9 @@ async function weekChecks(capability, input, at, checks, edits) {
     ...lines.look,
     ...lines.notes
   ].filter(m.acceptable);
-  const fold = (text) =>
-    String(text || "")
-      .replace(/\s+/g, " ")
-      .trim()
-      .toLowerCase();
-  const line = shown.find((l) => fold(m.wordsOf(l)) === fold(input.line));
+  const line = shown.find(
+    (l) => foldName(m.wordsOf(l)) === foldName(input.line)
+  );
   if (!line) {
     return {
       ok: false,

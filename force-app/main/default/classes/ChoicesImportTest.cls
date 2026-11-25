@@ -794,7 +794,7 @@ private class ChoicesImportTest {
     Assert.areEqual('A', ParentComments.joined('A', ''));
     Assert.areEqual('A and B', ParentComments.joined('A and B', 'B'));
     Assert.areEqual('A\nC', ParentComments.joined('A', 'C'));
-    Assert.areEqual('potterywheel', ChoicesImport.fold('Pottery-Wheel '));
+    Assert.areEqual('potterywheel', IncomingBatch.fold('Pottery-Wheel '));
   }
 
   // ---------------------------------------------------------------- linked choices (slice E8)

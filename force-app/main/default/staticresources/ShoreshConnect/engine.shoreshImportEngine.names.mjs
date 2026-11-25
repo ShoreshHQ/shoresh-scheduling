@@ -16,7 +16,11 @@
 import { FIELD } from "./engine.shoreshSchema.shoreshSchema.mjs";
 import { compareNames, compareText } from "./engine.shoreshImportEngine.order.mjs";
 
-/** Letters and digits only, lower case, with "&" and "+" read as "and". */
+/**
+ * Letters and digits only, lower case, with "&" and "+" read as "and": a name as camps type it.
+ * Apex's IncomingBatch.fold and the connector's foldName are the same rule; all three pass
+ * ShoreshRuleExamples.json's foldedNames.
+ */
 export function foldName(name) {
   return String(name || "")
     .toLowerCase()

@@ -12,14 +12,7 @@
  * done here.
  */
 const { locksAfter } = require("./undo");
-
-/** A name as camps type it: case and spaces don't count. */
-function fold(text) {
-  return String(text || "")
-    .replace(/\s+/g, " ")
-    .trim()
-    .toLowerCase();
-}
+const { foldName: fold } = require("./common");
 
 /** A refusal in Shoresh's words: nothing was changed. */
 class Refused extends Error {
@@ -378,21 +371,54 @@ function placeEvent(ctx, m, input, weekName) {
   return { runs: result.runs, label: result.label };
 }
 
+/** The ones spelled exactly as asked; with none, the ones that read the same (AgentNamed.called). */
+function called(list, nameOf, asked) {
+  const exact = list.filter((x) => nameOf(x) === asked);
+  return exact.length
+    ? exact
+    : list.filter((x) => fold(nameOf(x)) === fold(asked));
+}
+
+/** Two or more that read the same, named, in the server's words (AgentNamed.sameNameSaid). */
+function sameNameSaid(names, things) {
+  const quoted = names.map((n) => `"${n}"`);
+  const unsure = ", so Shoresh can't tell which you mean. Nothing was changed.";
+  if (new Set(quoted).size === 1) {
+    return `There are ${quoted.length} ${things} called ${quoted[0]}${unsure}`;
+  }
+  const last = quoted.pop();
+  return `${quoted.join(", ")} and ${last} are ${quoted.length === 1 ? "both" : "all"} ${things} with that name${unsure}`;
+}
+
 /**
  * What an AI names for a cell, as typing it offers (API-1.124): one of the season's activities
  * (as the week editor lists them, with their lengths) or elective sets; a name both have, or
  * neither, is refused, never guessed.
  */
 function typedOf(ctx, m, asked) {
-  const activities = (ctx.draft.activities || []).filter(
-    (a) => fold(a.name) === fold(asked)
-  );
-  const sets = ctx.sets.filter((e) => fold(e.Name) === fold(asked));
+  const activities = called(ctx.draft.activities || [], (a) => a.name, asked);
+  const sets = called(ctx.sets, (e) => e.Name, asked);
   const said = String(asked).slice(0, 80);
   const { t } = ctx;
   if (activities.length && sets.length) {
     throw new Refused(
       `"${said}" is both ${m.article(t.sIn("Activity"))} and ${m.article(t.sIn("ElectiveSet"))} in this season, so Shoresh can't tell which you mean.`
+    );
+  }
+  if (activities.length > 1) {
+    throw new Refused(
+      sameNameSaid(
+        activities.map((a) => a.name),
+        t.pIn("Activity")
+      )
+    );
+  }
+  if (sets.length > 1) {
+    throw new Refused(
+      sameNameSaid(
+        sets.map((e) => e.Name),
+        t.pIn("ElectiveSet")
+      )
     );
   }
   if (activities.length) {

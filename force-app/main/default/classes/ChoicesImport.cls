@@ -371,14 +371,4 @@ public with sharing class ChoicesImport {
   public static String rowWords(SheetCamper sheetCamper) {
     return sheetCamper.row == null ? '' : 'Row ' + sheetCamper.row + ': ';
   }
-
-  /** Lower case, punctuation and spacing aside (c/shoreshImportEngine foldName). */
-  public static String fold(String name) {
-    return name == null
-      ? ''
-      : name.toLowerCase()
-          .replace('&', ' and ')
-          .replace('+', ' and ')
-          .replaceAll('[^\\p{L}\\p{N}]+', '');
-  }
 }
