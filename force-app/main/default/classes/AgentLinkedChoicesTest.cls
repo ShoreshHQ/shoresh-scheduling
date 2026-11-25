@@ -566,4 +566,44 @@ private class AgentLinkedChoicesTest {
       Assert.areEqual(0, [SELECT COUNT() FROM LinkedChoiceTime__c]);
     }
   }
+
+  // API-1.105, API-1.133: a linked choice named under an activity it isn't linked to is refused
+  // saying which it is linked to (once, with the names as saved), never as though it were
+  // missing; nothing is changed.
+  @IsTest
+  static void aChoiceNamedUnderAnotherActivitySaysWhichItIsLinkedTo() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      LinkedChoicesMenu menu = new LinkedChoicesMenu();
+      Id choiceId = made(menu);
+      // A second "Drama" of Drama, as the editor allows: Drama is still said once.
+      Database.insert(
+        new LinkedChoice__c(
+          ElectiveSet__c = menu.setId,
+          Offering__c = menu.dramaId,
+          Name = 'Drama',
+          AppliesTo__c = 'All',
+          SortOrder__c = 2
+        ),
+        AccessLevel.USER_MODE
+      );
+      Test.startTest();
+      List<Object> answer = LinkedChoicesMenu.sent(
+        new AgentChangeLinkedChoice(),
+        menu.at(
+          new Map<String, Object>{
+            'name' => 'drama',
+            'activity' => 'archery',
+            'new_name' => 'Drama double'
+          }
+        )
+      );
+      Test.stopTest();
+      Assert.areEqual(400, answer[0], String.valueOf(answer[1]));
+      Assert.areEqual(
+        '"Drama" is linked to Drama, not "archery". Nothing was changed.',
+        answer[1]
+      );
+      Assert.areEqual('Drama', saved(choiceId).Name);
+    }
+  }
 }

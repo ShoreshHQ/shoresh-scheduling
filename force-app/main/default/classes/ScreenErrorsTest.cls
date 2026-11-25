@@ -248,15 +248,15 @@ private class ScreenErrorsTest {
     Camp__c camp = ShoreshTestData.camp('Camp Willow');
     Season__c season = ShoreshTestData.season(camp.Id, 'Summer 2026');
     Week__c week = ShoreshTestData.weeks(season.Id, 1)[0];
+    // The date rule's own message happens to start with this week's name.
+    Database.update(
+      new Week__c(Id = week.Id, Name = 'End date'),
+      AccessLevel.SYSTEM_MODE
+    );
     try {
-      // The date rule's own message happens to start with this week's name.
       UserModeWrites.save(
         new List<SObject>{
-          new Week__c(
-            Id = week.Id,
-            Name = 'End date',
-            EndDate__c = week.StartDate__c.addDays(-1)
-          )
+          new Week__c(Id = week.Id, EndDate__c = week.StartDate__c.addDays(-1))
         }
       );
       Assert.fail('Backwards dates are refused');

@@ -24,8 +24,9 @@ public with sharing class UserModeWrites {
   }
 
   /**
-   * The record's name: sent with it, or (for a change that left the name alone) as saved. None
-   * for kinds whose name is a number Salesforce gives (CL-00001): that means nothing to a camp.
+   * The record's name: as saved, for one that exists (a refused rename is named by the name it
+   * has, API-1.105), else as sent with it (a new row, or one deleted since). None for kinds whose
+   * name is a number Salesforce gives (CL-00001): that means nothing to a camp.
    */
   private static String nameOf(SObject record) {
     if (
@@ -35,12 +36,9 @@ public with sharing class UserModeWrites {
     ) {
       return null;
     }
-    Map<String, Object> given = record.getPopulatedFieldsAsMap();
-    if (given.containsKey('Name')) {
-      return (String) given.get('Name');
-    }
+    String given = (String) record.getPopulatedFieldsAsMap().get('Name');
     if (record.Id == null) {
-      return null;
+      return given;
     }
     List<SObject> saved = Database.queryWithBinds(
       'SELECT Name FROM ' +
@@ -49,7 +47,7 @@ public with sharing class UserModeWrites {
       new Map<String, Object>{ 'recordId' => record.Id },
       AccessLevel.USER_MODE
     );
-    return saved.isEmpty() ? null : (String) saved[0].get('Name');
+    return saved.isEmpty() ? given : (String) saved[0].get('Name');
   }
 
   /** A failed save, with the name of the row that was refused, so the screen can say which. */

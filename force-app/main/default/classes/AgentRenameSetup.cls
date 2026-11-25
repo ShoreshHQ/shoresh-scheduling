@@ -51,8 +51,12 @@ global with sharing class AgentRenameSetup implements AgentRequest.Change {
         new ScreenSaves.Extras()
       );
     } catch (Exception e) {
+      // The reason, without the record's name before it: the sentence names it already.
       throw new ShoreshException(
-        '"' + found.name + '" not saved. ' + ScreenErrors.words(e)
+        '"' +
+          found.name +
+          '" not saved. ' +
+          ScreenErrors.words(e).removeStart('"' + found.name + '": ')
       );
     }
     if (!result.saved()) {
