@@ -112,7 +112,7 @@ function kindShape(f) {
 
 const twoOrMore = (n) => (n === 2 ? "two" : "more");
 
-export function similarCard(pair, t, answer) {
+function similarCard(pair, t, answer) {
   const term = t.sIn(
     { group: "Group", division: "Division" }[pair.kind] || "Activity"
   );
@@ -195,7 +195,7 @@ function patternWho(pattern, facts, t) {
   return whole ? nameList(divisions) : nameList(pattern.groups);
 }
 
-export function patternText(pattern, facts, timetable, t) {
+function patternText(pattern, facts, timetable, t) {
   return `${patternWho(pattern, facts, t)} at ${blockSpan(timetable, pattern.block, pattern.length)} on ${dayList(pattern.days)}`;
 }
 

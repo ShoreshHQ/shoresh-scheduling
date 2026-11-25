@@ -53,19 +53,6 @@ export {
 } from "./weekRules";
 export { lockKey } from "./weekFixed";
 
-/**
- * model: { days, groups, groupIds, acts, eligibility, fit, setTimeLocation, electivePlaces, locks,
- *          mode, seed, otherPlace, otherActivity } (shoreshEngine.js builds it).
- */
-export function scheduleWeek(model) {
-  const steps = scheduleWeekSteps(model);
-  let step = steps.next();
-  while (!step.done) {
-    step = steps.next();
-  }
-  return step.value;
-}
-
 // How much of a build each pass is, roughly (a 40-bunk week that can't fit spends nearly all of
 // it in the two repairs): for the progress the screen shows, never for what is built.
 const SHARE = Object.freeze({
@@ -78,11 +65,13 @@ const SHARE = Object.freeze({
 });
 
 /**
- * The same build in steps (ADR 0010 §22): a generator that yields how far it has got (0 to 1)
- * between pieces of work, each piece a cell or a minimum-repair pass, and returns what
- * scheduleWeek returns. The screen runs a few steps at a time so the tab never freezes. The
- * steps only say where the build is; they never change it, so a week built in steps is the
- * same as one built at once. notes, if given, is told once the minimum repair is done whether
+ * model: { days, groups, groupIds, acts, eligibility, fit, setTimeLocation, electivePlaces, locks,
+ *          mode, seed, otherPlace, otherActivity } (shoreshEngine.js builds it).
+ *
+ * The build in steps (ADR 0010 §22): a generator that yields how far it has got (0 to 1)
+ * between pieces of work, each piece a cell or a minimum-repair pass, and returns the built week.
+ * The screen runs a few steps at a time so the tab never freezes. The steps only say where the
+ * build is; they never change it. notes, if given, is told once the minimum repair is done whether
  * it left a cell for never-blank (notes.settled, notes.leftForNeverBlank): from then on the
  * caller knows whether the week will be built a second time. notes.now says what the build is
  * doing as it goes (progress.js), for a progress screen.

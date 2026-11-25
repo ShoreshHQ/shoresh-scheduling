@@ -30,8 +30,6 @@ export const RELAX_ORDER = Object.freeze([
  * day, who an activity is set up for, groups at once, same division and groups that fit are
  * limits and never give way there. */
 export const PREFERENCES = Object.freeze([RULE.WEEKLY_MAX]);
-// Most serious first, for comparing two bends.
-export const SEVERITY = [...RELAX_ORDER].reverse();
 
 /** Not rules that bend, but why a cell stays Open: the group holds something at an overlapping
  * time, or no activity's length fits the gap. */

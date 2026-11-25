@@ -487,7 +487,6 @@ function* tellMove(st, u, at) {
   yield at;
 }
 
-/** Repair 2 for every group short of an activity's weekly minimum. */
 /**
  * A kept chain's cells left Open in another group's row are remembered with the group that
  * gained and its activity: if never-blank and the search can't fill one, it says the trade
@@ -508,6 +507,7 @@ function keepRepairLeft(st, groupId, act) {
   st.repairLeft = [];
 }
 
+/** Repair 2 for every group short of an activity's weekly minimum. */
 export function* minRepair(st, from, share) {
   const pairs = st.acts.length * st.model.groupIds.length || 1;
   let pair = 0;
