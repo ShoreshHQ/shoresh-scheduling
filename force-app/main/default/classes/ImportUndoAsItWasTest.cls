@@ -104,7 +104,7 @@ private class ImportUndoAsItWasTest {
       System.enqueueJob(new UndoJob(ImportUndo.latest(copyId)));
       Test.stopTest();
       // Bound: undoing a season copy deletes everything the copy made: measured 46 (2026-11-25).
-      // Measured + 5 would pass the bar's 50, so the bar itself is the bound.
+      // Measured + 5 would go over the bar's 50, so the bar itself is the bound.
       Assert.isTrue(undoQueries < 50, 'queries: ' + undoQueries);
       Assert.isTrue(undone.seasonRemoved);
       Assert.areEqual(new List<String>(), undone.keptEdited);
@@ -266,6 +266,42 @@ private class ImportUndoAsItWasTest {
         'Undo put the note back'
       );
       Assert.areEqual(before, CampSnapshot.of());
+    }
+  }
+
+  /**
+   * A season's delete clears its own rows first (SeasonTriggerHandler): this camp has fixed and
+   * recurring activities, who a recurring activity and a linked choice cover, an elective set,
+   * its offering and linked choice. Every one goes with the season, none refused.
+   */
+  @IsTest
+  static void aSeasonWithItsItemsAndElectivesIsDeletedWhole() {
+    Map<String, Id> kept = KeptCamp.keptIds();
+    System.runAs(new User(Id = kept.get('Scheduler'))) {
+      Id seasonId = kept.get('Season');
+      Assert.isTrue(
+        [SELECT COUNT() FROM Coverage__c WHERE Season__c = :seasonId] >= 2,
+        'covered by a recurring activity and a linked choice'
+      );
+      Test.startTest();
+      Database.delete(seasonId, true, AccessLevel.USER_MODE);
+      Test.stopTest();
+      Assert.areEqual(0, [SELECT COUNT() FROM Season__c WITH SYSTEM_MODE]);
+      Assert.areEqual(0, [SELECT COUNT() FROM Coverage__c WITH SYSTEM_MODE]);
+      Assert.areEqual(
+        0,
+        [SELECT COUNT() FROM FixedActivity__c WITH SYSTEM_MODE]
+      );
+      Assert.areEqual(
+        0,
+        [SELECT COUNT() FROM RecurringActivity__c WITH SYSTEM_MODE]
+      );
+      Assert.areEqual(
+        0,
+        [SELECT COUNT() FROM LinkedChoice__c WITH SYSTEM_MODE]
+      );
+      Assert.areEqual(0, [SELECT COUNT() FROM ElectiveSet__c WITH SYSTEM_MODE]);
+      Assert.areEqual(0, [SELECT COUNT() FROM Activity__c WITH SYSTEM_MODE]);
     }
   }
 }

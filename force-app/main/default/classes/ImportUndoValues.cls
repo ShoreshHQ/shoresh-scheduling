@@ -76,8 +76,9 @@ public with sharing class ImportUndoValues {
   }
 
   /**
-   * The same, with the caller's sub-queries of the platform's own relationship names read along
-   * (a sub-query is not a query of its own), and their binds.
+   * The same, with the caller's sub-queries read along (a sub-query is not a query of its own),
+   * and their binds. The sub-queries are put into the query as given: build them only from the
+   * platform's own relationship names (ShoreshSchema), never from an import's or a person's text.
    */
   public static Map<Id, SObject> read(
     Schema.SObjectType type,
