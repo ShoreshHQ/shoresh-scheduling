@@ -6,16 +6,63 @@
 public with sharing class IncomingQuestions {
   // Import__c.Open__c's length.
   private static final Integer OPEN_LIMIT = 131072;
+  // The last question when some didn't fit (API-6.7). It says no count: questions left out keep
+  // no key, so the same ones sent again could not be told from new ones.
+  private static final String MORE_KEY = IncomingBatch.QUESTION_PREFIX + 'more';
+  // Room for that last question and the closing bracket.
+  private static final Integer MORE_ROOM = 200;
 
-  /** As many questions as Import__c.Open__c holds, as JSON ("[]" for none). */
+  /**
+   * As many questions as Import__c.Open__c holds, as JSON ("[]" for none), ending in one that
+   * says more couldn't be kept when any were left out, now or by an earlier batch it joins.
+   */
   public static String fitting(List<Map<String, String>> questions) {
-    List<Map<String, String>> kept = questions.clone();
-    String text = JSON.serialize(kept);
-    while (text.length() > OPEN_LIMIT) {
-      kept.remove(kept.size() - 1);
-      text = JSON.serialize(kept);
+    List<Map<String, String>> kept = new List<Map<String, String>>();
+    Boolean more = false;
+    for (Map<String, String> question : questions) {
+      if (question.get('key') == MORE_KEY) {
+        more = true;
+      } else {
+        kept.add(question);
+      }
     }
-    return text;
+    String text = JSON.serialize(withMore(kept, more));
+    if (text.length() <= OPEN_LIMIT) {
+      return text;
+    }
+    // Each question measured once (a list's JSON is its items' JSON, comma-joined, in [ ]), with
+    // room kept for the last question and the closing bracket.
+    Integer size = 1;
+    Integer fit = 0;
+    while (fit < kept.size()) {
+      Integer next = JSON.serialize(kept[fit]).length() + 1;
+      if (size + next > OPEN_LIMIT - MORE_ROOM) {
+        break;
+      }
+      size += next;
+      fit++;
+    }
+    while (kept.size() > fit) {
+      kept.remove(kept.size() - 1);
+    }
+    return JSON.serialize(withMore(kept, true));
+  }
+
+  private static List<Map<String, String>> withMore(
+    List<Map<String, String>> kept,
+    Boolean more
+  ) {
+    if (!more) {
+      return kept;
+    }
+    List<Map<String, String>> all = kept.clone();
+    all.add(
+      new Map<String, String>{
+        'key' => MORE_KEY,
+        'title' => 'More questions from this system couldn\'t be kept here.'
+      }
+    );
+    return all;
   }
 
   /**

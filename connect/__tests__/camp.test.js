@@ -61,7 +61,8 @@ describe("The camp's Salesforce address", () => {
     expect(await campOf(async () => ({ status: 400, body: "[]" }))).toEqual({
       namespace: "",
       version: null,
-      read: false
+      read: false,
+      response: { status: 400, body: "[]" }
     });
   });
 
@@ -118,6 +119,49 @@ describe("The camp's Salesforce address", () => {
     const seen = [];
     await check({ run: campAnswering("shoresh", "1.0.1", seen) });
     expect(seen[1]).toBe("/services/apexrest/shoresh/v1/group_schedule");
+  });
+
+  // API-1.155
+  it("campNotReadSendsNothing: when Salesforce doesn't say where Shoresh is, no action is sent and that is said", async () => {
+    const seen = [];
+    const done = await call(
+      "publish_week",
+      { season: "Summer 2026", week: "Week 1" },
+      {
+        camp: (org, asked) => campOf(asked),
+        run: async (args) => {
+          seen.push(args[3]);
+          return "HTTP/1.1 503\ncontent-type: text/plain\n\nService Unavailable";
+        }
+      }
+    );
+    expect(done).toEqual({
+      ok: false,
+      status: 503,
+      text: "Salesforce didn't answer just now. Try again in a moment; nothing was changed."
+    });
+    expect(seen).toHaveLength(1);
+    expect(seen[0]).toMatch(/^\/services\/data\//);
+  });
+
+  // API-1.155
+  it("campRefusedSaysWhy: a sign-in or access Salesforce refuses on the camp read is said as Salesforce's refusal, never as no answer, and nothing else is sent", async () => {
+    const seen = [];
+    const done = await call(
+      "publish_week",
+      { season: "Summer 2026", week: "Week 1" },
+      {
+        camp: (org, asked) => campOf(asked),
+        run: async (args) => {
+          seen.push(args[3]);
+          return 'HTTP/1.1 403\ncontent-type: application/json\n\n[{"message":"API is not enabled for this user.","errorCode":"API_DISABLED_FOR_ORG"}]';
+        }
+      }
+    );
+    expect(done.ok).toBe(false);
+    expect(done.status).toBe(403);
+    expect(done.text).not.toMatch(/didn't answer/);
+    expect(seen).toHaveLength(1);
   });
 
   it("olderConnectorSaysSo: a downloaded copy older than the camp's does nothing and says to download it again", async () => {

@@ -17,6 +17,10 @@ const sfAnswering =
   (status, body, seen = []) =>
   async (args, stdin) => {
     seen.push({ args, stdin });
+    // Where Shoresh is (camp.js), as Salesforce answers it: no namespace, as in the test org.
+    if (String(args[3]).startsWith("/services/data/")) {
+      return 'HTTP/1.1 200\ncontent-type: application/json\n\n{"records":[]}';
+    }
     return `HTTP/1.1 ${status}\ncontent-type: application/json\nset-cookie: sid=SECRET\n\n${body}`;
   };
 

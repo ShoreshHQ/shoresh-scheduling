@@ -187,6 +187,8 @@ export default class ShoreshGeneratedSchedule extends BuildScreen(
   focusOn = null;
   // The week's versions (SchedulesController.getVersions rows), read with the week.
   versions = [];
+  // Why the versions couldn't be read (WEEK-6.12), or null.
+  versionsUnread = null;
   // A Save version, Restore, rename or delete is on its way.
   versionsWorking = false;
   // Apply to other weeks is open (c-shoresh-apply-weeks).

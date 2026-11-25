@@ -23,7 +23,13 @@ import {
   refusedFile,
   nextKeyOf
 } from "c/shoreshImportEngine";
-import { closeRefusal, failed, floatRefusal } from "c/shoreshErrors";
+import {
+  closeRefusal,
+  failed,
+  floatRefusal,
+  outcomeKnown,
+  reasonOf
+} from "c/shoreshErrors";
 import { rememberedFor } from "c/shoreshRemembered";
 import { suggestionsFor } from "c/shoreshPatterns";
 import { comingIn, countTiles, miniCells, total } from "./summary";
@@ -33,12 +39,27 @@ import {
   keptNow,
   layoutWords,
   leaveable,
-  planNow,
+  planOrFail,
   proposalWith,
   recomputed,
   saveLabel,
   savePlan
 } from "./flow";
+
+const FOR_SUPPORT = "For support: ";
+/**
+ * What a save that failed says: "Nothing was saved." only when that is known (never sent, or
+ * outcomeKnown). With no answer from the server (a dropped connection, a timeout) it may have
+ * saved after all, so only that is said, with where to look and the support code, never "Try
+ * again." (desktop writeErrorMessage.js: could not confirm this saved).
+ */
+function saveFailed(nothing, unknown, error, sent) {
+  if (!sent || outcomeKnown(error)) {
+    return failed(nothing, error);
+  }
+  const why = reasonOf(error);
+  return `${unknown} ${why.slice(why.lastIndexOf(FOR_SUPPORT))}`;
+}
 
 /**
  * Import last year (slice 4b; ADR 0006), drawn as Greg's approved mock-ups
@@ -101,6 +122,8 @@ export default class ShoreshImport extends LightningElement {
   versionUses = {};
   // The questions left open when Add was pressed, for the page after it (INGEST-5.5).
   savedOpen = [];
+  // Why the plan Add would save couldn't be worked out, shown in the review while Add is off.
+  planError = null;
   // Where the cursor goes at the next render: { key } (that choice, if it is still there, else
   // the next question still open after { after }), { question }, { bringBack } or { selector }.
   focusNext = null;
@@ -235,6 +258,8 @@ export default class ShoreshImport extends LightningElement {
       return;
     }
     this.error = null;
+    // Each choice of files is worked out afresh: a failure on the last one isn't this one's.
+    this.planError = null;
     this.stage = "reading";
     try {
       this.files = await Promise.all(chosen.map((f) => this.readOne(f)));
@@ -404,15 +429,22 @@ export default class ShoreshImport extends LightningElement {
     }
   }
 
-  /** What earlier imports brought in and no one changed since; none if it cannot be read. */
+  /**
+   * What earlier imports brought in and no one changed since; none if it cannot be read, and the
+   * screen says so (nothing is then listed as not in these files).
+   */
   async importedBefore() {
     if (!this.seasonId) {
       return {};
     }
     try {
       return (await getImported({ seasonId: this.seasonId })) || {};
-    } catch {
+    } catch (e) {
       // Without it, everything the camp has is asked about and nothing is listed: never changed.
+      this.error = failed(
+        "What earlier imports brought in couldn't be read.",
+        e
+      );
       return {};
     }
   }
@@ -480,9 +512,28 @@ export default class ShoreshImport extends LightningElement {
     this.kept = keptNow(this.flowInput, this.proposal, this.answers);
   }
 
-  /** The plan Add would save, for the counts; null if it cannot be made yet. */
+  /**
+   * The plan Add would save, for the counts; null if it cannot be made yet. When working it out
+   * fails, the review says so where the counts would be, with a support code, for as long as
+   * Add is off for it: never a greyed Add with no reason.
+   */
   planNow(fileData) {
-    return planNow(this.flowInput, this.proposal, this.answers, fileData);
+    try {
+      const plan = planOrFail(
+        this.flowInput,
+        this.proposal,
+        this.answers,
+        fileData
+      );
+      this.planError = null;
+      return plan;
+    } catch (e) {
+      // Worked out again on every answer: one failure keeps one message and one support code.
+      if (!this.planError) {
+        this.planError = failed("This file can't be added yet.", e);
+      }
+      return null;
+    }
   }
 
   get seasonId() {
@@ -981,6 +1032,7 @@ export default class ShoreshImport extends LightningElement {
     this.files = [];
     this.proposal = null;
     this.plan = null;
+    this.planError = null;
     this.kept = null;
     this.openKind = null;
     this.openReadAs = null;
@@ -1007,6 +1059,7 @@ export default class ShoreshImport extends LightningElement {
   async handleSave() {
     this.stage = "saving";
     this.error = null;
+    let sent = false;
     try {
       // The files as read go with open questions, so they can be answered later.
       const plan = savePlan(this.flowInput, this.proposal, this.answers, {
@@ -1017,6 +1070,7 @@ export default class ShoreshImport extends LightningElement {
       if (!plan) {
         throw new Error("The plan could not be made.");
       }
+      sent = true;
       this.result = await saveSetup({ plan: JSON.stringify(plan) });
       this.savedOpen = plan.open;
       this.stage = "done";
@@ -1024,7 +1078,12 @@ export default class ShoreshImport extends LightningElement {
       this.dispatchEvent(new CustomEvent("imported"));
     } catch (e) {
       this.stage = "review";
-      this.error = failed("Nothing was saved.", e);
+      this.error = saveFailed(
+        "Nothing was saved.",
+        "Shoresh couldn't confirm the import was saved. Look at Roots before adding these files again.",
+        e,
+        sent
+      );
     }
   }
 

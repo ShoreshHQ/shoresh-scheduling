@@ -39,8 +39,8 @@ function ownVersion(dir = __dirname) {
 
 /**
  * What Salesforce says of the camp's Shoresh: { namespace, version }. ask(request) answers
- * Salesforce's { status, body }. Where it can't be read, no namespace and no version, and read:
- * false so it is asked again next time.
+ * Salesforce's { status, body }. Where it can't be read, no namespace and no version, read: false
+ * so it is asked again next time, and Salesforce's response, so why can be said (API-1.155).
  */
 async function campOf(ask) {
   const read = await ask({
@@ -54,7 +54,7 @@ async function campOf(ask) {
     records = null;
   }
   if (!Array.isArray(records))
-    return { namespace: "", version: null, read: false };
+    return { namespace: "", version: null, read: false, response: read };
   const [record] = records;
   if (!record) return { namespace: "", version: null };
   return {

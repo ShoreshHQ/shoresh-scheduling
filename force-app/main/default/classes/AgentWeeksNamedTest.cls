@@ -67,4 +67,17 @@ private class AgentWeeksNamedTest {
       refusal(rows, 'Teens ')
     );
   }
+
+  // API-1.25: two spelled exactly alike are counted, not listed twice; a third that only reads the
+  // same is left out, as the exact spelling is what was asked for.
+  @IsTest
+  static void twoSpelledAlikeAreCounted() {
+    List<SObject> rows = programs(
+      new List<String>{ 'Teens', 'Teens', 'TEENS!' }
+    );
+    Assert.areEqual(
+      'There are 2 programs called "Teens", so Shoresh can\'t tell which you mean. Nothing was changed.',
+      refusal(rows, 'Teens')
+    );
+  }
 }

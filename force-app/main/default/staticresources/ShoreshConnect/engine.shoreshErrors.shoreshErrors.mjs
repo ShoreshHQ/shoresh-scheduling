@@ -220,6 +220,15 @@ export function reasonOf(error) {
 }
 
 /**
+ * Whether a failed request's outcome is known: Shoresh's own words (a refusal its server or these
+ * screens made: the request threw, so all of it was undone) or Salesforce's limit (it stops the
+ * whole request). Anything else, such as no answer from the server, leaves it unknown.
+ */
+export function outcomeKnown(error) {
+  return explain(error).kind !== "unexplained";
+}
+
+/**
  * The why on its own, for a caller with no subject to put in front of it: Shoresh's own words,
  * or "That didn't work. Try again." Prefer failed(), which names what didn't happen.
  */
@@ -230,26 +239,18 @@ export function errorMessage(error) {
     : withCode(error, found);
 }
 
-// A subject that says the change was made (the screen only couldn't show it) is always kept.
+// A subject that says the change was made (the screen only couldn't show it): never a refusal.
 const DONE = /^Done\b/;
 
-/** The first sentence of a subject: "Bunks not saved." out of "Bunks not saved. Nothing …". */
-function firstSentence(what) {
-  const masked = what.replace(QUOTED, (quoted) => "x".repeat(quoted.length));
-  const end = masked.search(/[.!?](\s|$)/);
-  return end < 0 ? what : what.slice(0, end + 1);
-}
-
 /**
- * What didn't happen, in one sentence, then why (word walk W4: never "Not saved. Nothing was
+ * What didn't happen, then why (word walk W4: never "Not saved. Nothing was
  * saved. Your changes are still here."): failed("Bunk 1 · Monday wasn't saved.", e) ->
  * "Bunk 1 · Monday wasn't saved. Bunk 1 isn't at camp then.", or "… Try again." when the
- * server's text isn't ours. Only the subject's first sentence is said.
+ * server's text isn't ours. The subject is said whole: a camp's names ("Dr. Seuss Day") may
+ * hold a full stop, so it is never cut at one (CORE-6.18).
  */
 export function failed(what, error) {
-  const subject = String(what || "");
-  const why = reasonOf(error);
-  return `${DONE.test(subject) ? subject : firstSentence(subject)} ${why}`;
+  return `${String(what || "")} ${reasonOf(error)}`;
 }
 
 /**

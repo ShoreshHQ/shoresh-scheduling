@@ -380,6 +380,11 @@
             </template>
           </section>
         </template>
+        <template lwc:if={planError}>
+          <p class="shoresh-refusal" role="alert" data-id="plan-error">
+            {planError}
+          </p>
+        </template>
         <template lwc:if={hasComingIn}>
           <section class="section" data-id="coming-in">
             <h3 class="section-head">Comes in</h3>

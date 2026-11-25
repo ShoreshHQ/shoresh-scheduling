@@ -13,7 +13,13 @@ import {
 } from "c/shoreshImportEngine";
 import { readChoices } from "c/shoreshChoicesReader";
 import { scheduleOptions } from "c/shoreshElectiveEngine";
-import { closeRefusal, failed, floatRefusal } from "c/shoreshErrors";
+import {
+  closeRefusal,
+  failed,
+  floatRefusal,
+  outcomeKnown,
+  reasonOf
+} from "c/shoreshErrors";
 import { buildTerms, electiveSeatsTitle } from "c/shoreshTerms";
 import {
   allSettled,
@@ -36,6 +42,21 @@ import {
 } from "./review";
 
 const STEPS = 3;
+
+const FOR_SUPPORT = "For support: ";
+/**
+ * What a save that failed says: "Nothing was imported." only when that is known (never sent, or
+ * outcomeKnown). With no answer from the server (a dropped connection, a timeout) it may have
+ * saved after all, so only that is said, with where to look and the support code, never "Try
+ * again." (desktop writeErrorMessage.js: could not confirm this saved).
+ */
+function saveFailed(nothing, unknown, error, sent) {
+  if (!sent || outcomeKnown(error)) {
+    return failed(nothing, error);
+  }
+  const why = reasonOf(error);
+  return `${unknown} ${why.slice(why.lastIndexOf(FOR_SUPPORT))}`;
+}
 
 /**
  * Bring in choices (electives slice E6; ADR 0017): a camp's own choices sheet, read in the browser
@@ -133,6 +154,9 @@ export default class ShoreshChoicesImport extends LightningElement {
   // Counts asked again after an answer (handleWhich): the latest one's number, and while it runs.
   recounts = 0;
   recounting = false;
+  // The latest recount failed: the count shown would be from before the answer.
+  countFailed = false;
+  countError = null;
   check = null;
   done = null;
   // A selector that takes the cursor at the next render.
@@ -605,7 +629,7 @@ export default class ShoreshChoicesImport extends LightningElement {
     });
   }
   get lines() {
-    if (!this.check || !this.reading) return [];
+    if (!this.check || !this.reading || this.countFailed) return [];
     const request = this.request;
     if (!request) return [];
     return countLines({
@@ -652,7 +676,9 @@ export default class ShoreshChoicesImport extends LightningElement {
   }
   /**
    * An answer counts again with it (hand changes kept, who is on the sheet), in place. Only the
-   * latest count is kept, and Import waits for it.
+   * latest count is kept, and Import waits for it. A count that fails takes the old count and
+   * Import away (the questions stay, so changing an answer counts again), so Import never brings
+   * in something other than what the card says.
    */
   async handleWhich(event) {
     const key = event.currentTarget.dataset.key;
@@ -663,10 +689,19 @@ export default class ShoreshChoicesImport extends LightningElement {
       const check = await checkChoices({
         request: JSON.stringify(this.request)
       });
-      if (mine === this.recounts) this.check = check;
+      if (mine === this.recounts) {
+        this.check = check;
+        // The failed recount's message goes with it; any other stays.
+        if (this.countFailed && this.error === this.countError) {
+          this.error = null;
+        }
+        this.countFailed = false;
+      }
     } catch (e) {
       if (mine === this.recounts) {
-        this.error = failed("Couldn't count what this sheet imports.", e);
+        this.countFailed = true;
+        this.countError = failed("Couldn't count what this sheet imports.", e);
+        this.error = this.countError;
       }
     } finally {
       if (mine === this.recounts) this.recounting = false;
@@ -695,7 +730,13 @@ export default class ShoreshChoicesImport extends LightningElement {
   get showsPrimary() {
     if (!this.isCards) return false;
     if (this.step < STEPS) return true;
-    return !!this.check && !this.refused && !this.isFinal && !this.whichLeft;
+    return (
+      !!this.check &&
+      !this.countFailed &&
+      !this.refused &&
+      !this.isFinal &&
+      !this.whichLeft
+    );
   }
   get primaryDisabled() {
     return this.isBusy || this.recounting || !this.canGoOn;
@@ -756,6 +797,7 @@ export default class ShoreshChoicesImport extends LightningElement {
     const request = this.request;
     if (!request) return;
     this.phase = "checking";
+    this.countFailed = false;
     try {
       this.check = await checkChoices({ request: JSON.stringify(request) });
       this.phase = "card";
@@ -764,6 +806,8 @@ export default class ShoreshChoicesImport extends LightningElement {
         : "Ready to import.";
     } catch (e) {
       this.phase = "card";
+      // Never a count from before: what is shown is what Import would do, or nothing.
+      this.check = null;
       this.error = failed("Couldn't count what this sheet imports.", e);
     }
   }
@@ -775,12 +819,15 @@ export default class ShoreshChoicesImport extends LightningElement {
       this.refused ||
       this.isFinal ||
       this.whichLeft ||
-      this.recounting
+      this.recounting ||
+      this.countFailed
     )
       return;
     this.phase = "saving";
     this.status = "Importing";
+    let sent = false;
     try {
+      sent = true;
       this.done = await bringInChoices({ request: JSON.stringify(request) });
       this.phase = "done";
       this.status = this.doneText;
@@ -791,7 +838,12 @@ export default class ShoreshChoicesImport extends LightningElement {
       await this.loadSituation();
     } catch (e) {
       this.phase = "card";
-      this.error = failed("Nothing was imported.", e);
+      this.error = saveFailed(
+        "Nothing was imported.",
+        `Shoresh couldn't confirm the choices were imported. Look at ${electiveSeatsTitle(this.t)} before importing them again.`,
+        e,
+        sent
+      );
     }
   }
 

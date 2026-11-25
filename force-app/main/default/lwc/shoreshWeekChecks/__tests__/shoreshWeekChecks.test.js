@@ -544,6 +544,26 @@ describe("c-shoresh-week-checks: the counter", () => {
       await flush();
     });
 
+    it("WEEK-6.12: accepts that can't be read are said; every line shows", async () => {
+      readAccepted.mockRejectedValue(new Error("offline"));
+      const element = await open({
+        measure: swimSoccer(["g1", "g2"], []),
+        scheduleId: "s1"
+      });
+      expect(swimRow(element)).not.toBeNull();
+      const problem = q(element, '[data-id="accept-problem"]');
+      expect(problem.textContent.trim()).toMatch(
+        /^Couldn't read what you accepted for this week\. Try again\. For support: [\w-]+\.$/
+      );
+      expect(problem.getAttribute("role")).toBe("alert");
+      // Still said after another Accept: the week's earlier accepts are still unread.
+      q(element, '.accept[data-key^="under|a1|"]').click();
+      await flush();
+      expect(
+        q(element, '[data-id="accept-problem"]').textContent.trim()
+      ).toMatch(/^Couldn't read what you accepted for this week\./);
+    });
+
     it("CORE-6.9: an Accept that can't be kept says so on screen", async () => {
       keepAccepted.mockRejectedValue(new Error("no access"));
       const element = await open({
@@ -554,8 +574,9 @@ describe("c-shoresh-week-checks: the counter", () => {
       await flush();
       // On screen, in the dropdown, not only for screen readers.
       const problem = q(element, '[data-id="accept-problem"]');
-      expect(problem.textContent.trim()).toBe(
-        "Couldn't keep this Accept with the week: Swim, 2 short · 2 groups."
+      // Why, with a support code, so support can trace it (WEEK-6.12).
+      expect(problem.textContent.trim()).toMatch(
+        /^Couldn't keep this Accept with the week: Swim, 2 short · 2 groups\. Try again\. For support: [\w-]+\.$/
       );
       expect(problem.getAttribute("role")).toBe("alert");
       expect(problem.classList.contains("slds-text-color_error")).toBe(true);

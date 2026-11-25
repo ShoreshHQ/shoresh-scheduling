@@ -3,6 +3,7 @@ import {
   errorMessage,
   floatRefusal,
   failed,
+  outcomeKnown,
   refusedBecause,
   reasonOf,
   refusal,
@@ -154,15 +155,28 @@ describe("reasonOf", () => {
 // Word walk W4: one clause naming what failed, never "Not saved. Nothing was saved. Your
 // changes are still here."
 describe("failed", () => {
-  it("says what didn't happen in its first sentence, then why", () => {
+  it("says what didn't happen, then why", () => {
     expect(
       failed(
-        "Bunks not saved. Your changes are still here.",
+        "Bunks not saved.",
         ours('"Bunk 3": That name is already used. Pick another.')
       )
     ).toBe(
       'Bunks not saved. "Bunk 3": That name is already used. Pick another.'
     );
+  });
+
+  // CORE-6.18: a camp's names may hold a full stop; the subject is never cut at one.
+  it("CORE-6.18: says what didn't happen whole, a name with a full stop in it included", () => {
+    expect(
+      withoutCode(failed("Dr. Seuss Day wasn't put on a day.", uncaught))
+    ).toBe("Dr. Seuss Day wasn't put on a day. Try again.");
+    expect(
+      withoutCode(failed("Week 1. Rainy plan wasn't saved.", uncaught))
+    ).toBe("Week 1. Rainy plan wasn't saved. Try again.");
+    expect(
+      withoutCode(refusedBecause("St. Louis trip wasn't saved.", uncaught))
+    ).toBe("St. Louis trip wasn't saved. Try again.");
   });
 
   it("when the reason isn't ours, says what didn't happen and to try again", () => {
@@ -173,11 +187,9 @@ describe("failed", () => {
       "Week 1 couldn't be opened. Try again."
     );
     // A name in quotes may hold a full stop.
-    expect(
-      withoutCode(
-        failed('"Week 1." not deleted. Nothing was removed.', uncaught)
-      )
-    ).toBe('"Week 1." not deleted. Try again.');
+    expect(withoutCode(failed('"Week 1." not deleted.', uncaught))).toBe(
+      '"Week 1." not deleted. Try again.'
+    );
   });
 
   it("a change made but not shown yet keeps saying it was done", () => {
@@ -239,6 +251,31 @@ describe("errorMessage", () => {
     expect(errorMessage(ours("That option can't be built."))).toBe(
       "That option can't be built."
     );
+  });
+});
+
+describe("outcomeKnown (INGEST-1.9)", () => {
+  it("is known for Shoresh's own words, its server's coded answer and Salesforce's limit; not for no answer", () => {
+    expect(outcomeKnown(ours("Two things at Lunch for Bunk 1."))).toBe(true);
+    expect(
+      outcomeKnown(
+        ours("Shoresh couldn't tell why. Try again. For support: K7Q-4MX.")
+      )
+    ).toBe(true);
+    expect(outcomeKnown(refusal("That cell can't hold it."))).toBe(true);
+    expect(
+      outcomeKnown({
+        body: {
+          exceptionType: "System.LimitException",
+          message: "Apex CPU time limit exceeded"
+        }
+      })
+    ).toBe(true);
+    expect(outcomeKnown(new Error("timed out"))).toBe(false);
+    expect(
+      outcomeKnown({ body: { message: "Disconnected or Canceled" } })
+    ).toBe(false);
+    expect(outcomeKnown(uncaught)).toBe(false);
   });
 });
 

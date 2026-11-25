@@ -214,6 +214,19 @@ private class AgentLearnedTest {
     }
   }
 
+  // API-1.155: the preview quotes the pattern exactly, so the connector names it in words.
+  @IsTest
+  static void thePreviewQuotesThePatternExactly() {
+    String said = new AgentForgetPattern()
+      .preview(
+        new Map<String, Object>{ 'pattern' => 'pattern:numbered:Lunch' }
+      );
+    Assert.isTrue(
+      said.startsWith('This forgets the pattern "pattern:numbered:Lunch": '),
+      said
+    );
+  }
+
   // API-1.96, API-1.106: a pattern that can't be there is refused, never previewed.
   @IsTest
   static void aPatternThatCantBeThereIsRefusedNotPreviewed() {

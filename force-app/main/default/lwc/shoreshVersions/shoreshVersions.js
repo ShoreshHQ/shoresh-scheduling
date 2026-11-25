@@ -30,6 +30,7 @@ function keepOwnUndo(event) {
  * label: the words on the button instead of "Versions" (the Schedules page names the version
  * on screen there, "Published Oct 18, 2:40 PM"); the button is still named "…, Versions".
  * applyLabel: the words on Apply to other weeks, only in a numbered-days season (WEEK-6.2).
+ * unread: why the list couldn't be read (WEEK-6.12), said in it instead of "None yet".
  * Fires: open { id } (Restore when restore), rename { id, name, onDone(saved) },
  * delete { id }, save { name, onDone(saved) }, apply
  */
@@ -48,6 +49,7 @@ export default class ShoreshVersions extends LightningElement {
   // An archived season (WEEK-1.10): versions are opened and looked at, never renamed, saved,
   // deleted or applied to other weeks.
   @api readOnly = false;
+  @api unread = null;
 
   isOpen = false;
   renamingId;
@@ -322,7 +324,7 @@ export default class ShoreshVersions extends LightningElement {
   }
 
   get isEmpty() {
-    return this._versions.length === 0;
+    return this._versions.length === 0 && !this.unread;
   }
 
   get renameDisabled() {

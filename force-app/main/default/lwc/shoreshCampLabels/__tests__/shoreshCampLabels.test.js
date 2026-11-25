@@ -523,6 +523,83 @@ describe("c-shoresh-camp-labels", () => {
     expect(input(element, "Division", "singular").value).toBe("");
   });
 
+  // CORE-1.37 (review 2026-11-25 wave 2): a clear sent without the record deleted nothing on the
+  // server while the screen showed the standard word.
+  it("CORE-1.37: saved, but its record not read back, the next save reads it first, or says it can't", async () => {
+    saveCampLabels.mockResolvedValue();
+    const element = await render();
+    const saved = jest.fn();
+    element.addEventListener("saved", saved);
+    getLabels.mockRejectedValueOnce(new Error("offline"));
+    await type(element, "Division", "singular", "Unit");
+    leave(element, "Division", "singular");
+    await flush();
+    // The word itself was saved: said so.
+    expect(saved).toHaveBeenCalledTimes(1);
+    // Cleared while its record still can't be read: nothing sent, and said why.
+    getLabels.mockRejectedValueOnce(new Error("offline"));
+    await type(element, "Division", "singular", "");
+    leave(element, "Division", "singular");
+    await flush();
+    expect(saveCampLabels).toHaveBeenCalledTimes(1);
+    const why = element.shadowRoot.querySelector(
+      '[data-error="Division"][data-field-error="singular"]'
+    );
+    expect(why.textContent.trim()).toMatch(
+      /^Camp words not saved\. Try again\. For support: [\w-]+\.$/
+    );
+    expect(savedMark(element).textContent).toBe("");
+    expect(saved).toHaveBeenCalledTimes(1);
+    // Read now: the clear goes with the record, so the server's Unit is removed.
+    getLabels.mockResolvedValue(
+      LABELS.map((row) => {
+        if (row.term !== "Division") {
+          return row;
+        }
+        return {
+          ...row,
+          singular: "Unit",
+          plural: "Units",
+          isCustom: true,
+          labelId: "a03"
+        };
+      })
+    );
+    leave(element, "Division", "singular");
+    await flush();
+    expect(saveCampLabels).toHaveBeenCalledTimes(2);
+    expect(
+      saveCampLabels.mock.calls[1][0].labels.find((r) => r.term === "Division")
+    ).toMatchObject({ singular: "", plural: "", labelId: "a03" });
+    expect(element.shadowRoot.querySelector("[data-error]")).toBeNull();
+  });
+
+  it("CORE-1.37: a save refused after an earlier one said Saved takes the Saved away", async () => {
+    let first;
+    saveCampLabels.mockReturnValueOnce(
+      new Promise((resolve) => {
+        first = resolve;
+      })
+    );
+    saveCampLabels.mockResolvedValue();
+    const element = await render();
+    await type(element, "Division", "singular", "Unit");
+    leave(element, "Division", "singular");
+    await flush();
+    // A second word left while the first is still saving; then the connection drops.
+    await type(element, "Group", "singular", "Cabin");
+    leave(element, "Group", "singular");
+    getLabels.mockRejectedValue(new Error("offline"));
+    first();
+    await flush();
+    await flush();
+    expect(saveCampLabels).toHaveBeenCalledTimes(1);
+    expect(
+      element.shadowRoot.querySelector('[data-error="Group"]')
+    ).not.toBeNull();
+    expect(savedMark(element).textContent).toBe("");
+  });
+
   it("is accessible", async () => {
     const element = await render();
     await expect(element).toBeAccessible();

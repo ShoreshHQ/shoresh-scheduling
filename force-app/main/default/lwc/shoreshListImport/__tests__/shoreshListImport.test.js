@@ -486,6 +486,32 @@ describe("c-shoresh-list-import", () => {
     );
   });
 
+  it("INGEST-1.9: never says nothing was saved when the save's outcome is unknown", async () => {
+    jest.spyOn(console, "error").mockImplementation(() => {});
+    saveList.mockRejectedValue(new Error("timed out"));
+    const element = await openWith(["Activity", "Canoeing"].join("\n"));
+    saveOf(element).click();
+    await flush();
+    expect($(element, '[data-id="error"]').textContent).toMatch(
+      /^Shoresh couldn't confirm the list was saved\. Look at Activities before saving it again\. For support: [A-Z0-9]{3}-[A-Z0-9]{3}\.$/
+    );
+    console.error.mockRestore();
+  });
+
+  it("INGEST-1.9: a save Shoresh's server answered with its support code saved nothing, and says so", async () => {
+    saveList.mockRejectedValue({
+      body: {
+        message: "Shoresh couldn't tell why. Try again. For support: K7Q-4MX."
+      }
+    });
+    const element = await openWith(["Activity", "Canoeing"].join("\n"));
+    saveOf(element).click();
+    await flush();
+    expect($(element, '[data-id="error"]').textContent).toBe(
+      "Nothing was saved. Shoresh couldn't tell why. Try again. For support: K7Q-4MX."
+    );
+  });
+
   it("says why nothing was saved when the server refuses", async () => {
     saveList.mockRejectedValue({
       body: { message: "Canoeing: Must be 1 or more." }
@@ -1293,6 +1319,34 @@ describe("Import worksheet (Roots)", () => {
     expect($(element, '[data-id="waiting"]').textContent).toContain(
       "Nothing to change"
     );
+  });
+
+  it("INGEST-1.9: a workbook whose save's outcome is unknown sends the director to Roots", async () => {
+    jest.spyOn(console, "error").mockImplementation(() => {});
+    const setup = camp();
+    const element = await openWorkbook(
+      setup,
+      workbookBytes(setup, (name, rows) => {
+        if (name === "Weeks") {
+          rows[1][0] = "Opening week";
+        }
+        if (name === "Runs in") {
+          rows[0][4] = "Opening week";
+        }
+      })
+    );
+    choice(
+      "Use the file's",
+      $(element, '[data-section="section-weeks"]')
+    ).click();
+    await flush();
+    saveWorkbook.mockRejectedValue(new Error("timed out"));
+    saveOf(element).click();
+    await flush();
+    expect($(element, '[data-id="error"]').textContent).toMatch(
+      /^Shoresh couldn't confirm the worksheet was saved\. Look at Roots before saving it again\. For support: [A-Z0-9]{3}-[A-Z0-9]{3}\.$/
+    );
+    console.error.mockRestore();
   });
 
   it("a renamed week is a Keep or Change, and Save sends the whole workbook", async () => {

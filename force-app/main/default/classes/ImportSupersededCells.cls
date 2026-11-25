@@ -108,7 +108,10 @@ public with sharing class ImportSupersededCells {
     return numbers;
   }
 
-  /** Undo: puts each day back as it was, unless it was changed since (then kept, named). */
+  /**
+   * Undo: puts each day back as it was, unless it was changed since (then kept, named) or deleted
+   * since (named as gone).
+   */
   public static void putBack(
     List<ImportLogEntries.CellsOut> entries,
     ImportUndo.Result result
@@ -122,18 +125,27 @@ public with sharing class ImportSupersededCells {
     }
     Set<Id> ids = byDay.keySet();
     List<ScheduleDay__c> rows = new List<ScheduleDay__c>();
+    Set<Id> found = new Set<Id>();
     for (ScheduleDay__c day : [
       SELECT Id, Grid__c
       FROM ScheduleDay__c
       WHERE Id IN :ids
       WITH USER_MODE
     ]) {
+      found.add(day.Id);
       ImportLogEntries.CellsOut entry = byDay.get(day.Id);
-      if (day.Grid__c != entry.after()) {
+      // Exactly (ImportUndoValues.same): a capitals-only edit is an edit.
+      if (!ImportUndoValues.same(day.Grid__c, entry.after())) {
         result.keptEdited.add(entry.name());
         continue;
       }
       rows.add(new ScheduleDay__c(Id = day.Id, Grid__c = entry.before()));
+    }
+    for (Id dayId : ids) {
+      if (!found.contains(dayId)) {
+        // Deleted since: nothing to put back, and the summary says so (as ImportUndoRestores).
+        result.gone.add(byDay.get(dayId).name());
+      }
     }
     ImportedWeekGuard.allow();
     try {

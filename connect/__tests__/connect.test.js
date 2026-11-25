@@ -53,6 +53,10 @@ const sfAnswering =
   (status, body, seen = []) =>
   async (args, stdin) => {
     seen.push({ args, stdin });
+    // Where Shoresh is (camp.js), as Salesforce answers it: no namespace, as in the test org.
+    if (String(args[3]).startsWith("/services/data/")) {
+      return 'HTTP/1.1 200\ncontent-type: application/json\n\n{"records":[]}';
+    }
     return `HTTP/1.1 ${status}\ncontent-type: application/json\n\n${body}`;
   };
 
@@ -3253,6 +3257,108 @@ describe("Shoresh for AI tools and the command line", () => {
       { org: "camp-b", run: sfAnswering(200, "{}") }
     );
     expect(otherOrg).toEqual({ ok: false, status: 400, text: nothing });
+  });
+
+  // API-1.155, API-1.153
+  it("forgetPatternIsAskedInWords: the person's question names the pattern as What Shoresh has learned shows it, never its stored key", async () => {
+    const ev = (n, day) => ({
+      id: `${n}`,
+      what: "answered",
+      question: `kind|Lunch ${n}`,
+      answer: "recurring",
+      answerId: `a${n}`,
+      byYou: n === 1,
+      byName: "Dana",
+      answeredOn: day,
+      savedAt: `${day}T12:00:00.000Z`
+    });
+    const events = [
+      ev(1, "2031-07-03"),
+      ev(2, "2031-07-03"),
+      ev(3, "2031-07-10")
+    ];
+    const answers = events.map((e) => ({
+      id: e.answerId,
+      question: e.question,
+      answer: e.answer,
+      answeredOn: e.answeredOn,
+      byYou: e.byYou,
+      byName: e.byName,
+      savedAt: e.savedAt
+    }));
+    const m = await learnedModules();
+    const line = m
+      .historyLines(events, answers, m.buildTerms([]), m.speller({}))
+      .find((l) => l.current && l.patternNow);
+    const read = JSON.stringify({ setup: { labels: [] }, answers, events });
+    const sent = [];
+    const asked = await call(
+      "forget_learned_pattern",
+      { season: "Summer 2031", pattern: line.pattern, seen: "none" },
+      {
+        learned: learnedModules,
+        run: async (args, stdin) => {
+          sent.push({ args, stdin });
+          const body = /read_learned_answers/.test(args[3])
+            ? read
+            : JSON.stringify({
+                message: `Nothing has been done yet. This forgets the pattern "${line.pattern}": the answers saved until now no longer count toward it.`,
+                preview: `This forgets the pattern "${line.pattern}": the answers saved until now no longer count toward it.`,
+                confirm: "abc"
+              });
+          return `HTTP/1.1 200\ncontent-type: application/json\n\n${body}`;
+        }
+      }
+    );
+    expect(asked.asks.preview).toBe(
+      `This forgets the pattern "${line.title}": the answers saved until now no longer count toward it.`
+    );
+    expect(asked.text).toContain(`This forgets the pattern "${line.title}"`);
+    expect(asked.text).not.toContain(line.pattern);
+    expect(JSON.parse(sent[sent.length - 1].stdin).pattern).toBe(line.pattern);
+  });
+
+  // API-1.155
+  it("answersThatArentJsonAreSaid: answers or layouts sent as text that isn't JSON are refused naming them, never read as none, and nothing is sent", async () => {
+    for (const [name, input, field] of [
+      [
+        "import_list",
+        {
+          season: "Summer 2026",
+          list: "activities",
+          file_name: "a.csv",
+          csv_text: "Name\nSwim",
+          answers: "{not json"
+        },
+        "answers"
+      ],
+      [
+        "import_worksheet",
+        { season: "Summer 2026", file_path: "/x.xlsx", answers: "[1," },
+        "answers"
+      ],
+      [
+        "import_last_year",
+        { season: "Summer 2026", file_paths: ["/x.xlsx"], layouts: "{oops" },
+        "layouts"
+      ]
+    ]) {
+      const seen = [];
+      const done = await call(name, input, {
+        run: sfAnswering(200, "{}", seen)
+      });
+      expect([name, done]).toEqual([
+        name,
+        {
+          ok: false,
+          status: 400,
+          text: `${field} isn't JSON Shoresh can read, so nothing was imported.`
+        }
+      ]);
+      expect(
+        seen.filter((s) => s.args[3].startsWith("/services/apexrest/"))
+      ).toEqual([]);
+    }
   });
 
   // API-1.96, API-1.25

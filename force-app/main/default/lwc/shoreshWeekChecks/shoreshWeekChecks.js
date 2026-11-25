@@ -9,6 +9,7 @@ import {
   saidOf,
   spreadOf
 } from "./lines";
+import { reasonOf } from "c/shoreshErrors";
 
 // The counter's lines, for Publish's question (c/shoreshPublish), in the same words.
 export { checkLines } from "./lines";
@@ -67,6 +68,8 @@ export default class ShoreshWeekChecks extends LightningElement {
   // An Accept that couldn't be kept with the week, shown at the top of the dropdown (red text,
   // as a field error) until the next Accept or the week is read again.
   acceptProblem = "";
+  // Why the week's accepts couldn't be read (WEEK-6.12): said until they are.
+  unreadProblem = "";
   // After Accept: focus goes to the line now at this place in the list ({ index }).
   focusAfterRender = null;
 
@@ -102,6 +105,7 @@ export default class ShoreshWeekChecks extends LightningElement {
   /** The week's accepts as kept with it: none shown from another week meanwhile. */
   async readAgain(carried = []) {
     const ticket = ++this.readTicket;
+    this.unreadProblem = "";
     this.acceptProblem = "";
     const scheduleId = this._scheduleId;
     this.accepted = [
@@ -116,8 +120,13 @@ export default class ShoreshWeekChecks extends LightningElement {
     let kept;
     try {
       kept = readKept(await readAccepted({ scheduleId }));
-    } catch {
-      // Not read: every line shows, as nothing was accepted (nothing is hidden by mistake).
+    } catch (e) {
+      // Not read: every line shows, as nothing was accepted (nothing is hidden by mistake), and
+      // the dropdown says so (WEEK-6.12).
+      if (ticket === this.readTicket) {
+        this.unreadProblem = `Couldn't read what you accepted for this week. ${reasonOf(e)}`;
+        this.acceptProblem = this.unreadProblem;
+      }
       return;
     }
     if (ticket !== this.readTicket) {
@@ -257,7 +266,8 @@ export default class ShoreshWeekChecks extends LightningElement {
     const accepted = { key, same: line.same, size: line.size, said };
     this.accepted = [...this.accepted, accepted];
     this.acceptSaid = `Accepted: ${said}.`;
-    this.acceptProblem = "";
+    // The week's accepts still unread stay said (WEEK-6.12).
+    this.acceptProblem = this.unreadProblem;
     this.focusAfterRender = { index };
     this.dispatchEvent(new CustomEvent("accept", { detail: line }));
     this.keep(accepted, said);
@@ -276,10 +286,10 @@ export default class ShoreshWeekChecks extends LightningElement {
         scheduleId,
         line: keptLine(line)
       });
-    } catch {
+    } catch (e) {
       // Shown in the dropdown, where role="alert" also says it: the live line stays quiet.
       this.acceptSaid = "";
-      this.acceptProblem = `Couldn't keep this Accept with the week: ${said}.`;
+      this.acceptProblem = `Couldn't keep this Accept with the week: ${said}. ${reasonOf(e)}`;
     } finally {
       this.saving = this.saving.filter((e) => e !== entry);
     }

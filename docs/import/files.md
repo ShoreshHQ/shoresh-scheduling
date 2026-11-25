@@ -162,3 +162,26 @@ Each rule is clue, meaning, example, test.
    "INGEST-1.8: a Weeks column that never says which weeks is left unread, said once";
    Apex ImportWorkbookTest aScreenListSavesWeeksOffAndUndoPutsThemBack; ImportListProgramsTest
    addsAWholeNewProgramFromItsListsAndUndoRemovesIt.
+
+9. **A save that fails says only what is known.**
+   Clue: Add, Save or Import fails (Import last year, Import a list or the camp workbook, Bring in
+   choices).
+   Meaning: "Nothing was saved." (Bring in choices: "Nothing was imported.") only when it is
+   known: the save was never sent; Shoresh's server answered (its own words, with or without its
+   support code, CORE-6.15: the save threw, so all of it was undone); or Salesforce's limit
+   stopped the whole request (`c/shoreshErrors` `outcomeKnown`). With no answer from the server
+   (a dropped connection, a timeout) it may have saved after all, so it says Shoresh couldn't
+   confirm it and where to look before doing it again (Roots, the list's own screen, Elective
+   seats), with a support code, never "Try again." (desktop `writeErrorMessage.js`: "could not
+   confirm this saved").
+   Example: the connection drops while a whole season imports: "Shoresh couldn't confirm the
+   import was saved. Look at Roots before adding these files again. For support: K7Q-4MX.", never
+   an invitation to bring the files in twice.
+   Test: "INGEST-1.9: never says nothing was saved when the save's outcome is unknown" (Import
+   last year, Import a list), "INGEST-1.9: a workbook whose save's outcome is unknown sends the
+   director to Roots", "INGEST-1.9: never says nothing was imported when the import's outcome is
+   unknown" (Bring in choices); counter-cases "shows a save the server refused, and stays on the
+   page", "says why nothing was saved when the server refuses", "INGEST-1.9: a save Shoresh's
+   server answered with its support code saved nothing, and says so" (Import last year, Import a list), "INGEST-1.9: an import Shoresh's server answered with its support code imported nothing, and says so" (Bring in choices), "INGEST-1.9: a save
+   Salesforce's limit stopped saved nothing, and says so"; shoreshErrors.test.js "outcomeKnown
+   (INGEST-1.9)".

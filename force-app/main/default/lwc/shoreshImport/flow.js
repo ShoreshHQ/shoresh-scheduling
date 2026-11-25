@@ -169,21 +169,29 @@ export function foundNothing(proposal, answers) {
   );
 }
 
-/** The plan Add would save; null if it cannot be made yet. */
-export function planNow(input, proposal, answers, fileData) {
+/**
+ * The plan Add would save; null if there is nothing to add yet. A failure working it out is
+ * thrown, so the screen can say why Add is off.
+ */
+export function planOrFail(input, proposal, answers, fileData) {
   if (!proposal || foundNothing(proposal, answers)) {
     return null;
   }
+  const { proposal: kept, open } = settled(input, proposal, answers);
+  const seasonId =
+    input.setup && input.setup.season ? input.setup.season.Id : null;
+  return planFor(kept, input.setup, seasonId, {
+    answers,
+    fileNames: input.files.map((f) => f.name),
+    open: open.map((c) => ({ key: c.id, title: c.title })),
+    fileData
+  });
+}
+
+/** The plan Add would save; null if it cannot be made yet. */
+export function planNow(input, proposal, answers, fileData) {
   try {
-    const { proposal: kept, open } = settled(input, proposal, answers);
-    const seasonId =
-      input.setup && input.setup.season ? input.setup.season.Id : null;
-    return planFor(kept, input.setup, seasonId, {
-      answers,
-      fileNames: input.files.map((f) => f.name),
-      open: open.map((c) => ({ key: c.id, title: c.title })),
-      fileData
-    });
+    return planOrFail(input, proposal, answers, fileData);
   } catch {
     return null;
   }

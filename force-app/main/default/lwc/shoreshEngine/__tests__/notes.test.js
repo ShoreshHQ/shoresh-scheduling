@@ -156,21 +156,47 @@ describe("the engine's notes kept with the week", () => {
     ]);
   });
 
-  it("never reads notes of another shape: another version, damaged text, unknown codes", () => {
+  // GEN-10.15: notes that can't be read are never shown as they are, and never dropped unsaid.
+  it("never reads notes of another shape, and says so: another version, damaged text, unknown codes", () => {
     expect(readNotes(null)).toBeNull();
-    expect(readNotes("not json")).toBeNull();
-    expect(readNotes('{"v":2,"open":[],"blank":[]}')).toBeNull();
-    expect(
-      readNotes(
-        '{"v":1,"open":[["d","g","b","oops"],["d","g","b","full"],[1,2,3,4]],"blank":[["x","a"]],"floor":{"kind":"?"}}'
-      )
-    ).toEqual({
+    const none = {
+      v: 1,
+      open: [],
+      blank: [],
+      floor: null,
+      cut: 0,
+      unreadable: "all"
+    };
+    expect(readNotes("not json")).toEqual(none);
+    expect(readNotes('{"v":2,"open":[],"blank":[]}')).toEqual(none);
+    expect(readNotes('{"v":1,"open":{}}')).toEqual(none);
+    const some = readNotes(
+      '{"v":1,"open":[["d","g","b","oops"],["d","g","b","full"],[1,2,3,4]],"blank":[["x","a"]],"floor":{"kind":"?"}}'
+    );
+    expect(some).toEqual({
       v: 1,
       open: [["d", "g", "b", "full"]],
       blank: [],
       floor: null,
-      cut: 0
+      cut: 0,
+      unreadable: "some"
     });
+    expect(whyOf(none, INPUT, terms).notes).toEqual([
+      "This Session's reasons for how it was built couldn't be read."
+    ]);
+    expect(whyOf(some, INPUT, terms).notes).toEqual([
+      "Some of this Session's reasons for how it was built couldn't be read."
+    ]);
+  });
+
+  it("still says so after a hand edit saves the notes again", () => {
+    const some = readNotes(
+      notesText({ ...notesOf(RESULT), open: [...notesOf(RESULT).open, [1]] })
+    );
+    const edited = notesWithout(some, new Set(["2026-06-29|g1|t2"]));
+    expect(readNotes(notesText(edited)).unreadable).toBe("some");
+    const none = readNotes("not json");
+    expect(readNotes(notesText(none)).unreadable).toBe("all");
   });
 
   it("without the cells changed by hand; the same notes when none of them had a reason", () => {

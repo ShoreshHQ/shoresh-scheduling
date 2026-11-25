@@ -23,7 +23,8 @@ const THROUGH_AGENT = "ThroughAgent";
 export function metaOf(version) {
   const showSaved = !version.namedByPublish;
   const meta = [
-    ORIGINS[version.origin] || version.origin,
+    // An origin Shoresh has no words for is left out, never shown as stored (CORE-6.18).
+    ORIGINS[version.origin],
     version.reason === AUTO_SAVED ? "Auto-saved" : null,
     version.reason === THROUGH_AGENT ? "By your AI" : null,
     version.publishedAt && showSaved ? "Published" : null

@@ -739,6 +739,18 @@ describe("c-shoresh-import", () => {
       );
     });
 
+    it("INGEST-5.8: says when what earlier imports brought in couldn't be read, and still opens the review", async () => {
+      jest.spyOn(console, "error").mockImplementation(() => {});
+      getImported.mockRejectedValue(new Error("timed out"));
+      const element = await render();
+      await choose(element, ["maple-grove-2026-all-camp.xlsx"]);
+      expect($(element, '[data-id="error"]').textContent).toMatch(
+        /^What earlier imports brought in couldn't be read\. Try again\. For support: [A-Z0-9]{3}-[A-Z0-9]{3}\.$/
+      );
+      expect(similarId(element)).toBeTruthy();
+      console.error.mockRestore();
+    });
+
     it("INGEST-5.8: Remove says the cells it also takes out of a superseded imported week", async () => {
       getImported.mockResolvedValue({
         untouched: ["a2"],
@@ -966,6 +978,58 @@ describe("c-shoresh-import", () => {
       "Nothing was saved. Two things at Lunch for Bunk 1."
     );
     expect(add(element)).not.toBeNull();
+  });
+
+  it("INGEST-1.9: never says nothing was saved when the save's outcome is unknown", async () => {
+    jest.spyOn(console, "error").mockImplementation(() => {});
+    saveSetup.mockRejectedValue(new Error("timed out"));
+    const element = await render();
+    await choose(element, ["maple-grove-2026-all-camp.xlsx"]);
+    await answer(element, similarId(element), "a");
+    add(element).click();
+    await flush();
+    await flush();
+    expect($(element, '[data-id="error"]').textContent).toMatch(
+      /^Shoresh couldn't confirm the import was saved\. Look at Roots before adding these files again\. For support: [A-Z0-9]{3}-[A-Z0-9]{3}\.$/
+    );
+    console.error.mockRestore();
+  });
+
+  it("INGEST-1.9: a save Shoresh's server answered with its support code saved nothing, and says so", async () => {
+    saveSetup.mockRejectedValue({
+      body: {
+        message: "Shoresh couldn't tell why. Try again. For support: K7Q-4MX."
+      }
+    });
+    const element = await render();
+    await choose(element, ["maple-grove-2026-all-camp.xlsx"]);
+    await answer(element, similarId(element), "a");
+    add(element).click();
+    await flush();
+    await flush();
+    expect($(element, '[data-id="error"]').textContent).toBe(
+      "Nothing was saved. Shoresh couldn't tell why. Try again. For support: K7Q-4MX."
+    );
+  });
+
+  it("INGEST-1.9: a save Salesforce's limit stopped saved nothing, and says so", async () => {
+    jest.spyOn(console, "error").mockImplementation(() => {});
+    saveSetup.mockRejectedValue({
+      body: {
+        exceptionType: "System.LimitException",
+        message: "Apex CPU time limit exceeded"
+      }
+    });
+    const element = await render();
+    await choose(element, ["maple-grove-2026-all-camp.xlsx"]);
+    await answer(element, similarId(element), "a");
+    add(element).click();
+    await flush();
+    await flush();
+    expect($(element, '[data-id="error"]').textContent).toMatch(
+      /^Nothing was saved\. This camp is bigger than Salesforce lets Shoresh handle in one go/
+    );
+    console.error.mockRestore();
   });
 
   it("a choice's reason is in its words for screen readers and its tooltip", async () => {

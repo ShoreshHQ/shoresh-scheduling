@@ -26,6 +26,12 @@ Each term has one meaning. The words in "Avoid" do not appear on screens.
 - **CORE-1.36** An offering (an elective on its set) MUST be said in the camp's Elective words
   on every screen and to an AI ("Added 3 electives", "Added 3 chugim"), never "offering" (word
   walk W2; Hermes test 2026-11-14, where importing an Electives list said "Added 3 offerings").
+- **CORE-1.37** A camp word MUST be saved, changed or cleared as the screen shows it: when its
+  record couldn't be read back after a save, the next save MUST read it first and, while it still
+  can't, MUST NOT be sent and MUST say so ("Camp words not saved. Try again.", with a support
+  code), and any Saved shown goes (review 2026-11-25 wave 2, lwc-screens-b finding 2; the screen
+  reads rather than the server guessing the record, which could undo a word saved elsewhere
+  meanwhile). Jest shoreshCampLabels "CORE-1.37".
 
 | ID        | Term                   | Definition                                                                                                                                                                                                      | Avoid                          |
 | --------- | ---------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------ |
@@ -196,6 +202,13 @@ These never bend for Shoresh.
   gave MUST NOT be given a second (ADR 0030; Greg 2026-11-21). Tests: ErrorCodesTest;
   ScreenErrorsTest anythingElseSaysShoreshCouldNotTellWhy; shoreshErrors.test.js "support codes
   (CORE-6.15)".
+- **CORE-6.19** A count Shoresh can't make MUST be said, never shown as a smaller number or a
+  question left out: a schedule day it can't read, or more days than one request reads, stops
+  "Placed in N cells" with why; a failed count of the schedules a bunk or activity is in is said
+  ("Shoresh couldn't count…") and its why kept for support (CORE-6.15). A holding record a
+  change can't clean up is kept for support with why (review 2026-11-25 wave 2, apex-core
+  findings 6 and 10, apex-tests finding 6). Tests: PlacedInWeeksTest aDayThatCantBeReadIsSaid,
+  daysPastTheCapAreSaid; SetupDeleteTest aCountThatFailsIsSaidAndKeptForSupport.
 - **CORE-6.16** Help in Settings MUST show the installed version, "Version 1.4", beside support's
   address; outside an installed package it MUST show none. The About page MUST stay as it is
   (ADR 0030; Greg 2026-11-21). Tests: ShoreshVersionTest; shoreshLearned.test.js "CORE-6.16".
@@ -207,3 +220,8 @@ These never bend for Shoresh.
   `docs/samples`; every button it names MUST be one the screens have, in the camp's words. About MUST
   stay as it is (Greg's exception to "no help", 2026-11-21: the guide and the sample camp together, as the demo, nothing preloaded). Tests: shoreshGuide.test.js;
   shoreshLearned.test.js "CORE-6.17".
+- **CORE-6.18** What didn't happen MUST be said whole, ahead of why: a camp's names may hold a
+  full stop ("Dr. Seuss Day wasn't put on a day.", a version named "Week 1. Rainy plan"), so the
+  sentence is never cut at one. A stored value Shoresh has no words for (a version's origin) MUST
+  be left out, never shown as stored (review 2026-11-25 wave 2, lwc-screens-b findings 5 and 7).
+  Tests: shoreshErrors.test.js "CORE-6.18"; shoreshVersions words.test.js "CORE-6.18".
