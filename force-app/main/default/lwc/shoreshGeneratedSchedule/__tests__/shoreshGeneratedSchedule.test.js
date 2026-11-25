@@ -1488,11 +1488,14 @@ describe("c-shoresh-generated-schedule", () => {
     expect(checks(again).measure.notes.map((l) => l.text)).toEqual(notes);
   });
 
-  it("notes kept in a shape this screen doesn't know are never shown", async () => {
+  // GEN-10.15: never shown as they are, and never dropped without a word.
+  it("notes kept in a shape this screen doesn't know are never shown, and that is said", async () => {
     const saved = camp({ ...SMALL, scheduleId: SCHEDULE });
     saved.engine = { notes: '{"v":99,"open":[["<b>raw</b>"]]}' };
     const element = await render(saved);
-    expect(checks(element).measure.notes).toEqual([]);
+    expect(checks(element).measure.notes.map((l) => l.text)).toEqual([
+      "This week's reasons for how it was built couldn't be read."
+    ]);
   });
 
   it("lists a cell that bends a rule, never on the grid, worked out again on load", async () => {

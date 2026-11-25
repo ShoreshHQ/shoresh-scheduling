@@ -25,7 +25,8 @@ import {
  *       leave short; for TRADE, the group and activity the cell was left Open for),
  *     blank: [[field ("atOnce" or "fit"), activityId or locationId]]: a blank setting taken as 1,
  *     floor: { kind ("frame" or "emptier"), name, built, imported } or null: step 8's floor note,
- *     cut: how many Open cells' reasons were left out to keep it under NOTES_MAX (0 when none) }
+ *     cut: how many Open cells' reasons were left out to keep it under NOTES_MAX (0 when none),
+ *     unreadable?: "all" or "some" when kept notes couldn't be read (readNotes), so it is said }
  */
 
 export const NOTES_VERSION = 1;
@@ -90,9 +91,20 @@ export function notesText(notes) {
   return notes ? JSON.stringify(notes) : null;
 }
 
+/** Notes none of which could be read: the Why list says so (GEN-10.15). */
+const unreadableNotes = () => ({
+  v: NOTES_VERSION,
+  open: [],
+  blank: [],
+  floor: null,
+  cut: 0,
+  unreadable: "all"
+});
+
 /**
- * The notes kept on the record (text) read back, or null when there are none or they are not
- * the shape notesOf makes (another version, damaged): never shown as they are.
+ * The notes kept on the record (text) read back, or null when there are none. Never shown as
+ * they are: what isn't the shape notesOf makes (another version, damaged text, a row of unknown
+ * shape or code) is left out and marked unreadable ("all" or "some"), so the Why list says so.
  */
 export function readNotes(text) {
   if (!isText(text)) {
@@ -102,7 +114,7 @@ export function readNotes(text) {
   try {
     notes = JSON.parse(text);
   } catch {
-    return null;
+    return unreadableNotes();
   }
   if (
     !notes ||
@@ -110,35 +122,48 @@ export function readNotes(text) {
     !Array.isArray(notes.open) ||
     !Array.isArray(notes.blank)
   ) {
-    return null;
+    return unreadableNotes();
   }
+  const open = notes.open.filter(
+    (row) =>
+      Array.isArray(row) &&
+      (row.length === 4 || row.length === 6) &&
+      row.every(isText) &&
+      Object.prototype.hasOwnProperty.call(OPEN_WHY, row[3])
+  );
+  const blank = notes.blank.filter(
+    (row) =>
+      Array.isArray(row) &&
+      row.length === 2 &&
+      BLANK_FIELDS.has(row[0]) &&
+      isText(row[1])
+  );
   const floor = notes.floor;
+  const floorRead =
+    floor && (floor.kind === "frame" || floor.kind === "emptier");
+  // Kept marked by an earlier read (a hand edit saves the notes again), or left out now.
+  const unreadable =
+    notes.unreadable === "all" || notes.unreadable === "some"
+      ? notes.unreadable
+      : open.length < notes.open.length ||
+          blank.length < notes.blank.length ||
+          (floor && !floorRead)
+        ? "some"
+        : null;
   return {
     v: NOTES_VERSION,
-    open: notes.open.filter(
-      (row) =>
-        Array.isArray(row) &&
-        (row.length === 4 || row.length === 6) &&
-        row.every(isText) &&
-        Object.prototype.hasOwnProperty.call(OPEN_WHY, row[3])
-    ),
-    blank: notes.blank.filter(
-      (row) =>
-        Array.isArray(row) &&
-        row.length === 2 &&
-        BLANK_FIELDS.has(row[0]) &&
-        isText(row[1])
-    ),
-    floor:
-      floor && (floor.kind === "frame" || floor.kind === "emptier")
-        ? {
-            kind: floor.kind,
-            name: isText(floor.name) ? floor.name : null,
-            built: Number.isInteger(floor.built) ? floor.built : 0,
-            imported: Number.isInteger(floor.imported) ? floor.imported : 0
-          }
-        : null,
-    cut: Number.isInteger(notes.cut) && notes.cut > 0 ? notes.cut : 0
+    open,
+    blank,
+    floor: floorRead
+      ? {
+          kind: floor.kind,
+          name: isText(floor.name) ? floor.name : null,
+          built: Number.isInteger(floor.built) ? floor.built : 0,
+          imported: Number.isInteger(floor.imported) ? floor.imported : 0
+        }
+      : null,
+    cut: Number.isInteger(notes.cut) && notes.cut > 0 ? notes.cut : 0,
+    ...(unreadable ? { unreadable } : {})
   };
 }
 
@@ -202,6 +227,11 @@ export function whyOf(notes, input, terms) {
   if (notes && notes.cut) {
     lines.push(
       `${notes.cut} more Open ${notes.cut === 1 ? "cell's reason wasn't" : "cells' reasons weren't"} kept with this ${t.sIn("Week")}.`
+    );
+  }
+  if (notes && notes.unreadable) {
+    lines.push(
+      `${notes.unreadable === "all" ? "This" : "Some of this"} ${t.sIn("Week")}'s reasons for how it was built couldn't be read.`
     );
   }
   return { open, notes: lines };
