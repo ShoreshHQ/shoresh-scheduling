@@ -312,7 +312,7 @@ async function callOnce(
   };
   const said = await camp(org, asked);
   // Not read: where Shoresh is (its namespace) isn't known, so nothing is sent (API-1.155).
-  if (said.read === false) return { ok: false, status: 503, text: CAMP_UNREAD };
+  if (said.read === false) return campUnread(said.response);
   const old = tooOld(said);
   if (old) return { ok: false, status: 400, text: old };
   const { namespace } = said;
@@ -592,6 +592,16 @@ async function campFor(org, asked) {
     camps.set(org, camp);
   }
   return camps.get(org);
+}
+
+/**
+ * Why nothing was sent when the camp couldn't be read (API-1.155): Salesforce's own refusal (a
+ * sign-in or access it refused) as any answer says it; otherwise it didn't answer.
+ */
+function campUnread(response) {
+  const status = response ? response.status : 0;
+  if (status === 401 || status === 403) return answer(response);
+  return { ok: false, status: 503, text: CAMP_UNREAD };
 }
 
 /** One request as the person; Salesforce's status and Shoresh's answer. */
@@ -1374,6 +1384,13 @@ async function check({ org, run = runSf } = {}) {
       body: ""
     };
   const said = await campOf(asked);
+  // Salesforce answered, but not with where Shoresh is: the test can't say Shoresh isn't there.
+  if (said.read === false && said.response && said.response.status >= 500) {
+    return {
+      ok: false,
+      text: "Salesforce didn't answer just now. Try the test again in a moment."
+    };
+  }
   const old = tooOld(said);
   if (old) return { ok: false, text: old };
   const request = requestFor(byName("read_group_schedule"), {}, said.namespace);

@@ -111,10 +111,9 @@ async function forgetPattern(capability, input, { read, send, answer, load }) {
   const done = answer(await send(capability.api, input));
   // The question the person is asked names the pattern as the screen shows it, never its key.
   const named = (text) =>
-    String(text).replace(
-      /the pattern "[^"]*"/,
-      () => `the pattern "${line.title}"`
-    );
+    String(text)
+      .split(`the pattern "${line.pattern}"`)
+      .join(`the pattern "${line.title}"`);
   const asks = done.asks && {
     ...done.asks,
     said: named(done.asks.said),
