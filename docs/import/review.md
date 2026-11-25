@@ -228,3 +228,20 @@ Each rule is clue, meaning, example, test.
     an arrow". Code: `reading.js`
     `dayNumbers`; `proposal.js` `dayNumbersFor`; `review.js` `dayNumberLines`;
     `ImportSetupSaves` `numberDays`.
+
+12. **The same files read the same in every browser language.**
+    Clue: a camp's names mix languages (Hebrew and English chugim), and its staff import from
+    browsers set to different languages.
+    Meaning: every order the import engine puts text in (a list cell's set name, which spelling of
+    a name is kept on a tie, which file is read first, groups listed only inside cells, week
+    labels, the lists the review shows) is by character code, names with capitals aside first and
+    numbers by value ("Bunk 2" before "Bunk 10"), never by the browser's language, as the week
+    engine orders its records (engine rule 1.1). The same files give the same proposal, plan and
+    names on every computer, so a second import finds what the first one made.
+    Example: "Zumba, שירה, Ärt, Arts" in a cell is "Electives (Arts, Zumba, Ärt, שירה)" from an
+    English, Hebrew or Swedish browser; next year, from a Hebrew browser, that set is found, not
+    made again.
+    Test: "INGEST-5.12: in any browser language: a list mixing Hebrew and English makes the same
+    plan, and finds the camp's set again" (`shoreshImportEngine/__tests__/electives.test.js`).
+    Code: `shoreshImportEngine/order.js` (`compareNames`, `compareNumbered`), `compareText` in
+    `c/shoreshTerms`.

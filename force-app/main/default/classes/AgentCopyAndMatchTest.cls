@@ -337,13 +337,19 @@ private class AgentCopyAndMatchTest {
       Map<String, Object> weekAsked = weekAsk(draftId);
       List<String> read = shown(draftId);
       Boolean replacesHand = Boolean.valueOf(read.remove(2));
+      Map<String, Object> yes = updateAsk(weekAsked, read);
       Test.startTest();
-      Integer before = Limits.getQueries();
-      List<Object> done = ask(
+      // The person's yes, asked first, so the request counted is the confirmed update alone
+      // (API-1.106).
+      String confirm = AgentAskFirstTestCalls.confirmFor(
         new AgentUpdateToMatch(),
-        'POST',
-        updateAsk(weekAsked, read)
+        yes
       );
+      if (confirm != null) {
+        yes.put(AgentAskFirst.FIELD, confirm);
+      }
+      Integer before = Limits.getQueries();
+      List<Object> done = ask(new AgentUpdateToMatch(), 'POST', yes);
       Integer queries = Limits.getQueries() - before;
       Boolean matched = SetupMatchController.getSetupChanges(draftId)
         .changes.isEmpty();
@@ -363,7 +369,52 @@ private class AgentCopyAndMatchTest {
         Assert.areEqual(SetupMatch.BEFORE_UPDATE, version.Name);
         Assert.areEqual(ManualVersions.AUTO_SAVED, version.VersionReason__c);
       }
-      Assert.isTrue(queries < 100, 'Update used ' + queries + ' queries');
+      Assert.isTrue(queries < 50, 'Update used ' + queries + ' queries');
+    }
+  }
+
+  // API-1.106, API-1.64: an update that replaces a placement made by hand asks first, naming the
+  // cell, and changes nothing until the person's yes.
+  @IsTest
+  static void anUpdateThatReplacesAHandPlacementAsksFirst() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      Id draftId = weekWithSwimGone(GeneratedTestData.camp());
+      Map<String, Object> weekAsked = weekAsk(draftId);
+      List<String> read = shown(draftId);
+      Assert.areEqual('true', read.remove(2), 'Swim was placed by hand');
+      Map<String, Object> asked = updateAsk(weekAsked, read);
+      // A test camp's setup and week fill most of the queries before the test starts.
+      Test.startTest();
+      String confirm = AgentAskFirstTestCalls.confirmFor(
+        new AgentUpdateToMatch(),
+        asked
+      );
+      String preview = (String) ((Map<String, Object>) JSON.deserializeUntyped(
+          RestContext.response.responseBody.toString()
+        ))
+        .get('preview');
+      String asIs = WeekTickets.stamp(ScheduleDays.read(draftId));
+      Map<String, Object> yes = asked.clone();
+      yes.put(AgentAskFirst.FIELD, confirm);
+      List<Object> done = ask(new AgentUpdateToMatch(), 'POST', yes);
+      Boolean matched = SetupMatchController.getSetupChanges(draftId)
+        .changes.isEmpty();
+      Test.stopTest();
+      Assert.isNotNull(confirm, 'asks first');
+      Assert.isTrue(
+        preview.contains(
+          'replacing what was placed by hand: Group A · Monday · Lunch: Swim -> Open (Deleted from setup)'
+        ),
+        preview
+      );
+      Assert.isTrue(preview.contains(SetupMatch.BEFORE_UPDATE), preview);
+      Assert.areEqual(
+        read[1],
+        AgentUpdateToMatch.seenOf(asIs),
+        'nothing changed before the yes'
+      );
+      Assert.areEqual(200, done[0], String.valueOf(done[1]));
+      Assert.isTrue(matched, 'updated on the yes');
     }
   }
 

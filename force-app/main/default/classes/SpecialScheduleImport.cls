@@ -77,22 +77,14 @@ public with sharing class SpecialScheduleImport {
   }
 
   public static Outcome apply(Id itemId, Integer revision, Imported imported) {
-    SpecialImportCheck.check(imported);
-    SpecialSchedule.Owner owner = SpecialSchedule.lockedOwnerOf(itemId);
-    SpecialPlans.Plan plan = SpecialPlans.read(itemId);
-    checkEmpty(owner, plan, revision);
-    ScheduleGrid grid = new ScheduleGrid();
-    grid.blocks = SpecialImportShape.blocks(imported);
-    SpecialImportShape.Columns columns = owner.isEvent()
-      ? SpecialImportShape.stations(imported)
-      : SpecialImportShape.forGroups(groupsOf(owner, plan), imported);
-    grid.groups = columns.rows;
+    FileAgainstPlan against = new FileAgainstPlan(itemId, revision, imported);
+    SpecialSchedule.Owner owner = against.owner;
+    SpecialPlans.Plan plan = against.plan;
+    ScheduleGrid grid = against.grid;
+    SpecialImportShape.Columns columns = against.columns;
     Outcome outcome = new Outcome();
-    outcome.frame = SpecialImportFrame.between(owner, plan.grid, grid);
-    if (
-      imported.replaceEdited != true &&
-      SpecialImportFrame.asksFirst(owner, plan.grid, outcome.frame)
-    ) {
+    outcome.frame = against.frame;
+    if (imported.replaceEdited != true && against.asks) {
       outcome.asks = true;
       return outcome;
     }
@@ -108,6 +100,43 @@ public with sharing class SpecialScheduleImport {
     SpecialPlans.write(itemId, grid, plan.revision);
     outcome.plan = SpecialSchedule.reread(owner);
     return outcome;
+  }
+
+  /**
+   * What the file would rename or remove of time blocks or stations the director changed, saving
+   * nothing: the frame's changes when the import asks first, else null (API-1.85).
+   */
+  public static SpecialImportFrame.FrameChanges editedReplaced(
+    Id itemId,
+    Integer revision,
+    Imported imported
+  ) {
+    FileAgainstPlan against = new FileAgainstPlan(itemId, revision, imported);
+    return against.asks ? against.frame : null;
+  }
+
+  /** The item, its plan and the file's grid, with what the file changes in its frame. */
+  private class FileAgainstPlan {
+    final SpecialSchedule.Owner owner;
+    final SpecialPlans.Plan plan;
+    final ScheduleGrid grid = new ScheduleGrid();
+    final SpecialImportShape.Columns columns;
+    final SpecialImportFrame.FrameChanges frame;
+    final Boolean asks;
+
+    FileAgainstPlan(Id itemId, Integer revision, Imported imported) {
+      SpecialImportCheck.check(imported);
+      owner = SpecialSchedule.lockedOwnerOf(itemId);
+      plan = SpecialPlans.read(itemId);
+      checkEmpty(owner, plan, revision);
+      grid.blocks = SpecialImportShape.blocks(imported);
+      columns = owner.isEvent()
+        ? SpecialImportShape.stations(imported)
+        : SpecialImportShape.forGroups(groupsOf(owner, plan), imported);
+      grid.groups = columns.rows;
+      frame = SpecialImportFrame.between(owner, plan.grid, grid);
+      asks = SpecialImportFrame.asksFirst(owner, plan.grid, frame);
+    }
   }
 
   /** Refused when the plan was saved since the screen read it, or has entries. */

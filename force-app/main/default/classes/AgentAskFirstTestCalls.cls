@@ -4,8 +4,10 @@
  * after the person says yes. A refusal is left as it came. A change that asks first, sent as a POST
  * without a confirm, answering done without asking fails the test, so one whose preview stops
  * asking can't pass unseen. A GET, or a POST already carrying its confirm, is answered straight
- * away; so is a special schedule's frame, a call that takes nothing away, and adding or changing a
- * setup record, which asks only for a fixed activity over a recurring one (API-1.147).
+ * away; so is a special schedule's frame, a call that takes nothing away, adding or changing a
+ * setup record, which asks only for a fixed activity over a recurring one (API-1.147), and an
+ * update to match setup or a special schedule's import, which ask only when they replace the
+ * person's hand work.
  */
 @IsTest
 public class AgentAskFirstTestCalls {
@@ -41,6 +43,8 @@ public class AgentAskFirstTestCalls {
       !(action instanceof AgentSpecialFrame) &&
       !(action instanceof AgentAddSetup) &&
       !(action instanceof AgentChangeSetup) &&
+      !(action instanceof AgentUpdateToMatch) &&
+      !(action instanceof AgentImportSpecialSchedule) &&
       RestContext.request.httpMethod == 'POST' &&
       sent != null &&
       sent.size() > 0 &&
@@ -49,8 +53,9 @@ public class AgentAskFirstTestCalls {
   }
 
   /**
-   * The confirm Shoresh's preview gives for this POST, asked on its own: a test reads it before
-   * Test.startTest, so the yes request is counted alone, as it is in its own request for real.
+   * The confirm Shoresh's preview gives for this POST, asked on its own: a test reads
+   * Limits.getQueries() after it, so the yes request is counted alone, as it is in its own request
+   * for real.
    */
   public static String confirmFor(
     AgentRequest.Change action,

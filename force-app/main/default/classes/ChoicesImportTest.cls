@@ -517,6 +517,56 @@ private class ChoicesImportTest {
     }
   }
 
+  // ELECT-2.8: two imports that both started from "no run" leave one run, the first's; an import
+  // whose run another save moved on since its check is refused, and nothing changes. The two run
+  // one after the other here: Apex can't run two requests at once, so the hold itself (the set and
+  // the run read FOR UPDATE) is not what this proves.
+  @IsTest
+  static void twoImportsFromNoRunLeaveOneRunAndAStaleOneChangesNothing() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      ChoicesCamp camp = new ChoicesCamp();
+      ChoicesImport.Request screen = camp.request();
+      screen.campers.add(
+        withChoices(camper(2, 'Maya Fernwood', '1001'), archeryThenDrama(camp))
+      );
+      ChoicesImport.Request ai = camp.request();
+      ai.campers.add(
+        withChoices(camper(2, 'Eli Brookstone', '1002'), archeryThenDrama(camp))
+      );
+      Id runId = ChoicesImportController.bringInChoices(JSON.serialize(screen))
+        .runId;
+
+      Test.startTest();
+      String fromNoRun = refusal(ai);
+      // Another save moved the run on (as a seat save does) after this check saw revision 1.
+      ElectiveRun__c moved = new ElectiveRun__c(Id = runId, Revision__c = 2);
+      Database.update(moved, AccessLevel.SYSTEM_MODE);
+      ai.runRevision = 1;
+      String stale = refusal(ai);
+      Test.stopTest();
+
+      String words = 'Someone else imported choices for these seats since you started. Choose the file again to see them.';
+      Assert.areEqual(words, fromNoRun);
+      Assert.areEqual(words, stale);
+      List<ElectiveRun__c> runs = [
+        SELECT Id, Revision__c
+        FROM ElectiveRun__c
+        WHERE ElectiveSet__c = :camp.chugim.Id
+      ];
+      Assert.areEqual(1, runs.size(), 'one run for the set, week and schedule');
+      Assert.areEqual(
+        2,
+        runs[0].Revision__c,
+        'the refused import moved nothing'
+      );
+      Assert.areEqual(
+        0,
+        [SELECT COUNT() FROM Camper__c WHERE CamperNumber__c = '1002'],
+        'the refused import added no camper'
+      );
+    }
+  }
+
   // ---------------------------------------------------------------- refused
 
   // ELECT-2.5 (Greg 2026-11-12): a saved version is never the week's schedule, last year's

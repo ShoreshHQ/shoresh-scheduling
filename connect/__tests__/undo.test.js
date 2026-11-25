@@ -117,6 +117,9 @@ describe("actions and their Apex", () => {
       "copy_season",
       "change_special_schedule_frame",
       "assign_elective_seats",
+      // Only when they replace the person's hand work.
+      "update_to_match_setup",
+      "import_special_schedule",
       // API-1.147: only a fixed activity over a recurring one asks.
       "add_to_setup",
       "change_in_setup"
@@ -137,5 +140,16 @@ describe("actions and their Apex", () => {
       )
     );
     expect([...ASKING].sort()).toEqual([...saying].sort());
+  });
+
+  // API-1.106: anything that replaces or removes the person's own work asks first, by Shoresh,
+  // never by a description telling the AI to ask: an action that says to ask the person first, or
+  // that it can't be undone, is one Shoresh asks for.
+  it.each(
+    CAPABILITIES.filter((each) =>
+      /ask the person first|can.t be undone/i.test(each.description)
+    ).map((each) => [each.name, each])
+  )("API-1.106: %s says it takes work away, so Shoresh asks", (name, each) => {
+    expect(each.asksFirst).toBe(true);
   });
 });

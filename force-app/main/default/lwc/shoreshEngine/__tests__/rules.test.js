@@ -91,6 +91,39 @@ describe("never blank (Greg, 2026-10-17; care plan step 7)", () => {
     });
   });
 
+  // LOCK-4.12
+  it("never spreads an activity at most 0 times a week: only the director's cell holds it", () => {
+    // A trip typed into one cell starts at 0 times a week, for every group. Without it, Bunk g1's
+    // third block and Bunk g2's last two blocks have nothing allowed left.
+    for (const mode of ["full", "fillOpen"]) {
+      const result = run({
+        mode,
+        days: 2,
+        groups: [group("g1"), group("g2")],
+        blocks: [block(0), block(1), block(2)],
+        activities: [
+          activity("swim", { max: 2, atOnce: null }),
+          activity("arts", { max: 2, atOnce: null }),
+          activity("zoo", { min: 0, max: 0, atOnce: null })
+        ],
+        cells: [{ day: 0, group: "g2", block: "b0", act: "zoo" }],
+        locks: [{ date: dateAt(0), groupId: "g2", blockId: "b0" }]
+      });
+      const zoo = [];
+      for (const d of [0, 1]) {
+        for (const g of ["g1", "g2"]) {
+          for (const b of [0, 1, 2]) {
+            if (at(result, d, g, b) === "zoo") {
+              zoo.push(`${d}|${g}|${b}`);
+            }
+          }
+        }
+      }
+      expect(zoo).toEqual(["0|g2|0"]);
+      expect(result.openCells.length).toBeGreaterThan(0);
+    }
+  });
+
   // CORE-4.2, GEN-3.3
   it("never repeats an activity in a day: the cell stays Open, saying so (Greg, 2026-10-25)", () => {
     const result = run({
@@ -369,7 +402,9 @@ describe("never blank (Greg, 2026-10-17; care plan step 7)", () => {
   // GEN-7.1
   describe("only the weekly max gives way; nothing else ever", () => {
     const candidates = {
-      [RULE.WEEKLY_MAX]: activity("x", { max: 0, atOnce: null }),
+      // At its weekly max of 1 already (Bunk g1's kept cell on the second day). A max of 0 is
+      // not this example: it never gives way (LOCK-4.12).
+      [RULE.WEEKLY_MAX]: activity("x", { max: 1, atOnce: null }),
       [RULE.ONCE_A_DAY]: activity("y", { max: null, atOnce: null }),
       [RULE.ELIGIBILITY]: activity("z", { atOnce: null, eligible: ["g2"] }),
       [RULE.GROUPS_AT_ONCE]: activity("w", { atOnce: 1 }),
@@ -378,6 +413,7 @@ describe("never blank (Greg, 2026-10-17; care plan step 7)", () => {
     };
     const spec = (rules) => ({
       mode: "fillOpen",
+      days: 2,
       groups: [
         group("g1"),
         group("g2"),
@@ -393,13 +429,22 @@ describe("never blank (Greg, 2026-10-17; care plan step 7)", () => {
         { day: 0, group: "g1", block: "b1", act: "y" },
         { day: 0, group: "g2", block: "b0", act: "w" },
         { day: 0, group: "g3", block: "b0", act: "v" },
-        { day: 0, group: "g4", block: "b0", act: "u" }
+        { day: 0, group: "g4", block: "b0", act: "u" },
+        ...(rules.includes(RULE.WEEKLY_MAX)
+          ? [{ day: 1, group: "g1", block: "b0", act: "x" }]
+          : [])
       ],
-      locks: ["g2", "g3", "g4"].map((g) => ({
-        date: dateAt(0),
-        groupId: g,
-        blockId: "b1"
-      }))
+      // Everything else on the second day is locked (Open, or x's kept cell).
+      locks: [
+        ...["g2", "g3", "g4"].map((g) => ({
+          date: dateAt(0),
+          groupId: g,
+          blockId: "b1"
+        })),
+        ...["g1", "g2", "g3", "g4"].flatMap((g) =>
+          ["b0", "b1"].map((b) => ({ date: dateAt(1), groupId: g, blockId: b }))
+        )
+      ]
     });
 
     const PREFERENCE = [RULE.WEEKLY_MAX];

@@ -301,6 +301,11 @@ export function problems(spec, input, result) {
           ]
       ).map((x) => x.k)
     );
+    if (act.max === 0) {
+      unkept.forEach((s) =>
+        out.push(`an activity at most 0 times a week spread by a build: ${s.k}`)
+      );
+    }
     ordered.forEach((s) => {
       const past = due.has(s.k);
       const dotted = (flagged.get(s.k) || []).includes("weeklyMax");
@@ -363,7 +368,7 @@ export function problems(spec, input, result) {
   }
   // A cell left Open with something set up for the group free there, within every limit (who
   // it's for, once a day, groups at once, groups that fit, same division): the weekly max is a
-  // preference, so it never excuses it.
+  // preference, so it never excuses it, except a max of 0, which a build never spreads (LOCK-4.12).
   const free = (act, group, d, b) => {
     const there = doing.get(`${act.id}|${d}|${b}`) || [];
     if (
@@ -400,6 +405,7 @@ export function problems(spec, input, result) {
     const could = [...acts.values()].filter((act) => {
       if (
         !eligible(act, group) ||
+        act.max === 0 ||
         act.span > gap ||
         row.some((c) => c && c.kind === "A" && c.id === act.id)
       ) {

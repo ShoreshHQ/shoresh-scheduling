@@ -27,6 +27,7 @@ import { foldName } from "./engine.shoreshImportEngine.names.mjs";
 import { LEAVE_OUT } from "./engine.shoreshImportEngine.reading.mjs";
 import { blocksOf } from "./engine.shoreshImportEngine.reading-constants.mjs";
 import { WEEKDAYS, shortClock } from "./engine.shoreshImportEngine.text.mjs";
+import { compareNames } from "./engine.shoreshImportEngine.order.mjs";
 
 export const ELECTIVES = "elective";
 export const NOT_ELECTIVES = "not";
@@ -39,7 +40,7 @@ const MAX_WORDS = 4;
 // block), so 9:45 then 9:50 is still back to back; lunch or anything else between is not.
 const PASSING_MINUTES = 10;
 function byText(a, b) {
-  return a.localeCompare(b);
+  return compareNames(a, b);
 }
 
 /**
@@ -98,7 +99,7 @@ function limited(name) {
 export function listSetName(parts, t) {
   const seen = new Set();
   const sorted = [...parts]
-    .sort((a, b) => a.localeCompare(b, undefined, { sensitivity: "base" }))
+    .sort(compareNames)
     .filter((p) => !seen.has(foldName(p)) && seen.add(foldName(p)));
   const word = t.p(electiveTerm(t));
   return limited(`${word} (${sorted.join(", ")})`);
@@ -272,9 +273,7 @@ export function readElectives(usable, ctx) {
     }
     const set = {
       ...entry,
-      choices: [...entry.choices].sort((a, b) =>
-        a.localeCompare(b, undefined, { sensitivity: "base" })
-      ),
+      choices: [...entry.choices].sort(compareNames),
       ask: id,
       key: have ? have.id : `ES|${entry.name}`,
       id: have ? have.id : null,

@@ -5,6 +5,7 @@
  * ImportController.getImported, are).
  */
 import { foldName } from "./names";
+import { compareNames } from "./order";
 
 export const REMOVE = "remove";
 
@@ -100,7 +101,7 @@ export function missingItems({
   return listed.sort(
     (a, b) =>
       ORDER.indexOf(a.kind) - ORDER.indexOf(b.kind) ||
-      a.program.localeCompare(b.program) ||
-      a.name.localeCompare(b.name)
+      compareNames(a.program, b.program) ||
+      compareNames(a.name, b.name)
   );
 }

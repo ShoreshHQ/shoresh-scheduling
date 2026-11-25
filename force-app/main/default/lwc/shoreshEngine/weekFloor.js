@@ -109,7 +109,7 @@ function placementsOf(model, importDays) {
  * The week a seeded build starts from: model's days with every activity a full build would clear
  * taken out (state.keptCells holds what stays), then the imported week's activity put in each
  * cell still free where every limit allows it (a weekly max may be gone over: it is a preference,
- * flagged like any other bend). An activity that isn't running this week (deleted, closed, or a
+ * flagged like any other bend; a max of 0 never is, LOCK-4.12). An activity that isn't running this week (deleted, closed, or a
  * different length now) is skipped. Returns { days: the DayView days to build from in "fill the
  * open cells", kept: the clearing state, whose keptCells are the director's, placed: how many
  * placements went in }.

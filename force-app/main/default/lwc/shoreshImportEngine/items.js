@@ -10,6 +10,7 @@ import { deletedActivity } from "./deleted";
 import { LEAVE_OUT } from "./reading";
 import { blocksOf } from "./reading-constants";
 import { looseKey, WEEKDAYS } from "./text";
+import { compareNames, compareNumbered } from "./order";
 
 // ---------- usable placements ----------
 
@@ -142,9 +143,7 @@ function busyMap(here, noted) {
 function timetableFacts(t, usable, ctx) {
   const { specialDays, divisionOf } = ctx;
   const here = usable.filter((p) => p.timetable === t.index);
-  const weeks = [...new Set(here.map((p) => p.week))].sort((a, b) =>
-    a.localeCompare(b, undefined, { numeric: true })
-  );
+  const weeks = [...new Set(here.map((p) => p.week))].sort(compareNumbered);
   const daysByWeek = new Map(
     weeks.map((w) => [
       w,
@@ -300,7 +299,7 @@ function cellsByName(usable, t, noted) {
     }
     byName.get(p.text).push(p);
   }
-  return [...byName].sort((a, b) => a[0].localeCompare(b[0]));
+  return [...byName].sort((a, b) => compareNames(a[0], b[0]));
 }
 
 function oneDay(facts) {

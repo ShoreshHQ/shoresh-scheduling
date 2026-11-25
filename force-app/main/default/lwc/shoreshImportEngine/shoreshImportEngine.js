@@ -255,3 +255,4 @@ export {
   realDivisionsOf,
   shownDivisionName
 } from "./noDivision";
+export { compareNames } from "./order";

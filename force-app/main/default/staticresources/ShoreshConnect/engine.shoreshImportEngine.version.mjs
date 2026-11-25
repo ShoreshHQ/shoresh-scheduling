@@ -19,6 +19,7 @@ import { blocksOf } from "./engine.shoreshImportEngine.reading-constants.mjs";
 import { WEEKDAYS, clock, looseKey, tidy } from "./engine.shoreshImportEngine.text.mjs";
 import { labelDates } from "./engine.shoreshImportEngine.weekLabels.mjs";
 import { weeksToFill } from "./engine.shoreshImportEngine.weeks.mjs";
+import { compareNumbered, compareText } from "./engine.shoreshImportEngine.order.mjs";
 
 // Date.getUTCDay's number for each day.
 const DAY_NUMBER = {
@@ -35,7 +36,7 @@ const WEEK = FIELD.Week;
 
 function seasonWeeks(existing) {
   return [...((existing && existing.weeks) || [])].sort((a, b) =>
-    String(a[WEEK.StartDate]).localeCompare(String(b[WEEK.StartDate]))
+    compareText(String(a[WEEK.StartDate]), String(b[WEEK.StartDate]))
   );
 }
 
@@ -426,7 +427,7 @@ function versionFor(t, week, label, context) {
     }
   }
   // In date order: a week that starts on Sunday has its Sunday first.
-  days.sort((a, b) => a.date.localeCompare(b.date));
+  days.sort((a, b) => compareText(a.date, b.date));
   return {
     key: `${t.key}|${week.Id}`,
     programKey: t.key,
@@ -678,8 +679,8 @@ export function versionsFor(proposal, input) {
       ? []
       : weeksToFill(input.existing, input.terms, gridDays(proposal));
   const weeks = saved.length ? saved : filled;
-  const labels = [...new Set(proposal.usable.map((p) => p.week))].sort((a, b) =>
-    a.localeCompare(b, undefined, { numeric: true })
+  const labels = [...new Set(proposal.usable.map((p) => p.week))].sort(
+    compareNumbered
   );
   const mapped = mapWeeks(labels, weeks, answers);
   const context = {
