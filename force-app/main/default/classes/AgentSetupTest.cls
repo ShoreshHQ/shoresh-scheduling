@@ -47,6 +47,41 @@ private class AgentSetupTest {
       .get('Name');
   }
 
+  // API-1.105, API-1.47: a rename the save refuses names the record once, by the name it has now
+  // (here in an archived season, whose records can't be changed); nothing is renamed.
+  @IsTest
+  static void aRefusedRenameNamesTheRecordOnceByTheNameItHas() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      GeneratedTestData.camp();
+      SeasonArchive.archive(GeneratedTestData.ids.get('Season'));
+      String season = [
+        SELECT Name
+        FROM Season__c
+        WHERE Id = :GeneratedTestData.ids.get('Season')
+        WITH SYSTEM_MODE
+      ]
+      .Name;
+      Test.startTest();
+      List<Object> renamed = post(
+        'rename',
+        new Map<String, Object>{
+          'kind' => 'group',
+          'name' => 'Group A',
+          'new_name' => 'Cabin A'
+        }
+      );
+      Test.stopTest();
+      Assert.areEqual(400, renamed[0], String.valueOf(renamed[1]));
+      Assert.areEqual(
+        '"Group A" not saved. "' +
+          season +
+          '" is archived, so it can\'t be changed.',
+        renamed[1]
+      );
+      Assert.areEqual('Group A', nameOf(GeneratedTestData.ids.get('Group A')));
+    }
+  }
+
   // API-1.11: every change through an agent is refused in the same words without the access
   @IsTest
   static void someoneWithoutShoreshRenamesNothing() {
