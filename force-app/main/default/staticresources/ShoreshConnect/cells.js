@@ -12,14 +12,7 @@
  * done here.
  */
 const { locksAfter } = require("./undo");
-
-/** A name as camps type it: case and spaces don't count. */
-function fold(text) {
-  return String(text || "")
-    .replace(/\s+/g, " ")
-    .trim()
-    .toLowerCase();
-}
+const { foldName: fold } = require("./common");
 
 /** A refusal in Shoresh's words: nothing was changed. */
 class Refused extends Error {
@@ -48,7 +41,7 @@ function wordsOf(t, term) {
  * list's words (wordsOf).
  */
 function onlyOne(list, asked, nameOf, what, where) {
-  if (!String(asked || "").trim()) {
+  if (!fold(asked)) {
     throw new Refused(`Say which ${what.one}.`);
   }
   const found = list.filter((x) =>
@@ -146,7 +139,16 @@ function cellOf(ctx, m, input, weekName, prefix = "") {
 function checkWas(ctx, m, slot, was) {
   const day = ctx.week[slot.day];
   const now = ctx.nameOf(m.placement(day, slot.group, slot.block).slot, day);
-  if (fold(was || "Open") !== fold(now)) {
+  // What was seen, as the season's names read it: one spelled exactly so is that one, never a
+  // look-alike someone put there since.
+  const names = [
+    ...(ctx.draft.activities || []).map((a) => a.name),
+    ...ctx.sets.map((e) => e.Name)
+  ];
+  const seen = names.includes(was)
+    ? was === now
+    : fold(was || "Open") === fold(now);
+  if (!seen) {
     throw new Refused(
       `Changed by someone else: ${m.slotName(ctx, slot)} holds ${now} now. Nothing was changed.`,
       409
@@ -379,20 +381,58 @@ function placeEvent(ctx, m, input, weekName) {
 }
 
 /**
+ * The ones spelled exactly as asked when any of the season's names is (exact); otherwise the ones
+ * that read the same (AgentNamed.called).
+ */
+function called(list, nameOf, asked, exact) {
+  return exact
+    ? list.filter((x) => nameOf(x) === asked)
+    : list.filter((x) => fold(nameOf(x)) === fold(asked));
+}
+
+/** Two or more that read the same, named, in the server's words (AgentNamed.sameNameSaid). */
+function sameNameSaid(names, things) {
+  const quoted = names.map((n) => `"${n}"`);
+  const unsure = ", so Shoresh can't tell which you mean. Nothing was changed.";
+  if (new Set(quoted).size === 1) {
+    return `There are ${quoted.length} ${things} called ${quoted[0]}${unsure}`;
+  }
+  const last = quoted.pop();
+  return `${quoted.join(", ")} and ${last} are ${quoted.length === 1 ? "both" : "all"} ${things} with that name${unsure}`;
+}
+
+/**
  * What an AI names for a cell, as typing it offers (API-1.124): one of the season's activities
  * (as the week editor lists them, with their lengths) or elective sets; a name both have, or
  * neither, is refused, never guessed.
  */
 function typedOf(ctx, m, asked) {
-  const activities = (ctx.draft.activities || []).filter(
-    (a) => fold(a.name) === fold(asked)
-  );
-  const sets = ctx.sets.filter((e) => fold(e.Name) === fold(asked));
+  const all = ctx.draft.activities || [];
+  const exact =
+    all.some((a) => a.name === asked) || ctx.sets.some((e) => e.Name === asked);
+  const activities = called(all, (a) => a.name, asked, exact);
+  const sets = called(ctx.sets, (e) => e.Name, asked, exact);
   const said = String(asked).slice(0, 80);
   const { t } = ctx;
   if (activities.length && sets.length) {
     throw new Refused(
       `"${said}" is both ${m.article(t.sIn("Activity"))} and ${m.article(t.sIn("ElectiveSet"))} in this season, so Shoresh can't tell which you mean.`
+    );
+  }
+  if (activities.length > 1) {
+    throw new Refused(
+      sameNameSaid(
+        activities.map((a) => a.name),
+        t.pIn("Activity")
+      )
+    );
+  }
+  if (sets.length > 1) {
+    throw new Refused(
+      sameNameSaid(
+        sets.map((e) => e.Name),
+        t.pIn("ElectiveSet")
+      )
     );
   }
   if (activities.length) {

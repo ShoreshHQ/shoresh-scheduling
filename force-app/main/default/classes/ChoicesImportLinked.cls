@@ -65,6 +65,6 @@ public with sharing class ChoicesImportLinked {
     }
     return choice.a != null
       ? String.valueOf(choice.a)
-      : ChoicesImport.fold(choice.n);
+      : IncomingBatch.fold(choice.n);
   }
 }

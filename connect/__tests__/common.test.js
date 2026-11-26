@@ -2,9 +2,33 @@
  * What the connector's modules share (connect/common.js): a refusal with nothing done, and what a
  * screen reads as the screen gets it.
  */
-const { refused, changedSince, asTheScreenReads } = require("../common");
+const {
+  refused,
+  changedSince,
+  asTheScreenReads,
+  foldName
+} = require("../common");
+
+// The name rule Apex (RuleExamplesTest) and the import (ruleExamples.test.js) pass too.
+const { foldedNames } = JSON.parse(
+  require("fs").readFileSync(
+    require("path").join(
+      __dirname,
+      "../../force-app/main/default/staticresources/ShoreshRuleExamples.json"
+    ),
+    "utf8"
+  )
+);
 
 describe("What the connector's modules share", () => {
+  // API-1.25, INGEST-2.2
+  it.each(foldedNames.map((e) => [e.name, e.fold]))(
+    "namesFoldAsTheImportAndApexFoldThem: %j reads as %j",
+    (name, fold) => {
+      expect(foldName(name)).toBe(fold);
+    }
+  );
+
   it("refusalsSayNothingWasDone: a refusal is the screen's words with 400, a change since it was read 409", () => {
     expect(refused("Say which week.")).toEqual({
       ok: false,

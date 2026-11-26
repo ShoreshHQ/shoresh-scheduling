@@ -32,7 +32,7 @@ private class RuleExamplesTest {
       Map<String, Object> example = (Map<String, Object>) each;
       Assert.areEqual(
         (String) example.get('fold'),
-        ChoicesImport.fold((String) example.get('name'))
+        IncomingBatch.fold((String) example.get('name'))
       );
     }
   }

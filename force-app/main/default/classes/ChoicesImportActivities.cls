@@ -30,7 +30,7 @@ public with sharing class ChoicesImportActivities {
         ? new List<String>()
         : request.addActivities
     ) {
-      String key = ChoicesImport.fold(name);
+      String key = IncomingBatch.fold(name);
       if (String.isBlank(key) || added.containsKey(key)) {
         continue;
       }
@@ -50,8 +50,8 @@ public with sharing class ChoicesImportActivities {
     }
     Database.insert(made, AccessLevel.USER_MODE);
     for (Activity__c activity : made) {
-      added.put(ChoicesImport.fold(activity.Name), activity.Id);
-      seasonIds.put(ChoicesImport.fold(activity.Name), activity.Id);
+      added.put(IncomingBatch.fold(activity.Name), activity.Id);
+      seasonIds.put(IncomingBatch.fold(activity.Name), activity.Id);
     }
     new ChoicesImportLinked(request, place).pointAt();
     pointAtActivities(added, new Set<Id>(seasonIds.values()));
@@ -67,7 +67,7 @@ public with sharing class ChoicesImportActivities {
       WHERE Season__c = :request.seasonId
       WITH USER_MODE
     ]) {
-      result.put(ChoicesImport.fold(activity.Name), activity.Id);
+      result.put(IncomingBatch.fold(activity.Name), activity.Id);
     }
     return result;
   }
@@ -77,7 +77,7 @@ public with sharing class ChoicesImportActivities {
     for (ChoicesImport.SheetCamper sheetCamper : request.campers) {
       for (ChoicesImport.SheetChoice choice : sheetCamper.choices) {
         if (String.isNotBlank(choice.add)) {
-          choice.a = added.get(ChoicesImport.fold(choice.add));
+          choice.a = added.get(IncomingBatch.fold(choice.add));
           choice.add = null;
         }
         if (choice.a != null && !inSeason.contains(choice.a)) {

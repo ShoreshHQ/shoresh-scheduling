@@ -1,6 +1,6 @@
 /**
- * What the connector's modules share: a refusal with nothing done, and what a screen reads as
- * the screen gets it.
+ * What the connector's modules share: a refusal with nothing done, what a screen reads as the
+ * screen gets it, and a name as camps type it.
  */
 
 /** Something changed since it was read or reviewed: nothing was saved (409). By default, the setup since the review. */
@@ -39,4 +39,16 @@ function asTheScreenReads(value, key = "") {
   return ((hours * 60 + minutes) * 60 + seconds) * 1000 + ms;
 }
 
-module.exports = { changedSince, refused, asTheScreenReads };
+/**
+ * A name as camps type it (API-1.25): letters and digits only, lower case, with "&" and "+" read as
+ * "and". The import's foldName and Apex's IncomingBatch.fold are the same rule; all three pass
+ * ShoreshRuleExamples.json's foldedNames.
+ */
+function foldName(name) {
+  return String(name || "")
+    .toLowerCase()
+    .replace(/&|\+/g, " and ")
+    .replace(/[^\p{L}\p{N}]+/gu, "");
+}
+
+module.exports = { changedSince, refused, asTheScreenReads, foldName };
