@@ -35,6 +35,28 @@ private class ImportUndoKindsTest {
     return values.toLog();
   }
 
+  private static Schema.SObjectField sortOrderOf(Schema.SObjectType kind) {
+    return ShoreshSchema.field(
+      kind,
+      ShoreshSchema.localName(Activity__c.SortOrder__c)
+    );
+  }
+
+  /** A record's sort order as saved now. */
+  private static Object sortOrderNow(SObject record) {
+    Schema.SObjectType kind = record.getSObjectType();
+    Id recordId = record.Id;
+    return Database.query(
+        'SELECT ' +
+          sortOrderOf(kind) +
+          ' FROM ' +
+          kind +
+          ' WHERE Id = :recordId',
+        AccessLevel.USER_MODE
+      )
+      .get(sortOrderOf(kind));
+  }
+
   // INGEST-5.10
   @IsTest
   static void ingest510AnImportThatChangedElevenKindsIsAllPutBack() {
@@ -157,14 +179,7 @@ private class ImportUndoKindsTest {
       );
       for (SObject record : records) {
         changed.add(
-          entry(
-            record,
-            ShoreshSchema.field(
-              record.getSObjectType(),
-              ShoreshSchema.localName(Activity__c.SortOrder__c)
-            ),
-            BEFORE
-          )
+          entry(record, sortOrderOf(record.getSObjectType()), BEFORE)
         );
       }
       SpecialDay__c colorWar = [
@@ -181,32 +196,17 @@ private class ImportUndoKindsTest {
         AccessLevel.SYSTEM_MODE
       );
       Test.startTest();
+      Integer before = Limits.getQueries();
       ImportUndo.Result result = ImportController.undoImport(importId);
+      Integer used = Limits.getQueries() - before;
       Test.stopTest();
       Assert.areEqual(11, result.restored, 'every kind put back');
+      Assert.isTrue(used < 60, 'Undo used ' + used + ' queries');
       for (SObject record : records) {
-        Schema.SObjectType kind = record.getSObjectType();
-        Id recordId = record.Id;
-        SObject now = Database.query(
-          'SELECT ' +
-            ShoreshSchema.field(
-              kind,
-              ShoreshSchema.localName(Activity__c.SortOrder__c)
-            ) +
-            ' FROM ' +
-            kind +
-            ' WHERE Id = :recordId',
-          AccessLevel.USER_MODE
-        );
         Assert.areEqual(
           BEFORE,
-          now.get(
-            ShoreshSchema.field(
-              kind,
-              ShoreshSchema.localName(Activity__c.SortOrder__c)
-            )
-          ),
-          String.valueOf(kind)
+          sortOrderNow(record),
+          String.valueOf(record.getSObjectType())
         );
       }
       Assert.areEqual(

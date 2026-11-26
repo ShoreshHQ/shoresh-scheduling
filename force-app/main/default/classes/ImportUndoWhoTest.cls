@@ -269,10 +269,10 @@ private class ImportUndoWhoTest {
   }
 
   /**
-   * A large camp's Undo of an import that replaced who can do 100 activities and who 100 recurring
-   * activities cover, 11 bunks each: 1,100 rows of each kind go and their lists come back.
-   * Salesforce refuses one save whose rows switch kind more than ten times, counted 200 rows at a
-   * time (#465), so each kind goes in its own call (INGEST-5.10).
+   * A large camp's Undo of an import that replaced who can do 200 activities (11 bunks each:
+   * 2,200 rows) and who a recurring activity covers (11 bunks): every row goes and the lists come
+   * back. Salesforce refuses one save whose rows switch kind more than ten times, counted 200
+   * rows at a time (#465), so each kind goes in its own call (INGEST-5.10).
    */
   @IsTest
   static void ingest510ALargeCampsWhoListsOfBothKindsAreAllUndone() {
@@ -297,67 +297,72 @@ private class ImportUndoWhoTest {
       }
       after.sort();
       List<Activity__c> activities = new List<Activity__c>();
-      List<RecurringActivity__c> meetings = new List<RecurringActivity__c>();
-      for (Integer i = 0; i < 100; i++) {
+      for (Integer i = 0; i < 200; i++) {
         activities.add(
           ShoreshTestData.activity(c.season.Id, 'Craft ' + i, null)
         );
-        RecurringActivity__c meeting = c.meeting.clone(false, true);
-        meeting.Name = 'Meeting ' + i;
-        meetings.add(meeting);
       }
       insert as user activities;
-      insert as user meetings;
       List<ActivityEligibility__c> eligible = new List<ActivityEligibility__c>();
       List<Coverage__c> covered = new List<Coverage__c>();
       List<Object> changed = new List<Object>();
-      for (Integer i = 0; i < 100; i++) {
+      for (Activity__c activity : activities) {
         for (Group__c bunk : bunks) {
           eligible.add(
             new ActivityEligibility__c(
-              Activity__c = activities[i].Id,
-              Group__c = bunk.Id
-            )
-          );
-          covered.add(
-            new Coverage__c(
-              Season__c = c.season.Id,
-              RecurringActivity__c = meetings[i].Id,
+              Activity__c = activity.Id,
               Group__c = bunk.Id
             )
           );
         }
         changed.add(
           new ImportLogEntries.Who(
-              activities[i],
+              activity,
               ShoreshSchema.localName(ActivityEligibility__c.SObjectType)
             )
             .lists(new List<String>{ c.juniors }, after)
             .toLog()
         );
       }
-      for (Integer i = 0; i < 100; i++) {
-        changed.add(
-          new ImportLogEntries.Who(
-              meetings[i],
-              ShoreshSchema.localName(Coverage__c.SObjectType)
-            )
-            .lists(new List<String>{ c.juniors }, after)
-            .toLog()
+      // Meeting covered the bunks in place of Juniors.
+      delete as user [
+        SELECT Id
+        FROM Coverage__c
+        WHERE RecurringActivity__c = :c.meeting.Id
+        WITH USER_MODE
+      ];
+      for (Group__c bunk : bunks) {
+        covered.add(
+          new Coverage__c(
+            Season__c = c.season.Id,
+            RecurringActivity__c = c.meeting.Id,
+            Group__c = bunk.Id
+          )
         );
       }
+      changed.add(
+        new ImportLogEntries.Who(
+            c.meeting,
+            ShoreshSchema.localName(Coverage__c.SObjectType)
+          )
+          .lists(new List<String>{ c.juniors }, after)
+          .toLog()
+      );
       insert as user eligible;
       insert as user covered;
-      // The import's record as a workbook import that replaced all 200 lists would leave it.
+      // The import's record as a workbook import that replaced all 201 lists would leave it.
       Database.update(
         new Import__c(Id = importId, Changed__c = JSON.serialize(changed)),
         AccessLevel.SYSTEM_MODE
       );
       Test.startTest();
+      Integer before = Limits.getQueries();
       ImportController.undoImport(importId);
+      Integer used = Limits.getQueries() - before;
       Test.stopTest();
+      Assert.isTrue(used < 60, 'Undo used ' + used + ' queries');
       Assert.areEqual(
-        100,
+        200,
         [
           SELECT COUNT()
           FROM ActivityEligibility__c
@@ -374,24 +379,14 @@ private class ImportUndoWhoTest {
           WITH USER_MODE
         ]
       );
-      Assert.areEqual(
-        100,
-        [
-          SELECT COUNT()
-          FROM Coverage__c
-          WHERE RecurringActivity__c IN :meetings AND Division__c = :c.juniors
-          WITH USER_MODE
-        ]
-      );
-      Assert.areEqual(
-        0,
-        [
-          SELECT COUNT()
-          FROM Coverage__c
-          WHERE RecurringActivity__c IN :meetings AND Group__c != NULL
-          WITH USER_MODE
-        ]
-      );
+      List<Coverage__c> meeting = [
+        SELECT Division__c, Group__c
+        FROM Coverage__c
+        WHERE RecurringActivity__c = :c.meeting.Id
+        WITH USER_MODE
+      ];
+      Assert.areEqual(1, meeting.size());
+      Assert.areEqual(c.juniors, meeting[0].Division__c);
     }
   }
 }

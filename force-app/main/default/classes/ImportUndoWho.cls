@@ -29,9 +29,8 @@ public with sharing class ImportUndoWho {
     // counted 200 rows at a time (#465), and a large camp's lists run to thousands of rows of
     // both kinds (INGEST-5.10).
     for (List<SObject> sameKind : byKind(remove).values()) {
-      Database.delete(sameKind, AccessLevel.USER_MODE);
+      deleteKind(sameKind);
     }
-    Map<Schema.SObjectType, List<SObject>> putBackByKind = byKind(putBack);
     Map<Schema.SObjectType, List<String>> namesByKind = new Map<Schema.SObjectType, List<String>>();
     for (Integer i = 0; i < putBack.size(); i++) {
       Schema.SObjectType kind = putBack[i].getSObjectType();
@@ -40,20 +39,30 @@ public with sharing class ImportUndoWho {
       }
       namesByKind.get(kind).add(putBackNames[i]);
     }
+    Map<Schema.SObjectType, List<SObject>> putBackByKind = byKind(putBack);
     for (Schema.SObjectType kind : putBackByKind.keySet()) {
-      List<Database.SaveResult> outcomes = Database.insert(
-        putBackByKind.get(kind),
-        false,
-        AccessLevel.USER_MODE
-      );
-      for (Integer i = 0; i < outcomes.size(); i++) {
-        if (!outcomes[i].isSuccess()) {
-          throw ImportUndo.refused(
-            namesByKind.get(kind)[i],
-            'couldn\'t put back who it was for',
-            outcomes[i].getErrors()[0]
-          );
-        }
+      insertKind(putBackByKind.get(kind), namesByKind.get(kind));
+    }
+  }
+
+  private static void deleteKind(List<SObject> sameKind) {
+    Database.delete(sameKind, AccessLevel.USER_MODE);
+  }
+
+  /** One kind's rows put back; a refusal names the list's owner (names, in the same order). */
+  private static void insertKind(List<SObject> sameKind, List<String> names) {
+    List<Database.SaveResult> outcomes = Database.insert(
+      sameKind,
+      false,
+      AccessLevel.USER_MODE
+    );
+    for (Integer i = 0; i < outcomes.size(); i++) {
+      if (!outcomes[i].isSuccess()) {
+        throw ImportUndo.refused(
+          names[i],
+          'couldn\'t put back who it was for',
+          outcomes[i].getErrors()[0]
+        );
       }
     }
   }
