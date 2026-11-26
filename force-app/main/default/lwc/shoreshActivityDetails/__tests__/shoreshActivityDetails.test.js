@@ -1019,3 +1019,204 @@ describe("a group in no division", () => {
     expect(labels).not.toContain("Tent 1 (Tent 1)");
   });
 });
+
+// ADR 0031 piece A: When it runs, a grid per program of its days by its time blocks.
+describe("When it runs", () => {
+  afterEach(() => {
+    setDayNaming(null);
+    while (document.body.firstChild) {
+      document.body.removeChild(document.body.firstChild);
+    }
+  });
+
+  const RUNS = {
+    ...SETUP,
+    programs: [
+      {
+        ...SETUP.programs[0],
+        program: {
+          Id: "p1",
+          Name: "Main",
+          Monday__c: true,
+          Tuesday__c: true,
+          Wednesday__c: false
+        },
+        timeBlocks: [
+          { Id: "tb1", Name: "Period 1" },
+          { Id: "tb2", Name: "Period 2" }
+        ]
+      }
+    ],
+    activities: [
+      {
+        ...SETUP.activities[0],
+        OffTimes__r: [
+          {
+            Id: "o1",
+            Activity__c: "a1",
+            TimeBlock__c: "tb2",
+            Day__c: "Tuesday"
+          }
+        ]
+      },
+      SETUP.activities[1]
+    ]
+  };
+  const boxes = (element) => [
+    ...element.shadowRoot.querySelectorAll('[data-field="whenItRuns"]')
+  ];
+  const ticks = (element) =>
+    boxes(element).map((box) => `${box.dataset.box}:${box.checked ? 1 : 0}`);
+
+  it("shows the program's days by its time blocks, every box ticked but the ones unticked", async () => {
+    const element = await render(RUNS);
+    const table = q(element, "table.runs");
+    expect(q(element, ".runs-caption").textContent.trim()).toBe(
+      "When it runs"
+    );
+    expect(
+      [...table.querySelectorAll(".runs-day")].map((th) =>
+        th.textContent.trim()
+      )
+    ).toEqual(["Mon", "Tue"]);
+    expect(
+      [...table.querySelectorAll(".runs-block")].map((th) =>
+        th.textContent.trim()
+      )
+    ).toEqual(["Period 1", "Period 2"]);
+    expect(ticks(element)).toEqual([
+      "tb1|Monday:1",
+      "tb1|Tuesday:1",
+      "tb2|Monday:1",
+      "tb2|Tuesday:0"
+    ]);
+    expect(boxes(element)[3].getAttribute("aria-label")).toBe(
+      "Period 2, Tuesday"
+    );
+    await expect(element).toBeAccessible();
+  });
+
+  it("a numbered season says Day 1, Day 2 over the boxes", async () => {
+    setDayNaming({ numbered: true, firstDay: 1 });
+    const element = await render(RUNS);
+    expect(
+      [...element.shadowRoot.querySelectorAll(".runs-day")].map((th) =>
+        th.textContent.trim()
+      )
+    ).toEqual(["Day 1", "Day 2"]);
+    expect(boxes(element)[0].getAttribute("aria-label")).toBe(
+      "Period 1, Day 1"
+    );
+  });
+
+  it("names each program's grid when there are several, and a program without time blocks has none", async () => {
+    const element = await render({
+      ...RUNS,
+      programs: [
+        RUNS.programs[0],
+        {
+          program: { Id: "p2", Name: "Teens", Monday__c: true },
+          divisions: [],
+          timeBlocks: []
+        }
+      ]
+    });
+    expect(
+      [...element.shadowRoot.querySelectorAll(".runs-caption")].map((c) =>
+        c.textContent.trim()
+      )
+    ).toEqual(["When it runs (Main)"]);
+  });
+
+  it("unticking a box saves at once, the whole list, with what was seen", async () => {
+    const element = await render(RUNS);
+    const handler = jest.fn();
+    element.addEventListener("save", handler);
+    const box = boxes(element)[0];
+    box.checked = false;
+    box.dispatchEvent(new CustomEvent("change"));
+    await flush();
+    const save = sent(handler)[0];
+    expect(save.activityId).toBe("a1");
+    expect(save.offTimes).toEqual(["tb1|Monday", "tb2|Tuesday"]);
+    expect(save.seen()).toEqual(["tb2|Tuesday"]);
+    expect(save.rules).toBeUndefined();
+    save.onSaved({ id: "a1", changed: [] });
+    await flush();
+    expect(savedMark(element)).not.toBeNull();
+  });
+
+  it("ticking it again saves the box back on", async () => {
+    const element = await render(RUNS);
+    const handler = jest.fn();
+    element.addEventListener("save", handler);
+    const box = boxes(element)[3];
+    box.checked = true;
+    box.dispatchEvent(new CustomEvent("change"));
+    await flush();
+    expect(sent(handler)[0].offTimes).toEqual([]);
+  });
+
+  it("someone else's change since is asked about, and Keep theirs shows theirs", async () => {
+    const element = await render(RUNS);
+    const handler = jest.fn();
+    element.addEventListener("save", handler);
+    const box = boxes(element)[0];
+    box.checked = false;
+    box.dispatchEvent(new CustomEvent("change"));
+    await flush();
+    sent(handler)[0].onSaved({
+      id: null,
+      changed: [],
+      theirOffTimes: ["tb1|Tuesday"]
+    });
+    await flush();
+    expect(q(element, ".conflict-where").textContent.trim()).toBe(
+      "Archery · When it runs"
+    );
+    expect(q(element, '[data-id="theirs"]').textContent.trim()).toBe(
+      "Not Period 1, Tuesday"
+    );
+    expect(q(element, '[data-id="yours"]').textContent.trim()).toBe(
+      "Not Period 1, Monday; Period 2, Tuesday"
+    );
+    q(element, '[data-id="keep-theirs"]').click();
+    await flush();
+    expect(ticks(element)).toEqual([
+      "tb1|Monday:1",
+      "tb1|Tuesday:0",
+      "tb2|Monday:1",
+      "tb2|Tuesday:1"
+    ]);
+    expect(handler).toHaveBeenCalledTimes(1);
+  });
+
+  it("a refusal shows under the grid, and the box stays as the director left it", async () => {
+    const element = await render(RUNS);
+    const handler = jest.fn();
+    element.addEventListener("save", handler);
+    const box = boxes(element)[0];
+    box.checked = false;
+    box.dispatchEvent(new CustomEvent("change"));
+    await flush();
+    sent(handler)[0].onFailure("Activity details not saved.");
+    await flush();
+    expect(q(element, '[data-error="runs"]').textContent.trim()).toBe(
+      "Activity details not saved."
+    );
+    expect(boxes(element)[0].checked).toBe(false);
+  });
+
+  it("an archived season shows the boxes and takes no changes", async () => {
+    const element = createElement("c-shoresh-activity-details", {
+      is: ShoreshActivityDetails
+    });
+    element.terms = terms;
+    element.readOnly = true;
+    element.setup = nsRecord(RUNS);
+    document.body.appendChild(element);
+    await element.open("a1");
+    await flush();
+    expect(boxes(element).every((box) => box.disabled)).toBe(true);
+  });
+});

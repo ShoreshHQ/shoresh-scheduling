@@ -1,11 +1,5 @@
 import { NOW, nowOf, tell } from "./progress";
-import {
-  allowed,
-  busyAt,
-  headOf,
-  runsHere,
-  shortfall
-} from "./weekOptions";
+import { allowed, busyAt, headOf, runsHere, shortfall } from "./weekOptions";
 import { moveAcrossDays } from "./weekAcross";
 import { runsAt } from "./setup";
 import {
@@ -1293,9 +1287,7 @@ export function explainOpen(st) {
     } else if (!s.eligibleActs.length) {
       why = NONE_FOR;
     } else if (
-      !s.eligibleActs.some((act) =>
-        runsHere(st, act, s.dayIndex, s.blockId)
-      )
+      !s.eligibleActs.some((act) => runsHere(st, act, s.dayIndex, s.blockId))
     ) {
       // None of the group's activities runs then (When it runs, protocol 3.13).
       why = OFF_TIME;

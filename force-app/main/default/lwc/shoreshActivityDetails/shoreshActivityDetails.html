@@ -155,6 +155,69 @@
         </template>
       </div>
 
+      <!-- When it runs (ADR 0031 piece A): per program, its days by its time blocks, every box
+           ticked until the director unticks a time it can't run; the recurring activities' day
+           ticks, in a grid. -->
+      <template lwc:if={hasRunsGrids}>
+        <div class="field" data-id="when-it-runs">
+          <template for:each={runsGrids} for:item="grid">
+            <table key={grid.key} class="runs" data-program={grid.key}>
+              <caption class="slds-form-element__label runs-caption">
+                {grid.label}
+              </caption>
+              <thead>
+                <tr>
+                  <td class="runs-corner"></td>
+                  <template for:each={grid.days} for:item="day">
+                    <th
+                      key={day.key}
+                      scope="col"
+                      class="runs-day"
+                      abbr={day.label}
+                    >
+                      {day.short}
+                    </th>
+                  </template>
+                </tr>
+              </thead>
+              <tbody>
+                <template for:each={grid.rows} for:item="row">
+                  <tr key={row.key}>
+                    <th scope="row" class="runs-block">{row.name}</th>
+                    <template for:each={row.boxes} for:item="box">
+                      <td key={box.key} class="runs-cell">
+                        <label class="chip">
+                          <input
+                            type="checkbox"
+                            class="chip-box"
+                            aria-label={box.label}
+                            checked={box.checked}
+                            data-field="whenItRuns"
+                            data-box={box.box}
+                            disabled={readOnly}
+                            onchange={handleRunsChange}
+                          />
+                          <span class="chip-face" aria-hidden="true"></span>
+                        </label>
+                      </td>
+                    </template>
+                  </tr>
+                </template>
+              </tbody>
+            </table>
+          </template>
+          <template lwc:if={runsError}>
+            <div
+              class="slds-form-element__help slds-text-color_error"
+              role="alert"
+              data-error="runs"
+            >
+              {runsError}
+            </div>
+          </template>
+        </div>
+      </template>
+
       <div class="pair field">
         <div class="pair-part">
           <span class="number-with-unit">

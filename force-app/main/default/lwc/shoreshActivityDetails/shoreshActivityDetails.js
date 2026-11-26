@@ -1,9 +1,15 @@
 import { LightningElement, api } from "lwc";
 import { CHILDREN, childRows, FIELD, OBJECT } from "c/shoreshSchema";
-import { holdsNoDivision } from "c/shoreshImportEngine";
+import {
+  WEEKDAYS,
+  firstDayOf,
+  holdsNoDivision,
+  programDays
+} from "c/shoreshImportEngine";
 import { leftField } from "c/shoreshSavedMark";
 import { rainPlanChoices } from "c/shoreshSetupRules";
 import { numberedWeekday, spokenWeekday } from "c/shoreshDayNames";
+import { SHORT_DAYS } from "c/shoreshTerms";
 
 // The days an early-week goal can be by (EarlyWeekByDay__c).
 const DAYS = [
@@ -21,6 +27,12 @@ const WHO = FIELD.ActivityEligibility;
 // data-field).
 const WHO_KEY = "who";
 const WHO_INPUT = "whoCanDoIt";
+// When it runs (ADR 0031 piece A): the boxes unticked, each "<time block Id>|<weekday>", saved
+// whole (ActivitiesController.saveWhenItRuns); its key beside the rule fields, and its inputs'.
+const RUNS_KEY = "runs";
+const RUNS_INPUT = "whenItRuns";
+const OFF = FIELD.ActivityOffTime;
+const PROGRAM = FIELD.Program;
 // Each rule's input (its data-field) and the activity field it saves.
 const RULE_FIELDS = {
   sameDivision: ACTIVITY.SameDivisionOnly,
@@ -72,7 +84,10 @@ const SAME = "same";
  * hides it again. Who can do it is a list of ticks, as on the desktop (ActivitiesScreen.jsx,
  * "Eligible Age Divisions" and the group ticks). They save as you go, like the tables (ADR 0011,
  * decision 26 (4)): a tick or a dropdown the moment it changes; a number or the notes when the
- * director leaves the field. Only the rules that changed are sent, except that the early-week count and its day always
+ * director leaves the field. When it runs is a grid per program, its days by its time blocks
+ * (ADR 0031 piece A): every box starts ticked, and a box unticked is a time the activity can't
+ * run, saved the moment it changes as one list (the server replaces the activity's own).
+ * Only the rules that changed are sent, except that the early-week count and its day always
  * go together (who can do it is always sent whole: the server replaces the list). "Saved" shows
  * quietly; a refusal shows next to the field, with what was typed kept. If something else on the
  * screen is saved meanwhile, what was typed here stays.
@@ -85,7 +100,8 @@ const SAME = "same";
  * Manual Build's question, "Changed by someone else", Keep theirs or Use yours. Closing or
  * opening another activity waits for those saves' answers, so the question is never dropped.
  *
- * Fires: save { rules, whoCanDoIt, onSaved, onFailure(message), shown() }
+ * Fires: save { rules, whoCanDoIt, onSaved, onFailure(message), shown() }, or for When it runs
+ * save { activityId, offTimes, seen(), onSaved, onFailure(message), shown() }
  * (shown: whether the form still shows that activity; a refusal it can't show is said at the top);
  * close { activityId } (Close pressed: the page puts the cursor back on the row's button)
  */
@@ -148,6 +164,9 @@ export default class ShoreshActivityDetails extends LightningElement {
       if (!keep(WHO_KEY)) {
         this.seen[WHO_KEY] = saved.whoCanDoIt;
       }
+      if (!keep(RUNS_KEY)) {
+        this.seen[RUNS_KEY] = saved.offTimes;
+      }
     }
     if (!saved || !this.draft) {
       this.draft = saved;
@@ -161,7 +180,8 @@ export default class ShoreshActivityDetails extends LightningElement {
     });
     this.draft = {
       rules,
-      whoCanDoIt: keep(WHO_KEY) ? this.draft.whoCanDoIt : saved.whoCanDoIt
+      whoCanDoIt: keep(WHO_KEY) ? this.draft.whoCanDoIt : saved.whoCanDoIt,
+      offTimes: keep(RUNS_KEY) ? this.draft.offTimes : saved.offTimes
     };
   }
 
@@ -200,7 +220,11 @@ export default class ShoreshActivityDetails extends LightningElement {
     const whoCanDoIt = childRows(activity, CHILDREN.Activity.Eligibilities).map(
       (row) => row[WHO.Division] || row[WHO.Group]
     );
-    return { rules, whoCanDoIt };
+    const offTimes = childRows(activity, CHILDREN.Activity.OffTimes)
+      .filter((row) => row[OFF.TimeBlock] && row[OFF.Day])
+      .map((row) => offKey(row[OFF.TimeBlock], row[OFF.Day]))
+      .sort();
+    return { rules, whoCanDoIt, offTimes };
   }
 
   /** Every division, then every group (with its division), across the season's programs. */
@@ -317,6 +341,63 @@ export default class ShoreshActivityDetails extends LightningElement {
     return this.draft ? this.draft.whoCanDoIt : [];
   }
 
+  get offTimes() {
+    return this.draft ? this.draft.offTimes : [];
+  }
+
+  /**
+   * When it runs: for each program, its days (in the order the camp's week runs, said as the
+   * season says them) by its time blocks, every box ticked unless unticked. A program with no
+   * days or no time blocks has no grid. The program is named only when there are several.
+   */
+  get runsGrids() {
+    const programs = (this._setup && this._setup.programs) || [];
+    const several = programs.length > 1;
+    const first = firstDayOf(programDays(this._setup));
+    const week = [...WEEKDAYS.slice(first), ...WEEKDAYS.slice(0, first)];
+    const off = new Set(this.offTimes);
+    return programs
+      .map((entry) => {
+        const days = week.filter(
+          (day) => entry.program && entry.program[PROGRAM[day]]
+        );
+        const blocks = entry.timeBlocks || [];
+        const where = several ? ` (${entry.program.Name})` : "";
+        return {
+          key: entry.program ? entry.program.Id : "",
+          name: several ? entry.program.Name : null,
+          label: `${this.labels.whenItRuns}${where}`,
+          days: days.map((day) => ({
+            key: day,
+            short: numberedWeekday(day) || SHORT_DAYS[day],
+            label: spokenWeekday(day)
+          })),
+          rows: blocks.map((block) => ({
+            key: block.Id,
+            name: block.Name,
+            boxes: days.map((day) => {
+              const box = offKey(block.Id, day);
+              return {
+                key: box,
+                box,
+                checked: !off.has(box),
+                label: `${block.Name}, ${spokenWeekday(day)}${where}`
+              };
+            })
+          }))
+        };
+      })
+      .filter((grid) => grid.days.length && grid.rows.length);
+  }
+
+  get hasRunsGrids() {
+    return this.runsGrids.length > 0;
+  }
+
+  get runsError() {
+    return this.errors[RUNS_KEY];
+  }
+
   get rules() {
     return this.draft ? this.draft.rules : {};
   }
@@ -392,6 +473,7 @@ export default class ShoreshActivityDetails extends LightningElement {
       rainPlan: t.s("RainPlan"),
       together: `${t.p("Group")} together`,
       whoCanDoIt: "Who can do it",
+      whenItRuns: "When it runs",
       sameDivision: `Only ${t.pIn("Group")} from the same ${t.sIn("Division")} at the same time`,
       // One group, read as "Early in the week: How many … By …" (WCAG 1.3.1).
       early: "Early in the week",
@@ -503,6 +585,19 @@ export default class ShoreshActivityDetails extends LightningElement {
     this.save(WHO_KEY);
   }
 
+  /** A box of When it runs is chosen once, so it is saved at once, as Who can do it is. */
+  handleRunsChange(event) {
+    const box = event.target.dataset.box;
+    const off = new Set(this.offTimes);
+    if (event.target.checked) {
+      off.delete(box);
+    } else {
+      off.add(box);
+    }
+    this.update(RUNS_KEY, { offTimes: [...off].sort() });
+    this.save(RUNS_KEY);
+  }
+
   /** A number or the notes: saved on leaving the field. */
   handleRuleLeave(event) {
     const field = INPUT_FIELDS[event.currentTarget.dataset.field];
@@ -572,6 +667,10 @@ export default class ShoreshActivityDetails extends LightningElement {
    * field does.
    */
   save(field, input) {
+    if (field === RUNS_KEY) {
+      this.saveRuns();
+      return;
+    }
     const fields = EARLY_WEEK.includes(field) ? EARLY_WEEK : [field];
     const changed = fields.filter((f) => this.dirty.has(f));
     if (!changed.length) {
@@ -672,6 +771,68 @@ export default class ShoreshActivityDetails extends LightningElement {
     });
   }
 
+  /**
+   * Sends When it runs whole, with what it held when the director saw it (read when the save's
+   * turn comes), answered as any other field: saved, refused, or someone else changed it.
+   */
+  saveRuns() {
+    if (!this.dirty.has(RUNS_KEY)) {
+      return;
+    }
+    const fields = [RUNS_KEY];
+    const activityId = this.activityId;
+    this.dirty.delete(RUNS_KEY);
+    this.sending.set(RUNS_KEY, (this.sending.get(RUNS_KEY) || 0) + 1);
+    const done = () => {
+      const left = (this.sending.get(RUNS_KEY) || 0) - 1;
+      if (left > 0) {
+        this.sending.set(RUNS_KEY, left);
+      } else {
+        this.sending.delete(RUNS_KEY);
+      }
+    };
+    const onSaved = () => {
+      if (activityId !== this.activityId) {
+        return;
+      }
+      done();
+      this.errors = { ...this.errors, [RUNS_KEY]: null };
+      const mark = this.template.querySelector("c-shoresh-saved-mark");
+      if (mark) {
+        mark.saved();
+      }
+    };
+    const onFailure = (message) => {
+      if (activityId !== this.activityId) {
+        return;
+      }
+      done();
+      if (this.sending.has(RUNS_KEY)) {
+        return;
+      }
+      this.dirty.add(RUNS_KEY);
+      this.errors = { ...this.errors, [RUNS_KEY]: message };
+    };
+    const offTimes = [...this.draft.offTimes];
+    this.sendSeen(
+      RUNS_KEY,
+      fields,
+      { [RUNS_KEY]: offTimes },
+      {
+        activityId,
+        offTimes,
+        // Leaving waits for this answer, so the details still show this activity.
+        seen: () => [...(this.seen[RUNS_KEY] || [])]
+      },
+      {
+        done,
+        onSaved,
+        onFailure,
+        shown: () => activityId === this.activityId
+      }
+    );
+  }
+
   /** What the fields held when the director saw them, as a record; read when the save's turn comes. */
   seenRecord(activityId, fields) {
     const record = {
@@ -739,6 +900,10 @@ export default class ShoreshActivityDetails extends LightningElement {
     if (theirWho) {
       changed.push(WHO_KEY);
     }
+    const theirRuns = result ? result.theirOffTimes : null;
+    if (theirRuns) {
+      changed.push(RUNS_KEY);
+    }
     if (!changed.length) {
       if (activityId === this.activityId) {
         // Saved: typing since is compared with what was sent.
@@ -764,8 +929,12 @@ export default class ShoreshActivityDetails extends LightningElement {
     this.conflict = {
       field,
       rows: changed.map((f) => {
-        const theirs =
-          f === WHO_KEY ? theirWho : result.theirs ? result.theirs[f] : null;
+        let theirs = result.theirs ? result.theirs[f] : null;
+        if (f === WHO_KEY) {
+          theirs = theirWho;
+        } else if (f === RUNS_KEY) {
+          theirs = theirRuns;
+        }
         return {
           field: f,
           theirs: theirs === undefined ? null : theirs,
@@ -799,6 +968,9 @@ export default class ShoreshActivityDetails extends LightningElement {
    * (everyone when none), None when blank.
    */
   shown(field, value) {
+    if (field === RUNS_KEY) {
+      return this.runsShown(value || []);
+    }
     if (field === WHO_KEY) {
       const ids = value || [];
       return ids.length
@@ -822,6 +994,25 @@ export default class ShoreshActivityDetails extends LightningElement {
   }
 
   /**
+   * When it runs as the director reads it: "Whenever" when nothing is unticked, else the boxes
+   * it can't run ("Not Period 2 Monday, Period 3 Tuesday"), in the grids' order.
+   */
+  runsShown(offTimes) {
+    const off = new Set(offTimes);
+    const said = [];
+    this.runsGrids.forEach((grid) =>
+      grid.rows.forEach((row) =>
+        row.boxes.forEach((box) => {
+          if (off.has(box.box)) {
+            said.push(box.label);
+          }
+        })
+      )
+    );
+    return said.length ? `Not ${said.join("; ")}` : "Whenever";
+  }
+
+  /**
    * Theirs stays: the fields show what someone else saved, and nothing is sent. A field saved
    * with them (the other early-week one) is still the director's, sent again.
    */
@@ -829,16 +1020,19 @@ export default class ShoreshActivityDetails extends LightningElement {
     const { field, rows } = this.conflict;
     const rules = { ...this.draft.rules };
     let whoCanDoIt = this.draft.whoCanDoIt;
+    let offTimes = this.draft.offTimes;
     rows.forEach(({ field: f, theirs }) => {
       this.dirty.delete(f);
       this.seen[f] = theirs;
       if (f === WHO_KEY) {
         whoCanDoIt = theirs || [];
+      } else if (f === RUNS_KEY) {
+        offTimes = theirs || [];
       } else {
         rules[f] = theirs;
       }
     });
-    this.draft = { ...this.draft, rules, whoCanDoIt };
+    this.draft = { ...this.draft, rules, whoCanDoIt, offTimes };
     this.closeConflict(field);
     this.save(field);
   }
@@ -904,7 +1098,16 @@ export default class ShoreshActivityDetails extends LightningElement {
 
 /** A field's input (its data-field): a rule's, an own field's, or who can do it. */
 function inputOf(field) {
-  return field === WHO_KEY
-    ? WHO_INPUT
-    : Object.keys(INPUT_FIELDS).find((k) => INPUT_FIELDS[k] === field);
+  if (field === WHO_KEY) {
+    return WHO_INPUT;
+  }
+  if (field === RUNS_KEY) {
+    return RUNS_INPUT;
+  }
+  return Object.keys(INPUT_FIELDS).find((k) => INPUT_FIELDS[k] === field);
+}
+
+/** One box of When it runs: "<time block Id>|Monday" (ActivityOffTimes.key on the server). */
+function offKey(blockId, weekday) {
+  return `${blockId}|${weekday}`;
 }

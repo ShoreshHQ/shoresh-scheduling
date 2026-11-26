@@ -196,9 +196,7 @@ describe("When it runs", () => {
       { activities: new Map([["swim", act]]) },
       { t: undefined, dayName: (d) => d }
     );
-    expect([...checked.bends]).toEqual([
-      [`${dateAt(0)}|g1|b0`, ["offTime"]]
-    ]);
+    expect([...checked.bends]).toEqual([[`${dateAt(0)}|g1|b0`, ["offTime"]]]);
   });
 
   // GEN-3.16
