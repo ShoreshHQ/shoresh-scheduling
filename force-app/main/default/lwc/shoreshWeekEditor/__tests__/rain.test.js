@@ -329,18 +329,19 @@ describe("planRain", () => {
   // CLOSE-4.9, ADR 0031: an indoor activity that doesn't run then (its When it runs) doesn't fit.
   it("never switches to an indoor activity that doesn't run in that block on that day", () => {
     // 2026-06-29 is a Monday. Gym games doesn't run in Period 2 on Mondays: Bunk 1 goes to Art.
-    const offGym = (day) => ({
+    const offGym = (weekday) => ({
       ...withArt,
-      activityRecords: withArt.activityRecords.map((r) =>
-        r.Id === "gym"
-          ? {
-              ...r,
-              ...nsRecord({
-                OffTimes__r: [{ Id: "o1", TimeBlock__c: "t2", Day__c: day }]
-              })
-            }
-          : r
-      )
+      activityRecords: withArt.activityRecords.map((r) => {
+        if (r.Id !== "gym") {
+          return r;
+        }
+        return {
+          ...r,
+          ...nsRecord({
+            OffTimes__r: [{ Id: "o1", TimeBlock__c: "t2", Day__c: weekday }]
+          })
+        };
+      })
     });
     expect(
       plan([",1,", ",,", ",,", ",,"], {}, offGym("Monday")).switches

@@ -655,7 +655,7 @@ describe("checks: how full an activity and a place are (roomTaken)", () => {
         setTimeLocations: new Map([["flag", "hall"]]),
         electivePlaces: new Map([[SET, ["pool", "hall"]]]),
         othersAt: (kind, id, d, blockId) =>
-          kind === "place" && id === "hall" && blockId === "t2" ? 2 : 0
+          (kind === "place" && id === "hall" && blockId === "t2" ? 2 : 0)
       })
     );
     expect(room.activity("swim", "0|0")).toBe(2);

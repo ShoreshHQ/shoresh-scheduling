@@ -225,19 +225,18 @@ describe("When it runs", () => {
       const base = withHistory(randomCamp(seed), seed);
       const spec = {
         ...base,
-        activities: base.activities.map((a) => {
-          const off = [];
-          for (const b of base.blocks) {
-            for (let d = 0; d < base.days; d++) {
-              if (r() < 0.25) {
-                off.push({ block: b.id, day: weekdayAt(d) });
-              }
-            }
-          }
-          unticked += off.length;
-          return { ...a, off };
-        })
+        activities: base.activities.map((a) => ({
+          ...a,
+          off: base.blocks.flatMap((b) =>
+            Array.from({ length: base.days }, (_, d) => d)
+              .filter(() => r() < 0.25)
+              .map((d) => ({ block: b.id, day: weekdayAt(d) }))
+          )
+        }))
       };
+      for (const a of spec.activities) {
+        unticked += a.off.length;
+      }
       const input = camp(spec);
       const result = generateWeek(input);
       if (!result.ok) {
