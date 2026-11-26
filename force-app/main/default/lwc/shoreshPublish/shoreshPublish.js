@@ -18,14 +18,12 @@
  *   cell, as the Why list's locate; { activityId }; { specialItemId }).
  */
 import { readRow } from "c/shoreshSavedRow";
-import { buildTerms } from "c/shoreshTerms";
+import { buildTerms, listed } from "c/shoreshTerms";
 import { checkLines } from "c/shoreshWeekChecks";
+import { screenOf } from "c/shoreshVersions";
 
 // Under each count, at most this many of its lines; then "…and N more."
 const NAMED = 5;
-
-// The screen a published schedule was published from, by the Origin__c its copy records.
-const SCREENS = { Manual: "Manual Build", Generated: "Generated Schedule" };
 
 /**
  * The Published line's words before the date, on both screens (Greg, 2026-10-19): "Published from
@@ -33,7 +31,7 @@ const SCREENS = { Manual: "Manual Build", Generated: "Generated Schedule" };
  * PublishState. One whose screen isn't known (published before Origin was kept) says "Published ".
  */
 export function publishedWord(published) {
-  const screen = published && SCREENS[published.origin];
+  const screen = published && screenOf(published.origin);
   return screen ? `Published from ${screen} ` : "Published ";
 }
 
@@ -65,11 +63,7 @@ function changeWords(preview, t) {
     .filter(([count]) => count > 0)
     .map(([count, one, many]) => `${count} ${count === 1 ? one : many}`);
   const single = parts.length === 1 && parts[0].startsWith("1 ");
-  const said =
-    parts.length > 1
-      ? `${parts.slice(0, -1).join(", ")} and ${parts[parts.length - 1]}`
-      : parts[0];
-  return `${said} ${single ? "changes" : "change"}`;
+  return `${listed(parts)} ${single ? "changes" : "change"}`;
 }
 
 /**
@@ -226,22 +220,15 @@ export function specialDayLines(specials, t = buildTerms([])) {
     const names = empty.slice(0, 3).map((grp) => grp.name);
     const more = empty.length - names.length;
     const words = more > 0 ? [...names, `${more} more`] : names;
-    const listed =
-      words.length > 1
-        ? `${words.slice(0, -1).join(", ")} and ${words[words.length - 1]}`
-        : words[0];
     const unit = groups.length === 1 ? t.sIn("Group") : t.pIn("Group");
     return [
       {
-        text: `${where}: nothing planned for ${listed} (${empty.length} of ${groups.length} ${unit})`,
+        text: `${where}: nothing planned for ${listed(words)} (${empty.length} of ${groups.length} ${unit})`,
         go
       }
     ];
   });
 }
-
-// The screen a published schedule came from, by its Origin.
-const FROM_SCREEN = { Manual: "Manual Build", Generated: "Generated Schedule" };
 
 /**
  * The question's heading: "Publish Week 1?"; "Publish Week 1 again?" when this screen's schedule
@@ -256,7 +243,7 @@ function headingOf(preview, origin, weekName, t) {
   if (!origin || !from || from === origin) {
     return `Publish ${weekName} again?`;
   }
-  const screen = FROM_SCREEN[from];
+  const screen = screenOf(from);
   return `Replace ${weekName}'s ${t.sIn("PublishedSchedule")}${screen ? ` (from ${screen})` : ""}?`;
 }
 

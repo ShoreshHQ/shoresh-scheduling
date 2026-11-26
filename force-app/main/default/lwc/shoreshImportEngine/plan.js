@@ -3,7 +3,7 @@
  * show: what was found, what is new, what changes, what is left out and why, and what is noted
  * but not set up.
  */
-import { article } from "c/shoreshTerms";
+import { article, listed } from "c/shoreshTerms";
 import { spokenWeekday } from "c/shoreshDayNames";
 import { FIELD } from "c/shoreshSchema";
 import { availabilityKey } from "./availability";
@@ -789,7 +789,7 @@ export function undoMessage(result, added) {
   const named = (added || []).filter(Boolean);
   const parts = [
     named.length
-      ? `Import undone. Removed ${named.length > 1 ? `${named.slice(0, -1).join(", ")} and ${named[named.length - 1]}` : named[0]} it added`
+      ? `Import undone. Removed ${listed(named)} it added`
       : "Import undone. Removed what it added"
   ];
   if (result.restored) {

@@ -62,4 +62,13 @@ describe("scheduleOptions", () => {
       )
     ).toEqual([]);
   });
+
+  it("offers nothing before there is a season's setup, a week, or a schedule", () => {
+    expect(scheduleOptions(null, "w1")).toEqual([]);
+    expect(
+      scheduleOptions({ programs: [program("p1", "Main")] }, null)
+    ).toEqual([]);
+    // A season with no programs or schedules yet.
+    expect(scheduleOptions({}, "w1")).toEqual([]);
+  });
 });

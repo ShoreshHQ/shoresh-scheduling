@@ -569,9 +569,10 @@ describe("c-shoresh-schedules", () => {
     );
     await flush();
     expect(onDone).toHaveBeenCalledWith(false);
-    expect(q(element, '[data-id="schedules-error"]').textContent).toContain(
-      "Give the version a name."
-    );
+    // Said as Manual Build and Generated Schedule say it: the version by its name.
+    expect(
+      q(element, '[data-id="schedules-error"]').textContent.trim()
+    ).toMatch(/^Before my changes wasn't renamed\. Give the version a name\./);
     expect(q(element, "c-shoresh-versions").versions[0].name).toBe(
       "Before my changes"
     );

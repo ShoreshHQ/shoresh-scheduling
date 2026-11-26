@@ -14,7 +14,7 @@ import { NONE } from "./cells";
 import { CHANGE, newValueOf } from "./proposal";
 import { cellText, listScreen } from "./screens";
 import { weekRecords } from "./weeks";
-import { buildTerms, countOf } from "c/shoreshTerms";
+import { buildTerms, countOf, listed } from "c/shoreshTerms";
 
 function quoted(name) {
   return `“${name}”`;
@@ -143,9 +143,7 @@ export function saveListLabel(added, changed, t) {
     const parts = Object.keys(counts)
       .filter((term) => counts[term])
       .map((term) => counted(words, counts[term], term));
-    return parts.length > 1
-      ? `${parts.slice(0, -1).join(", ")} and ${parts[parts.length - 1]}`
-      : parts.join("");
+    return listed(parts);
   };
   const parts = [];
   const adding = said(added);

@@ -1,5 +1,6 @@
 import { FIELD } from "c/shoreshSchema";
 import { screenLabels } from "c/shoreshScreens";
+import { listed } from "c/shoreshTerms";
 import {
   campDays,
   dayLetters,
@@ -75,14 +76,6 @@ function glimpse(shapes) {
     fade: null,
     shapes: shapes.flat(Infinity).map((s, i) => ({ ...s, key: `s${i}` }))
   };
-}
-
-/** "Canoe, Pottery and Photography". */
-function listed(names) {
-  if (names.length <= 1) {
-    return names.join("");
-  }
-  return `${names.slice(0, -1).join(", ")} and ${names[names.length - 1]}`;
 }
 
 const WORDS = ["", "one", "two", "three", "four", "five", "six", "seven"];

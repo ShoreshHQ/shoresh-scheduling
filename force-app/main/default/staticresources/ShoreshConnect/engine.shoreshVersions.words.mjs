@@ -10,6 +10,8 @@ const ORIGINS = {
   Copied: "Copied",
   Imported: "Imported"
 };
+// The origins that are screens a week is built and published on.
+const SCREENS = new Set(["Manual", "Generated"]);
 // VersionReason__c's value for a version kept by the app ("Before Restore").
 const AUTO_SAVED = "AutoSaved";
 // Its value for a version kept before a change the person made through an agent (AgentWeeks).
@@ -32,6 +34,16 @@ export function metaOf(version) {
     .filter(Boolean)
     .join(" · ");
   return { meta, showSaved };
+}
+
+/** The screen a schedule was built on, by its Origin__c ("Manual Build"); null for a copy or an import. */
+export function screenOf(origin) {
+  return SCREENS.has(origin) ? ORIGINS[origin] : null;
+}
+
+/** What a failed rename says first, on every screen with Versions (CORE-6.18: the version by name). */
+export function notRenamed(name) {
+  return `${name || "That version"} wasn't renamed.`;
 }
 
 /** A version Shoresh kept by itself ("Before Restore"), not one a person kept or published. */

@@ -1271,6 +1271,7 @@ function importModules(m) {
     ...m.lists,
     importTable: m.table.importTable,
     buildTerms: m.terms.buildTerms,
+    listed: m.terms.listed,
     screenLabels: m.screens.screenLabels,
     rememberedByKey: m.remembered.rememberedByKey,
     suggestionsFor: m.patterns.suggestionsFor,

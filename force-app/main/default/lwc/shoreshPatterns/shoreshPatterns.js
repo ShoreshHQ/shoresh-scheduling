@@ -24,7 +24,7 @@
  * to learn from.
  */
 import { similarity } from "c/shoreshImportEngine";
-import { shortDate } from "c/shoreshTerms";
+import { listed, shortDate } from "c/shoreshTerms";
 import { CAMP_WORDS } from "./campWords";
 
 export { CAMP_WORDS };
@@ -357,9 +357,7 @@ export function joinNames(names, total = names.length) {
   if (more > 0) {
     return `${shown.join(", ")} and ${more} more`;
   }
-  return shown.length > 1
-    ? `${shown.slice(0, -1).join(", ")} and ${shown[shown.length - 1]}`
-    : shown[0] || "";
+  return listed(shown);
 }
 
 /** Names in reading order: "Lunch 2" before "Lunch 10". */

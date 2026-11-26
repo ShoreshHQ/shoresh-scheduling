@@ -1,6 +1,4 @@
 import { LightningElement, api } from "lwc";
-import { loadScript } from "lightning/platformResourceLoader";
-import SHEETJS from "@salesforce/resourceUrl/SheetJS";
 import saveSetup from "@salesforce/apex/ImportController.saveSetup";
 import getAnswers from "@salesforce/apex/ImportController.getAnswers";
 import undoImport from "@salesforce/apex/ImportController.undoImport";
@@ -19,6 +17,7 @@ import {
   undoImportQuestion,
   undoMessage,
   unplacedLines,
+  droppedFiles,
   readImportFile,
   refusedFile,
   nextKeyOf
@@ -45,6 +44,7 @@ import {
   saveLabel,
   savePlan
 } from "./flow";
+import { loadSheetJs } from "c/shoreshDownload";
 
 const FOR_SUPPORT = "For support: ";
 /**
@@ -105,7 +105,6 @@ export default class ShoreshImport extends LightningElement {
   // What screen readers hear about auto-applied answers (WCAG 4.1.3).
   autoSaid = "";
   dragging = false;
-  sheetJsLoaded = false;
   // The plan as it stands (what Add would save), for the counts; null until it can be made.
   plan = null;
   // The proposal as Add saves it, the questions that can wait left out (INGEST-5.5).
@@ -232,17 +231,8 @@ export default class ShoreshImport extends LightningElement {
 
   // ---------- reading the files ----------
 
-  async ensureSheetJs() {
-    if (!this.sheetJsLoaded) {
-      await loadScript(this, SHEETJS);
-      this.sheetJsLoaded = true;
-    }
-    // SheetJS puts itself on window when its script runs.
-    return window.XLSX;
-  }
-
   readOne(file) {
-    return readImportFile(file, () => this.ensureSheetJs());
+    return readImportFile(file, () => loadSheetJs(this));
   }
 
   async readFiles(list) {
@@ -479,9 +469,8 @@ export default class ShoreshImport extends LightningElement {
   }
 
   handleDrop(event) {
-    event.preventDefault();
     this.dragging = false;
-    this.readFiles(event.dataTransfer && event.dataTransfer.files);
+    this.readFiles(droppedFiles(event));
   }
 
   // ---------- the proposal ----------

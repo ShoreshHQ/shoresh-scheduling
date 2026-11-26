@@ -157,6 +157,16 @@ export function compareText(a, b) {
   return x > y ? 1 : 0;
 }
 
+/**
+ * "Swim", "Swim and Archery", "Swim, Archery and Canoe": every list a sentence names, as the
+ * desktop's joinEnglishList (runStateCopy.js); "" for none.
+ */
+export function listed(names) {
+  return names.length < 3
+    ? names.join(" and ")
+    : `${names.slice(0, -1).join(", ")} and ${names[names.length - 1]}`;
+}
+
 export function capital(text) {
   return text.charAt(0).toUpperCase() + text.slice(1);
 }
