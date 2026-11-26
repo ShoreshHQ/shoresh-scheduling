@@ -163,6 +163,7 @@ private class AgentLimitsTest {
       Integer withOne = Limits.getQueries();
       Map<String, Object> viewTen = AgentWeekView.answer('Ten 2026', 'Week 1');
       Integer withTen = Limits.getQueries() - withOne;
+      Integer cpu = Limits.getCpuTime();
       // The two with Field Day and one without, each as the Schedules screen opens it alone.
       List<String> screens = new List<String>();
       for (Integer i = 0; i < 3; i++) {
@@ -182,6 +183,7 @@ private class AgentLimitsTest {
           withOne
       );
       Assert.isTrue(withTen < HALF_QUERIES, withTen + ' queries');
+      Assert.isTrue(cpu < HALF_CPU_MS, 'Both views used ' + cpu + ' ms of CPU');
       for (Integer i = 0; i < screens.size(); i++) {
         Assert.areEqual(
           screens[i],
