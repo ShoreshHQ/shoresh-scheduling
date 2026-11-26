@@ -28,22 +28,27 @@ private class AgentManualBuildTest {
     RestContext.request.httpMethod = 'POST';
     RestContext.request.requestBody = Blob.valueOf(JSON.serialize(body));
     RestContext.response = new RestResponse();
-    AgentAskFirstTestCalls.answer(
-      new Map<String, AgentRequest.Change>{
-          'cell' => new AgentCells(),
-          'undo' => new AgentUndo(),
-          'publish' => new AgentPublish(),
-          'unpublish' => new AgentUnpublish(),
-          'lock' => new AgentLock(),
-          'save' => new AgentSaveVersion(),
-          'restore' => new AgentRestoreVersion(),
-          'delete' => new AgentDeleteVersion(),
-          'move' => new AgentCells(),
-          'accept' => new AgentAccept(),
-          'start' => new AgentStartWeek()
-        }
-        .get(action)
-    );
+    if (action == 'clear') {
+      // Its own web address, as the connector sends it.
+      AgentClearCells.post();
+    } else {
+      AgentAskFirstTestCalls.answer(
+        new Map<String, AgentRequest.Change>{
+            'cell' => new AgentCells(),
+            'undo' => new AgentUndo(),
+            'publish' => new AgentPublish(),
+            'unpublish' => new AgentUnpublish(),
+            'lock' => new AgentLock(),
+            'save' => new AgentSaveVersion(),
+            'restore' => new AgentRestoreVersion(),
+            'delete' => new AgentDeleteVersion(),
+            'move' => new AgentCells(),
+            'accept' => new AgentAccept(),
+            'start' => new AgentStartWeek()
+          }
+          .get(action)
+      );
+    }
     Map<String, Object> answer = (Map<String, Object>) JSON.deserializeUntyped(
       RestContext.response.responseBody.toString()
     );
@@ -403,6 +408,75 @@ private class AgentManualBuildTest {
       );
       Assert.areEqual(200, undone[0], String.valueOf(undone[1]));
       Assert.areEqual(SlotIds.OPEN, periodTwo(draftId));
+    }
+  }
+
+  // WEEK-6.14, API-1.143
+  @IsTest
+  static void aClearKeepsTheWeekAsBeforeClearFirst() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      GeneratedTestData.camp();
+      Id draftId = manualDraft();
+      Map<String, Id> ids = GeneratedTestData.ids;
+      String soccer = GeneratedTestData.a('Soccer');
+      Map<String, Object> run = new Map<String, Object>{
+        'day' => '2026-06-29',
+        'groupId' => ids.get('Group A'),
+        'firstBlockId' => ids.get('Period 2'),
+        'blockIds' => new List<Object>{ ids.get('Period 2') },
+        'before' => new List<Object>{ '' },
+        'after' => new List<Object>{ soccer }
+      };
+      post(
+        'move',
+        new Map<String, Object>{
+          'change' => 'Pasted 1 activity · ' + WHERE_A,
+          'said' => '',
+          'runs' => new List<Object>{ run.clone() }
+        }
+      );
+      run.put('before', new List<Object>{ soccer });
+      run.put('after', new List<Object>{ '' });
+      Map<String, Object> clear = new Map<String, Object>{
+        'change' => 'Cleared Monday',
+        'said' => '',
+        'runs' => new List<Object>{ run }
+      };
+      Test.startTest();
+      Integer before = Limits.getQueries();
+      List<Object> done = post('clear', clear);
+      Integer used = Limits.getQueries() - before;
+      Map<String, Object> clearUndo = undo;
+      List<Object> unreadable = post(
+        'clear',
+        new Map<String, Object>{
+          'change' => 'Moved Soccer',
+          'said' => '',
+          'runs' => new List<Object>{ run }
+        }
+      );
+      Test.stopTest();
+      Assert.areEqual(200, done[0], String.valueOf(done[1]));
+      Assert.areEqual(
+        'Cleared Monday. The week as it was is kept in Versions as "Before Clear Monday".',
+        done[1]
+      );
+      Assert.areNotEqual(soccer, periodTwo(draftId));
+      List<Schedule__c> kept = [
+        SELECT Id, Name, VersionReason__c
+        FROM Schedule__c
+        WHERE SourceSchedule__c = :draftId
+        WITH SYSTEM_MODE
+      ];
+      Assert.areEqual(1, kept.size(), 'one version kept, as on screen');
+      Assert.areEqual('Before Clear Monday', kept[0].Name);
+      Assert.areEqual(ManualVersions.AUTO_SAVED, kept[0].VersionReason__c);
+      // What was cleared is in it.
+      Assert.areEqual(soccer, periodTwo(kept[0].Id));
+      Assert.areEqual('Before Clear Monday', clearUndo.get('version_name'));
+      Assert.isTrue(used < 50, 'A clear used ' + used + ' queries');
+      // Only a clear keeps a version here; anything else sent here is refused.
+      Assert.areEqual(400, unreadable[0], String.valueOf(unreadable[1]));
     }
   }
 

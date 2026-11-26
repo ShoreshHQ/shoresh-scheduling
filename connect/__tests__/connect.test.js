@@ -6079,7 +6079,8 @@ describe("Shoresh for AI tools and the command line", () => {
       { run: answering(clearSent), edits }
     );
     expect(cleared.ok).toBe(true);
-    expect(clearSent[1].args[3]).toBe("/services/apexrest/v1/copy_cells");
+    // WEEK-6.14: its own address, where the week is kept as "Before Clear Monday" first.
+    expect(clearSent[1].args[3]).toBe("/services/apexrest/v1/clear_cells");
     const dayBody = JSON.parse(clearSent[1].stdin);
     expect(dayBody.change).toBe("Cleared Monday");
     expect(dayBody.runs).toEqual(
@@ -6124,6 +6125,7 @@ describe("Shoresh for AI tools and the command line", () => {
       { run: answering(weekSent), edits }
     );
     delete read.week_name;
+    expect(weekSent[1].args[3]).toBe("/services/apexrest/v1/clear_cells");
     const weekBody = JSON.parse(weekSent[1].stdin);
     expect(weekBody.change).toBe("Cleared Week 1");
     expect(weekBody.runs).toEqual(

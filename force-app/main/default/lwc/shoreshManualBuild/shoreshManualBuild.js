@@ -940,6 +940,8 @@ export default class ShoreshManualBuild extends BuildScreen(LightningElement) {
       return [];
     }
     const disabled = !!this.editsWait;
+    // A Clear keeps the week as saved first (WEEK-6.14): it waits while an edit is on its way.
+    const clearHeld = disabled || this.editBusy;
     const items = [];
     if (this.isDaily) {
       if (this.dayReadable) {
@@ -947,7 +949,7 @@ export default class ShoreshManualBuild extends BuildScreen(LightningElement) {
           value: "clear-day",
           label: "Clear day",
           dataId: "clear-day",
-          disabled
+          disabled: clearHeld
         });
       }
       if (this.canCopyDay) {
@@ -969,7 +971,7 @@ export default class ShoreshManualBuild extends BuildScreen(LightningElement) {
         value: "clear-group-day",
         label: "Clear day",
         dataId: "clear-group-day",
-        disabled,
+        disabled: clearHeld,
         children: this.clearDayTargets.map((target) => ({
           value: `clear-group-day:${target.value}`,
           label: target.label,
@@ -981,7 +983,7 @@ export default class ShoreshManualBuild extends BuildScreen(LightningElement) {
       value: "clear-week",
       label: this.clearWeekLabel,
       dataId: "clear-week",
-      disabled
+      disabled: clearHeld
     });
     return items;
   }
@@ -1044,10 +1046,10 @@ export default class ShoreshManualBuild extends BuildScreen(LightningElement) {
     return dayLabel(this.schedule.days[index].dateValue).label;
   }
 
-  /** Daily View: the day shown, every bunk. */
+  /** Daily View: the day shown, every bunk. Each Clear keeps the week as a version first (WEEK-6.14). */
   handleClearDay() {
     const name = this.dayNameAt(this.dayIndex);
-    this.weekEditor.runTool({
+    this.weekEditor.runClear({
       kind: "clear",
       dates: [this.schedule.days[this.dayIndex].dateValue],
       name
@@ -1058,7 +1060,7 @@ export default class ShoreshManualBuild extends BuildScreen(LightningElement) {
   handleClearGroupDay(event) {
     const d = Number(event.detail.value);
     const grp = groups(this.schedule).find((g) => g.key === this.groupKey);
-    this.weekEditor.runTool({
+    this.weekEditor.runClear({
       kind: "clear",
       dates: [this.schedule.days[d].dateValue],
       groupId: this.groupKey,
@@ -1068,7 +1070,7 @@ export default class ShoreshManualBuild extends BuildScreen(LightningElement) {
 
   /** The whole week, every bunk. */
   handleClearWeek() {
-    this.weekEditor.runTool({
+    this.weekEditor.runClear({
       kind: "clear",
       dates: this.schedule.days.map((day) => day.dateValue),
       name: this.weekName,

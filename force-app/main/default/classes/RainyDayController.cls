@@ -28,7 +28,12 @@ public with sharing class RainyDayController {
   private static Id keep(Schedule__c draft, String name) {
     return ManualVersions.keepAutomatically(
       draft,
-      SchedulesController.checkedName(name, draft.Program__r.Season__r.Camp__c),
+      // An automatic name is never refused for its length: "Before Clear <a long bunk> · Monday"
+      // is shortened to fit, so the change itself goes ahead (WEEK-6.14).
+      SchedulesController.checkedName(
+        name == null ? null : name.abbreviate(SchedulesController.NAME_LIMIT),
+        draft.Program__r.Season__r.Camp__c
+      ),
       ScheduleDays.read(draft.Id)
     );
   }

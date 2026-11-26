@@ -5,7 +5,7 @@
  * Every query runs in user mode and every write uses user-mode DML.
  */
 public with sharing class SchedulesController {
-  private static final Integer NAME_LIMIT = 80;
+  public static final Integer NAME_LIMIT = 80;
 
   @AuraEnabled
   public static List<ScheduleViews.VersionRow> getVersions(

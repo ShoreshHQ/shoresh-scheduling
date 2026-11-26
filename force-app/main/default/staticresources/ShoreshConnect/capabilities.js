@@ -820,8 +820,8 @@ const CAPABILITIES = [
   {
     ...change(
       "clear_day",
-      "copy_cells",
-      "Clear a day of a week's Manual Build, as Clear day in its Edit menu does: every activity, special event and elective set that day is taken out, for every group, or for one group; fixed and recurring activities and a group's away times stay. Manual Build only. As on the screen, undo_last_change takes it back while this conversation lasts.",
+      "clear_cells",
+      "Clear a day of a week's Manual Build, as Clear day in its Edit menu does: every activity, special event and elective set that day is taken out, for every group, or for one group; fixed and recurring activities and a group's away times stay. Manual Build only. As on the screen, the week as it was is kept first in Versions as \"Before Clear <day>\", and undo_last_change takes it back while this conversation lasts.",
       {
         day: CELL.day,
         group: {
@@ -840,8 +840,8 @@ const CAPABILITIES = [
   {
     ...change(
       "clear_week",
-      "copy_cells",
-      "Clear a week's Manual Build, as Clear week in its Edit menu does: every activity, special event and elective set of the week is taken out, for every group; fixed and recurring activities and away times stay. Manual Build only. As on the screen, undo_last_change takes it back while this conversation lasts.",
+      "clear_cells",
+      'Clear a week\'s Manual Build, as Clear week in its Edit menu does: every activity, special event and elective set of the week is taken out, for every group; fixed and recurring activities and away times stay. Manual Build only. As on the screen, the week as it was is kept first in Versions as "Before Clear <week>", and undo_last_change takes it back while this conversation lasts.',
       { seen: CELL.seen },
       [],
       ON_EITHER,

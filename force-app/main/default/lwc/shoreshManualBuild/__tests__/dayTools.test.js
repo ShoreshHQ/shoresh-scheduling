@@ -2,6 +2,7 @@ import { createElement } from "lwc";
 import ShoreshManualBuild from "c/shoreshManualBuild";
 import getDraft from "@salesforce/apex/ManualBuildController.getDraft";
 import saveSlots from "@salesforce/apex/ManualBuildController.saveSlots";
+import keepWeek from "@salesforce/apex/RainyDayController.keepManualWeek";
 import { buildTerms } from "c/shoreshTerms";
 import {
   day,
@@ -27,6 +28,9 @@ jest.mock("@salesforce/apex/ManualBuildController.saveSlots", () => apex(), {
   virtual: true
 });
 jest.mock("@salesforce/apex/ManualBuildController.addActivity", () => apex(), {
+  virtual: true
+});
+jest.mock("@salesforce/apex/RainyDayController.keepManualWeek", () => apex(), {
   virtual: true
 });
 
@@ -57,6 +61,7 @@ function start(monday, tuesday) {
 
 async function render(first) {
   getDraft.mockResolvedValue(first);
+  keepWeek.mockResolvedValue("v1");
   saveSlots.mockImplementation(() =>
     Promise.resolve({ conflicts: [], schedule: first.schedule })
   );
@@ -151,6 +156,79 @@ describe("c-shoresh-manual-build: day and week tools", () => {
       new Set(["2026-06-29", "2026-06-30"])
     );
     expect(toolNotice(element)).toBe("Cleared Week 1 · Undo");
+  });
+
+  // WEEK-6.14
+  it("WEEK-6.14: each Clear keeps the week as a version first, named for what was cleared", async () => {
+    const element = await render(start(["1,2,", "1,3,"], ["1,2,", "1,3,"]));
+    q(element, '[data-id="clear-day"]').click();
+    await flush();
+    expect(keepWeek).toHaveBeenCalledWith({
+      scheduleId: "d1",
+      name: "Before Clear Monday"
+    });
+    expect(keepWeek.mock.invocationCallOrder[0]).toBeLessThan(
+      saveSlots.mock.invocationCallOrder[0]
+    );
+    expect(toolNotice(element)).toBe("Cleared Monday · Undo");
+    q(element, '[data-view="group"]').click();
+    await flush();
+    await choose(element, "clear-group-day", "1");
+    expect(keepWeek).toHaveBeenLastCalledWith({
+      scheduleId: "d1",
+      name: "Before Clear Bunk 1 · Tuesday"
+    });
+    q(element, '[data-id="clear-week"]').click();
+    await flush();
+    expect(keepWeek).toHaveBeenLastCalledWith({
+      scheduleId: "d1",
+      name: "Before Clear Week 1"
+    });
+    expect(keepWeek).toHaveBeenCalledTimes(3);
+    expect(saveSlots).toHaveBeenCalledTimes(3);
+  });
+
+  // WEEK-6.14
+  it("WEEK-6.14: with nothing to clear no version is kept; when one can't be kept nothing is cleared", async () => {
+    const empty = await render(start(["1,,", "1,,"], ["1,2,", "1,,"]));
+    q(empty, '[data-id="clear-day"]').click();
+    await flush();
+    expect(keepWeek).not.toHaveBeenCalled();
+    document.body.removeChild(empty);
+    const element = await render(start(["1,2,", "1,3,"], ["1,2,", "1,3,"]));
+    keepWeek.mockRejectedValueOnce({
+      body: { message: "The name is too long." }
+    });
+    q(element, '[data-id="clear-day"]').click();
+    await flush();
+    expect(saveSlots).not.toHaveBeenCalled();
+    expect(q(element, '[data-id="build-error"]').textContent).toBe(
+      "Monday could not be cleared. The name is too long."
+    );
+  });
+
+  // WEEK-6.14
+  it("WEEK-6.14: Clear waits while an edit is still saving, so the version it keeps has that edit", async () => {
+    const element = await render(start(["1,2,", "1,3,"], ["1,2,", "1,3,"]));
+    let answer;
+    saveSlots.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          answer = resolve;
+        })
+    );
+    q(element, '[data-id="clear-day"]').click();
+    await flush();
+    expect(q(element, '[data-id="clear-week"]').disabled).toBe(true);
+    q(element, '[data-id="clear-week"]').click();
+    await flush();
+    expect(keepWeek).toHaveBeenCalledTimes(1);
+    answer({
+      conflicts: [],
+      schedule: start(["1,,", "1,,"], ["1,2,", "1,3,"]).schedule
+    });
+    await flush();
+    expect(q(element, '[data-id="clear-week"]').disabled).toBe(false);
   });
 
   it("Copy day to… copies each bunk's activities and lists what was left out", async () => {
