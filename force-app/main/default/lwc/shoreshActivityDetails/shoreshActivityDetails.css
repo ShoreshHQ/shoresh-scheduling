@@ -155,7 +155,7 @@
 
 /* When it runs: a program's days across, its time blocks down, one tick per box. The ticks are
    the recurring activities' day ticks (shoreshEditableTable.css .chip): on is the highlight tint
-   (the grid's filled state), off an empty slot. */
+   (the grid's filled state) with a tick, off an empty slot. */
 .runs {
   width: auto;
   border-collapse: collapse;
@@ -212,6 +212,7 @@
 }
 
 .chip-face {
+  position: relative;
   display: block;
   width: var(--shoresh-s5);
   height: calc(var(--shoresh-u) * 5);
@@ -222,6 +223,21 @@
 .chip-box:checked + .chip-face {
   background: rgba(31, 102, 81, 0.14);
   box-shadow: none;
+}
+
+/* These boxes hold no letter, so ticked also carries a tick in the deep highlight: on and off
+   differ by more than a tint (WCAG 1.4.11). */
+.chip-box:checked + .chip-face::after {
+  content: "";
+  position: absolute;
+  top: 3px;
+  left: 50%;
+  width: 4px;
+  height: 8px;
+  margin-left: -2px;
+  border: solid var(--shoresh-color-highlight-press);
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
 }
 
 .chip-box:focus-visible + .chip-face {

@@ -11,9 +11,12 @@ public with sharing class GeneratedClosures {
   private Set<Id> closedActivities = new Set<Id>();
   private Map<Id, String> closedPlaces = new Map<Id, String>();
   private Map<Id, String> blockNames = new Map<Id, String>();
+  // "that time block", in the camp's word, for a time block no longer in the program.
+  private String thatBlock;
 
   public GeneratedClosures(GeneratedSetup setup) {
     weekName = setup.week.Name;
+    thatBlock = 'that ' + setup.labels().singularInSentence('TimeBlock');
     for (TimeBlock__c block : setup.blocks) {
       blockNames.put(block.Id, block.Name);
     }
@@ -41,7 +44,7 @@ public with sharing class GeneratedClosures {
       throw new ShoreshException(
         activity.Name +
           ' doesn\'t run in ' +
-          (blockNames.containsKey(block) ? blockNames.get(block) : 'that') +
+          (blockNames.containsKey(block) ? blockNames.get(block) : thatBlock) +
           ' on ' +
           DayWords.say(day) +
           '.'

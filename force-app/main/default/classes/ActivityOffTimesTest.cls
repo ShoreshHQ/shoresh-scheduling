@@ -74,6 +74,11 @@ private class ActivityOffTimesTest {
         new List<String>{ lunchMonday, lunchMonday, lunchTuesday },
         new List<String>()
       );
+      // The labels, the hold on the activity, what it holds now, the season check, the swap.
+      Assert.isTrue(
+        Limits.getQueries() <= 10,
+        'One save, well under the request\'s 100: ' + Limits.getQueries()
+      );
       Assert.isTrue(saved.saved());
       Assert.areEqual(2, offTimesOf(swim).size(), 'Each box once');
       Activity__c read;
