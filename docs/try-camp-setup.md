@@ -1305,6 +1305,7 @@ between releases; the names below are the ones on screen in October 2026.
    | Campers                      | Send campers          |
    | Which bunk each camper is in | Send camper groups    |
    | Campers' elective choices    | Send elective choices |
+   | Staff                        | Send staff            |
 
 4. **Share the season with it.** Seasons are private, so the connection user sees none until
    you share one. Open the season's Salesforce record (App Launcher, the nine dots at top left,
@@ -1388,7 +1389,7 @@ Open **Settings** at the foot of the Shoresh menu.
   `/services/apexrest/<prefix>/v1/...`):
   - Send in (POST, JSON `{"records": [ {...}, ... ]}`, up to 200 a batch):
     `/v1/division`, `/v1/group`, `/v1/activity`, `/v1/camper`, `/v1/camper_group`,
-    `/v1/camper_elective_choice`. Each record is answered _saved_, _unchanged_ or _problem_
+    `/v1/camper_elective_choice`, `/v1/staff`. Each record is answered _saved_, _unchanged_ or _problem_
     with one sentence.
   - Read (GET `?season=&week=`, add `&format=csv` for a file): `/v1/group_schedule`,
     `/v1/activity_schedule`, `/v1/electives_offered`, `/v1/elective_seats`.
@@ -1400,6 +1401,8 @@ Open **Settings** at the foot of the Shoresh menu.
   - `camper_group`: `camper_id`, `camper_name`, `bunk`, `week` (leave out for every week)
   - `camper_elective_choice`: `camper_id`, `camper_name`, `elective_set`, `week`,
     `first_choice` … `fifth_choice`, `changed_at`
+  - `staff`: `staff_id`, `staff_name`. Staff are matched on `source_system` + `staff_id` only;
+    a name sent this way can then be changed only in the sending system.
 - Going out: group schedule `week, date, group, time_block, start_time, end_time, activity,
 division`;
   activity schedule `week, date, activity, time_block, start_time, end_time, groups`;

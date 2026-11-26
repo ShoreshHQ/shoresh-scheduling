@@ -3,6 +3,10 @@
  * camper does (API-2.1, OutsideOwned): Shoresh fills OutsideMatch__c (season, system, ID) so the
  * same person is in a season once.
  *
+ * API-4.11: that person's name is then the system's, as a camper's is (OutsideOwned, API-4.2): only
+ * a bringing-in (OutsideOwned.bringingIn: an incoming batch, or Undo of one) renames them. A staff
+ * member added in Camp Setup, with no outside ID, is renamed there freely.
+ *
  * Its read is in system mode on purpose, as OutsideOwned's: it reads only hidden keys to refuse a
  * duplicate whoever saves it, and returns no name.
  */
@@ -14,6 +18,7 @@ public with sharing class StaffMemberTriggerHandler {
     if (staff == null) {
       return;
     }
+    refuseRenames(staff);
     Set<String> keys = new Set<String>();
     Set<Id> savingIds = new Set<Id>();
     for (StaffMember__c person : staff) {
@@ -56,6 +61,36 @@ public with sharing class StaffMemberTriggerHandler {
         person.OutsideId__c.addError(ID_TAKEN);
       }
     }
+  }
+
+  /** A rename of someone who came from an outside system, outside a bringing-in, is refused. */
+  private static void refuseRenames(List<StaffMember__c> staff) {
+    if (OutsideOwned.bringingIn || !Trigger.isExecuting || !Trigger.isUpdate) {
+      return;
+    }
+    for (StaffMember__c person : staff) {
+      StaffMember__c before = (StaffMember__c) Trigger.oldMap.get(person.Id);
+      if (
+        before.OutsideMatch__c != null &&
+        (person.Name == null || !person.Name.equals(before.Name))
+      ) {
+        person.Name.addError(nameRefusal(before.SourceSystem__c));
+      }
+    }
+  }
+
+  /**
+   * "This name comes from CampMinder.", then the screen's advice; an AI hears the problem alone
+   * (API-1.105). The refusal of a rename by hand (API-4.11).
+   */
+  public static String nameRefusal(String sourceSystem) {
+    String fromWhere = sourceSystem.normalizeSpace();
+    return AgentRefusal.withFix(
+      'This name comes from ' + fromWhere + '.',
+      'Change it there, and Shoresh takes the new name the next time ' +
+        fromWhere +
+        ' sends it.'
+    );
   }
 
   /** Season, system (spacing and capitals aside) and ID as that system writes it; null without both. */

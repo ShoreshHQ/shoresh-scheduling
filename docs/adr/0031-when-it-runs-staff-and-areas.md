@@ -157,6 +157,11 @@ rather than the boxes ticked; the AI's word "whenever".
   import and download), and `read_activity_details` / `change_activity_details` gain
   `who_leads_it` (names A to Z, or "nobody"), saved through the panel's own save (API-1.158,
   API-1.159). The By staff member view is the connector's `download_schedule` with `what: staff`.
+- **From the camp's own system:** `/v1/staff` (and the Flow action `staff`, permission set
+  `Send_Staff`) brings staff in matched on system + ID only, never on name, as campers come in
+  (API-2.7); Undo last import covers it. A staff member from outside keeps that system's name:
+  only its batches change it (API-4.11, as campers' names, API-4.2); one added by hand in Camp
+  Setup is renamed freely. Not an AI tool (API-1.6).
 - **Copy season** copies the staff (with the camp system's ID, so that system finds the same
   person next season) and who leads each copied activity.
 

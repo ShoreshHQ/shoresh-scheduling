@@ -189,6 +189,10 @@ suppressions:
     - rule_selector: "pmd:FieldNamingConventions"
       max_suppressed_violations: 2
       reason: "Record fields are the API's plain-English names (API-1.5)."
+  "main/default/classes/IncomingStaff.cls":
+    - rule_selector: "pmd:FieldNamingConventions"
+      max_suppressed_violations: 3
+      reason: "Record fields are the API's plain-English names (API-1.5)."
   # What goes out (repo ADR 0024): a Flow's send fields are plain-English names too (to_system, as_csv).
   "main/default/classes/OutgoingGroupSchedule.cls":
     - rule_selector: "pmd:FieldNamingConventions"

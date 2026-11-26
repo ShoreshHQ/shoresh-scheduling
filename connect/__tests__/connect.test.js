@@ -42,7 +42,8 @@ const OUTSIDE_SYSTEMS_ONLY = [
   "camper_elective_choice",
   "camper_group",
   "division",
-  "group"
+  "group",
+  "staff"
 ];
 // The Versions panel's own words module, as the connector runs it (shipped by build-connect.js).
 const versionWords = async () =>
@@ -212,7 +213,8 @@ describe("Shoresh for AI tools and the command line", () => {
       "bring_in_activities",
       "bring_in_campers",
       "bring_in_camper_groups",
-      "bring_in_camper_elective_choices"
+      "bring_in_camper_elective_choices",
+      "bring_in_staff"
     ]) {
       expect(offered).not.toContain(name);
       expect(byName(name)).toBeUndefined();
