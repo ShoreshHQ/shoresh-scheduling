@@ -1,6 +1,7 @@
 import { NOW, nowOf, tell } from "./engine.shoreshEngine.progress.mjs";
-import { allowed, busyAt, headOf, shortfall } from "./engine.shoreshEngine.weekOptions.mjs";
+import { allowed, busyAt, headOf, runsHere, shortfall } from "./engine.shoreshEngine.weekOptions.mjs";
 import { moveAcrossDays } from "./engine.shoreshEngine.weekAcross.mjs";
+import { runsAt } from "./engine.shoreshEngine.setup.mjs";
 import {
   BUDGET,
   FULL,
@@ -8,6 +9,7 @@ import {
   LENGTH,
   MIN_COST,
   NONE_FOR,
+  OFF_TIME,
   OVERLAP,
   PRIORITY_RANK,
   SEARCHED,
@@ -259,7 +261,7 @@ function maxFlow(n, edges, s, t) {
 
 /**
  * The most groups a time block can hold, by a flow: each group with a free cell then to an
- * activity it is set up for, each activity up to its groups at once, each place up to its groups
+ * activity it is set up for and that runs then, each activity up to its groups at once, each place up to its groups
  * that fit, after kept cells and other programs. Once a day and same division are left out, so
  * this is never less than the truth.
  */
@@ -304,7 +306,10 @@ function periodMost(st, d, b) {
     const g = node(`g|${s.groupId}`);
     edges.push([0, g, 1]);
     for (const act of s.eligibleActs) {
-      edges.push([g, node(`a|${act.id}`), 1]);
+      // Not to an activity that can't run then (When it runs): still never less than the truth.
+      if (runsAt(act, b, st.days[d].weekday)) {
+        edges.push([g, node(`a|${act.id}`), 1]);
+      }
     }
   }
   return maxFlow(ids.size + 2, edges, 0, 1);
@@ -1281,6 +1286,11 @@ export function explainOpen(st) {
       why = OVERLAP;
     } else if (!s.eligibleActs.length) {
       why = NONE_FOR;
+    } else if (
+      !s.eligibleActs.some((act) => runsHere(st, act, s.dayIndex, s.blockId))
+    ) {
+      // None of the group's activities runs then (When it runs, protocol 3.13).
+      why = OFF_TIME;
     } else if (!fitsAlone(st, s)) {
       why = LENGTH;
     } else if (busy) {

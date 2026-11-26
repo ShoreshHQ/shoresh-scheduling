@@ -58,6 +58,7 @@ export {
   readLocations,
   readProgram
 } from "./engine.shoreshEngine.checkInputs.mjs";
+export { runsAt, weekdayOf } from "./engine.shoreshEngine.setup.mjs";
 export {
   CARRIES_ON,
   KIND,

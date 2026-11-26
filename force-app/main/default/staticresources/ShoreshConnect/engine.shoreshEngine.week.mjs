@@ -43,6 +43,7 @@ export {
   BUSY,
   NO_FIT,
   LENGTH,
+  OFF_TIME,
   OVERLAP,
   FULL,
   NONE_FOR,

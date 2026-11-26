@@ -1470,7 +1470,7 @@ const CAPABILITIES = [
     api: "read_activity_details",
     method: "GET",
     description:
-      "Read only the four rules in an activity's details panel on Camp Setup: who_can_do_it (a list of division and group names, or everyone), same_division_only (yes or no: only groups from the same division at the same time), early_week_count and early_week_by_day (this many early in the week, by that day), and notes. Not its location, length, how often (times a week), priority, outdoor or rain plan: read those with read_from_setup (kind activity) and change them with change_in_setup. Read it right before changing them, and send those values back unchanged as seen.",
+      "Read only the rules in an activity's details panel on Camp Setup: who_can_do_it (a list of division and group names, or everyone), when_it_runs (whenever, or a list of the times it can't run, each a time block and a day like Lunch, Monday, with the program in brackets when the season has several), same_division_only (yes or no: only groups from the same division at the same time), early_week_count and early_week_by_day (this many early in the week, by that day), and notes. Not its location, length, how often (times a week), priority, outdoor or rain plan: read those with read_from_setup (kind activity) and change them with change_in_setup. Read it right before changing them, and send those values back unchanged as seen.",
     about:
       "What the activity's details hold now, as Camp Setup shows them. They hold no findings or problems.",
     inputSchema: {
@@ -1485,7 +1485,7 @@ const CAPABILITIES = [
     api: "change_activity_details",
     method: "POST",
     description:
-      "Change an activity's details, as its details panel on Camp Setup saves them: who can do it, groups from the same division only, early in the week, and notes. Read them first with read_activity_details and send what it said as seen. It is done as you, with your own access. If someone else changed those details since, nothing is saved and Shoresh says so; what Camp Setup refuses is refused in its words.",
+      "Change an activity's details, as its details panel on Camp Setup saves them: who can do it, when it runs (the times it can't run: Shoresh never builds it there, though a person may still put it there by hand), groups from the same division only, early in the week, and notes. Read them first with read_activity_details and send what it said as seen. It is done as you, with your own access. If someone else changed those details since, nothing is saved and Shoresh says so; what Camp Setup refuses is refused in its words.",
     inputSchema: {
       type: "object",
       properties: {
@@ -1494,7 +1494,7 @@ const CAPABILITIES = [
         fields: {
           type: "object",
           description:
-            'The details to set, by name, each as text except who_can_do_it: who_can_do_it (a list of division and group names, like ["Juniors", "Bunk 4, boys"], or "everyone": that replaces who can do it), same_division_only (yes or no), early_week_count (a whole number, 1 or more) and early_week_by_day (a day like Wednesday or Day 3; set both or blank both with (blank)), notes.'
+            'The details to set, by name, each as text except who_can_do_it and when_it_runs: who_can_do_it (a list of division and group names, like ["Juniors", "Bunk 4, boys"], or "everyone": that replaces who can do it), when_it_runs ("whenever", or a list of the times it can\'t run, like ["Lunch, Monday", "Period 2, Day 3"], as read_activity_details says them: that replaces the times it can\'t run), same_division_only (yes or no), early_week_count (a whole number, 1 or more) and early_week_by_day (a day like Wednesday or Day 3; set both or blank both with (blank)), notes.'
         },
         seen: {
           type: "object",
