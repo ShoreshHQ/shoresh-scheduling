@@ -401,7 +401,8 @@ describe("Versions on the Generated Schedule screen", () => {
     expect(lockAt(element, "0-1")).toBe("Locked");
     expect(versions(element).openId).toBe(MINE);
     expect(notice(element)).toBe("Restored Before the trip.");
-    // The list and its button went with the start: focus goes to Rebuild, as after Generate.
+    // The list and its button went with the start: focus goes to the Build menu (Rebuild),
+    // as after Generate.
     await until(
       () =>
         element.shadowRoot.activeElement ===

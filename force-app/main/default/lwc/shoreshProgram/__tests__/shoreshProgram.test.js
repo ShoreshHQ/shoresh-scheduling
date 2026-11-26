@@ -466,10 +466,7 @@ describe("c-shoresh-program", () => {
         new CustomEvent("change", { detail: { value: "d2" } })
       );
       // The note, the server's answer, then the note again.
-      await [...Array(10)].reduce(
-        (chain) => chain.then(() => undefined),
-        Promise.resolve()
-      );
+      await flush();
       return juniors;
     }
 
