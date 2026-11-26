@@ -2,20 +2,21 @@
  * Reads schedule days' text a few at a time, for the counts that look through many schedules at
  * once (ScheduleUses, GroupPlacements, LinkedChoicePlaces, PlacedInWeeks). The caller lists the day
  * parts first (their Ids, schedules and dates only); their text is then read in batches of about
- * partsAtOnce parts, a day's parts always together, under one budget of queries and text for the
- * request. Past the budget, reading stops and says it is not complete; a day read as a grid that
- * can't be read is said too (unreadable), never counted as nothing (CORE-6.19). In user mode: only
- * schedules the person can see.
+ * partsAtOnce parts, a day's parts always together, under one budget of queries and text. Past
+ * the budget, reading stops and says it is not complete; a day read as a grid that can't be read
+ * is said too (unreadable), never counted as nothing (CORE-6.19). In user mode: only schedules
+ * the person can see.
  */
 public with sharing class ScheduleDayTexts {
   // Day parts read at once: 25 at the longest (131,072 characters) is about 3.3 million.
   @TestVisible
   private static Integer partsAtOnce = 25;
   // Queries for the text: with the few that find what to count and list the days, under the 50 a
-  // request may use (half of Salesforce's 100); and never past those 50, however many came before.
+  // request may use (half of Salesforce's 100).
   @TestVisible
   private static Integer queryBudget = 40;
-  private static final Integer MOST_QUERIES = 49;
+  // Never so many that the request has fewer than these left for what follows (a delete).
+  private static final Integer ROOM_AFTER = 30;
   // Text read in all, so even days at the longest a part can be stay well inside memory.
   @TestVisible
   private static Long textBudget = 60000000;
@@ -42,7 +43,7 @@ public with sharing class ScheduleDayTexts {
     public void read(List<ScheduleDay__c> listed) {
       Integer budget = Math.min(
         queryBudget,
-        MOST_QUERIES - Limits.getQueries()
+        Limits.getLimitQueries() - Limits.getQueries() - ROOM_AFTER
       );
       Integer queries = 0;
       Long text = 0;

@@ -214,7 +214,7 @@ These never bend for Shoresh.
   aDaySavedByANewerShoreshIsSaid, daysPastTheCapAreSaid; GroupPlacementsTest
   aDayThatCantBeReadSaysTheCountIsNotComplete; LinkedChoicesTest
   aDayThatCantBeReadSaysTheWeekIsNotComplete; SetupTablesTest
-  aCountLateInARequestStillStopsUnderHalfTheQueryLimit; SetupDeleteTest
+  aCountLateInARequestLeavesRoomForWhatFollows; SetupDeleteTest
   aCountThatFailsIsSaidAndKeptForSupport.
 - **CORE-6.16** Help in Settings MUST show the installed version, "Version 1.4", beside support's
   address; outside an installed package it MUST show none. The About page MUST stay as it is

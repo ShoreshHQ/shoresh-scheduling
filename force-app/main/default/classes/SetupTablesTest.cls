@@ -181,11 +181,11 @@ private class SetupTablesTest {
   }
 
   /**
-   * The budget is the request's, not the count's own: a second count in a request that has used
-   * queries already still stops under half of the 100 (ScheduleDayTexts).
+   * A count late in a request leaves room for what follows (a delete): a second count stops while
+   * the request still has 30 of its 100 queries (ScheduleDayTexts).
    */
   @IsTest
-  static void aCountLateInARequestStillStopsUnderHalfTheQueryLimit() {
+  static void aCountLateInARequestLeavesRoomForWhatFollows() {
     ids = KeptCamp.keptIds();
     System.runAs(scheduler()) {
       bigSeason();
@@ -194,11 +194,11 @@ private class SetupTablesTest {
       ScheduleUses.count(ids.get('Group A'));
       Integer first = Limits.getQueries();
       ScheduleUses.Count second = ScheduleUses.count(ids.get('Swim'));
-      Integer queries = Limits.getQueries();
+      Integer left = Limits.getLimitQueries() - Limits.getQueries();
       Test.stopTest();
       Assert.isTrue(first > 40, 'The first count used ' + first + ' queries');
       Assert.isFalse(second.complete);
-      Assert.isTrue(queries < 50, 'The request used ' + queries + ' queries');
+      Assert.isTrue(left >= 30, 'The request has ' + left + ' queries left');
     }
   }
 
