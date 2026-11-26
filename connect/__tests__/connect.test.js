@@ -4689,6 +4689,26 @@ describe("Shoresh for AI tools and the command line", () => {
     );
   });
 
+  // API-1.157
+  it("carriesItsLicences: the connector carries Shoresh's licence and NOTICE, with the licence texts of what it bundles", () => {
+    const { TO, LICENSE_FILE, NOTICE_FILE } = require("../../scripts/build-connect");
+    const ROOT = path.resolve(__dirname, "../..");
+    const read = (...p) => fs.readFileSync(path.join(...p), "utf8");
+    expect(read(TO, LICENSE_FILE)).toBe(read(ROOT, "LICENSE"));
+    const notice = read(TO, NOTICE_FILE);
+    expect(notice.startsWith(read(ROOT, "NOTICE"))).toBe(true);
+    for (const licence of ["LWC-MIT.txt", "tslib-0BSD.txt"]) {
+      expect(notice).toContain(read(ROOT, "docs/licenses", licence));
+    }
+    // Every bundled library the views carry is named in NOTICE.
+    for (const view of ["week-view.html", "print-view.html"]) {
+      const text = read(TO, view);
+      if (/@lwc\/engine-dom/.test(text)) expect(notice).toContain("Lightning Web Components");
+      if (/Microsoft Corporation/.test(text)) expect(notice).toContain("tslib");
+    }
+    expect(notice).toContain("SheetJS Community Edition 0.20.3");
+  });
+
   it("shipsInsideThePackage: the connector is the ShoreshConnect static resource, the same files as connect/, needing only Node", () => {
     const { connectorFiles, FROM, TO } = require("../../scripts/build-connect");
     expect(
@@ -4699,7 +4719,8 @@ describe("Shoresh for AI tools and the command line", () => {
             f !== "manifest.json" &&
             !f.endsWith(".mjs") &&
             !f.endsWith(".cjs") &&
-            !f.endsWith(".html")
+            !f.endsWith(".html") &&
+            !f.endsWith(".txt")
         )
         .sort()
     ).toEqual(connectorFiles());
