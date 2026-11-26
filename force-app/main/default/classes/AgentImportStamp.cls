@@ -4,8 +4,7 @@
  * answers, its imports), and when the last of them changed. Any change, addition or deletion since
  * gives another stamp, so a save made from a review of an older setup is refused (AgentImports).
  * Counted, never kept: each kind is a count and a latest time, read in a few queries with the
- * lists inside them (a list inside a query is not a query of its own), walked in loops so a list
- * of any length reads in parts.
+ * lists inside them (a list inside a query is not a query of its own).
  */
 public with sharing class AgentImportStamp {
   /** How many of one kind there are, and when the last of them changed. */
@@ -56,11 +55,63 @@ public with sharing class AgentImportStamp {
   }
 
   /**
+   * The relationship names, from the platform, of the lists inside a record, by the field each
+   * child points at it with.
+   */
+  private static List<String> inside(
+    Schema.SObjectType parent,
+    List<Schema.SObjectField> children
+  ) {
+    List<String> names = new List<String>();
+    for (Schema.SObjectField child : children) {
+      names.add(ShoreshSchema.childRelationship(parent, child));
+    }
+    return names;
+  }
+
+  /** Tallies each list inside a record read into its own tally, in order. */
+  private static void addInside(
+    List<Tally> lists,
+    SObject parent,
+    List<String> relationships
+  ) {
+    for (Integer i = 0; i < relationships.size(); i++) {
+      // Walked in a loop, never held as a list: a list of any length reads in parts.
+      for (SObject record : parent.getSObjects(relationships[i])) {
+        lists[i].add(record);
+      }
+    }
+  }
+
+  /** The tallies one after another. */
+  private static List<Tally> joined(List<List<Tally>> parts) {
+    List<Tally> result = new List<Tally>();
+    for (List<Tally> part : parts) {
+      result.addAll(part);
+    }
+    return result;
+  }
+
+  /**
    * The season and what hangs on it directly: the season, weeks, location types, locations,
    * programs, activities, who recurring activities cover, elective sets, imports.
    */
   private static List<Tally> seasonTallies(Id seasonId) {
-    List<Tally> t = fresh(9);
+    List<Tally> own = fresh(1);
+    List<Tally> lists = fresh(8);
+    List<String> relationships = inside(
+      Season__c.SObjectType,
+      new List<Schema.SObjectField>{
+        Week__c.Season__c,
+        LocationType__c.Season__c,
+        Location__c.Season__c,
+        Program__c.Season__c,
+        Activity__c.Season__c,
+        Coverage__c.Season__c,
+        ElectiveSet__c.Season__c,
+        Import__c.Season__c
+      }
+    );
     for (Season__c season : [
       SELECT
         SystemModstamp,
@@ -76,33 +127,10 @@ public with sharing class AgentImportStamp {
       WHERE Id = :seasonId
       WITH USER_MODE
     ]) {
-      t[0].add(season);
-      for (SObject record : season.Weeks__r) {
-        t[1].add(record);
-      }
-      for (SObject record : season.LocationTypes__r) {
-        t[2].add(record);
-      }
-      for (SObject record : season.Locations__r) {
-        t[3].add(record);
-      }
-      for (SObject record : season.Programs__r) {
-        t[4].add(record);
-      }
-      for (SObject record : season.Activities__r) {
-        t[5].add(record);
-      }
-      for (SObject record : season.Coverages__r) {
-        t[6].add(record);
-      }
-      for (SObject record : season.ElectiveSets__r) {
-        t[7].add(record);
-      }
-      for (SObject record : season.Imports__r) {
-        t[8].add(record);
-      }
+      own[0].add(season);
+      addInside(lists, season, relationships);
     }
-    return t;
+    return joined(new List<List<Tally>>{ own, lists });
   }
 
   /**
@@ -111,28 +139,45 @@ public with sharing class AgentImportStamp {
    * activity, offerings, linked choices.
    */
   private static List<Tally> insideTallies(Id seasonId) {
-    List<Tally> t = fresh(9);
+    List<Tally> weekOffTally = fresh(1);
+    List<Tally> divisionTally = fresh(1);
+    List<Tally> groupTally = fresh(1);
+    List<Tally> itemTallies = fresh(3);
+    List<Tally> eligibilityTally = fresh(1);
+    List<Tally> electiveTallies = fresh(2);
+    List<String> weekOffs = inside(
+      Week__c.SObjectType,
+      new List<Schema.SObjectField>{ WeekException__c.Week__c }
+    );
     for (Week__c week : [
       SELECT Id, (SELECT SystemModstamp FROM WeekExceptions__r)
       FROM Week__c
       WHERE Season__c = :seasonId
       WITH USER_MODE
     ]) {
-      for (SObject record : week.WeekExceptions__r) {
-        t[0].add(record);
-      }
+      addInside(weekOffTally, week, weekOffs);
     }
+    List<String> groups = inside(
+      Division__c.SObjectType,
+      new List<Schema.SObjectField>{ Group__c.Division__c }
+    );
     for (Division__c division : [
       SELECT SystemModstamp, (SELECT SystemModstamp FROM Groups__r)
       FROM Division__c
       WHERE Program__r.Season__c = :seasonId
       WITH USER_MODE
     ]) {
-      t[1].add(division);
-      for (SObject record : division.Groups__r) {
-        t[2].add(record);
-      }
+      divisionTally[0].add(division);
+      addInside(groupTally, division, groups);
     }
+    List<String> items = inside(
+      Program__c.SObjectType,
+      new List<Schema.SObjectField>{
+        TimeBlock__c.Program__c,
+        FixedActivity__c.Program__c,
+        RecurringActivity__c.Program__c
+      }
+    );
     for (Program__c program : [
       SELECT
         Id,
@@ -143,26 +188,27 @@ public with sharing class AgentImportStamp {
       WHERE Season__c = :seasonId
       WITH USER_MODE
     ]) {
-      for (SObject record : program.TimeBlocks__r) {
-        t[3].add(record);
-      }
-      for (SObject record : program.FixedActivities__r) {
-        t[4].add(record);
-      }
-      for (SObject record : program.RecurringActivities__r) {
-        t[5].add(record);
-      }
+      addInside(itemTallies, program, items);
     }
+    List<String> eligibilities = inside(
+      Activity__c.SObjectType,
+      new List<Schema.SObjectField>{ ActivityEligibility__c.Activity__c }
+    );
     for (Activity__c activity : [
       SELECT Id, (SELECT SystemModstamp FROM Eligibilities__r)
       FROM Activity__c
       WHERE Season__c = :seasonId
       WITH USER_MODE
     ]) {
-      for (SObject record : activity.Eligibilities__r) {
-        t[6].add(record);
-      }
+      addInside(eligibilityTally, activity, eligibilities);
     }
+    List<String> electives = inside(
+      ElectiveSet__c.SObjectType,
+      new List<Schema.SObjectField>{
+        Offering__c.ElectiveSet__c,
+        LinkedChoice__c.ElectiveSet__c
+      }
+    );
     for (ElectiveSet__c electiveSet : [
       SELECT
         Id,
@@ -172,19 +218,30 @@ public with sharing class AgentImportStamp {
       WHERE Season__c = :seasonId
       WITH USER_MODE
     ]) {
-      for (SObject record : electiveSet.Offerings__r) {
-        t[7].add(record);
-      }
-      for (SObject record : electiveSet.LinkedChoices__r) {
-        t[8].add(record);
-      }
+      addInside(electiveTallies, electiveSet, electives);
     }
-    return t;
+    return joined(
+      new List<List<Tally>>{
+        weekOffTally,
+        divisionTally,
+        groupTally,
+        itemTallies,
+        eligibilityTally,
+        electiveTallies
+      }
+    );
   }
 
   /** The camp's words and remembered answers, which a review reads too. */
   private static List<Tally> campTallies(Id campId) {
     List<Tally> t = fresh(2);
+    List<String> relationships = inside(
+      Camp__c.SObjectType,
+      new List<Schema.SObjectField>{
+        CampLabel__c.Camp__c,
+        ImportAnswer__c.Camp__c
+      }
+    );
     for (Camp__c camp : [
       SELECT
         Id,
@@ -194,12 +251,7 @@ public with sharing class AgentImportStamp {
       WHERE Id = :campId
       WITH USER_MODE
     ]) {
-      for (SObject record : camp.CampLabels__r) {
-        t[0].add(record);
-      }
-      for (SObject record : camp.ImportAnswers__r) {
-        t[1].add(record);
-      }
+      addInside(t, camp, relationships);
     }
     return t;
   }
@@ -210,18 +262,31 @@ public with sharing class AgentImportStamp {
    * and the season's special days and events and their plans (it puts days of their own on).
    */
   public static String withSchedules(Id seasonId, Id campId) {
-    List<Tally> t = fresh(6);
+    List<Tally> schedules = fresh(1);
+    List<Tally> days = fresh(1);
+    List<Tally> specials = fresh(4);
+    List<String> inSchedule = inside(
+      Schedule__c.SObjectType,
+      new List<Schema.SObjectField>{ ScheduleDay__c.Schedule__c }
+    );
     for (Schedule__c schedule : [
       SELECT SystemModstamp, (SELECT SystemModstamp FROM Days__r)
       FROM Schedule__c
       WHERE Program__r.Season__c = :seasonId
       WITH USER_MODE
     ]) {
-      t[0].add(schedule);
-      for (SObject record : schedule.Days__r) {
-        t[1].add(record);
-      }
+      schedules[0].add(schedule);
+      addInside(days, schedule, inSchedule);
     }
+    List<String> onSeason = inside(
+      Season__c.SObjectType,
+      new List<Schema.SObjectField>{
+        SpecialDay__c.Season__c,
+        SpecialEvent__c.Season__c,
+        SpecialDate__c.Season__c,
+        PlanPart__c.Season__c
+      }
+    );
     for (Season__c season : [
       SELECT
         Id,
@@ -233,19 +298,9 @@ public with sharing class AgentImportStamp {
       WHERE Id = :seasonId
       WITH USER_MODE
     ]) {
-      for (SObject record : season.SpecialDays__r) {
-        t[2].add(record);
-      }
-      for (SObject record : season.SpecialEvents__r) {
-        t[3].add(record);
-      }
-      for (SObject record : season.SpecialDates__r) {
-        t[4].add(record);
-      }
-      for (SObject record : season.PlanParts__r) {
-        t[5].add(record);
-      }
+      addInside(specials, season, onSeason);
     }
-    return of(seasonId, campId) + digest(t);
+    return of(seasonId, campId) +
+      digest(joined(new List<List<Tally>>{ schedules, days, specials }));
   }
 }
