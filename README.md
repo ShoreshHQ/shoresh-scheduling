@@ -14,9 +14,11 @@ is in [docs/try-camp-setup.md](docs/try-camp-setup.md). Build choices are in
 
 ## Checks on every pull request
 
-- LWC Jest unit tests and Salesforce Code Analyzer.
-- Deploy to the test org, then run all Apex tests. There are exactly two Salesforce orgs, the
-  Dev Hub and one test org; see [docs/ci-setup.md](docs/ci-setup.md).
+- LWC Jest unit tests (also as if the package had its namespace), lint, the Apex file checks,
+  Salesforce Code Analyzer, and the connector's tests on macOS, Windows and Linux.
+- Changes go in as batches: only a `batch/` pull request deploys to the test org and runs the
+  Apex tests it needs; every night the full Apex suite runs on main. There are exactly two
+  Salesforce orgs, the Dev Hub and one test org; see [docs/ci-setup.md](docs/ci-setup.md).
 
 ## Not done yet (needs Greg)
 

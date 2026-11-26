@@ -15,8 +15,8 @@ deploys to the existing test org instead of creating one.
 ## How the checks use it
 
 The "Scratch org deploy and Apex tests" check logs in to the test org with the encrypted secret
-`SFDX_AUTH_URL_CI`, deploys the pull request, and runs all Apex tests (unless the pull request
-doesn't need them, see the next section). One check at a time, so two
+`SFDX_AUTH_URL_CI`, deploys the pull request, and runs the Apex tests it needs: only for a
+`batch/` pull request and the nightly run on main (both below). One check at a time, so two
 pull requests never deploy over each other. Tests run one class at a time (see below). Because
 the test org is also used by hand, the
 deploy ignores change-tracking conflicts: the repository is always what should end up in the org.
@@ -199,6 +199,10 @@ Recommended:Security`), and fails on moderate (3) or worse. A second step runs t
   field empty with no error, and Apex tests and Jest never see it (every Update to match setup was
   refused that way, real-browser check 2026-10-20). Opt out a field the server never reads, on one
   of the three lines above it: `// apex-aura-inputs-ok: <why>`.
+- **Only one stylesheet reaches inside Salesforce's fields** (`npm run check:salesforce-insides`,
+  `scripts/salesforce-insides.js`): any static resource stylesheet other than `ShoreshTable.css`,
+  or a light DOM component's CSS, that names an SLDS class (`.slds-input`) fails. How Salesforce
+  builds its fields inside isn't supported and may change (ADR 0015 choice 11).
 - **Accessibility in Jest** (`@sa11y/jest`, axe-core rules): the main screens' render tests
   (Manual Build, Generated, Schedules, Versions, the setup screen and its tables) end with
   `await expect(element).toBeAccessible()`. jsdom has no layout, so focus loss, contrast and
@@ -298,7 +302,7 @@ It deletes the old test org, creates a new 30-day one, hands its login to GitHub
 date. Then re-run the failed check: on the pull request, **Checks** tab → **CI** →
 **Re-run all jobs**. Each renewal is also a clean from-scratch check.
 
-Current test org: created 2026-10-20, expires 2026-11-19, on the new Dev Hub (Developer Edition org 00Dbm000014tFy6, signed up 2026-10-20). The old Dev Hub (00DgK00000VLOOr) was frozen by Salesforce on 2026-10-20 because a sign-in came through a VPN, and with one admin it could not be unfrozen. Turn any VPN off before signing in to Salesforce.
+Current test org: created 2026-11-19, expires 2026-12-19, on the new Dev Hub (Developer Edition org 00Dbm000014tFy6, signed up 2026-10-20). The old Dev Hub (00DgK00000VLOOr) was frozen by Salesforce on 2026-10-20 because a sign-in came through a VPN, and with one admin it could not be unfrozen. Turn any VPN off before signing in to Salesforce.
 
 ## What the secret can do
 
