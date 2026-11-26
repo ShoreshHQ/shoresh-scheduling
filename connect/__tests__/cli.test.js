@@ -1,6 +1,6 @@
 /**
  * The command line and code mode as their own layers over MCP's actions
- * (docs/protocol/api.md, Command line and Code mode). Salesforce is a stand-in here; the same
+ * (docs/protocol/api/command-line.md, Command line and Code mode). Salesforce is a stand-in here; the same
  * rules are checked against the test org by hand with scripts/e2e-connect.js.
  */
 const { parse, main, EXIT } = require("../cli");

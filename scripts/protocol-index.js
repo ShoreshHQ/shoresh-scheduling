@@ -62,7 +62,12 @@ const DOCUMENTS = [
   statementTable("docs/protocol/div.md", "DIV"),
   statementTable("docs/protocol/prog.md", "PROG"),
   statementTable("docs/protocol/week.md", "WEEK"),
-  statementTable("docs/protocol/api.md", "API")
+  // API's statements are written in parts (docs/protocol/api.md names them), every part read.
+  ...fs
+    .readdirSync(path.join(ROOT, "docs/protocol/api"))
+    .filter((f) => f.endsWith(".md"))
+    .sort()
+    .map((f) => statementTable(`docs/protocol/api/${f}`, "API"))
 ];
 
 /** A test cell starting "gap", "not yet tested", "none", "not built" or "contradicted" names no test. */

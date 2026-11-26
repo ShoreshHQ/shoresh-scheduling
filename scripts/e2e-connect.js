@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * End-to-end check of the command line and code mode against the real test org (shoresh-test),
- * by the rules in docs/protocol/api.md (Command line API-1.109 to 1.113, Code mode API-1.114 to
+ * by the rules in docs/protocol/api/command-line.md (Command line API-1.109 to 1.113, Code mode API-1.114 to
  * 1.116, code mode for an AI API-1.118 to 1.122, and API-1.105, 1.106, 1.108 they carry, and a week's draft read, API-1.123). Not run in CI: run it by hand, once, with
  *
  *   node scripts/e2e-connect.js
