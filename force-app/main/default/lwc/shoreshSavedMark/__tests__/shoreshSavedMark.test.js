@@ -1,7 +1,6 @@
 import { createElement } from "lwc";
 import ShoreshSavedMark, { leftField } from "c/shoreshSavedMark";
-
-const flush = () => Promise.resolve();
+import { flush } from "shoresh-jest/flush";
 
 describe("c-shoresh-saved-mark", () => {
   afterEach(() => {

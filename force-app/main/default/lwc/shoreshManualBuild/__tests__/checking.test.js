@@ -11,6 +11,7 @@ import {
   draft,
   schedule
 } from "../../shoreshWeekEditor/__tests__/data/draftFixture";
+import { flush } from "shoresh-jest/flush";
 
 // The counters and the Why list on the Manual Build screen (nothing from the checks is on the
 // grid: wiki engine care plan Q18) (c/shoreshEngine's checkWeek does
@@ -85,12 +86,6 @@ const LABELS = [
 const FLAGPOLE = { kind: "F", id: "f1", name: "Flagpole", gone: false };
 const SWIM = { kind: "A", id: "a1", name: "Swim", gone: false };
 const SOCCER = { kind: "A", id: "a3", name: "Soccer", gone: false };
-
-const flush = () =>
-  [...Array(10)].reduce(
-    (chain) => chain.then(() => undefined),
-    Promise.resolve()
-  );
 
 /**
  * A draft as the server sends it: with the season's activity and location records, the program's

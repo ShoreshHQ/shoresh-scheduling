@@ -15,6 +15,7 @@ import { nsRecord } from "shoresh-jest/namespace";
 import { assignedView } from "./data/run";
 import { finalDownload, finalView } from "./data/download";
 import { PICTURE } from "./data/clear";
+import { flush } from "shoresh-jest/flush";
 
 const apex = () => ({ default: jest.fn() });
 jest.mock("@salesforce/apex/ElectiveSeatsController.seatsSetup", () => apex(), {
@@ -87,11 +88,6 @@ const SETUP = {
   labels: []
 };
 
-const flush = () =>
-  [...Array(20)].reduce(
-    (chain) => chain.then(() => undefined),
-    Promise.resolve()
-  );
 const $ = (element, selector) => element.shadowRoot.querySelector(selector);
 const $$ = (element, selector) => [
   ...element.shadowRoot.querySelectorAll(selector)

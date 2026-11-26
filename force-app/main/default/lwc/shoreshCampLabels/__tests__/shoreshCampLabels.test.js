@@ -3,6 +3,7 @@ import ShoreshCampLabels from "c/shoreshCampLabels";
 import getLabels from "@salesforce/apex/SeasonSetupController.getLabels";
 import saveCampLabels from "@salesforce/apex/SeasonSetupController.saveCampLabels";
 import campWordsBlockedReason from "@salesforce/apex/SeasonSetupController.campWordsBlockedReason";
+import { flush } from "shoresh-jest/flush";
 
 jest.mock(
   "@salesforce/apex/SeasonSetupController.getLabels",
@@ -67,13 +68,6 @@ const LABELS = [
     labelId: null
   }
 ];
-
-// Lets pending (mocked) server calls and re-renders finish before checking the screen.
-const flush = () =>
-  [...Array(10)].reduce(
-    (chain) => chain.then(() => undefined),
-    Promise.resolve()
-  );
 
 async function render(blockedReason = null) {
   getLabels.mockResolvedValue(LABELS);

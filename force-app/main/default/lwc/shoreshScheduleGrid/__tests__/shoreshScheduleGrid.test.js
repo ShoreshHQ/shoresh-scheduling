@@ -1,5 +1,6 @@
 import { createElement } from "lwc";
 import ShoreshScheduleGrid from "c/shoreshScheduleGrid";
+import { flush } from "shoresh-jest/flush";
 
 // Two groups, three time blocks. Swim runs blocks 1-2 for Hawks; Owls are not at camp in block 3.
 const GRID = {
@@ -108,7 +109,6 @@ describe("c-shoresh-schedule-grid", () => {
   });
 
   describe("locks and focus (Generated Schedule)", () => {
-    const flush = () => Promise.resolve().then(() => undefined);
     function editable(cells) {
       const element = createElement("c-shoresh-schedule-grid", {
         is: ShoreshScheduleGrid
@@ -249,7 +249,6 @@ describe("c-shoresh-schedule-grid", () => {
 });
 
 describe("c-shoresh-schedule-grid, the round 13 look (ADR 0008 part 8)", () => {
-  const flush = () => Promise.resolve().then(() => undefined);
   afterEach(() => {
     while (document.body.firstChild) {
       document.body.removeChild(document.body.firstChild);
@@ -566,11 +565,6 @@ describe("c-shoresh-schedule-grid, the round 13 look (ADR 0008 part 8)", () => {
 });
 
 describe("c-shoresh-schedule-grid: choosing cells together (Greg decision 45)", () => {
-  const flush = () =>
-    [...Array(4)].reduce(
-      (chain) => chain.then(() => undefined),
-      Promise.resolve()
-    );
   afterEach(() => {
     while (document.body.firstChild) {
       document.body.removeChild(document.body.firstChild);

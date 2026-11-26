@@ -27,7 +27,7 @@ import { buildTerms } from "c/shoreshTerms";
 import { nsRecord } from "shoresh-jest/namespace";
 import { FIELD } from "c/shoreshSchema";
 import { PROGRAM, SCHEDULE, WEEK, camp, keeping } from "./data/camp";
-import { nextTurn } from "../pieces";
+import { flush, until } from "shoresh-jest/flush";
 
 const apex = () => ({ default: jest.fn() });
 jest.mock(
@@ -142,19 +142,6 @@ const VERSIONS = [
   }
 ];
 
-const flush = () =>
-  [...Array(10)].reduce(
-    (chain) => chain.then(() => undefined),
-    Promise.resolve()
-  );
-async function until(done, tries = 200) {
-  await flush();
-  if (done() || !tries) {
-    return;
-  }
-  await nextTurn();
-  await until(done, tries - 1);
-}
 const slow = () => {
   const held = {};
   held.promise = new Promise((resolve) => {

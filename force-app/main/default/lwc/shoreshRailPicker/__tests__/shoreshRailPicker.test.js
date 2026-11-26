@@ -1,11 +1,7 @@
 import { createElement } from "lwc";
 import ShoreshRailPicker from "c/shoreshRailPicker";
+import { flush } from "shoresh-jest/flush";
 
-const flush = () =>
-  [...Array(5)].reduce(
-    (chain) => chain.then(() => undefined),
-    Promise.resolve()
-  );
 const WEEKS = [
   { label: "Week 1", value: "w1" },
   { label: "Week 2", value: "w2" },

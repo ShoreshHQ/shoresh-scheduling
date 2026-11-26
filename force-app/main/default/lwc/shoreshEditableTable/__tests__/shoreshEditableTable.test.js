@@ -2,6 +2,7 @@ import { createElement } from "lwc";
 import ShoreshEditableTable, { timeText } from "c/shoreshEditableTable";
 import { looseKey } from "c/shoreshImportEngine";
 import { bareRecord, nsName, nsRecord } from "shoresh-jest/namespace";
+import { flush } from "shoresh-jest/flush";
 
 const COLUMNS = [
   { fieldName: "Name", label: "Name", type: "text", required: true },
@@ -36,8 +37,6 @@ const ROWS = [
     SortOrder__c: 2
   }
 ];
-
-const flush = () => Promise.resolve();
 
 // Properties naming objects or fields, and the records, as a screen of the package hands them
 // over (nsName / nsRecord: unchanged normally, shoresh__-prefixed in the namespaced run).

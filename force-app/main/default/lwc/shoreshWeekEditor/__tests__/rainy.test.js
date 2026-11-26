@@ -8,6 +8,7 @@ import ShoreshWeekEditor from "c/shoreshWeekEditor";
 import { buildTerms } from "c/shoreshTerms";
 import { nsRecord } from "shoresh-jest/namespace";
 import { ACTIVITIES, GROUPS, draft } from "./data/draftFixture";
+import { flush } from "shoresh-jest/flush";
 
 const LABELS = [
   { term: "Group", singular: "Bunk", plural: "Bunks", isCustom: true }
@@ -58,12 +59,6 @@ const VISITING_DAY = {
     rows: ["1", "1"]
   }
 };
-
-const flush = () =>
-  [...Array(10)].reduce(
-    (chain) => chain.then(() => undefined),
-    Promise.resolve()
-  );
 
 function week(mondayRows, tuesdayRows = ["1,2,", "1,2,"]) {
   const start = draft(ITEMS, mondayRows);

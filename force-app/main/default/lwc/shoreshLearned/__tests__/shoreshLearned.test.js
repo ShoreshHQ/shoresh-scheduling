@@ -8,6 +8,7 @@ import restoreLearned from "@salesforce/apex/LearnedController.restoreLearned";
 import undoChangeLearned from "@salesforce/apex/LearnedController.undoChangeLearned";
 import forgetLearnedPattern from "@salesforce/apex/LearnedController.forgetLearnedPattern";
 import installedVersion from "@salesforce/apex/ShoreshVersion.installedVersion";
+import { flush } from "shoresh-jest/flush";
 
 jest.mock(
   "@salesforce/apex/LearnedController.getLearned",
@@ -77,13 +78,6 @@ const event = (id, what, question, value, day, answerId, extra = {}) => ({
   savedAt: `${day}T15:00:00.000Z`,
   ...extra
 });
-
-// Every promise waiting runs (each await in the component is one turn).
-const flush = () =>
-  [...Array(8)].reduce(
-    (chain) => chain.then(() => undefined),
-    Promise.resolve()
-  );
 
 function serve(answers, events = []) {
   getLearned.mockResolvedValue(answers);

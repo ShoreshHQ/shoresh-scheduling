@@ -7,6 +7,7 @@ import ShoreshApplyWeeks from "c/shoreshApplyWeeks";
 import previewApply from "@salesforce/apex/WeekApplyController.previewApply";
 import applyToWeek from "@salesforce/apex/WeekApplyController.applyToWeek";
 import { buildTerms } from "c/shoreshTerms";
+import { flush } from "shoresh-jest/flush";
 
 const apex = () => ({ default: jest.fn() });
 jest.mock("@salesforce/apex/WeekApplyController.previewApply", () => apex(), {
@@ -31,12 +32,6 @@ const outcome = (weekId, more = {}) => ({
   published: false,
   ...more
 });
-
-const flush = () =>
-  [...Array(10)].reduce(
-    (chain) => chain.then(() => undefined),
-    Promise.resolve()
-  );
 
 async function render() {
   const element = createElement("c-shoresh-apply-weeks", {

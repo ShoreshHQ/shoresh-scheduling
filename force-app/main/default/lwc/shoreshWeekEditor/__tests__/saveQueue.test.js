@@ -10,12 +10,7 @@ import { History } from "../history";
 import { serverRunsOf } from "../handEdits";
 import { slots } from "../slotEdits";
 import { WITH_SOCCER, WITH_SWIM, draft, schedule } from "./data/draftFixture";
-
-const flush = () =>
-  [...Array(10)].reduce(
-    (chain) => chain.then(() => undefined),
-    Promise.resolve()
-  );
+import { flush } from "shoresh-jest/flush";
 
 // Bunk 1 on Monday: Period 2 is "date|groupId|blockId" P2, Lunch LUNCH.
 const P2 = "2026-06-29|g1|t2";

@@ -9,6 +9,7 @@ import ShoreshWeekEditor from "c/shoreshWeekEditor";
 import { buildTerms } from "c/shoreshTerms";
 import { nsRecord } from "shoresh-jest/namespace";
 import { draft } from "./data/draftFixture";
+import { flush } from "shoresh-jest/flush";
 
 const SET_ID = "a0X000000000001AAA";
 const FLAGPOLE = { kind: "F", id: "f1", name: "Flagpole", gone: false };
@@ -73,12 +74,6 @@ const SETUP = {
 const LABELS = [
   { term: "Group", singular: "Bunk", plural: "Bunks", isCustom: true }
 ];
-
-const flush = () =>
-  [...Array(10)].reduce(
-    (chain) => chain.then(() => undefined),
-    Promise.resolve()
-  );
 
 async function render(items, rows, options = {}) {
   const element = createElement("c-shoresh-week-editor", {

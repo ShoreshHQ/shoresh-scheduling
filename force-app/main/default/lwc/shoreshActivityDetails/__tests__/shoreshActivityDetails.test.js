@@ -4,6 +4,7 @@ import ShoreshActivityDetails from "c/shoreshActivityDetails";
 import { buildTerms } from "c/shoreshTerms";
 import { answerAsk, openQuestion } from "shoresh-jest/ask";
 import { bareRecord, nsName, nsRecord } from "shoresh-jest/namespace";
+import { flush } from "shoresh-jest/flush";
 
 const terms = buildTerms([
   { term: "Group", singular: "Bunk", plural: "Bunks", isCustom: true },
@@ -51,12 +52,6 @@ const SETUP = {
     }
   ]
 };
-
-const flush = () =>
-  [...Array(5)].reduce(
-    (chain) => chain.then(() => undefined),
-    Promise.resolve()
-  );
 
 /** The details, opened (as from the activity's row) on its first activity unless told not to. */
 async function render(

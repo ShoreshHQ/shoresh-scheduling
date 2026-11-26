@@ -4,6 +4,7 @@ import { counterWords } from "../lines";
 import { measureWeek } from "c/shoreshEngine";
 import readAccepted from "@salesforce/apex/WeekAccepts.accepted";
 import keepAccepted from "@salesforce/apex/WeekAccepts.accept";
+import { flush } from "shoresh-jest/flush";
 
 jest.mock(
   "@salesforce/apex/WeekAccepts.accepted",
@@ -50,12 +51,6 @@ const CHECKED = {
   hasSpreadTargets: false
 };
 const MEASURE = measureWeek(CHECKED, ACTIVITIES, DAYS);
-
-const flush = () =>
-  [...Array(5)].reduce(
-    (chain) => chain.then(() => undefined),
-    Promise.resolve()
-  );
 
 function render(props = {}) {
   const element = createElement("c-shoresh-week-checks", {

@@ -16,6 +16,7 @@ import {
   whyLines
 } from "shoresh-jest/week-editor";
 import { draft } from "../../shoreshWeekEditor/__tests__/data/draftFixture";
+import { flush } from "shoresh-jest/flush";
 
 // "Setup changed since the week started" on Manual Build (ADR 0008 part 6): the dots the server
 // works out (SetupMatch), the line under the toolbar, and "Update to match setup", shown first,
@@ -137,12 +138,6 @@ const NOTHING = {
   dots: [],
   changes: []
 };
-
-const flush = () =>
-  [...Array(12)].reduce(
-    (chain) => chain.then(() => undefined),
-    Promise.resolve()
-  );
 
 function swimWeek() {
   return draft([FLAGPOLE, SWIM], ["1,2,", "1,,"]);

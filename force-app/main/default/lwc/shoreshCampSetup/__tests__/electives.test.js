@@ -19,6 +19,7 @@ import deletePreview from "@salesforce/apex/SeasonSetupController.deletePreview"
 import linkedChoicePlaces from "@salesforce/apex/LinkedChoicesController.linkedChoicePlaces";
 import saveLinkedChoice from "@salesforce/apex/LinkedChoicesController.saveLinkedChoice";
 import { bareRecord, nsName, nsRecord } from "shoresh-jest/namespace";
+import { flush } from "shoresh-jest/flush";
 
 const apex = () => ({ default: jest.fn() });
 jest.mock("@salesforce/apex/SeasonSetupController.getCamps", () => apex(), {
@@ -209,12 +210,6 @@ function setupWith(overrides = {}) {
     ...overrides
   };
 }
-
-const flush = () =>
-  [...Array(10)].reduce(
-    (chain) => chain.then(() => undefined),
-    Promise.resolve()
-  );
 
 /** The Shoresh page, opened at an address (state: its c__ values). */
 async function render(state = { c__preview: "electives" }, setup) {

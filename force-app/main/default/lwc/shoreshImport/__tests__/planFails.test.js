@@ -6,6 +6,7 @@ import ShoreshImport from "c/shoreshImport";
 import { planFor } from "c/shoreshImportEngine";
 import { buildTerms } from "c/shoreshTerms";
 import { nsRecord } from "shoresh-jest/namespace";
+import { flush } from "shoresh-jest/flush";
 
 // The plan Add would save is worked out by the engine; here it fails as a bug in it would.
 jest.mock("c/shoreshImportEngine", () => {
@@ -34,12 +35,6 @@ const SETUP = {
   activities: [],
   locations: []
 };
-
-const flush = () =>
-  [...Array(20)].reduce(
-    (chain) => chain.then(() => undefined),
-    Promise.resolve()
-  );
 
 const $ = (element, selector) => element.shadowRoot.querySelector(selector);
 

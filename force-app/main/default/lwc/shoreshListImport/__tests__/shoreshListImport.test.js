@@ -7,6 +7,7 @@ import undoImport from "@salesforce/apex/ImportController.undoImport";
 import { answerAsk } from "shoresh-jest/ask";
 import { buildTerms } from "c/shoreshTerms";
 import { bareRecord, nsRecord } from "shoresh-jest/namespace";
+import { flush } from "shoresh-jest/flush";
 
 jest.mock(
   "@salesforce/apex/ImportController.saveList",
@@ -57,12 +58,6 @@ const SETUP = {
 function file(name, text) {
   return { name, text: () => Promise.resolve(text) };
 }
-
-const flush = () =>
-  [...Array(20)].reduce(
-    (chain) => chain.then(() => undefined),
-    Promise.resolve()
-  );
 
 const $ = (element, selector) => element.shadowRoot.querySelector(selector);
 const $$ = (element, selector) => [

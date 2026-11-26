@@ -6,6 +6,7 @@ import ShoreshSpecialDetails, {
 } from "c/shoreshSpecialDetails";
 import { buildTerms } from "c/shoreshTerms";
 import { nsRecord } from "shoresh-jest/namespace";
+import { flush } from "shoresh-jest/flush";
 
 const terms = buildTerms([
   {
@@ -81,8 +82,6 @@ const SETUP = {
     ]
   }
 };
-
-const flush = () => Promise.resolve().then(() => Promise.resolve());
 
 async function render(setup = SETUP) {
   const element = createElement("c-shoresh-special-details", {

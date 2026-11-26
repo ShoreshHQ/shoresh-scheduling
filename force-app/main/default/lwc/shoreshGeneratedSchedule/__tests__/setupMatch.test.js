@@ -22,6 +22,7 @@ import getVersions from "@salesforce/apex/SchedulesController.getVersions";
 import { buildTerms } from "c/shoreshTerms";
 import { nsRecord } from "shoresh-jest/namespace";
 import { PROGRAM, SCHEDULE, WEEK, camp, keeping, dateAt } from "./data/camp";
+import { flush } from "shoresh-jest/flush";
 
 const apex = () => ({ default: jest.fn() });
 jest.mock(
@@ -152,11 +153,6 @@ const LEFT = {
   dots: [PREVIEW.dots[1]]
 };
 
-const flush = () =>
-  [...Array(12)].reduce(
-    (chain) => chain.then(() => undefined),
-    Promise.resolve()
-  );
 const pending = () => {
   let resolve;
   const promise = new Promise((done) => {

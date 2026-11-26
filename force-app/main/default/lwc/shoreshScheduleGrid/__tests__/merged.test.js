@@ -2,8 +2,7 @@
 // across bunks, with its flag and place; different looks stay apart.
 import { createElement } from "lwc";
 import ShoreshScheduleGrid from "c/shoreshScheduleGrid";
-
-const flush = () => Promise.resolve().then(() => Promise.resolve());
+import { flush } from "shoresh-jest/flush";
 
 function cell(column, extra = {}) {
   return {

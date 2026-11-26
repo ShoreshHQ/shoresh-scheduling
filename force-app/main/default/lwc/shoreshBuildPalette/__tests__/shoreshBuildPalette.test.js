@@ -1,5 +1,6 @@
 import { createElement } from "lwc";
 import ShoreshBuildPalette from "c/shoreshBuildPalette";
+import { flush } from "shoresh-jest/flush";
 
 // From the week editor's counts.js: Soccer under its goal first, then Swim (over) and Boating.
 const TILES = [
@@ -48,7 +49,6 @@ const q = (element, selector) => element.shadowRoot.querySelector(selector);
 const qa = (element, selector) => [
   ...element.shadowRoot.querySelectorAll(selector)
 ];
-const flush = () => Promise.resolve();
 
 describe("c-shoresh-build-palette (the drawer)", () => {
   afterEach(() => {

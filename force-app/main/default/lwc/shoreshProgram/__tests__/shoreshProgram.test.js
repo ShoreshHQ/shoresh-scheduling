@@ -4,6 +4,7 @@ import ShoreshProgram from "c/shoreshProgram";
 import { buildTerms } from "c/shoreshTerms";
 import { bareName, bareRecord, nsName, nsRecord } from "shoresh-jest/namespace";
 import groupPlacements from "@salesforce/apex/SetupTablesController.groupPlacements";
+import { flush } from "shoresh-jest/flush";
 
 jest.mock(
   "@salesforce/apex/SetupTablesController.groupPlacements",
@@ -55,8 +56,6 @@ const ENTRY = {
     }
   ]
 };
-
-const flush = () => Promise.resolve();
 
 async function render(show = "timeBlocks", entry = ENTRY) {
   const element = createElement("c-shoresh-program", { is: ShoreshProgram });

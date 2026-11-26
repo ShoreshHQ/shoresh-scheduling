@@ -7,8 +7,7 @@
 import { createElement } from "lwc";
 import ShoreshEditableTable from "c/shoreshEditableTable";
 import { bareRecord, nsName, nsRecord } from "shoresh-jest/namespace";
-
-const flush = () => Promise.resolve();
+import { flush } from "shoresh-jest/flush";
 
 const ACTIVITIES = new Map([
   ["a1", "Archery"],

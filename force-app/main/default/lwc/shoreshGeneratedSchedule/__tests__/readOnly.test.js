@@ -10,6 +10,7 @@ import getInputs from "@salesforce/apex/GeneratedScheduleController.getInputs";
 import { buildTerms } from "c/shoreshTerms";
 import { nsRecord } from "shoresh-jest/namespace";
 import { PROGRAM, SCHEDULE, SMALL, WEEK, camp } from "./data/camp";
+import { flush } from "shoresh-jest/flush";
 
 const apex = () => ({ default: jest.fn() });
 jest.mock(
@@ -39,12 +40,6 @@ const SETUP = nsRecord({
 const terms = buildTerms([
   { term: "Group", singular: "Bunk", plural: "Bunks", isCustom: true }
 ]);
-
-const flush = () =>
-  [...Array(10)].reduce(
-    (chain) => chain.then(() => undefined),
-    Promise.resolve()
-  );
 
 /** A generated week of SMALL with Swim in Bunk 1's Period 1 both days. */
 function builtWeek() {

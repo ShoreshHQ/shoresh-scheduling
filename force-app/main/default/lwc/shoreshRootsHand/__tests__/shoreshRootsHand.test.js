@@ -1,5 +1,6 @@
 import { createElement } from "lwc";
 import ShoreshRootsHand from "c/shoreshRootsHand";
+import { flush } from "shoresh-jest/flush";
 
 // Made-up cards, as c/shoreshRootsLooks makes them (no real campers or staff).
 const card = (id, meld = "activities") => ({
@@ -13,9 +14,6 @@ const card = (id, meld = "activities") => ({
   nav: {},
   glimpse: { w: 170, h: 62, align: "xMidYMax", fade: null, shapes: [] }
 });
-
-const flush = () => Promise.resolve();
-const settle = () => flush().then(flush).then(flush).then(flush);
 
 const realMatchMedia = window.matchMedia;
 let media;
@@ -86,7 +84,7 @@ async function render(cards, playTo) {
   element.playTo = playTo || (() => ({ x: 600, y: 100, w: 120, r: 1 }));
   element.cards = cards;
   document.body.appendChild(element);
-  await settle();
+  await flush();
   return element;
 }
 
@@ -170,7 +168,7 @@ describe("c-shoresh-roots-hand", () => {
     const a = button(element, "A");
     const before = xOf(a);
     element.cards = [card("B")];
-    await settle();
+    await flush();
     expect(playTo).toHaveBeenCalledWith("activities");
     // Still drawn while it travels, but out of reach.
     expect(a.hasAttribute("data-gone")).toBe(true);
@@ -178,7 +176,7 @@ describe("c-shoresh-roots-hand", () => {
     run(150);
     expect(xOf(a)).not.toBe(before);
     run(3000);
-    await settle();
+    await flush();
     expect(landed).toHaveBeenCalledWith(
       expect.objectContaining({ detail: { meld: "activities" } })
     );
@@ -193,11 +191,11 @@ describe("c-shoresh-roots-hand", () => {
     const full = parseFloat(hand.style.height);
     expect(full).toBeGreaterThan(150);
     element.cards = [];
-    await settle();
+    await flush();
     run(300);
     expect(parseFloat(hand.style.height)).toBeCloseTo(full, 0);
     run(3000);
-    await settle();
+    await flush();
     run(3000);
     expect(parseFloat(hand.style.height)).toBeLessThan(20);
   });
@@ -223,13 +221,13 @@ describe("c-shoresh-roots-hand", () => {
       .spyOn(HTMLElement.prototype, "clientWidth", "get")
       .mockImplementation(() => 1060);
     element.cards = [card("A"), card("B")];
-    await settle();
+    await flush();
     expect(element.cardSize()).toEqual({ w: 212, h: 144 });
     jest
       .spyOn(HTMLElement.prototype, "clientWidth", "get")
       .mockImplementation(() => 760);
     element.cards = [card("A")];
-    await settle();
+    await flush();
     expect(element.cardSize()).toEqual({ w: 196, h: 133 });
   });
 
@@ -268,10 +266,10 @@ describe("c-shoresh-roots-hand", () => {
     expect(parseFloat(hand.style.height)).toBeCloseTo(element.leastHeight(), 0);
     // A card still being played away keeps the hand's room until it lands.
     element.cards = [];
-    await settle();
+    await flush();
     expect(element.leastHeight()).toBe(133 + 46);
     run(5000);
-    await settle();
+    await flush();
     run(3000);
     expect(element.leastHeight()).toBe(16);
   });
@@ -337,7 +335,7 @@ describe("c-shoresh-roots-hand", () => {
     run(3000);
     button(element, "B").focus();
     element.cards = [card("A"), card("C")];
-    await settle();
+    await flush();
     expect(element.shadowRoot.activeElement).toBe(button(element, "C"));
   });
 
@@ -348,12 +346,12 @@ describe("c-shoresh-roots-hand", () => {
     element.addEventListener("leftfocus", left);
     button(element, "A").focus();
     element.cards = [];
-    await settle();
+    await flush();
     expect(left).toHaveBeenCalledWith(
       expect.objectContaining({ detail: { meld: "schedules" } })
     );
     run(3000);
-    await settle();
+    await flush();
     expect(
       element.shadowRoot.querySelector('[data-id="calm"]').textContent
     ).toBe("Nothing needs a look");
@@ -363,11 +361,11 @@ describe("c-shoresh-roots-hand", () => {
     const element = await render([card("A"), card("B")]);
     run(3000);
     element.cards = [card("B")];
-    await settle();
+    await flush();
     run(200);
     const midway = xOf(button(element, "A"));
     element.cards = [card("A"), card("B")];
-    await settle();
+    await flush();
     run(16);
     const a = button(element, "A");
     expect(a.hasAttribute("data-gone")).toBe(false);
@@ -380,7 +378,7 @@ describe("c-shoresh-roots-hand", () => {
     frames.clear();
     expect(live(element)[0].style.opacity).toBe("");
     element.cards = [card("B")];
-    await settle();
+    await flush();
     expect(button(element, "A")).toBeNull();
     expect(frames.size).toBe(0);
     expect(
