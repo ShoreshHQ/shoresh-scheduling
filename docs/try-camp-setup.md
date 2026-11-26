@@ -1411,8 +1411,8 @@ time_block, activity, location, source_system, camper_id, camper_name, camper_nu
 ## 34. People: who can use Shoresh
 
 Shoresh has no screen for people. Who can use it is set in Salesforce **Setup** (the gear, top
-right, then **Setup**; you need to be a Salesforce administrator), with one permission set:
-**Shoresh Scheduler**. The names below are the ones on screen in November 2026.
+right, then **Setup**; you need to be a Salesforce administrator), with one permission set for
+staff: **Shoresh Scheduler** (an administrator can add **See error details**, below). The names below are the ones on screen in November 2026.
 
 ### Give someone Shoresh
 
@@ -1476,7 +1476,7 @@ it; nobody has it until an administrator gives it.
 4. Click **Execute**. One row shows: the code, when, who, and the detail (double-click the
    **Detail__c** cell to read all of it).
 
-Without **See error details**, step 4 says "No such column 'Detail__c'". Once Shoresh is
+In the test org, without **See error details**, step 4 says "No such column 'Detail__c'". Once Shoresh is
 installed from the AppExchange, the names have its prefix: `shoresh__ErrorLog__c`,
 `shoresh__Person__r`, `shoresh__Detail__c`.
 

@@ -201,9 +201,10 @@ These never bend for Shoresh.
   Shoresh's own refusals MUST NOT carry one; one request MUST have one code; a code the server
   gave MUST NOT be given a second (ADR 0030; Greg 2026-11-21). A camp's Salesforce admin MUST be
   able to read every Error Log record in full, its technical detail too, through the packaged
-  permission set **See error details** (read only, every record); no other permission set grants
-  it (Greg 2026-11-26: "admins can see and should see an error's technical details"). Tests:
-  ErrorCodesTest (seeErrorDetailsReadsEveryLogInFull);
+  permission set **See error details** (read only: the object and its fields; the admin's View
+  All Data reaches every record); no other permission set grants it (Greg 2026-11-26: "admins can see and should see an error's technical details"). Tests:
+  ErrorCodesTest (seeErrorDetailsReadsEveryLogInFull); error-log-access.test.js "only See error details
+  grants the Error Log (CORE-6.15)";
   ScreenErrorsTest anythingElseSaysShoreshCouldNotTellWhy; shoreshErrors.test.js "support codes
   (CORE-6.15)".
 - **CORE-6.19** A count Shoresh can't make MUST be said, never shown as a smaller number or a

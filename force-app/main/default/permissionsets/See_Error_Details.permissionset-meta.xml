@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <PermissionSet xmlns="http://soap.sforce.com/2006/04/metadata">
     <description
-  >For the camp's Salesforce admin: read every Error Log in full, the support code a person was shown, when, who it happened to and the technical detail (CORE-6.15). It cannot change or delete anything.</description>
+  >For the camp's Salesforce admin: read an Error Log in full, the support code a person was shown, when, who it happened to and the technical detail (CORE-6.15). The admin's own View All Data reaches every log. It cannot change or delete anything.</description>
     <fieldPermissions>
         <editable>false</editable>
         <field>ErrorLog__c.Detail__c</field>
@@ -21,6 +21,6 @@
         <allowRead>true</allowRead>
         <modifyAllRecords>false</modifyAllRecords>
         <object>ErrorLog__c</object>
-        <viewAllRecords>true</viewAllRecords>
+        <viewAllRecords>false</viewAllRecords>
     </objectPermissions>
 </PermissionSet>
