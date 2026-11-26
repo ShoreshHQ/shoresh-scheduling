@@ -136,7 +136,8 @@ public class GeneratedLimitsTest {
     Location__c hall = new Location__c(
       Season__c = ids.get('Season'),
       Name = 'Hall',
-      GroupsThatFit__c = 20
+      // Room for ten other programs' four groups at once (AgentLimitsTest's ten).
+      GroupsThatFit__c = 40
     );
     Database.insert(hall, AccessLevel.SYSTEM_MODE);
     ids.put('Hall', hall.Id);
@@ -198,12 +199,14 @@ public class GeneratedLimitsTest {
       groups.addAll(fourGroupsIn(division));
     }
     Database.insert(groups, AccessLevel.SYSTEM_MODE);
-    List<SObject> setTime = new List<SObject>();
+    // Every fixed activity, then every recurring one: Salesforce saves at most 10 runs of one kind.
+    List<SObject> fixed = new List<SObject>();
+    List<SObject> recurring = new List<SObject>();
     List<ScheduleDay__c> days = new List<ScheduleDay__c>();
     for (Integer p = 0; p < programs.size(); p++) {
       List<TimeBlock__c> own = (List<TimeBlock__c>) slice(blocks, p * 8, 8);
       List<Group__c> theirs = (List<Group__c>) slice(groups, p * 4, 4);
-      setTime.add(
+      fixed.add(
         new FixedActivity__c(
           Program__c = programs[p].Id,
           Name = 'Assembly',
@@ -212,7 +215,7 @@ public class GeneratedLimitsTest {
           Location__c = ids.get('Hall')
         )
       );
-      setTime.add(
+      recurring.add(
         new RecurringActivity__c(
           Program__c = programs[p].Id,
           Name = 'Lunch',
@@ -230,7 +233,8 @@ public class GeneratedLimitsTest {
         publishedDay(published[p].Id, week.StartDate__c.addDays(1), grid)
       );
     }
-    Database.insert(setTime, AccessLevel.SYSTEM_MODE);
+    fixed.addAll(recurring);
+    Database.insert(fixed, AccessLevel.SYSTEM_MODE);
     Database.insert(days, AccessLevel.SYSTEM_MODE);
     PublishedGuard.done();
   }

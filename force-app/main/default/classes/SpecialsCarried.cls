@@ -21,6 +21,50 @@ public with sharing class SpecialsCarried {
     return readBefore.get(scheduleId);
   }
 
+  /**
+   * What each of these schedules carried, read together (one query) and kept for read(): a
+   * week's published programs (ScheduleSpecials.shownAll).
+   */
+  public static void readAll(List<Id> scheduleIds) {
+    List<Id> unread = new List<Id>();
+    for (Id scheduleId : scheduleIds) {
+      if (!readBefore.containsKey(scheduleId)) {
+        unread.add(scheduleId);
+      }
+    }
+    if (
+      unread.isEmpty() || !Schema.sObjectType.PublishedPlan__c.isAccessible()
+    ) {
+      return;
+    }
+    Map<Id, List<PublishedPlan__c>> rowsBySchedule = new Map<Id, List<PublishedPlan__c>>();
+    for (Id scheduleId : unread) {
+      rowsBySchedule.put(scheduleId, new List<PublishedPlan__c>());
+    }
+    for (PublishedPlan__c part : [
+      SELECT
+        Schedule__c,
+        Name,
+        Kind__c,
+        Item__c,
+        Date__c,
+        Notes__c,
+        Part__c,
+        Plan__c,
+        GridFormatVersion__c,
+        Revision__c
+      FROM PublishedPlan__c
+      WHERE Schedule__c IN :unread
+      WITH USER_MODE
+      ORDER BY Kind__c, Date__c, Name, Item__c, Part__c
+    ]) {
+      rowsBySchedule.get(part.Schedule__c).add(part);
+    }
+    for (Id scheduleId : unread) {
+      readBefore.put(scheduleId, fromRows(rowsBySchedule.get(scheduleId)));
+    }
+  }
+
   private static List<ScheduleSpecials.Special> readNow(Id scheduleId) {
     List<PublishedPlan__c> rows = new List<PublishedPlan__c>();
     for (PublishedPlan__c part : [

@@ -2,8 +2,9 @@
  * A published week as Shoresh's Schedules screen shows it (docs/protocol/api.md API-1.26): web
  * address /v1/week_view?season=&week=, GET. For each program that published the week, what the
  * screen itself opens (SchedulesController.openSchedule: the days, the special days and events,
- * the rain marks), with the camp's words, so the connector draws Shoresh's own view of it and
- * no one draws their own. User mode: the person's own access.
+ * the rain marks; every program's read together, openSchedules), with the camp's words, so the
+ * connector draws Shoresh's own view of it and no one draws their own. User mode: the person's
+ * own access.
  */
 @RestResource(urlMapping='/v1/week_view')
 global with sharing class AgentWeekView implements AgentRequest.Read {
@@ -31,9 +32,7 @@ global with sharing class AgentWeekView implements AgentRequest.Read {
   public static Map<String, Object> answer(String seasonName, String weekName) {
     Season__c season = OutgoingRows.seasonCalled(seasonName);
     Week__c week = OutgoingRows.weekIn(season, weekName);
-    List<Object> programs = new List<Object>();
-    Schedule__c first;
-    for (Schedule__c schedule : [
+    List<Schedule__c> published = [
       SELECT Id, Program__c, Week__c, Program__r.Name
       FROM Schedule__c
       WHERE
@@ -43,20 +42,27 @@ global with sharing class AgentWeekView implements AgentRequest.Read {
       WITH USER_MODE
       ORDER BY Program__r.SortOrder__c, Program__r.Name, Id
       LIMIT 50
-    ]) {
-      if (first == null) {
-        first = schedule;
-      }
-      programs.add(
-        new Map<String, Object>{
-          'program' => schedule.Program__r.Name,
-          'view' => SchedulesController.openSchedule(schedule.Id)
-        }
-      );
-    }
-    if (programs.isEmpty()) {
+    ];
+    if (published.isEmpty()) {
       throw new ShoreshException(
         OutgoingPublished.notPublished(season, week.Name)
+      );
+    }
+    List<Id> scheduleIds = new List<Id>();
+    for (Schedule__c schedule : published) {
+      scheduleIds.add(schedule.Id);
+    }
+    // Every program's published week opened together, as the screen opens one (G8).
+    List<ScheduleViews.ScheduleView> views = SchedulesController.openSchedules(
+      scheduleIds
+    );
+    List<Object> programs = new List<Object>();
+    for (Integer i = 0; i < published.size(); i++) {
+      programs.add(
+        new Map<String, Object>{
+          'program' => published[i].Program__r.Name,
+          'view' => views[i]
+        }
       );
     }
     Id campId = campOf(season);
@@ -65,7 +71,7 @@ global with sharing class AgentWeekView implements AgentRequest.Read {
       'labels' => CampLabels.forCamp(campId).all(),
       'dayNaming' => DayWords.namingOf(season.Id),
       'programs' => programs,
-      'opens' => opens(campId, season.Id, first)
+      'opens' => opens(campId, season.Id, published[0])
     };
   }
 

@@ -433,7 +433,7 @@ Slice 6 (choices 32 to 36) takes a special day off a day and cleans up: desktop
     when the week was read with them), their plans one more when there are any, and what a
     published copy carries one, once per request (published history never changes). A preview
     is now at most 7 queries (ADR 0008 part 5 item 7).
-28. **The Schedules page shows them** (`ScheduleViews.openWithSpecials`, `ScheduleSpecials.shown`;
+28. **The Schedules page shows them** (`ScheduleViews.openAllWithSpecials`, `ScheduleSpecials.shownAll`;
     desktop D6). A schedule that is or was published (Status Published or `PublishedAt__c`) shows
     what it carried, whatever changed since; any other (a saved or imported version, a draft) shows
     the week's special days and events as they are now, as Manual Build and Generated Schedule do
