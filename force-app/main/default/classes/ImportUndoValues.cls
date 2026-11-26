@@ -66,6 +66,27 @@ public with sharing class ImportUndoValues {
     Set<String> fields,
     Set<Id> ids
   ) {
+    return new Map<Id, SObject>(
+      Database.queryWithBinds(
+        'SELECT Id, ' +
+          String.join(columns(type, fields), ', ') +
+          ' FROM ' +
+          ShoreshSchema.queryName(type) +
+          ' WHERE Id IN :ids',
+        new Map<String, Object>{ 'ids' => ids },
+        AccessLevel.USER_MODE
+      )
+    );
+  }
+
+  /**
+   * The columns read reads besides Id: the given fields and the record's name. Only fields
+   * ImportFields lists are ever among them.
+   */
+  public static List<String> columns(
+    Schema.SObjectType type,
+    Set<String> fields
+  ) {
     Set<String> columns = new Set<String>{ 'Name' };
     for (String name : fields) {
       if (name != 'Id') {
@@ -79,17 +100,7 @@ public with sharing class ImportUndoValues {
     if (type == Offering__c.SObjectType) {
       columns.add(ImportFields.offeringNameColumn());
     }
-    return new Map<Id, SObject>(
-      Database.queryWithBinds(
-        'SELECT Id, ' +
-          String.join(new List<String>(columns), ', ') +
-          ' FROM ' +
-          ShoreshSchema.queryName(type) +
-          ' WHERE Id IN :ids',
-        new Map<String, Object>{ 'ids' => ids },
-        AccessLevel.USER_MODE
-      )
-    );
+    return new List<String>(columns);
   }
 
   /**
