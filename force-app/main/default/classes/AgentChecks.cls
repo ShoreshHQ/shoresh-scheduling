@@ -36,16 +36,7 @@ global with sharing class AgentChecks implements AgentRequest.Read {
     AgentWeeks.Week week = AgentSchedules.placeOfEither(asked);
     requireDraft(week, what);
     Map<String, Object> read = AgentBuild.setupOf(week);
-    // The program's setup for the week, read once for the draft and its setup changes, on the
-    // season's activities and locations the season's setup has just read (G8).
-    GeneratedSetup setup = loaded(week, read);
-    List<ScheduleDays.DayGrid> draftDays = new List<ScheduleDays.DayGrid>();
-    if (week.manual) {
-      read.put('draft', ManualBuildViews.openWith(week.draft.Id, setup));
-    } else {
-      read.put('inputs', inputsOf(setup, draftDays));
-    }
-    read.put('setup_changes', setupChangesOf(week, setup, draftDays));
+    putWeek(read, week);
     read.put('accepted', WeekAccepts.accepted(week.draft.Id));
     // The week as it is called, for the labels an edit's version and Undo line carry.
     read.put('week_name', week.name);
@@ -53,45 +44,24 @@ global with sharing class AgentChecks implements AgentRequest.Read {
   }
 
   /**
-   * What the week's screens read, on one read of its setup: on Manual Build its draft (getDraft's,
-   * ManualBuildViews), on Generated Schedule what Generate reads (getInputs's, GeneratedInputs),
-   * and the setup changed since (getSetupChanges's, SetupMatch). Refused in the screens' words
-   * when it can't be read, as their own reads are (ScreenErrors.ofLoading).
+   * What the week's screens read, on one read of its setup (G8), on the season's activities and
+   * locations the season's setup has just read: on Manual Build its draft (getDraft's,
+   * ManualBuildViews), on Generated Schedule what Generate reads (getInputs's, GeneratedInputs,
+   * with the draft's days), then the setup changed since (getSetupChanges's, SetupMatch). Refused
+   * in the screens' words when it can't be read, as their own reads are (ScreenErrors.ofLoading).
    */
-  private static GeneratedSetup loaded(
-    AgentWeeks.Week week,
-    Map<String, Object> read
-  ) {
+  private static void putWeek(Map<String, Object> read, AgentWeeks.Week week) {
     try {
-      return new GeneratedSetup(week.program.Id, week.weekId)
+      GeneratedSetup setup = new GeneratedSetup(week.program.Id, week.weekId)
         .withSeason((SeasonSetupReader.SeasonSetup) read.get('setup'));
-    } catch (Exception e) {
-      throw ScreenErrors.ofLoading(e);
-    }
-  }
-
-  private static GeneratedInputs.Inputs inputsOf(
-    GeneratedSetup setup,
-    List<ScheduleDays.DayGrid> draftDays
-  ) {
-    try {
-      return GeneratedInputs.read(setup, draftDays);
-    } catch (Exception e) {
-      throw ScreenErrors.ofLoading(e);
-    }
-  }
-
-  /** draftDays: Generated Schedule's as getInputs read them; Manual Build's are read here. */
-  private static SetupMatch.Preview setupChangesOf(
-    AgentWeeks.Week week,
-    GeneratedSetup setup,
-    List<ScheduleDays.DayGrid> draftDays
-  ) {
-    try {
-      return SetupMatch.onSetup(
-        setup,
-        week.manual ? ScheduleDays.read(week.draft.Id) : draftDays
-      );
+      List<ScheduleDays.DayGrid> draftDays = new List<ScheduleDays.DayGrid>();
+      if (week.manual) {
+        read.put('draft', ManualBuildViews.openWith(week.draft.Id, setup));
+        draftDays = ScheduleDays.read(week.draft.Id);
+      } else {
+        read.put('inputs', GeneratedInputs.read(setup, draftDays));
+      }
+      read.put('setup_changes', SetupMatch.onSetup(setup, draftDays));
     } catch (Exception e) {
       throw ScreenErrors.ofLoading(e);
     }
