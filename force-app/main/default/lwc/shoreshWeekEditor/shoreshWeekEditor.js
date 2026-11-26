@@ -35,6 +35,7 @@ import {
 import { cellKey as toolCellKey, replan, toolRuns } from "./tools";
 import {
   canMove,
+  clearPreview,
   copyStep,
   deleteStep,
   editContextOf,
@@ -222,6 +223,8 @@ export default class ShoreshWeekEditor extends SaveQueue(LightningElement) {
   @api rainyWith;
   // The version before a rainy day or a Clear is being kept.
   keepingVersion = false;
+  // Clear's preview, asked before it is made (WEEK-6.15): { asked, heading, lines, confirmLabel }.
+  clearAsk = null;
   // For each rainy-day Undo step: { date, before, after }, the day's "Rain plan full" marks
   // before and after it (what its Undo and Redo leave).
   stepRain = new Map();
@@ -273,6 +276,8 @@ export default class ShoreshWeekEditor extends SaveQueue(LightningElement) {
   focusUndoAfterRender = false;
   // After a day or week tool, focus goes to its line's Undo.
   focusToolUndoAfterRender = false;
+  // Clear's question closed with nothing cleared: focus goes back to the Edit menu (WCAG 2.4.3).
+  focusEditMenuAfterRender = false;
   // Where keyboard focus goes once the page has drawn (after a list line was clicked).
   focusAfterRender = null;
   // "Set it up" done: { key } of its cell, focused once drawn ("Open <name>" if the day is replaced).
@@ -433,7 +438,7 @@ export default class ShoreshWeekEditor extends SaveQueue(LightningElement) {
   /** Nothing is under way, so the week may be read again: no edit saving, no box or question open. */
   @api
   get settled() {
-    return !this.busy && !this.editor && !this.conflict;
+    return !this.busy && !this.editor && !this.conflict && !this.clearAsk;
   }
 
   tell() {
@@ -499,6 +504,8 @@ export default class ShoreshWeekEditor extends SaveQueue(LightningElement) {
   @api
   clear() {
     this.focusCellWhenDrawn = null;
+    // A Clear asked about another week is never made on this one.
+    this.clearAsk = null;
     this.locatedKey = null;
     this.draft = null;
     this.notice = null;
@@ -2507,18 +2514,20 @@ export default class ShoreshWeekEditor extends SaveQueue(LightningElement) {
   }
 
   /**
-   * Clear day and Clear week (WEEK-6.14): with nothing to clear, only that is said. Otherwise the
-   * week is first kept as a version named for what was pressed ("Before Clear Monday", "Before
-   * Clear Week 1"), so what was cleared is there after Undo has gone, then the clear is worked out
-   * again on the week as it is now and made as one Undo step. When the version can't be kept,
-   * nothing is cleared and it says why.
+   * Clear day and Clear week: with nothing to clear, only that is said. Otherwise its preview is
+   * asked first (WEEK-6.15): what it takes off, what stays and the version it keeps. On Clear the
+   * week is kept as a version named for what was pressed ("Before Clear Monday", "Before Clear
+   * Week 1", WEEK-6.14), so what was cleared is there after Undo has gone, then the clear is
+   * worked out again on the week as it is now and made as one Undo step. When the version can't
+   * be kept, nothing is cleared and it says why.
    */
   @api
-  async runClear(asked) {
+  runClear(asked) {
     // The version is the week as saved: an edit still on its way would be missing from it.
     if (
       this.keepingVersion ||
       this.busy ||
+      this.clearAsk ||
       this.refuseWhileRestoring() ||
       !this.schedule
     ) {
@@ -2529,11 +2538,25 @@ export default class ShoreshWeekEditor extends SaveQueue(LightningElement) {
       this.say(step.nothing);
       return;
     }
+    this.clearAsk = { asked, ...clearPreview(this.editCtx, step) };
+  }
+
+  async handleClearAnswer(event) {
+    if (!this.clearAsk) {
+      return;
+    }
+    const { asked } = this.clearAsk;
+    this.clearAsk = null;
+    if (!event.detail.yes || this.busy || !this.schedule) {
+      this.focusEditMenuAfterRender = true;
+      return;
+    }
     this.keepingVersion = true;
     try {
       await this.rainyWith(`Before Clear ${asked.name}`);
     } catch (e) {
       this.reportError(failed(`${asked.name} could not be cleared.`, e));
+      this.focusEditMenuAfterRender = true;
       return;
     } finally {
       this.keepingVersion = false;
@@ -3531,6 +3554,10 @@ export default class ShoreshWeekEditor extends SaveQueue(LightningElement) {
       // The line's Undo is gone with the line: focus goes to the Edit menu, where Undo and Redo
       // are.
       this.focusUndoAfterRender = false;
+      this.focusEditMenu();
+    }
+    if (this.focusEditMenuAfterRender) {
+      this.focusEditMenuAfterRender = false;
       this.focusEditMenu();
     }
     if (this.focusToolUndoAfterRender) {

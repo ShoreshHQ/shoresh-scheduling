@@ -181,6 +181,8 @@ export function clearEdit(days, dayIndexes, options = {}) {
   const { groupId, isAway = never, skip = never, setUp = null } = options;
   const rows = new Rows(days);
   const stayed = [];
+  // What it takes off, for its preview (WEEK-6.15): { day, group, block, slot }.
+  const takenOff = [];
   const skipped = new Set();
   const own = setUp ? weekSetTime(days, setUp) : null;
   dayIndexes.forEach((d) => {
@@ -198,6 +200,9 @@ export function clearEdit(days, dayIndexes, options = {}) {
         row,
         (b) => isAway(d, g, b),
         (b) => skip(d, g, b)
+      );
+      sorted.clear.forEach((p) =>
+        takenOff.push({ day: d, group: g, block: p.first, slot: p.slot })
       );
       clearPlacements(row, sorted.clear);
       if (setUp) {
@@ -229,7 +234,12 @@ export function clearEdit(days, dayIndexes, options = {}) {
       sorted.skipped.forEach((b) => skipped.add(`${d}|${g}|${b}`));
     });
   });
-  return { runs: rows.runs(), stayed, skipped: skipped.size };
+  return {
+    runs: rows.runs(),
+    stayed,
+    cleared: takenOff,
+    skipped: skipped.size
+  };
 }
 
 /**

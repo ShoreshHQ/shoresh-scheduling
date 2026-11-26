@@ -29,7 +29,7 @@ public virtual with sharing class AgentCells implements AgentRequest.Change {
     'revision'
   };
 
-  public Set<String> fields() {
+  public virtual Set<String> fields() {
     return FIELDS;
   }
 

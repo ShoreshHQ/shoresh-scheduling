@@ -84,6 +84,14 @@ const choose = async (element, id, value) => {
   q(element, `[data-id="${id}-${value}"]`).click();
   await flush();
 };
+/** Clear's preview (WEEK-6.15) answered with Clear, or Cancel; nothing when none was asked. */
+const answerClear = async (element, yes = true) => {
+  const ask = q(element, '[data-id="clear-ask"]');
+  if (ask) {
+    ask.shadowRoot.querySelector(`[data-id="${yes ? "yes" : "no"}"]`).click();
+    await flush();
+  }
+};
 /** The line after a tool, as read: its words, then its Undo. */
 const toolNotice = (element) =>
   [...q(element, '[data-id="tool-notice"]').children]
@@ -98,10 +106,11 @@ describe("c-shoresh-manual-build: day and week tools", () => {
     jest.clearAllMocks();
   });
 
-  it("Clear day clears the day shown for every bunk, no confirm, and says so with Undo", async () => {
+  it("Clear day clears the day shown for every bunk once its preview is answered, and says so with Undo", async () => {
     const element = await render(start(["1,2,3", "1,3,"], ["1,2,", "1,,"]));
     q(element, '[data-id="clear-day"]').click();
     await flush();
+    await answerClear(element);
     const runs = sentRuns(0);
     expect(runs.every((run) => run.day === "2026-06-29")).toBe(true);
     expect(runs.map((run) => run.after)).toEqual([["", ""], [""]]);
@@ -124,6 +133,7 @@ describe("c-shoresh-manual-build: day and week tools", () => {
     const element = await render(start(["1,,", "1,,"], ["1,2,", "1,,"]));
     q(element, '[data-id="clear-day"]').click();
     await flush();
+    await answerClear(element);
     expect(saveSlots).not.toHaveBeenCalled();
     expect(q(element, '[data-id="notice"]').textContent).toBe(
       "Nothing to clear on Monday."
@@ -138,6 +148,7 @@ describe("c-shoresh-manual-build: day and week tools", () => {
     q(element, '[data-view="group"]').click();
     await flush();
     await choose(element, "clear-group-day", "1");
+    await answerClear(element);
     expect(sentRuns(0)).toEqual([
       expect.objectContaining({
         day: "2026-06-30",
@@ -152,10 +163,55 @@ describe("c-shoresh-manual-build: day and week tools", () => {
     );
     q(element, '[data-id="clear-week"]').click();
     await flush();
+    await answerClear(element);
     expect(new Set(sentRuns(1).map((run) => run.day))).toEqual(
       new Set(["2026-06-29", "2026-06-30"])
     );
     expect(toolNotice(element)).toBe("Cleared Week 1 · Undo");
+  });
+
+  // WEEK-6.15
+  it("WEEK-6.15: Clear asks first with what it takes off, what stays and the version it keeps", async () => {
+    const element = await render(start(["1,2,3", "1,3,"], ["1,2,", "1,3,"]));
+    q(element, '[data-id="clear-day"]').click();
+    await flush();
+    const ask = q(element, '[data-id="clear-ask"]');
+    expect(ask.heading).toBe("Clear Monday?");
+    expect(ask.lines).toEqual([
+      "Bunk 1 · Monday: Swim, Soccer",
+      "Bunk 2 · Monday: Soccer",
+      'The week as it is now is kept in Versions as "Before Clear Monday".'
+    ]);
+    expect(ask.confirmLabel).toBe("Clear");
+    // Nothing is kept or saved until Clear is pressed.
+    expect(keepWeek).not.toHaveBeenCalled();
+    expect(saveSlots).not.toHaveBeenCalled();
+    await answerClear(element);
+    expect(keepWeek).toHaveBeenCalledTimes(1);
+    expect(saveSlots).toHaveBeenCalledTimes(1);
+    expect(q(element, '[data-id="clear-ask"]')).toBeNull();
+  });
+
+  // WEEK-6.15
+  it("WEEK-6.15: Cancel clears nothing and keeps no version; the week's preview names every day", async () => {
+    const element = await render(start(["1,2,", "1,3,"], ["1,2,", "1,,"]));
+    q(element, '[data-id="clear-week"]').click();
+    await flush();
+    const ask = q(element, '[data-id="clear-ask"]');
+    expect(ask.heading).toBe("Clear Week 1?");
+    expect(ask.lines.slice(0, 3)).toEqual([
+      "Bunk 1 · Monday: Swim",
+      "Bunk 2 · Monday: Soccer",
+      "Bunk 1 · Tuesday: Swim"
+    ]);
+    await answerClear(element, false);
+    expect(q(element, '[data-id="clear-ask"]')).toBeNull();
+    // Focus goes back to the Edit menu, where Clear was chosen.
+    expect(q(element, "c-shoresh-week-editor").shadowRoot.activeElement).toBe(
+      q(element, '[data-id="edit-menu"]')
+    );
+    expect(keepWeek).not.toHaveBeenCalled();
+    expect(saveSlots).not.toHaveBeenCalled();
   });
 
   // WEEK-6.14
@@ -163,6 +219,7 @@ describe("c-shoresh-manual-build: day and week tools", () => {
     const element = await render(start(["1,2,", "1,3,"], ["1,2,", "1,3,"]));
     q(element, '[data-id="clear-day"]').click();
     await flush();
+    await answerClear(element);
     expect(keepWeek).toHaveBeenCalledWith({
       scheduleId: "d1",
       name: "Before Clear Monday"
@@ -174,12 +231,14 @@ describe("c-shoresh-manual-build: day and week tools", () => {
     q(element, '[data-view="group"]').click();
     await flush();
     await choose(element, "clear-group-day", "1");
+    await answerClear(element);
     expect(keepWeek).toHaveBeenLastCalledWith({
       scheduleId: "d1",
       name: "Before Clear Bunk 1 · Tuesday"
     });
     q(element, '[data-id="clear-week"]').click();
     await flush();
+    await answerClear(element);
     expect(keepWeek).toHaveBeenLastCalledWith({
       scheduleId: "d1",
       name: "Before Clear Week 1"
@@ -193,6 +252,9 @@ describe("c-shoresh-manual-build: day and week tools", () => {
     const empty = await render(start(["1,,", "1,,"], ["1,2,", "1,,"]));
     q(empty, '[data-id="clear-day"]').click();
     await flush();
+    // Nothing to clear: nothing is asked (WEEK-6.15).
+    expect(q(empty, '[data-id="clear-ask"]')).toBeNull();
+    await answerClear(empty);
     expect(keepWeek).not.toHaveBeenCalled();
     document.body.removeChild(empty);
     const element = await render(start(["1,2,", "1,3,"], ["1,2,", "1,3,"]));
@@ -201,6 +263,7 @@ describe("c-shoresh-manual-build: day and week tools", () => {
     });
     q(element, '[data-id="clear-day"]').click();
     await flush();
+    await answerClear(element);
     expect(saveSlots).not.toHaveBeenCalled();
     expect(q(element, '[data-id="build-error"]').textContent).toBe(
       "Monday could not be cleared. The name is too long."
@@ -219,9 +282,11 @@ describe("c-shoresh-manual-build: day and week tools", () => {
     );
     q(element, '[data-id="clear-day"]').click();
     await flush();
+    await answerClear(element);
     expect(q(element, '[data-id="clear-week"]').disabled).toBe(true);
     q(element, '[data-id="clear-week"]').click();
     await flush();
+    await answerClear(element);
     expect(keepWeek).toHaveBeenCalledTimes(1);
     answer({
       conflicts: [],
@@ -294,6 +359,7 @@ describe("c-shoresh-manual-build: day and week tools", () => {
     const element = await render(start(["1,2,", "1,,"], ["1,,", "1,,"]));
     q(element, '[data-id="clear-day"]').click();
     await flush();
+    await answerClear(element);
     expect(q(element, '[data-id="tool-notice"]')).not.toBeNull();
     q(element, '[data-id="undo"]').click();
     await flush();
@@ -305,6 +371,7 @@ describe("c-shoresh-manual-build: day and week tools", () => {
     const element = await render(start(["1,2,", "1,,"], ["1,,", "1,,"]));
     q(element, '[data-id="clear-day"]').click();
     await flush();
+    await answerClear(element);
     expect(q(element, '[data-id="tool-notice"]')).not.toBeNull();
     element.leave();
     await flush();
@@ -346,6 +413,7 @@ describe("c-shoresh-manual-build: day and week tools", () => {
     });
     q(element, '[data-id="clear-day"]').click();
     await flush();
+    await answerClear(element);
     expect(q(element, '[data-id="conflict"]')).not.toBeNull();
     // Not claimed while the question is open.
     expect(q(element, '[data-id="tool-notice"]')).toBeNull();
@@ -381,6 +449,7 @@ describe("c-shoresh-manual-build: day and week tools", () => {
     });
     q(element, '[data-id="clear-day"]').click();
     await flush();
+    await answerClear(element);
     expect(q(element, '[data-id="conflict"]')).not.toBeNull();
     saveSlots.mockResolvedValueOnce({
       conflicts: [],
@@ -405,6 +474,7 @@ describe("c-shoresh-manual-build: day and week tools", () => {
     });
     q(element, '[data-id="clear-day"]').click();
     await flush();
+    await answerClear(element);
     q(element, '[data-id="use-yours"]').click();
     await flush();
     expect(
@@ -423,6 +493,7 @@ describe("c-shoresh-manual-build: day and week tools", () => {
     });
     q(element, '[data-id="clear-day"]').click();
     await flush();
+    await answerClear(element);
     expect(q(element, '[data-id="conflict"]')).toBeNull();
     expect(
       sentRuns(1).map((run) => [run.groupId, run.firstBlockId, run.after])
@@ -482,6 +553,7 @@ describe("c-shoresh-manual-build: day and week tools", () => {
     const element = await render(first);
     q(element, '[data-id="clear-week"]').click();
     await flush();
+    await answerClear(element);
     const text = q(element, '[data-id="notice"]').textContent;
     expect(
       text.startsWith(
@@ -511,6 +583,7 @@ describe("c-shoresh-manual-build: day and week tools", () => {
     const element = await render(start(["1,2,", "1,,"], ["1,,", "1,,"]));
     q(element, '[data-id="clear-day"]').click();
     await flush();
+    await answerClear(element);
     expect(q(element, '[data-id="tool-undo"]').getAttribute("aria-label")).toBe(
       "Undo Cleared Monday"
     );
@@ -526,6 +599,7 @@ describe("c-shoresh-manual-build: day and week tools", () => {
     );
     q(element, '[data-id="clear-day"]').click();
     await flush();
+    await answerClear(element);
     // While it saves, the director clears Bunk 1's Period 2 on Tuesday (it waits its turn).
     q(element, '[data-view="group"]').click();
     await flush();

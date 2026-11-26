@@ -411,40 +411,68 @@ private class AgentManualBuildTest {
     }
   }
 
-  // WEEK-6.14, API-1.143
+  /** One cell (a group's Monday · Period 2) set to slot, as Manual Build's paste saves it. */
+  private static Map<String, Object> cellRun(
+    String groupName,
+    String was,
+    String slot
+  ) {
+    Map<String, Id> ids = GeneratedTestData.ids;
+    return new Map<String, Object>{
+      'day' => '2026-06-29',
+      'groupId' => ids.get(groupName),
+      'firstBlockId' => ids.get('Period 2'),
+      'blockIds' => new List<Object>{ ids.get('Period 2') },
+      'before' => new List<Object>{ was },
+      'after' => new List<Object>{ slot }
+    };
+  }
+
+  /** Soccer pasted in Group A's Monday Period 2; answers Clear Monday as the connector sends it. */
+  private static Map<String, Object> soccerToClear() {
+    String soccer = GeneratedTestData.a('Soccer');
+    post(
+      'move',
+      new Map<String, Object>{
+        'change' => 'Pasted 1 activity · ' + WHERE_A,
+        'said' => '',
+        'runs' => new List<Object>{ cellRun('Group A', '', soccer) }
+      }
+    );
+    return new Map<String, Object>{
+      'change' => 'Cleared Monday',
+      'said' => '',
+      'runs' => new List<Object>{ cellRun('Group A', soccer, '') },
+      'preview' => new List<Object>{
+        'Group A · Monday: Soccer',
+        'The week as it is now is kept in Versions as "Before Clear Monday".'
+      }
+    };
+  }
+
+  /** The confirm the last answer's preview gave, put on a copy of body. */
+  private static Map<String, Object> withYes(Map<String, Object> body) {
+    Map<String, Object> yes = body.clone();
+    yes.put('confirm', AgentAskFirstTestCalls.confirmIn(RestContext.response));
+    return yes;
+  }
+
+  // WEEK-6.14, WEEK-6.15, API-1.143
   @IsTest
-  static void aClearKeepsTheWeekAsBeforeClearFirst() {
+  static void aClearAsksFirstThenKeepsTheWeekAsBeforeClear() {
     System.runAs(ShoreshTestData.scheduler()) {
       GeneratedTestData.camp();
       Id draftId = manualDraft();
-      Map<String, Id> ids = GeneratedTestData.ids;
       String soccer = GeneratedTestData.a('Soccer');
-      Map<String, Object> run = new Map<String, Object>{
-        'day' => '2026-06-29',
-        'groupId' => ids.get('Group A'),
-        'firstBlockId' => ids.get('Period 2'),
-        'blockIds' => new List<Object>{ ids.get('Period 2') },
-        'before' => new List<Object>{ '' },
-        'after' => new List<Object>{ soccer }
-      };
-      post(
-        'move',
-        new Map<String, Object>{
-          'change' => 'Pasted 1 activity · ' + WHERE_A,
-          'said' => '',
-          'runs' => new List<Object>{ run.clone() }
-        }
-      );
-      run.put('before', new List<Object>{ soccer });
-      run.put('after', new List<Object>{ '' });
-      Map<String, Object> clear = new Map<String, Object>{
-        'change' => 'Cleared Monday',
-        'said' => '',
-        'runs' => new List<Object>{ run }
-      };
+      Map<String, Object> clear = soccerToClear();
       Test.startTest();
+      // Sent without the person's yes: nothing is done, and the screen's preview is said.
+      List<Object> asked = post('clear', clear.clone());
+      Map<String, Object> yes = withYes(clear);
+      String askedSoccer = periodTwo(draftId);
+      // The yes: one request, counted alone.
       Integer before = Limits.getQueries();
-      List<Object> done = post('clear', clear);
+      List<Object> done = post('clear', yes);
       Integer used = Limits.getQueries() - before;
       Map<String, Object> clearUndo = undo;
       List<Object> unreadable = post(
@@ -452,10 +480,19 @@ private class AgentManualBuildTest {
         new Map<String, Object>{
           'change' => 'Moved Soccer',
           'said' => '',
-          'runs' => new List<Object>{ run }
+          'runs' => clear.get('runs'),
+          'preview' => clear.get('preview')
         }
       );
       Test.stopTest();
+      Assert.areEqual(200, asked[0], String.valueOf(asked[1]));
+      Assert.areEqual(
+        'Nothing has been done yet. This clears Monday in Week 1 (Main, ' +
+          ManualDrafts.NAME +
+          '):\nGroup A · Monday: Soccer.\nThe week as it is now is kept in Versions as "Before Clear Monday".',
+        asked[1]
+      );
+      Assert.areEqual(soccer, askedSoccer, 'nothing cleared before the yes');
       Assert.areEqual(200, done[0], String.valueOf(done[1]));
       Assert.areEqual(
         'Cleared Monday. The week as it was is kept in Versions as "Before Clear Monday".',
@@ -477,6 +514,43 @@ private class AgentManualBuildTest {
       Assert.isTrue(used < 50, 'A clear used ' + used + ' queries');
       // Only a clear keeps a version here; anything else sent here is refused.
       Assert.areEqual(400, unreadable[0], String.valueOf(unreadable[1]));
+    }
+  }
+
+  // WEEK-6.15, API-1.106
+  @IsTest
+  static void aYesFromBeforeTheWeekChangedClearsNothing() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      GeneratedTestData.camp();
+      Id draftId = manualDraft();
+      String soccer = GeneratedTestData.a('Soccer');
+      Map<String, Object> clear = soccerToClear();
+      Test.startTest();
+      post('clear', clear.clone());
+      Map<String, Object> staleYes = withYes(clear);
+      // Someone changes the week after the person was asked.
+      post(
+        'move',
+        new Map<String, Object>{
+          'change' => 'Pasted 1 activity · Group B · Monday · Period 2',
+          'said' => '',
+          'runs' => new List<Object>{ cellRun('Group B', '', soccer) }
+        }
+      );
+      List<Object> refused = post('clear', staleYes);
+      Test.stopTest();
+      Assert.areEqual(409, refused[0], String.valueOf(refused[1]));
+      Assert.areEqual(soccer, periodTwo(draftId), 'nothing cleared');
+      Assert.areEqual(
+        0,
+        [
+          SELECT COUNT()
+          FROM Schedule__c
+          WHERE SourceSchedule__c = :draftId
+          WITH SYSTEM_MODE
+        ],
+        'no version kept'
+      );
     }
   }
 

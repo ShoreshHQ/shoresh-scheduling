@@ -821,7 +821,7 @@ const CAPABILITIES = [
     ...change(
       "clear_day",
       "clear_cells",
-      "Clear a day of a week's Manual Build, as Clear day in its Edit menu does: every activity, special event and elective set that day is taken out, for every group, or for one group; fixed and recurring activities and a group's away times stay. Manual Build only. As on the screen, the week as it was is kept first in Versions as \"Before Clear <day>\", and undo_last_change takes it back while this conversation lasts.",
+      "Clear a day of a week's Manual Build, as Clear day in its Edit menu does: every activity, special event and elective set that day is taken out, for every group, or for one group; fixed and recurring activities and a group's away times stay. Manual Build only. As on the screen, it shows what it takes off first, the week as it was is kept in Versions as \"Before Clear <day>\", and undo_last_change takes it back while this conversation lasts.",
       {
         day: CELL.day,
         group: {
@@ -841,7 +841,7 @@ const CAPABILITIES = [
     ...change(
       "clear_week",
       "clear_cells",
-      'Clear a week\'s Manual Build, as Clear week in its Edit menu does: every activity, special event and elective set of the week is taken out, for every group; fixed and recurring activities and away times stay. Manual Build only. As on the screen, the week as it was is kept first in Versions as "Before Clear <week>", and undo_last_change takes it back while this conversation lasts.',
+      'Clear a week\'s Manual Build, as Clear week in its Edit menu does: every activity, special event and elective set of the week is taken out, for every group; fixed and recurring activities and away times stay. Manual Build only. As on the screen, it shows what it takes off first, the week as it was is kept in Versions as "Before Clear <week>", and undo_last_change takes it back while this conversation lasts.',
       { seen: CELL.seen },
       [],
       ON_EITHER,
@@ -2496,6 +2496,9 @@ const ASKS_FIRST = [
   "change_special_schedule_frame",
   "assign_elective_seats",
   "apply_to_other_weeks",
+  // As Clear day and Clear week ask on Manual Build (WEEK-6.15).
+  "clear_day",
+  "clear_week",
   // Only when it replaces a placement made by hand, or time blocks or stations the person changed.
   "update_to_match_setup",
   "import_special_schedule",
