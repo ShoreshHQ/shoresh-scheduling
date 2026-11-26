@@ -40,8 +40,8 @@ Claude desktop extension Shoresh.mcpb) carries SheetJS Community Edition 0.20.3 
 engine.SheetJS.cjs, and its two views (week-view.html, print-view.html) are compiled with
 Lightning Web Components 8.28.2 (@lwc/engine-dom and the LWC packages it uses,
 https://github.com/salesforce/lwc), Copyright (c) Salesforce, Inc., licensed under the MIT
-License, and tslib 2.8.1 (https://github.com/microsoft/tslib), Copyright (c) Microsoft
-Corporation, licensed under the BSD Zero Clause License. Their licence texts:
+License, and tslib (https://github.com/microsoft/tslib) as built into @lwc/engine-dom,
+Copyright (c) Microsoft Corporation, licensed under the BSD Zero Clause License. Their licence texts:
 docs/licenses/LWC-MIT.txt and docs/licenses/tslib-0BSD.txt, also at the end of the connector's
 NOTICE.txt.
 

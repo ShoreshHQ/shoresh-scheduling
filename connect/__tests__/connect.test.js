@@ -4700,11 +4700,19 @@ describe("Shoresh for AI tools and the command line", () => {
     for (const licence of ["LWC-MIT.txt", "tslib-0BSD.txt"]) {
       expect(notice).toContain(read(ROOT, "docs/licenses", licence));
     }
-    // Every bundled library the views carry is named in NOTICE.
+    // Every bundled library the views carry is named in NOTICE and Settings' Legal, LWC at the
+    // engine version the views were built with (each view marks it), so an upgrade can't go stale.
+    const { parts } = require("../../force-app/main/default/lwc/shoreshAbout/aboutText.js").LEGAL;
+    const { version } = require("@lwc/engine-dom/package.json");
     for (const view of ["week-view.html", "print-view.html"]) {
       const text = read(TO, view);
-      if (/@lwc\/engine-dom/.test(text)) expect(notice).toContain("Lightning Web Components");
-      if (/Microsoft Corporation/.test(text)) expect(notice).toContain("tslib");
+      expect([view, text.includes(`/** version: ${version} */`)]).toEqual([view, true]);
+      expect(notice).toContain(`Lightning Web Components ${version}`);
+      expect(parts.some((p) => p.startsWith(`Lightning Web Components ${version},`))).toBe(true);
+      if (/Microsoft Corporation/.test(text)) {
+        expect(notice).toContain("tslib");
+        expect(parts.some((p) => p.startsWith("tslib,"))).toBe(true);
+      }
     }
     expect(notice).toContain("SheetJS Community Edition 0.20.3");
   });
