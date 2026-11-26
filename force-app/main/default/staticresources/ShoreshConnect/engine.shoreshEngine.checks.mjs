@@ -48,7 +48,7 @@ function sortValue(act) {
 }
 
 /** Day names by weekday (1 Monday ... 7 Sunday), for the lines that name a day. */
-export const DAY_NAMES = [
+const DAY_NAMES = [
   "",
   "Monday",
   "Tuesday",

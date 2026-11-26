@@ -11,7 +11,7 @@ import { LEAVE_OUT } from "./engine.shoreshImportEngine.reading-constants.mjs";
 import { WEEKDAYS, looseKey, timeRange, tidy, withoutTimes } from "./engine.shoreshImportEngine.text.mjs";
 import { compareNames, compareNumbered } from "./engine.shoreshImportEngine.order.mjs";
 
-export const CHANGE_OVER_MAX_MINUTES = 10;
+const CHANGE_OVER_MAX_MINUTES = 10;
 
 /** One row label as a time block: { label, name, start, end } (minutes; end may be null). */
 export function blockFromLabel(label) {

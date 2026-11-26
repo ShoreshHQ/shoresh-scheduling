@@ -11,7 +11,7 @@ import { LEAVE_OUT } from "./reading-constants";
 import { WEEKDAYS, looseKey, timeRange, tidy, withoutTimes } from "./text";
 import { compareNames, compareNumbered } from "./order";
 
-export const CHANGE_OVER_MAX_MINUTES = 10;
+const CHANGE_OVER_MAX_MINUTES = 10;
 
 /** One row label as a time block: { label, name, start, end } (minutes; end may be null). */
 export function blockFromLabel(label) {

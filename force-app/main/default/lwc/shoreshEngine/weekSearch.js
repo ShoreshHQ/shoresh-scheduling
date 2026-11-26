@@ -1,5 +1,5 @@
 import { NOW, nowOf, tell } from "./progress";
-import { check } from "./weekOptions";
+import { allowed, busyAt, headOf, shortfall } from "./weekOptions";
 import { moveAcrossDays } from "./weekAcross";
 import {
   BUDGET,
@@ -9,7 +9,6 @@ import {
   MIN_COST,
   NONE_FOR,
   OVERLAP,
-  PREFERENCES,
   PRIORITY_RANK,
   SEARCHED,
   lexLess
@@ -124,40 +123,10 @@ function startSearch(st) {
   }
 }
 
-/** The bends placing `act` here would need: null when a limit forbids it. */
-function allowed(st, act, g, d, b) {
-  const bends = check(st, act, g, d, b, true);
-  if (bends === null || bends.some((r) => !PREFERENCES.includes(r))) {
-    return null;
-  }
-  return bends;
-}
-
 const overlapsKept = (st, g, d, b) =>
   (st.peersByDay[d].get(b) || []).some((p) =>
     st.keptKeys.has(st.cellKey(g, d, p))
   );
-
-const busyAt = (st, g, d, b) =>
-  (st.peersByDay[d].get(b) || []).some((p) => {
-    const pk = st.cellKey(g, d, p);
-    return st.assigned.has(pk) || st.keptKeys.has(pk);
-  });
-
-/** The head cell of the placement covering k (k itself unless it is a tail). */
-function headOf(st, k) {
-  if (!st.spanTails.has(k)) {
-    return k;
-  }
-  const [g, d, b] = st.splitKey(k);
-  for (let i = st.blockIdx(d, b) - 1; i >= 0; i--) {
-    const hk = st.cellKey(g, d, st.blocksOf(d)[i].id);
-    if (!st.spanTails.has(hk)) {
-      return hk;
-    }
-  }
-  return k;
-}
 
 function cellsOfHead(st, hk) {
   const [g, d, b] = st.splitKey(hk);
@@ -341,28 +310,8 @@ function periodMost(st, d, b) {
   return maxFlow(ids.size + 2, edges, 0, 1);
 }
 
-/**
- * How far these groups are from their weekly minimums: { count: [pairs short, sessions short],
- * short: the "group|activity" pairs short }. A move never takes a group below a minimum it meets,
- * and never makes either count larger; a group already short may trade a short session for
- * another group's.
- */
-function shortfall(st, groups) {
-  let pairs = 0;
-  let sessions = 0;
-  const short = new Map();
-  for (const g of groups) {
-    for (const act of st.acts) {
-      const missing = act.min - st.getCount(g, act.id);
-      if (missing > 0 && st.eligibility.get(act.id).has(g)) {
-        pairs++;
-        sessions += missing;
-        short.set(`${g}|${act.id}`, missing);
-      }
-    }
-  }
-  return { count: [pairs, sessions], short };
-}
+// A move never takes a group below a minimum it meets (shortfall), and never makes either count
+// larger; a group already short may trade a short session for another group's.
 /** The first group and activity (in the build's order) further short now than before. */
 function costOf(now, before) {
   for (const [k, missing] of now.short) {

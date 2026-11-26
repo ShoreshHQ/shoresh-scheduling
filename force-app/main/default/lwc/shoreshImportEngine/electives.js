@@ -96,7 +96,7 @@ function limited(name) {
  * A list cell's set is named after its own choices, sorted and once each (desktop D2: "Electives
  * (Arts, Crafts, Games)"), so the same list in any order or cell is one set.
  */
-export function listSetName(parts, t) {
+function listSetName(parts, t) {
   const seen = new Set();
   const sorted = [...parts]
     .sort(compareNames)

@@ -1,6 +1,6 @@
 import { NOW, nowOf, tell } from "./progress";
-import { check } from "./weekOptions";
-import { PREFERENCES } from "./weekRules";
+import { allowed, headOf, shortfall } from "./weekOptions";
+import { lexLess } from "./weekRules";
 
 /**
  * Step 8, part 2, the last pass (protocol 8.24-8.28): moves between days, for weekly minimums.
@@ -47,31 +47,7 @@ const PASS_WORK = 60000;
 // Moves tried between pauses, so the screen keeps the tab responsive.
 const PAUSE_EVERY = 200;
 
-/** The bends placing `act` here would need: null when a limit forbids it. */
-function allowed(st, act, g, d, b) {
-  const bends = check(st, act, g, d, b, true);
-  if (bends === null || bends.some((r) => !PREFERENCES.includes(r))) {
-    return null;
-  }
-  return bends;
-}
-
 const movable = (st, k) => st.freeSlotByKey.has(k) && !st.keptKeys.has(k);
-
-/** The head cell of the placement covering k (k itself unless it is a tail). */
-function headOf(st, k) {
-  if (!st.spanTails.has(k)) {
-    return k;
-  }
-  const [g, d, b] = st.splitKey(k);
-  for (let i = st.blockIdx(d, b) - 1; i >= 0; i--) {
-    const hk = st.cellKey(g, d, st.blocksOf(d)[i].id);
-    if (!st.spanTails.has(hk)) {
-      return hk;
-    }
-  }
-  return k;
-}
 
 /** The placement covering cell k: { act, g, d, b, keys }, or null when the cell is empty. */
 function placementAt(st, k) {
@@ -94,18 +70,7 @@ const openOn = (st, d) =>
   st.freeByDay[d].filter((s) => !st.assigned.has(st.keyOf(s))).length;
 
 /** Sessions short of a minimum, per "group|activity", for these groups. */
-function shortOf(st, groups) {
-  const short = new Map();
-  for (const g of groups) {
-    for (const act of st.acts) {
-      const missing = act.min - st.getCount(g, act.id);
-      if (missing > 0 && st.eligibility.get(act.id).has(g)) {
-        short.set(`${g}|${act.id}`, missing);
-      }
-    }
-  }
-  return short;
-}
+const shortOf = (st, groups) => shortfall(st, groups).short;
 
 const total = (short) => [...short.values()].reduce((n, x) => n + x, 0);
 
@@ -156,15 +121,6 @@ function backToBack(st, groups) {
     }
   }
   return n;
-}
-
-function lessThan(a, b) {
-  for (let i = 0; i < a.length; i++) {
-    if (a[i] !== b[i]) {
-      return a[i] < b[i];
-    }
-  }
-  return false;
 }
 
 /**
@@ -254,7 +210,7 @@ function* bestChain(st, g0, need, budget, outOfWork, at, trade = false) {
       backToBack(st, list),
       journal.length
     ];
-    if (!best || lessThan(rank, best.rank)) {
+    if (!best || lexLess(rank, best.rank)) {
       best = { rank, journal: journal.map((j) => ({ ...j })) };
     }
   };

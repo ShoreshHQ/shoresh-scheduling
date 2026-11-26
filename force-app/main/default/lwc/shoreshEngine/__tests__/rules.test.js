@@ -1819,6 +1819,20 @@ describe("the grid it returns", () => {
     const items = generateWeek(input).days[0].items;
     expect(items.find((i) => i.id === "swim").name).toBe("Swimming");
   });
+
+  it("reads a damaged row that starts by carrying on as Open, as every screen does", () => {
+    const spec = {
+      mode: "fillOpen",
+      blocks: [block(0), block(1)],
+      activities: [activity("swim"), activity("arts")],
+      cells: [{ day: 0, group: "g1", block: "b1", act: "swim" }]
+    };
+    const damaged = camp(spec);
+    damaged.days[0].rows = ["^,1"];
+    const result = generateWeek(damaged);
+    expect(result.days[0].rows).toEqual(generateWeek(camp(spec)).days[0].rows);
+    expect(result.openCells).toEqual([]);
+  });
 });
 
 // Manual Build's dots reuse these words (ADR 0010): pinned here so a change is deliberate.

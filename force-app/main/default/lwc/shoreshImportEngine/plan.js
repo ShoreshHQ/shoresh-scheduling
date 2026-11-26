@@ -196,7 +196,7 @@ function readAsIds(proposal) {
  * The answers to remember for this camp (Greg: exact answers, so a similar file does not ask
  * again), and those to forget: "Leave it out for now" means the next import asks again.
  */
-export function answersToKeep(proposal, answers) {
+function answersToKeep(proposal, answers) {
   const ids = new Set([
     ...proposal.reading.pairs.map((x) => x.id),
     ...proposal.reading.disagreements.map((x) => x.id),

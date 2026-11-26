@@ -7,12 +7,12 @@
 import { foldName } from "./engine.shoreshImportEngine.names.mjs";
 import { compareNames } from "./engine.shoreshImportEngine.order.mjs";
 
-export const REMOVE = "remove";
+const REMOVE = "remove";
 
 const ORDER = ["Activity", "FixedActivity", "RecurringActivity"];
 
 /** The answer key of one listed item. */
-export function missingKey(kind, program, name) {
+function missingKey(kind, program, name) {
   return `missing|${kind}|${program || ""}|${name}`;
 }
 
