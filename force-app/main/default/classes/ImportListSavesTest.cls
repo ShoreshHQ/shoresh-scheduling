@@ -819,6 +819,68 @@ private class ImportListSavesTest {
   }
 
   /**
+   * INGEST-1.10 (ADR 0031 A7): a list's When it runs adds a box newly off and removes a box back
+   * on, saved with the activity and counted as a change to it, never on their own.
+   */
+  @IsTest
+  static void savesABoxOfWhenItRunsTakenOffAndOnePutBack() {
+    Camp c = camp();
+    System.runAs(new User(Id = c.scheduler)) {
+      Program__c program = [
+        SELECT Id
+        FROM Program__c
+        WHERE Season__c = :c.season.Id
+        LIMIT 1
+      ];
+      TimeBlock__c block = ShoreshTestData.timeBlock(program.Id, 'Period 1', 9);
+      ActivityOffTime__c tuesday = new ActivityOffTime__c(
+        Activity__c = c.archery.Id,
+        TimeBlock__c = block.Id,
+        Day__c = 'Tuesday'
+      );
+      insert as user tuesday;
+      Test.startTest();
+      ImportSetupSaves.Result result = ImportController.saveList(
+        JSON.serialize(
+          ImportTestPlans.listPlan(
+            c.season.Id,
+            new List<Object>{
+              new Map<String, Object>{
+                'kind' => 'ActivityOffTime',
+                'key' => 'ActivityOffTime:' +
+                c.archery.Id +
+                ':Monday',
+                'fields' => new Map<String, Object>{ 'Day__c' => 'Monday' },
+                'refs' => new Map<String, Object>{
+                  'TimeBlock__c' => block.Id,
+                  'Activity__c' => c.archery.Id
+                }
+              },
+              new Map<String, Object>{
+                'kind' => 'ActivityOffTime',
+                'id' => tuesday.Id,
+                'remove' => true,
+                'fields' => new Map<String, Object>()
+              }
+            }
+          )
+        )
+      );
+      Test.stopTest();
+      Assert.areEqual(1, result.changed.get('Activity'));
+      Assert.isFalse(result.added.containsKey('ActivityOffTime'));
+      List<ActivityOffTime__c> off = [
+        SELECT TimeBlock__c, Day__c
+        FROM ActivityOffTime__c
+        WHERE Activity__c = :c.archery.Id
+      ];
+      Assert.areEqual(1, off.size());
+      Assert.areEqual(block.Id, off[0].TimeBlock__c);
+      Assert.areEqual('Monday', off[0].Day__c);
+    }
+  }
+
+  /**
    * Namespace safety: a list whose screen names fields with the package's prefix changes the
    * same fields and who; its log, spelled with the prefix (fields, the who rows' object), is
    * undone exactly as one without; and a new activity added that way is removed.

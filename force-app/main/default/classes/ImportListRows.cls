@@ -37,6 +37,10 @@ public with sharing class ImportListRows {
       Week__c.EndDate__c
     },
     'WeekException' => new Set<Schema.SObjectField>(),
+    // When an activity runs: a box off is its day (ADR 0031 A7, ImportListOffTimes).
+    'ActivityOffTime' => new Set<Schema.SObjectField>{
+      ActivityOffTime__c.Day__c
+    },
     'Location' => new Set<Schema.SObjectField>{
       Location__c.Name,
       Location__c.GroupsThatFit__c,
@@ -121,6 +125,10 @@ public with sharing class ImportListRows {
       WeekException__c.Activity__c,
       WeekException__c.FixedActivity__c,
       WeekException__c.RecurringActivity__c
+    },
+    'ActivityOffTime' => new Set<Schema.SObjectField>{
+      ActivityOffTime__c.Activity__c,
+      ActivityOffTime__c.TimeBlock__c
     },
     'Location' => new Set<Schema.SObjectField>{ Location__c.LocationType__c },
     'TimeBlock' => new Set<Schema.SObjectField>{ TimeBlock__c.Program__c },

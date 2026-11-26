@@ -150,7 +150,7 @@ Each rule is clue, meaning, example, test.
    "Weeks" column none of whose cells says weeks (an older list's "8") is not read, as before,
    and the list's columns say so once ("Weeks column not read: it doesn't say which weeks"). The
    camp workbook leaves the weeks to its Which weeks sheet. Special events say the same
-   in SPECIAL-2.3.
+   in SPECIAL-2.3; when an activity runs, in rule 10.
    Example: Swim's row says "Every week"; the director writes "Off Week 1" and imports the file:
    one difference, Weeks: Every week → Off Week 1, and saving takes Swim off Week 1.
    Test: "INGEST-1.8: activities: every row reads back unchanged, nothing asked or lost" (and
@@ -185,3 +185,33 @@ Each rule is clue, meaning, example, test.
    server answered with its support code saved nothing, and says so" (Import last year, Import a list), "INGEST-1.9: an import Shoresh's server answered with its support code imported nothing, and says so" (Bring in choices), "INGEST-1.9: a save
    Salesforce's limit stopped saved nothing, and says so"; shoreshErrors.test.js "outcomeKnown
    (INGEST-1.9)".
+
+10. **An Activities list keeps when each activity runs.**
+    Clue: Download this list on Activities, or the camp workbook's Activities sheet, brought back
+    in on Activities' Import a list (or the workbook's), as it is or edited (ADR 0031 A7).
+    Meaning: the list has a "When it runs" column, in the activity details panel's own words:
+    "Whenever" when no box is unticked, else "Not " and each box it can't run in, "<time block>,
+    <day>", joined by "; ", in the panel's order (programs, their time blocks, then the camp's
+    week), with " (<program>)" after each box only when the season has more than one program. A
+    day is said as the season says it ("Day 3" in a numbered season); its weekday name is read
+    too. Read back as it is, nothing changes, nothing is asked and nothing is lost. "Whenever",
+    "every time" or a blank cell is no box off. An edited cell shows exactly what changed, for
+    Keep or Change, like Weeks (rule 8): a box taken off is saved as a box off, a box put back
+    removes it, a new activity's boxes come with it, and the activity counts as changed. A box the
+    season doesn't have can't be read ("When it runs: there's no Lunch, Saturday (Main)"), nor
+    one said without its program when two programs have it.
+    Example: Swim's row says "Whenever"; the director writes "Not Lunch, Monday (Main)" and
+    imports the file: one difference, When it runs: Whenever → Not Lunch, Monday (Main), and
+    saving keeps Swim out of Lunch on Mondays.
+    Test: "INGEST-1.8: activities: every row reads back unchanged, nothing asked or lost" (its
+    Board games can't run in three boxes);
+    "INGEST-1.10: written as the details panel says it, in the grids' order, and read back
+    unchanged";
+    "INGEST-1.10: one program's season says no program; a numbered season says Day 1 and reads
+    Monday too";
+    "INGEST-1.10: a box taken off and boxes put back are what it shows and saves; a new row's
+    boxes come with it";
+    "INGEST-1.10: Whenever, every time or a blank is none off; a box the season doesn't have can't
+    be read" (all in shoreshLists `listWeeks.test.js`); "activities: every field sent is one the
+    server writes" (`contract.test.js`); Apex ImportListSavesTest
+    savesABoxOfWhenItRunsTakenOffAndOnePutBack.

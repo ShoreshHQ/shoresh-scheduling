@@ -101,7 +101,9 @@ function fullList(screen) {
     where: "Lake",
     earlyDay: "Wednesday",
     earlyBlocks: "1",
-    weeks: "Off Week 2"
+    weeks: "Off Week 2",
+    // ADR 0031 A7: when an activity runs, saved as its boxes off (quoted: it has a comma).
+    runs: '"Not Period 1, Tuesday"'
   };
   // The Special events list's Type: an event, so its place is sent too.
   if (screen.key === "specialEvents") {
@@ -131,11 +133,12 @@ describe("the save request and ImportListSaves agree", () => {
   const links = apexMap("LINK_FIELDS");
 
   it("reads the server's lists (not an empty match)", () => {
-    expect(Object.keys(plain)).toHaveLength(15);
+    expect(Object.keys(plain)).toHaveLength(16);
     expect(plain.Activity).toEqual(
       expect.arrayContaining(["Name", "Length__c", "Notes__c"])
     );
     expect(plain.WeekException).toEqual([]);
+    expect(plain.ActivityOffTime).toEqual(["Day__c"]);
     expect(links.Activity).toEqual(["Location__c", "RainPlan__c"]);
   });
 
@@ -167,6 +170,19 @@ describe("the save request and ImportListSaves agree", () => {
         });
       });
     });
+  });
+
+  it("activities: when it runs is sent, as its boxes off", () => {
+    const p = listProposal({
+      screenKey: "activities",
+      file: fullList(listScreen("activities", terms)),
+      setup: setup(),
+      terms,
+      answers: {}
+    });
+    expect(
+      listPlan(p, {}, "s1", "list.csv").records.map((r) => r.kind)
+    ).toContain("ActivityOffTime");
   });
 
   it("the server reads the lists the plan sends", () => {

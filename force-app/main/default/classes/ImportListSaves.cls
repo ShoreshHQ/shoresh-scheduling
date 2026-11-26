@@ -28,7 +28,9 @@ public with sharing class ImportListSaves implements SetupWrite.Steps {
     // The Special events screen's list (SPECIAL-2.3), after the places an event names.
     'SpecialDay',
     'SpecialEvent',
-    'WeekException'
+    'WeekException',
+    // When each activity runs (ADR 0031 A7): its boxes off, after its activity and time blocks.
+    'ActivityOffTime'
   };
   // What Undo needs must fit in the import's record (Import__c long text fields).
   private static final Integer LOG_LIMIT = 131072;
@@ -38,6 +40,7 @@ public with sharing class ImportListSaves implements SetupWrite.Steps {
   private ImportWriter writer;
   private Boolean workbook;
   private List<ImportPlan.Entry> weeksBackOn = new List<ImportPlan.Entry>();
+  private List<ImportPlan.Entry> boxesBackOn = new List<ImportPlan.Entry>();
   private Id campId;
 
   /** One screen's list. */
@@ -98,6 +101,8 @@ public with sharing class ImportListSaves implements SetupWrite.Steps {
     }
     // Weeks an item is on again: a workbook's Which weeks, or a list's Weeks (INGEST-1.8).
     extras.weeksBackOn(weeksBackOn);
+    // Boxes of When it runs an activity runs in again (a list's When it runs, ADR 0031 A7).
+    new ImportListOffTimes(writer, keys, plan.seasonId).remove(boxesBackOn);
     if (workbook) {
       extras.campWords(plan.entries('campWords'));
     }
@@ -116,6 +121,10 @@ public with sharing class ImportListSaves implements SetupWrite.Steps {
       // after the rest.
       if (kind == 'WeekException' && entry.text('remove') == 'true') {
         weeksBackOn.add(entry);
+        continue;
+      }
+      if (kind == 'ActivityOffTime' && entry.text('remove') == 'true') {
+        boxesBackOn.add(entry);
         continue;
       }
       entriesOf(result, kind).add(entry);
@@ -141,6 +150,10 @@ public with sharing class ImportListSaves implements SetupWrite.Steps {
 
   private void saveKind(String kind, List<ImportPlan.Entry> entries) {
     if (entries == null) {
+      return;
+    }
+    if (kind == 'ActivityOffTime') {
+      new ImportListOffTimes(writer, keys, plan.seasonId).add(entries);
       return;
     }
     Schema.SObjectType type = ImportFields.ofTerm(kind);

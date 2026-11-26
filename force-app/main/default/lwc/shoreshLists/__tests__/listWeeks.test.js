@@ -15,16 +15,26 @@ import {
   listRows,
   questionCards,
   sheetName,
+  shownValue,
   waitingFor
 } from "./data/lists";
 import { camp } from "./data/camp";
 
 const terms = buildTerms(camp().labels);
 
-/** The camp, with an elective set and the Special events screen's items too. */
+/**
+ * The camp, with an elective set and the Special events screen's items too, and Board games
+ * unable to run in three boxes of When it runs (ADR 0031 A7), written out of the grids' order.
+ */
 function fullCamp() {
+  const s = camp();
+  s.activities[1].OffTimes__r = [
+    { Id: "ot1", TimeBlock__c: "tb3", Day__c: "Monday" },
+    { Id: "ot2", TimeBlock__c: "tb2", Day__c: "Tuesday" },
+    { Id: "ot3", TimeBlock__c: "tb1", Day__c: "Monday" }
+  ];
   return {
-    ...camp(),
+    ...s,
     electives: {
       sets: [{ Id: "es1", Name: "Chugim" }],
       offerings: [
@@ -353,6 +363,140 @@ describe("INGEST-1.8: a list's changed weeks and early start are exactly what it
       ["changed", [{ off: [1, 2], of: 2 }]],
       ["unchanged", []],
       ["unchanged", []]
+    ]);
+  });
+});
+
+// INGEST-1.10 (ADR 0031 A7): when an activity runs goes out and comes back with its list.
+describe("INGEST-1.10: an activities list keeps when each activity runs", () => {
+  const runsOf = (rows) => {
+    const at = rows[0].indexOf("When it runs");
+    return rows.slice(1).map((r) => r[at]);
+  };
+
+  it("INGEST-1.10: written as the details panel says it, in the grids' order, and read back unchanged", () => {
+    const rows = listRows("activities", fullCamp(), terms);
+    expect(runsOf(rows)).toEqual([
+      "Whenever",
+      "Not Period 1, Monday (Main); Lunch, Tuesday (Main); Period 1, Monday (Teens)"
+    ]);
+    expect(readBack("activities", rows).rows.map((r) => r.status)).toEqual([
+      "unchanged",
+      "unchanged"
+    ]);
+    // The camp workbook's Activities sheet writes it too.
+    const sheet = campWorkbookSheets(fullCamp(), terms).find(
+      (x) => x.name === "Activities"
+    );
+    expect(runsOf(sheet.rows)).toEqual(runsOf(rows));
+  });
+
+  it("INGEST-1.10: one program's season says no program; a numbered season says Day 1 and reads Monday too", () => {
+    const s = fullCamp();
+    s.programs = s.programs.slice(0, 1);
+    setDayNaming({ numbered: true, firstDay: 1 });
+    try {
+      const rows = listRows("activities", s, terms);
+      expect(runsOf(rows)).toEqual([
+        "Whenever",
+        "Not Period 1, Day 1; Lunch, Day 2"
+      ]);
+      expect(readBack("activities", rows, s).rows.map((r) => r.status)).toEqual(
+        ["unchanged", "unchanged"]
+      );
+      const at = rows[0].indexOf("When it runs");
+      rows[2][at] = "not lunch,tuesday; PERIOD 1, Monday";
+      expect(readBack("activities", rows, s).rows.map((r) => r.status)).toEqual(
+        ["unchanged", "unchanged"]
+      );
+    } finally {
+      setDayNaming(null);
+    }
+  });
+
+  it("INGEST-1.10: a box taken off and boxes put back are what it shows and saves; a new row's boxes come with it", () => {
+    const s = fullCamp();
+    const rows = listRows("activities", s, terms);
+    const at = rows[0].indexOf("When it runs");
+    rows[1][at] = "Not Lunch, Monday (Main)";
+    rows[2][at] = "Not Period 1, Monday (Main)";
+    const archery = [...rows[1]];
+    archery[0] = "Archery";
+    archery[at] = "Not Period 1, Tuesday (Teens)";
+    rows.push(archery);
+    const p = readBack("activities", rows, s);
+    expect(
+      p.rows
+        .filter((r) => r.status === "changed")
+        .map((r) => [
+          r.name,
+          r.differences.map((d) => [
+            d.heading,
+            shownValue(p, d.column, d.from),
+            shownValue(p, d.column, d.to)
+          ])
+        ])
+    ).toEqual([
+      ["Swim", [["When it runs", "Whenever", "Not Lunch, Monday (Main)"]]],
+      [
+        "Board games",
+        [
+          [
+            "When it runs",
+            "Not Period 1, Monday (Main); Lunch, Tuesday (Main); Period 1, Monday (Teens)",
+            "Not Period 1, Monday (Main)"
+          ]
+        ]
+      ]
+    ]);
+    const all = changeAll("activities", rows, s);
+    expect(waitingFor(all.p, terms, all.answers)).toEqual([]);
+    const records = listPlan(all.p, all.answers, "s1", "f").records;
+    expect(records.filter((r) => r.kind === "Activity")).toEqual([
+      expect.objectContaining({ key: "Activity:Archery" })
+    ]);
+    expect(records.filter((r) => r.kind === "ActivityOffTime")).toEqual([
+      {
+        kind: "ActivityOffTime",
+        key: "ActivityOffTime:a1:tb2|Monday",
+        fields: { Day__c: "Monday" },
+        refs: { TimeBlock__c: "tb2", Activity__c: "a1" }
+      },
+      { kind: "ActivityOffTime", id: "ot2", remove: true, fields: {} },
+      { kind: "ActivityOffTime", id: "ot1", remove: true, fields: {} },
+      {
+        kind: "ActivityOffTime",
+        key: "ActivityOffTime:Activity:Archery:tb3|Tuesday",
+        fields: { Day__c: "Tuesday" },
+        refs: { TimeBlock__c: "tb3", Activity__c: "Activity:Archery" }
+      }
+    ]);
+  });
+
+  it("INGEST-1.10: Whenever, every time or a blank is none off; a box the season doesn't have can't be read", () => {
+    const s = fullCamp();
+    const rows = listRows("activities", s, terms);
+    const at = rows[0].indexOf("When it runs");
+    ["whenever", "Every time", ""].forEach((said) => {
+      rows[1][at] = said;
+      expect(readBack("activities", rows, s).rows[0].status).toBe("unchanged");
+    });
+    rows[1][at] = "Not Lunch, Saturday (Main)";
+    rows[2][at] = "Not Period 1, Monday";
+    expect(readBack("activities", rows, s).rows.map((r) => r.problems)).toEqual(
+      [
+        ["When it runs: there's no Lunch, Saturday (Main)"],
+        ['When it runs: "Period 1, Monday" is in more than one program']
+      ]
+    );
+    rows[1][at] = "Sometimes";
+    rows[2][at] = "Not Period 1, Monday (Teens)";
+    const p = readBack("activities", rows, s);
+    expect(p.rows.map((r) => r.problems)).toEqual([
+      [
+        'When it runs: "Sometimes" isn\'t "Whenever" or "Not" and the time blocks it can\'t run'
+      ],
+      []
     ]);
   });
 });
