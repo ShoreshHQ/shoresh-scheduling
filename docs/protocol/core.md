@@ -208,7 +208,8 @@ These never bend for Shoresh.
   ("Shoresh couldn't count…") and its why kept for support (CORE-6.15). A holding record a
   change can't clean up is kept for support with why (review 2026-11-25 wave 2, apex-core
   findings 6 and 10, apex-tests finding 6). Every count read from many schedule days reads them
-  through one reader with one budget (ScheduleDayTexts), and says a day it can't read (review
+  through one reader with one budget (ScheduleDayTexts), and one that reads days as grids says a
+  day it can't read, a day saved by a newer Shoresh too (review
   2026-11-25 wave 4, apex-core finding 5). Tests: PlacedInWeeksTest aDayThatCantBeReadIsSaid,
   aDaySavedByANewerShoreshIsSaid, daysPastTheCapAreSaid; GroupPlacementsTest
   aDayThatCantBeReadSaysTheCountIsNotComplete; LinkedChoicesTest

@@ -149,7 +149,8 @@ private class SetupTablesTest {
         ScheduleUses.Count count = ScheduleUses.count(ids.get('Soccer'));
         Integer used = Limits.getQueries() - before;
         Test.stopTest();
-        // 601 days, none naming Soccer: every one read, 25 at a time (25 queries), plus 2.
+        // 601 day parts, none naming Soccer: every one read, a day's 10 parts together, about 25
+        // at a time (21 queries), plus 2.
         Assert.areEqual(0, count.schedules);
         Assert.isTrue(count.complete);
         Assert.isTrue(used <= 30, 'Queries used: ' + used);
@@ -180,8 +181,8 @@ private class SetupTablesTest {
   }
 
   /**
-   * The budget is the request's, not the count's own: a count that starts after a request has
-   * used queries already still stops under half of the 100 (ScheduleDayTexts).
+   * The budget is the request's, not the count's own: a second count in a request that has used
+   * queries already still stops under half of the 100 (ScheduleDayTexts).
    */
   @IsTest
   static void aCountLateInARequestStillStopsUnderHalfTheQueryLimit() {
@@ -190,14 +191,13 @@ private class SetupTablesTest {
       bigSeason();
       ScheduleDayTexts.partsAtOnce = 1;
       Test.startTest();
-      for (Integer i = 0; i < 20; i++) {
-        Assert.isNotNull([SELECT Id FROM Season__c WITH USER_MODE LIMIT 1]);
-      }
-      ScheduleUses.Count count = ScheduleUses.count(ids.get('Group A'));
+      ScheduleUses.count(ids.get('Group A'));
+      Integer first = Limits.getQueries();
+      ScheduleUses.Count second = ScheduleUses.count(ids.get('Swim'));
       Integer queries = Limits.getQueries();
       Test.stopTest();
-      Assert.isFalse(count.complete);
-      Assert.isTrue(count.schedules >= 1, 'Found: ' + count.schedules);
+      Assert.isTrue(first > 40, 'The first count used ' + first + ' queries');
+      Assert.isFalse(second.complete);
       Assert.isTrue(queries < 50, 'The request used ' + queries + ' queries');
     }
   }
@@ -213,7 +213,7 @@ private class SetupTablesTest {
         ScheduleDayTexts.partsAtOnce = 10;
         ScheduleDayTexts.queryBudget = 2;
         ScheduleUses.Count count = ScheduleUses.count(ids.get('Group A'));
-        // Two reads of 10 days each: some schedules found, the rest not read.
+        // Two reads (a day's 10 parts each): some schedules found, the rest not read.
         Assert.isTrue(
           count.schedules >= 1 && count.schedules < 61,
           'Found: ' + count.schedules
