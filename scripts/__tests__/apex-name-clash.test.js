@@ -195,6 +195,16 @@ describe("Apex name-clash check", () => {
         public static ScheduleUses.Count scheduleUses(Id recordId) {
           return ScheduleUses.count(recordId);
         }
+        // A type named like a field, as a type (a wrapper's \`public Id Id;\`).
+        public class Row {
+          public Id Id;
+          public Row(Id id) {
+            this.Id = id;
+            List<Id> ids = new List<Id>{ (Id) id };
+            Map<Id, Id> pairs = new Map<Id, Id>();
+            Boolean isId = id instanceof Id;
+          }
+        }
         // Scopes end: the local is gone before the class is used.
         static void scoped() {
           if (true) { Object campLabels = null; }

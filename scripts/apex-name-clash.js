@@ -15,7 +15,7 @@
  *   scope (`Assert.areEqual(BEFORE, used)`, #540): it compiles, and quietly reads the local.
  * Not hits, because they compile: a local's own initializer (`String inUse = InUse.reason(id);`,
  * the local's scope starts after it), a class sharing a name with a static of the same class
- * (`class ItemFields` and `static ... itemFields`), uses without a dot (`new Targets()`), the
+ * (`class ItemFields` and `static ... itemFields`), a class used without a dot (`new Targets()`), the
  * same spelling everywhere, and methods. It reads Apex with regular expressions, not a parser:
  * a false alarm is a bug in this script.
  *
@@ -273,7 +273,8 @@ function scanApex(source, classNames, isTrigger = false) {
   const declaredAt = new Set(decls.map((d) => d.at));
   for (const m of code.matchAll(/(?<![\w.])([A-Za-z_]\w*)(?!\s*[.(\w])/g)) {
     const used = m[1];
-    if (declaredAt.has(m.index)) continue;
+    if (declaredAt.has(m.index) || isTypePosition(code, m.index, used))
+      continue;
     const d = bindingOf(decls, used, m.index);
     if (!d || d.name === used || hits.has(d)) continue;
     const meant = decls.find(
@@ -294,6 +295,17 @@ function scanApex(source, classNames, isTrigger = false) {
     });
   }
   return [...hits.values()].sort((a, b) => a.line - b.line);
+}
+
+/** A name standing as a type (`List<Id>`, `Map<Id, Id>`, `(Id) x`, `x instanceof Date`), not read. */
+function isTypePosition(code, at, name) {
+  const before = code.slice(Math.max(0, at - 20), at);
+  const after = code.slice(at + name.length, at + name.length + 20);
+  return (
+    /(<|\binstanceof)\s*$/i.test(before) ||
+    (/,\s*$/.test(before) && /^\s*(\[\s*\])?\s*>/.test(after)) ||
+    (/\(\s*$/.test(before) && /^\s*\)\s*[\w(]/.test(after))
+  );
 }
 
 function walk(dir) {
@@ -330,7 +342,7 @@ function main() {
   const files = Object.keys(hits);
   if (files.length) {
     console.error(
-      "Apex name-clash check failed: Apex ignores case, so each variable below takes over a use meant for a class or field, and the class won't compile. Rename the variable, or add `// apex-name-clash-ok: <why>` on its line."
+      "Apex name-clash check failed: Apex ignores case, so each variable below takes over a use meant for a class or field: the class won't compile, or (a use without a dot) it compiles and quietly reads the variable. Rename the variable, or add `// apex-name-clash-ok: <why>` on its line."
     );
     for (const file of files) {
       console.error(`  ${file}`);
