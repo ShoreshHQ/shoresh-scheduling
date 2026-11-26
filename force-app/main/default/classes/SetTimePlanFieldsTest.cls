@@ -102,7 +102,7 @@ private class SetTimePlanFieldsTest {
       );
       assertRules(tennis.Id, 'Rackets and balls');
 
-      ShoreshSchema.simulatedPrefix = 'shoresh__';
+      ShoreshSchema.simulatedPrefix = 'Shoresh__';
       ActivitiesController.saveActivityDetails(
         new Activity__c(Id = tennis.Id, Notes__c = 'Balls'),
         null,
