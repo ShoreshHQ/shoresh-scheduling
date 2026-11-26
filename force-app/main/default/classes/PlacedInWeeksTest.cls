@@ -210,13 +210,43 @@ private class PlacedInWeeksTest {
     }
   }
 
+  // CORE-6.19: a day the screens can't read (here saved by a newer Shoresh) is said too. Before
+  // the shared reader (ScheduleDayTexts) it was read past its format and counted.
+  @IsTest
+  static void aDaySavedByANewerShoreshIsSaid() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      Camp c = camp();
+      draftWithSwim(c, c.weeks[0], 'Draft/Manual');
+      ScheduleDay__c day = [
+        SELECT Id, Schedule__r.Week__r.Name
+        FROM ScheduleDay__c
+        WHERE Schedule__r.Week__c = :c.weeks[0].Id
+        WITH USER_MODE
+        LIMIT 1
+      ];
+      Database.update(
+        new ScheduleDay__c(Id = day.Id, GridFormatVersion__c = 99),
+        AccessLevel.SYSTEM_MODE
+      );
+      Test.startTest();
+      String said = refusal(c);
+      Test.stopTest();
+      Assert.areEqual(
+        'Shoresh couldn\'t read a day of ' +
+          day.Schedule__r.Week__r.Name +
+          '\'s schedules, so it can\'t say what is placed there.',
+        said
+      );
+    }
+  }
+
   // CORE-6.19: days past the query cap are said, never left out of the count.
   @IsTest
   static void daysPastTheCapAreSaid() {
     System.runAs(ShoreshTestData.scheduler()) {
       Camp c = camp();
       draftWithSwim(c, c.weeks[0], 'Draft/Manual');
-      PlacedInWeeks.queryBudget = 0;
+      ScheduleDayTexts.queryBudget = 0;
       Test.startTest();
       String said = refusal(c);
       Test.stopTest();

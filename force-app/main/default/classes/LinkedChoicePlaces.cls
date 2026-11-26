@@ -6,18 +6,13 @@
  * and a time block, the same every week (LinkedChoiceTime__c), so the week shown is every week's
  * at once, as the desktop shows Manual and Generated at once.
  *
- * The days are listed first (their Ids only), then their text is read a few at a time and only a
- * day that names the set is read as a grid (ScheduleUses' way), so even a long season stays well
- * inside memory. The number of queries is capped: past it the week says it is not complete.
- * In user mode: only schedules the director can see.
+ * The days are listed first (their Ids and dates), then their text is read a few at a time
+ * (ScheduleDayTexts) and only a day that names the set is read as a grid, so even a long season
+ * stays well inside memory. Past the reader's budget, or at a day naming the set that can't be
+ * read, the week says it is not complete (CORE-6.19). In user mode: only schedules the director
+ * can see.
  */
 public with sharing class LinkedChoicePlaces {
-  // Day parts read at once: 25 at the longest (131,072 characters) is about 3.3 million.
-  @TestVisible
-  private static Integer partsAtOnce = 25;
-  // Queries for the text, after the few that find the season and list the days.
-  @TestVisible
-  private static Integer queryBudget = 40;
   @TestVisible
   private static Integer rowBudget = 5000;
   // Sunday, 7 January 1900: weekdays are counted from it, the same in every locale.
@@ -86,7 +81,11 @@ public with sharing class LinkedChoicePlaces {
       LIMIT :upTo
     ];
     Reader reader = new Reader(electiveSetId, divisionOf);
-    result.complete = reader.read(parts) && parts.size() <= rowBudget;
+    reader.read(parts);
+    result.complete =
+      reader.complete &&
+      !reader.unreadable &&
+      parts.size() <= rowBudget;
     result.cells = reader.cells();
     return result;
   }
@@ -96,7 +95,7 @@ public with sharing class LinkedChoicePlaces {
     return DAY_NAMES[Math.mod(A_SUNDAY.daysBetween(day), 7)];
   }
 
-  private with sharing class Reader {
+  private with sharing class Reader extends ScheduleDayTexts.Reader {
     String setKey;
     Map<Id, Id> divisionOf;
     Map<String, Cell> byKey = new Map<String, Cell>();
@@ -107,69 +106,14 @@ public with sharing class LinkedChoicePlaces {
       this.divisionOf = divisionOf;
     }
 
-    /** Reads the days a batch at a time (a day's parts together); false when the budget ran out. */
-    Boolean read(List<ScheduleDay__c> parts) {
-      Integer queries = 0;
-      List<Id> batch = new List<Id>();
-      for (Integer i = 0; i < parts.size(); i++) {
-        batch.add(parts[i].Id);
-        // A batch ends only between two days, so a day's parts are always read together.
-        Boolean last = i == parts.size() - 1;
-        if (
-          !last &&
-          (batch.size() < partsAtOnce || sameDay(parts[i], parts[i + 1]))
-        ) {
-          continue;
-        }
-        if (queries == queryBudget) {
-          return false;
-        }
-        readParts(batch);
-        queries++;
-        batch.clear();
+    /** A day that names the set, read as a grid. */
+    public override void take(List<ScheduleDay__c> parts) {
+      if (!ScheduleDayTexts.names(parts, setKey)) {
+        return;
       }
-      return true;
-    }
-
-    Boolean sameDay(ScheduleDay__c a, ScheduleDay__c b) {
-      return a.Schedule__c == b.Schedule__c && a.Date__c == b.Date__c;
-    }
-
-    /** Joins each day's parts read here, and reads the days that name the set. */
-    void readParts(List<Id> partIds) {
-      Map<String, List<ScheduleDay__c>> byDay = new Map<String, List<ScheduleDay__c>>();
-      Set<String> naming = new Set<String>();
-      for (ScheduleDay__c part : [
-        SELECT
-          Schedule__c,
-          Date__c,
-          Part__c,
-          Grid__c,
-          GridFormatVersion__c,
-          Revision__c
-        FROM ScheduleDay__c
-        WHERE Id IN :partIds
-        WITH USER_MODE
-        ORDER BY Schedule__c, Date__c, Part__c
-      ]) {
-        String key = part.Schedule__c + '|' + String.valueOf(part.Date__c);
-        if (!byDay.containsKey(key)) {
-          byDay.put(key, new List<ScheduleDay__c>());
-        }
-        byDay.get(key).add(part);
-        if (part.Grid__c != null && part.Grid__c.contains(setKey)) {
-          naming.add(key);
-        }
-      }
-      for (String key : naming) {
-        List<ScheduleDay__c> dayParts = byDay.get(key);
-        ScheduleDays.DayGrid day = ScheduleDays.readDay(
-          dayParts[0].Date__c,
-          dayParts
-        );
-        if (day.grid != null) {
-          addCells(day.day, day.grid);
-        }
+      ScheduleDays.DayGrid day = gridOf(parts);
+      if (day.grid != null) {
+        addCells(day.day, day.grid);
       }
     }
 
