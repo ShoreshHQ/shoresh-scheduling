@@ -136,17 +136,10 @@ public with sharing class ScheduleViews {
   }
 
   /**
-   * One schedule with its days and the special days and events it shows (ScheduleSpecials), as
-   * the Schedules page shows it, or null if it is not there (or not visible).
-   */
-  public static ScheduleView openWithSpecials(Id scheduleId) {
-    return openAllWithSpecials(new List<Id>{ scheduleId })[0];
-  }
-
-  /**
-   * Several schedules, each as openWithSpecials opens it (in the order asked; null for one not
-   * there), read together: the same few queries however many there are (a week's published
-   * programs, AgentWeekView).
+   * Schedules with their days and the special days and events each shows (ScheduleSpecials), as
+   * the Schedules page shows one, in the order asked (null for one not there or not visible),
+   * read together: the same few queries however many there are (a week's published programs,
+   * AgentWeekView).
    */
   public static List<ScheduleView> openAllWithSpecials(List<Id> scheduleIds) {
     Map<Id, Schedule__c> found = new Map<Id, Schedule__c>(

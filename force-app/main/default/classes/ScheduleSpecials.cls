@@ -71,48 +71,59 @@ public with sharing class ScheduleSpecials {
     List<Schedule__c> schedules,
     Map<Id, List<ScheduleDays.DayGrid>> daysById
   ) {
+    SpecialsCarried.readAll(publishedOf(schedules));
+    Map<Id, Shown> result = new Map<Id, Shown>();
+    // Every schedule's specials in one list, each beside the schedule's Shown it goes into.
+    List<Special> all = new List<Special>();
+    List<Shown> shownIn = new List<Shown>();
+    for (Schedule__c schedule : schedules) {
+      Shown shown = new Shown();
+      shown.asPublished = isPublished(schedule);
+      result.put(schedule.Id, shown);
+      List<Special> specials = shown.asPublished
+        ? carriedBy(schedule.Id)
+        : now(schedule.Week__c, daysById.get(schedule.Id));
+      all.addAll(specials);
+      while (shownIn.size() < all.size()) {
+        shownIn.add(shown);
+      }
+    }
+    List<ScheduleViews.DayView> views = plansOf(all);
+    for (Integer i = 0; i < all.size(); i++) {
+      place(shownIn[i], all[i], views[i]);
+    }
+    return result;
+  }
+
+  private static List<Id> publishedOf(List<Schedule__c> schedules) {
     List<Id> published = new List<Id>();
     for (Schedule__c schedule : schedules) {
       if (isPublished(schedule)) {
         published.add(schedule.Id);
       }
     }
-    SpecialsCarried.readAll(published);
-    Map<Id, List<Special>> specialsById = new Map<Id, List<Special>>();
+    return published;
+  }
+
+  /** Every special's plan as a day the screens show, with one look-up for all of them. */
+  private static List<ScheduleViews.DayView> plansOf(List<Special> specials) {
     List<ScheduleDays.DayGrid> plans = new List<ScheduleDays.DayGrid>();
     List<Boolean> isEvent = new List<Boolean>();
-    for (Schedule__c schedule : schedules) {
-      List<Special> specials = isPublished(schedule)
-        ? carriedBy(schedule.Id)
-        : now(schedule.Week__c, daysById.get(schedule.Id));
-      specialsById.put(schedule.Id, specials);
-      for (Special special : specials) {
-        ScheduleDays.DayGrid plan = new ScheduleDays.DayGrid();
-        plan.day = special.dateValue;
-        plan.grid = special.grid;
-        plan.problem = special.problem;
-        plans.add(plan);
-        isEvent.add(special.kind == EVENT);
-      }
+    for (Special special : specials) {
+      ScheduleDays.DayGrid plan = new ScheduleDays.DayGrid();
+      plan.day = special.dateValue;
+      plan.grid = special.grid;
+      plan.problem = special.problem;
+      plans.add(plan);
+      isEvent.add(special.kind == EVENT);
     }
-    List<ScheduleViews.DayView> views = plans.isEmpty()
+    return plans.isEmpty()
       ? new List<ScheduleViews.DayView>()
       : SpecialPlanDay.ofAll(plans, isEvent);
-    Map<Id, Shown> result = new Map<Id, Shown>();
-    Integer i = 0;
-    for (Schedule__c schedule : schedules) {
-      Shown shown = new Shown();
-      shown.asPublished = isPublished(schedule);
-      for (Special special : specialsById.get(schedule.Id)) {
-        add(shown, special, views[i++]);
-      }
-      result.put(schedule.Id, shown);
-    }
-    return result;
   }
 
   /** A special day the schedule shows in place of its day, or a special event's plan. */
-  private static void add(
+  private static void place(
     Shown shown,
     Special special,
     ScheduleViews.DayView plan

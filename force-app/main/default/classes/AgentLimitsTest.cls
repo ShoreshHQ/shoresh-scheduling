@@ -136,6 +136,8 @@ private class AgentLimitsTest {
       } finally {
         SetTimeGuard.resume();
       }
+      carryFieldDay(one);
+      carryFieldDay(ten);
       // Both seasons are called Summer 2026, as the big camp's is: named apart for the reads.
       Database.update(
         new List<Season__c>{
@@ -144,24 +146,6 @@ private class AgentLimitsTest {
         },
         AccessLevel.SYSTEM_MODE
       );
-      Test.startTest();
-      Map<String, Object> viewOne = AgentWeekView.answer('One 2026', 'Week 1');
-      Integer withOne = Limits.getQueries();
-      Map<String, Object> viewTen = AgentWeekView.answer('Ten 2026', 'Week 1');
-      Integer withTen = Limits.getQueries() - withOne;
-      Test.stopTest();
-      Assert.areEqual(1, ((List<Object>) viewOne.get('programs')).size());
-      List<Object> tenViews = (List<Object>) viewTen.get('programs');
-      Assert.areEqual(10, tenViews.size());
-      Assert.areEqual(
-        withOne,
-        withTen,
-        'Ten published programs used ' +
-          withTen +
-          ' queries, one used ' +
-          withOne
-      );
-      Assert.isTrue(withTen < HALF_QUERIES, withTen + ' queries');
       List<Id> published = new List<Id>();
       for (Schedule__c schedule : [
         SELECT Id
@@ -174,13 +158,86 @@ private class AgentLimitsTest {
       ]) {
         published.add(schedule.Id);
       }
-      for (Integer i = 0; i < published.size(); i++) {
+      Test.startTest();
+      Map<String, Object> viewOne = AgentWeekView.answer('One 2026', 'Week 1');
+      Integer withOne = Limits.getQueries();
+      Map<String, Object> viewTen = AgentWeekView.answer('Ten 2026', 'Week 1');
+      Integer withTen = Limits.getQueries() - withOne;
+      // The two with Field Day and one without, each as the Schedules screen opens it alone.
+      List<String> screens = new List<String>();
+      for (Integer i = 0; i < 3; i++) {
+        screens.add(
+          JSON.serialize(SchedulesController.openSchedule(published[i]))
+        );
+      }
+      Test.stopTest();
+      Assert.areEqual(1, ((List<Object>) viewOne.get('programs')).size());
+      List<Object> tenViews = (List<Object>) viewTen.get('programs');
+      Assert.areEqual(10, tenViews.size());
+      Assert.isTrue(
+        withTen <= withOne,
+        'Ten published programs used ' +
+          withTen +
+          ' queries, one used ' +
+          withOne
+      );
+      Assert.isTrue(withTen < HALF_QUERIES, withTen + ' queries');
+      for (Integer i = 0; i < screens.size(); i++) {
         Assert.areEqual(
-          JSON.serialize(SchedulesController.openSchedule(published[i])),
+          screens[i],
           JSON.serialize(((Map<String, Object>) tenViews[i]).get('view')),
           'Program ' + (i + 1) + ' as the Schedules screen opens it'
         );
       }
+      // The first two carried a special day each, on a day of their own: each shows only its own.
+      Assert.isTrue(screens[0].contains('Field Day'), screens[0]);
+      Assert.isTrue(screens[1].contains('Field Day'), screens[1]);
+      Assert.isFalse(screens[2].contains('Field Day'), screens[2]);
+    }
+  }
+
+  /**
+   * The season's first two published programs (in week_view's order; its only one, when it has
+   * one) carry Field Day, as Publish keeps it (SpecialsCarried): on their first and their second
+   * day, with that day's plan.
+   */
+  private static void carryFieldDay(Map<String, Id> ids) {
+    SpecialDay__c fieldDay = new SpecialDay__c(
+      Season__c = ids.get('Season'),
+      Name = 'Field Day',
+      SortOrder__c = 1
+    );
+    Database.insert(fieldDay, AccessLevel.SYSTEM_MODE);
+    List<Schedule__c> published = [
+      SELECT Id
+      FROM Schedule__c
+      WHERE
+        Week__c = :ids.get('Week 1')
+        AND Status__c = :SchedulePublish.PUBLISHED
+      WITH USER_MODE
+      ORDER BY Program__r.SortOrder__c, Program__r.Name, Id
+      LIMIT 2
+    ];
+    PublishedGuard.allow();
+    Map<Id, List<ScheduleDays.DayGrid>> daysById = ScheduleDays.read(
+      new Map<Id, Schedule__c>(published).keySet()
+    );
+    try {
+      for (Integer i = 0; i < published.size(); i++) {
+        ScheduleDays.DayGrid day = daysById.get(published[i].Id)[i];
+        ScheduleSpecials.Special special = new ScheduleSpecials.Special();
+        special.kind = ScheduleSpecials.DAY;
+        special.itemId = fieldDay.Id;
+        special.name = 'Field Day';
+        special.dateValue = day.day;
+        special.grid = day.grid;
+        SpecialsCarried.write(
+          published[i].Id,
+          new List<ScheduleSpecials.Special>{ special }
+        );
+      }
+    } finally {
+      PublishedGuard.done();
     }
   }
 
