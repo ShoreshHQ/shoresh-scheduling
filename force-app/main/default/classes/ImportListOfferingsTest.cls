@@ -113,7 +113,8 @@ private class ImportListOfferingsTest {
       Integer used = Limits.getQueries() - before;
       Test.stopTest();
 
-      Assert.isTrue(used < 31, 'Queries for a 261-offering list: ' + used);
+      // Bound: measured 16 (2026-11-25).
+      Assert.isTrue(used < 21, 'Queries for a 261-offering list: ' + used);
       Assert.areEqual(1, result.added.get('ElectiveSet'));
       Assert.areEqual(260, result.added.get('Activity'));
       Assert.areEqual(261, result.added.get('Offering'));

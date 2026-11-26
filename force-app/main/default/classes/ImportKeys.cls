@@ -13,74 +13,102 @@ public with sharing class ImportKeys {
       'The import refers to something that is not in this ' +
       labels.singularInSentence('Season') +
       '. Start it again.';
-    List<List<SObject>> lists = new List<List<SObject>>{
-      [SELECT Id FROM Program__c WHERE Season__c = :seasonId WITH USER_MODE],
-      [
-        SELECT Id
-        FROM TimeBlock__c
-        WHERE Program__r.Season__c = :seasonId
-        WITH USER_MODE
-      ],
-      [
-        SELECT Id
-        FROM Division__c
-        WHERE Program__r.Season__c = :seasonId
-        WITH USER_MODE
-      ],
-      [
-        SELECT Id
-        FROM Group__c
-        WHERE Division__r.Program__r.Season__c = :seasonId
-        WITH USER_MODE
-      ],
-      [
-        SELECT Id
-        FROM LocationType__c
-        WHERE Season__c = :seasonId
-        WITH USER_MODE
-      ],
-      [SELECT Id FROM Location__c WHERE Season__c = :seasonId WITH USER_MODE],
-      [SELECT Id FROM Activity__c WHERE Season__c = :seasonId WITH USER_MODE],
-      [
-        SELECT Id
-        FROM FixedActivity__c
-        WHERE Program__r.Season__c = :seasonId
-        WITH USER_MODE
-      ],
-      [
-        SELECT Id
-        FROM RecurringActivity__c
-        WHERE Program__r.Season__c = :seasonId
-        WITH USER_MODE
-      ],
-      [SELECT Id FROM Week__c WHERE Season__c = :seasonId WITH USER_MODE],
-      [
-        SELECT Id
-        FROM ElectiveSet__c
-        WHERE Season__c = :seasonId
-        WITH USER_MODE
-      ],
-      [
-        SELECT Id
-        FROM Offering__c
-        WHERE ElectiveSet__r.Season__c = :seasonId
-        WITH USER_MODE
-      ],
-      [
-        SELECT Id
-        FROM SpecialDay__c
-        WHERE Season__c = :seasonId
-        WITH USER_MODE
-      ],
-      [
-        SELECT Id
-        FROM SpecialEvent__c
-        WHERE Season__c = :seasonId
-        WITH USER_MODE
-      ]
-    };
-    for (List<SObject> records : lists) {
-      for (SObject record : records) {
+    // Four reads, each with the lists inside it (a list inside a read is not a query of its own).
+    List<String> onSeason = inside(
+      Season__c.SObjectType,
+      new List<Schema.SObjectField>{
+        Program__c.Season__c,
+        LocationType__c.Season__c,
+        Location__c.Season__c,
+        Activity__c.Season__c,
+        Week__c.Season__c,
+        ElectiveSet__c.Season__c,
+        SpecialDay__c.Season__c,
+        SpecialEvent__c.Season__c
+      }
+    );
+    for (Season__c season : [
+      SELECT
+        Id,
+        (SELECT Id FROM Programs__r),
+        (SELECT Id FROM LocationTypes__r),
+        (SELECT Id FROM Locations__r),
+        (SELECT Id FROM Activities__r),
+        (SELECT Id FROM Weeks__r),
+        (SELECT Id FROM ElectiveSets__r),
+        (SELECT Id FROM SpecialDays__r),
+        (SELECT Id FROM SpecialEvents__r)
+      FROM Season__c
+      WHERE Id = :seasonId
+      WITH USER_MODE
+    ]) {
+      addInside(season, onSeason);
+    }
+    List<String> onProgram = inside(
+      Program__c.SObjectType,
+      new List<Schema.SObjectField>{
+        TimeBlock__c.Program__c,
+        Division__c.Program__c,
+        FixedActivity__c.Program__c,
+        RecurringActivity__c.Program__c
+      }
+    );
+    for (Program__c program : [
+      SELECT
+        Id,
+        (SELECT Id FROM TimeBlocks__r),
+        (SELECT Id FROM Divisions__r),
+        (SELECT Id FROM FixedActivities__r),
+        (SELECT Id FROM RecurringActivities__r)
+      FROM Program__c
+      WHERE Season__c = :seasonId
+      WITH USER_MODE
+    ]) {
+      addInside(program, onProgram);
+    }
+    List<String> onDivision = inside(
+      Division__c.SObjectType,
+      new List<Schema.SObjectField>{ Group__c.Division__c }
+    );
+    for (Division__c division : [
+      SELECT Id, (SELECT Id FROM Groups__r)
+      FROM Division__c
+      WHERE Program__r.Season__c = :seasonId
+      WITH USER_MODE
+    ]) {
+      addInside(division, onDivision);
+    }
+    List<String> onSet = inside(
+      ElectiveSet__c.SObjectType,
+      new List<Schema.SObjectField>{ Offering__c.ElectiveSet__c }
+    );
+    for (ElectiveSet__c electiveSet : [
+      SELECT Id, (SELECT Id FROM Offerings__r)
+      FROM ElectiveSet__c
+      WHERE Season__c = :seasonId
+      WITH USER_MODE
+    ]) {
+      addInside(electiveSet, onSet);
+    }
+  }
+
+  /** The relationship names, from the platform, of the lists inside a record. */
+  private static List<String> inside(
+    Schema.SObjectType parent,
+    List<Schema.SObjectField> children
+  ) {
+    List<String> names = new List<String>();
+    for (Schema.SObjectField child : children) {
+      names.add(ShoreshSchema.childRelationship(parent, child));
+    }
+    return names;
+  }
+
+  /** The records in each list inside a record read, as the season's. */
+  private void addInside(SObject parent, List<String> relationships) {
+    for (String relationship : relationships) {
+      // Walked in a loop, never held as a list: a list of any length reads in parts.
+      for (SObject record : parent.getSObjects(relationship)) {
         inSeason.add(record.Id);
       }
     }
