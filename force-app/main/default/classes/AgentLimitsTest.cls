@@ -146,18 +146,7 @@ private class AgentLimitsTest {
         },
         AccessLevel.SYSTEM_MODE
       );
-      List<Id> published = new List<Id>();
-      for (Schedule__c schedule : [
-        SELECT Id
-        FROM Schedule__c
-        WHERE
-          Week__c = :ten.get('Week 1')
-          AND Status__c = :SchedulePublish.PUBLISHED
-        WITH USER_MODE
-        ORDER BY Program__r.SortOrder__c, Program__r.Name, Id
-      ]) {
-        published.add(schedule.Id);
-      }
+      List<Schedule__c> published = publishedIn(ten.get('Week 1'), 10);
       Test.startTest();
       Map<String, Object> viewOne = AgentWeekView.answer('One 2026', 'Week 1');
       Integer withOne = Limits.getQueries();
@@ -168,7 +157,7 @@ private class AgentLimitsTest {
       List<String> screens = new List<String>();
       for (Integer i = 0; i < 3; i++) {
         screens.add(
-          JSON.serialize(SchedulesController.openSchedule(published[i]))
+          JSON.serialize(SchedulesController.openSchedule(published[i].Id))
         );
       }
       Test.stopTest();
@@ -198,6 +187,18 @@ private class AgentLimitsTest {
     }
   }
 
+  /** The week's first published schedules, in week_view's order (its programs'). */
+  private static List<Schedule__c> publishedIn(Id weekId, Integer most) {
+    return [
+      SELECT Id
+      FROM Schedule__c
+      WHERE Week__c = :weekId AND Status__c = :SchedulePublish.PUBLISHED
+      WITH USER_MODE
+      ORDER BY Program__r.SortOrder__c, Program__r.Name, Id
+      LIMIT :most
+    ];
+  }
+
   /**
    * The season's first two published programs (in week_view's order; its only one, when it has
    * one) carry Field Day, as Publish keeps it (SpecialsCarried): on their first and their second
@@ -210,16 +211,7 @@ private class AgentLimitsTest {
       SortOrder__c = 1
     );
     Database.insert(fieldDay, AccessLevel.SYSTEM_MODE);
-    List<Schedule__c> published = [
-      SELECT Id
-      FROM Schedule__c
-      WHERE
-        Week__c = :ids.get('Week 1')
-        AND Status__c = :SchedulePublish.PUBLISHED
-      WITH USER_MODE
-      ORDER BY Program__r.SortOrder__c, Program__r.Name, Id
-      LIMIT 2
-    ];
+    List<Schedule__c> published = publishedIn(ids.get('Week 1'), 2);
     PublishedGuard.allow();
     Map<Id, List<ScheduleDays.DayGrid>> daysById = ScheduleDays.read(
       new Map<Id, Schedule__c>(published).keySet()
