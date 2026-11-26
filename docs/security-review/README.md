@@ -34,7 +34,8 @@ one file or folder, one rule, a limit and a reason. CI's scan leaves out `static
 (`code-analyzer.yml`), so the static resources were scanned separately with the same selection
 (2026-11-20): 2 findings, both `@lwc/lwc/no-inner-html` inside SheetJS's own minified code
 (`SheetJS.js` and the connector's copy, `engine.SheetJS.cjs`); retire-js found no
-known-vulnerable library. Both are explained in the reviewer notes.
+known-vulnerable library. Both are explained in the reviewer notes. Since #503 CI also runs the selection on the
+connector's source (`npm run scan:connect`).
 
 **Sharing.** All 461 non-test classes are `with sharing`, except 4 inner classes that are
 `inherited sharing` and are called only from their `with sharing` outer class; none is
@@ -75,7 +76,7 @@ user mode for every read and save. Unknown fields refused; incoming batches capp
 **Connector.** Comes from the camp's own org, with the person's own Salesforce sign-in kept by
 Salesforce's CLI. Shoresh never sees, prints or stores a token. Starts `sf` without a shell;
 accepts only `*.salesforce.com` sign-in hosts; uses only Node's built-ins; refuses to run when
-older than the camp's copy.
+older or newer than the camp's copy (#513).
 
 ## Findings
 

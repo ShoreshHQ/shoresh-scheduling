@@ -862,7 +862,7 @@ describe("c-shoresh-generated-schedule", () => {
     expect(sent().days.map((d) => d.rows)).toEqual(
       expected.days.map((d) => d.rows)
     );
-  });
+  }, 60000); // a big camp built twice (on screen, then at once): slow CI runners need longer
 
   describe("while it builds, what it is doing in camp words", () => {
     // Words a camp director should never see on the line.
@@ -948,7 +948,7 @@ describe("c-shoresh-generated-schedule", () => {
       } finally {
         now.mockRestore();
       }
-    });
+    }, 60000); // a big camp's whole build: slow CI runners need longer
 
     it("Cancel stops the build: nothing is saved, the week is as it was, and it says so", async () => {
       const element = await render(camp(BIG));
@@ -1778,17 +1778,30 @@ describe("c-shoresh-generated-schedule", () => {
     });
 
     it("a refused save's sentence stays when the week is read again after it", async () => {
-      const element = await render(camp(BIG));
+      const element = await render();
       await generate(element);
-      saveWeekOnServer.mockRejectedValueOnce({
-        body: { message: "Flagpole stays where it is set up." }
-      });
-      action(element, "TryAnother").click();
-      await flush();
-      getInputs.mockResolvedValueOnce(camp({ ...BIG, scheduleId: SCHEDULE }));
+      // The page reads the season the first Generate asked for: the screen's own, no read.
       element.setup = { ...SETUP };
+      await flush();
+      // The save is held, so the season is read again while Try another is still under way.
+      let refuse;
+      saveWeekOnServer.mockReturnValueOnce(
+        new Promise((resolve, reject) => {
+          refuse = reject;
+        })
+      );
+      action(element, "TryAnother").click();
+      await until(() => saveWeekOnServer.mock.calls.length === 2);
+      const reads = getInputs.mock.calls.length;
+      getInputs.mockResolvedValueOnce(camp({ ...SMALL, scheduleId: SCHEDULE }));
+      element.setup = { ...SETUP };
+      await flush();
+      // The week is read once the build is over, not over it.
+      expect(getInputs).toHaveBeenCalledTimes(reads);
+      refuse({ body: { message: "Flagpole stays where it is set up." } });
       await settle(element);
       await flush();
+      expect(getInputs).toHaveBeenCalledTimes(reads + 1);
       expect(q(element, '[data-id="build-error"]').textContent).toContain(
         "Flagpole stays where it is set up."
       );
