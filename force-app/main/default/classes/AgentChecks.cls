@@ -2,11 +2,12 @@
  * read: a program's Generated Schedule or Manual Build week's checks, as the person, through an
  * agent or the command line (docs/protocol/api.md API-1.30, API-1.44). Web address
  * /v1/week_checks, GET ?season=&week=&program=&schedule=. On Manual Build it answers what that
- * screen reads (its draft, ManualBuildViews.open) in place of what Generate reads. The checks are worked out where the screen works them out, outside
+ * screen reads (its draft, ManualBuildViews) in place of what Generate reads. The checks are worked out where the screen works them out, outside
  * Salesforce (the connector runs the same modules the screen's counter does), so this answers what
- * the screen reads to show them: what Generate reads (AgentBuild.readOf), what setup changed since
- * the week was built (SetupMatchController.getSetupChanges, the screen's own) and the lines
- * accepted with the week (WeekAccepts.accepted, the counter's own).
+ * the screen reads to show them: what Generate reads (GeneratedInputs), what setup changed since
+ * the week was built (SetupMatch, getSetupChanges's own) and the lines accepted with the week
+ * (WeekAccepts.accepted, the counter's own). The program's setup for the week is read once for
+ * all of them.
  */
 @RestResource(urlMapping='/v1/week_checks')
 global with sharing class AgentChecks implements AgentRequest.Read {
@@ -34,11 +35,17 @@ global with sharing class AgentChecks implements AgentRequest.Read {
   public String run(Map<String, Object> asked) {
     AgentWeeks.Week week = AgentSchedules.placeOfEither(asked);
     requireDraft(week, what);
-    Map<String, Object> read = readOf(week);
-    read.put(
-      'setup_changes',
-      SetupMatchController.getSetupChanges(week.draft.Id)
-    );
+    Map<String, Object> read = AgentBuild.setupOf(week);
+    // The program's setup for the week, read once for the draft and its setup changes, on the
+    // season's activities and locations the season's setup has just read (G8).
+    GeneratedSetup setup = loaded(week, read);
+    List<ScheduleDays.DayGrid> draftDays = new List<ScheduleDays.DayGrid>();
+    if (week.manual) {
+      read.put('draft', ManualBuildViews.openWith(week.draft.Id, setup));
+    } else {
+      read.put('inputs', inputsOf(setup, draftDays));
+    }
+    read.put('setup_changes', setupChangesOf(week, setup, draftDays));
     read.put('accepted', WeekAccepts.accepted(week.draft.Id));
     // The week as it is called, for the labels an edit's version and Undo line carry.
     read.put('week_name', week.name);
@@ -46,16 +53,48 @@ global with sharing class AgentChecks implements AgentRequest.Read {
   }
 
   /**
-   * What the week's screen reads: on Manual Build its draft (getDraft's), the season's setup and
-   * the camp's words; on Generated Schedule what Generate reads.
+   * What the week's screens read, on one read of its setup: on Manual Build its draft (getDraft's,
+   * ManualBuildViews), on Generated Schedule what Generate reads (getInputs's, GeneratedInputs),
+   * and the setup changed since (getSetupChanges's, SetupMatch). Refused in the screens' words
+   * when it can't be read, as their own reads are (ScreenErrors.ofLoading).
    */
-  private static Map<String, Object> readOf(AgentWeeks.Week week) {
-    if (!week.manual) {
-      return AgentBuild.readOf(week);
+  private static GeneratedSetup loaded(
+    AgentWeeks.Week week,
+    Map<String, Object> read
+  ) {
+    try {
+      return new GeneratedSetup(week.program.Id, week.weekId)
+        .withSeason((SeasonSetupReader.SeasonSetup) read.get('setup'));
+    } catch (Exception e) {
+      throw ScreenErrors.ofLoading(e);
     }
-    Map<String, Object> read = AgentBuild.setupOf(week);
-    read.put('draft', ManualBuildViews.open(week.draft.Id));
-    return read;
+  }
+
+  private static GeneratedInputs.Inputs inputsOf(
+    GeneratedSetup setup,
+    List<ScheduleDays.DayGrid> draftDays
+  ) {
+    try {
+      return GeneratedInputs.read(setup, draftDays);
+    } catch (Exception e) {
+      throw ScreenErrors.ofLoading(e);
+    }
+  }
+
+  /** draftDays: Generated Schedule's as getInputs read them; Manual Build's are read here. */
+  private static SetupMatch.Preview setupChangesOf(
+    AgentWeeks.Week week,
+    GeneratedSetup setup,
+    List<ScheduleDays.DayGrid> draftDays
+  ) {
+    try {
+      return SetupMatch.onSetup(
+        setup,
+        week.manual ? ScheduleDays.read(week.draft.Id) : draftDays
+      );
+    } catch (Exception e) {
+      throw ScreenErrors.ofLoading(e);
+    }
   }
 
   /** Refused before the week is built (Generated Schedule) or started (Manual Build). */

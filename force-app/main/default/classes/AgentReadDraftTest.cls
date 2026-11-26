@@ -50,9 +50,9 @@ private class AgentReadDraftTest {
       Integer queries = Limits.getQueries();
       Test.stopTest();
       Assert.areEqual(200, draft[0], String.valueOf(draft[1]));
-      // Bound: what week_checks reads (AgentChecksTest): measured 58 (2026-11-25), over the 50 the
-      // bar asks until the season's setup is read once.
-      Assert.isTrue(queries < 62, queries + ' queries');
+      // Bound: what week_checks reads (AgentChecksTest): measured 44 (2026-11-25, the week's setup
+      // read once).
+      Assert.isTrue(queries < 49, queries + ' queries');
       Map<String, Object> body = (Map<String, Object>) draft[1];
       Assert.areEqual(
         new Set<String>{
@@ -130,8 +130,8 @@ private class AgentReadDraftTest {
       Integer queries = Limits.getQueries();
       Test.stopTest();
       Assert.areEqual(200, draft[0], String.valueOf(draft[1]));
-      // Bound: as above, with another program and a special day: measured 65 (2026-11-25).
-      Assert.isTrue(queries < 70, queries + ' queries');
+      // Bound: as above, with another program and a special day: measured 51 (2026-11-25).
+      Assert.isTrue(queries < 56, queries + ' queries');
       Map<String, Object> inputs = (Map<String, Object>) ((Map<String, Object>) draft[1])
         .get('inputs');
       Assert.isFalse(((List<Object>) inputs.get('otherPrograms')).isEmpty());
@@ -158,8 +158,8 @@ private class AgentReadDraftTest {
       Integer queries = Limits.getQueries();
       Test.stopTest();
       Assert.areEqual(200, read[0], String.valueOf(read[1]));
-      // Bound: as above, for another program's week: measured 63 (2026-11-25).
-      Assert.isTrue(queries < 68, queries + ' queries');
+      // Bound: as above, for another program's week: measured 46 (2026-11-25).
+      Assert.isTrue(queries < 51, queries + ' queries');
       Assert.areEqual(
         String.valueOf(draftId),
         ((Map<String, Object>) ((Map<String, Object>) ((Map<String, Object>) ((Map<String, Object>) read[1])
@@ -208,8 +208,8 @@ private class AgentReadDraftTest {
       Integer queries = Limits.getQueries();
       Test.stopTest();
       Assert.areEqual(200, read[0], String.valueOf(read[1]));
-      // Bound: as above, for Manual Build's draft: measured 63 (2026-11-25).
-      Assert.isTrue(queries < 68, queries + ' queries');
+      // Bound: as above, for Manual Build's draft: measured 46 (2026-11-25).
+      Assert.isTrue(queries < 51, queries + ' queries');
       Map<String, Object> schedule = (Map<String, Object>) ((Map<String, Object>) ((Map<String, Object>) read[1])
           .get('draft'))
         .get('schedule');

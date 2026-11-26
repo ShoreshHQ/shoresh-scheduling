@@ -1,10 +1,9 @@
 /**
  * The AI's heaviest requests through their web addresses, on GeneratedLimitsTest's big camp (8
  * groups x 8 time blocks x 5 days, two other programs with a published week), built once by a
- * scheduler: week_view and schedule_cell stay under half of Salesforce's limits for one request
- * (queries, CPU time, heap held); read_week_draft and week_checks stay under half for CPU and heap
- * and within their measured query count, which is over half (MOST_DRAFT_READ_QUERIES); week_view
- * adds a few queries per published program. Synthetic camp.
+ * scheduler: week_view, read_week_draft, week_checks and schedule_cell stay under half of
+ * Salesforce's limits for one request (queries, CPU time, heap held); week_view adds a few queries
+ * per published program. Synthetic camp.
  */
 @IsTest
 private class AgentLimitsTest {
@@ -12,6 +11,9 @@ private class AgentLimitsTest {
   // heap under 3 of 6 MB), so a bigger camp than this one still fits: the AI's requests below.
   // Apex gives only the heap held at a moment, not the most a request reached, so the heap check
   // catches what a request keeps (its answer and what it holds on to), not a passing spike.
+  // read_week_draft and week_checks read the week's setup once for the week and its setup
+  // changes: measured 47 on this camp (2026-11-25, 60 before), so their bound is this 50 itself
+  // (measured + 5 would pass it).
   private static final Integer HALF_QUERIES = 50;
   private static final Integer HALF_CPU_MS = 5000;
   private static final Integer HALF_HEAP = 3 * 1024 * 1024;
@@ -20,12 +22,6 @@ private class AgentLimitsTest {
   // 23 for three (2026-11-25), 6 a program, so 8 published programs would pass the 50 the bar asks.
   // Bounded near that per program (one to spare) until one read opens them all.
   private static final Integer MOST_QUERIES_PER_PROGRAM_VIEW = 7;
-  // G8: the draft an AI reads, and the week's checks, are the screen's own reads: finding the week
-  // (5 queries), the season's setup (22), the week (14) and its setup changes (15), each read on
-  // its own, and a few more. Measured 60 on this camp (2026-11-25): over the 50 the bar asks,
-  // until one shared read of the season setup serves them; bounded here near that, so it can't
-  // grow.
-  private static final Integer MOST_DRAFT_READ_QUERIES = 65;
 
   @TestSetup
   static void makeCamp() {
@@ -77,17 +73,16 @@ private class AgentLimitsTest {
   }
 
   /**
-   * What one request used, measured from Test.startTest(): CPU and heap under half of their
-   * limits, queries under mostQueries (HALF_QUERIES, or a measured bound the caller says why it
-   * needs). Measured on 2026-11-25: CPU 73 ms for week_view, under 500 ms for the draft read.
+   * What one request used, measured from Test.startTest(): queries, CPU and heap under half of
+   * their limits. Measured on 2026-11-25: CPU 73 ms for week_view, under 500 ms for the draft read.
    */
-  private static void assertWithinLimits(String what, Integer mostQueries) {
+  private static void assertWithinLimits(String what) {
     Integer queries = Limits.getQueries();
     Integer cpu = Limits.getCpuTime();
     Integer heap = Limits.getHeapSize();
     Assert.isTrue(
-      queries < mostQueries,
-      what + ' used ' + queries + ' queries (fewer than ' + mostQueries + ')'
+      queries < HALF_QUERIES,
+      what + ' used ' + queries + ' queries (fewer than ' + HALF_QUERIES + ')'
     );
     Assert.isTrue(
       cpu < HALF_CPU_MS,
@@ -110,7 +105,7 @@ private class AgentLimitsTest {
         new AgentWeekView(),
         new Map<String, Object>{ 'season' => 'Summer 2026', 'week' => 'Week 1' }
       );
-      assertWithinLimits('week_view of two published programs', HALF_QUERIES);
+      assertWithinLimits('week_view of two published programs');
       Test.stopTest();
       Assert.areEqual(200, view[0], (String) view[1]);
       Map<String, Object> answer = (Map<String, Object>) JSON.deserializeUntyped(
@@ -176,7 +171,7 @@ private class AgentLimitsTest {
         new AgentChecks('draft'),
         mainWeek(new Map<String, Object>())
       );
-      assertWithinLimits('read_week_draft', MOST_DRAFT_READ_QUERIES);
+      assertWithinLimits('read_week_draft');
       Test.stopTest();
       Assert.areEqual(200, draft[0], (String) draft[1]);
     }
@@ -193,7 +188,7 @@ private class AgentLimitsTest {
         new AgentChecks('checks'),
         mainWeek(new Map<String, Object>())
       );
-      assertWithinLimits('week_checks', MOST_DRAFT_READ_QUERIES);
+      assertWithinLimits('week_checks');
       Test.stopTest();
       Assert.areEqual(200, checks[0], (String) checks[1]);
     }
@@ -227,7 +222,7 @@ private class AgentLimitsTest {
       CampLabels.forget();
       Test.startTest();
       List<Object> answer = asked(new AgentCells(), change);
-      assertWithinLimits('schedule_cell', HALF_QUERIES);
+      assertWithinLimits('schedule_cell');
       Test.stopTest();
       Assert.areEqual(200, answer[0], (String) answer[1]);
     }

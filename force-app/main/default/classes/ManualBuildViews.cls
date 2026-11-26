@@ -258,9 +258,9 @@ public with sharing class ManualBuildViews {
     view.schedule = ScheduleViews.open(read.scheduleId);
     view.activities = options(read.program.Season__c, read.groups);
     view.activityRecords = read.activities;
-    view.locationRecords = SeasonSetupReader.locationsOf(
-      read.program.Season__c
-    );
+    view.locationRecords = read.setup == null
+      ? SeasonSetupReader.locationsOf(read.program.Season__c)
+      : read.setup.locationRecords();
     view.groupRecords = read.groups;
     readSetTimes(view, read);
     ManualBuildNamesNow names = namesNow(view, read);
@@ -319,19 +319,18 @@ public with sharing class ManualBuildViews {
       ];
       return;
     }
-    view.fixedActivityRecords = ManualSetUpCells.fixedOf(read.program.Id);
-    view.recurringActivityRecords = ManualSetUpCells.recurringOf(
-      read.program.Id
-    );
-    if (read.activities.isEmpty()) {
-      return;
-    }
     GeneratedSetup setup = read.setup;
     if (setup == null) {
       setup = new GeneratedSetup(read.program, read.week);
       setup.blocks = read.blocks;
       setup.groups = read.groups;
       setup.exceptions = read.exceptions;
+    }
+    // Read once, with the setup a start or the week's checks read (SetupMatch places them too).
+    view.fixedActivityRecords = setup.fixedActivityRecords();
+    view.recurringActivityRecords = setup.recurringActivityRecords();
+    if (read.activities.isEmpty()) {
+      return;
     }
     view.setUpCells.addAll(
       ManualSetUpCells.of(

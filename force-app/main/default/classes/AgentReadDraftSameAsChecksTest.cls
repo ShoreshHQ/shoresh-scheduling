@@ -1,6 +1,6 @@
 /**
  * The draft an AI reads is word for word the week's checks (docs/protocol/api.md API-1.123), on
- * GeneratedTestData's camp, generated once in setup by a scheduler. Each read costs about 60
+ * GeneratedTestData's camp, generated once in setup by a scheduler. Each read costs about 45
  * queries, so the checks are read in the test and the draft in a job of its own (each with its own
  * limits), as two requests are.
  */
