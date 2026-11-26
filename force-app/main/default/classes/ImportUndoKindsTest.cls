@@ -46,15 +46,11 @@ private class ImportUndoKindsTest {
   private static Object sortOrderNow(SObject record) {
     Schema.SObjectType kind = record.getSObjectType();
     Id recordId = record.Id;
-    return Database.query(
-        'SELECT ' +
-          sortOrderOf(kind) +
-          ' FROM ' +
-          kind +
-          ' WHERE Id = :recordId',
-        AccessLevel.USER_MODE
-      )
-      .get(sortOrderOf(kind));
+    SObject now = Database.query(
+      'SELECT ' + sortOrderOf(kind) + ' FROM ' + kind + ' WHERE Id = :recordId',
+      AccessLevel.USER_MODE
+    )[0];
+    return now.get(sortOrderOf(kind));
   }
 
   // INGEST-5.10
