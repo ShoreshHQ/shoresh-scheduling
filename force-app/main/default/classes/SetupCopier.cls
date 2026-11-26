@@ -9,6 +9,8 @@ public with sharing class SetupCopier {
   private final Id newSeasonId;
   // The copy's import log (SeasonCopier).
   private final ImportWriter log;
+  // Each copied activity's unticked boxes, read with it: Copy season stays under its query bound.
+  private final List<ActivityOffTime__c> offTimes = new List<ActivityOffTime__c>();
 
   public SetupCopier(SeasonCopier.Copying made) {
     this.sourceSeasonId = made.sourceSeasonId;
@@ -99,12 +101,20 @@ public with sharing class SetupCopier {
         EarlyWeekByDay__c,
         Notes__c,
         SortOrder__c,
-        FormerNames__c
+        FormerNames__c,
+        (
+          SELECT Activity__c, TimeBlock__c, Day__c
+          FROM OffTimes__r
+          WHERE TimeBlock__c != NULL
+        )
       FROM Activity__c
       WHERE Season__c = :sourceSeasonId
       WITH USER_MODE
     ]) {
-      Activity__c copy = activity.clone(false, true, false, false);
+      for (ActivityOffTime__c row : activity.OffTimes__r) {
+        offTimes.add(row);
+      }
+      Activity__c copy = fieldsOf(activity);
       copy.Season__c = newSeasonId;
       copy.Location__c = activity.Location__c == null
         ? null
@@ -130,6 +140,18 @@ public with sharing class SetupCopier {
     // (SeasonCopier copies as a SetupWrite COPY).
     log.amend(withRainPlans);
     return copies;
+  }
+
+  /** A copy of the activity's fields, without the boxes read with it (a clone would keep them). */
+  private static Activity__c fieldsOf(Activity__c activity) {
+    Activity__c copy = new Activity__c();
+    Map<String, Object> fields = activity.getPopulatedFieldsAsMap();
+    for (String name : fields.keySet()) {
+      if (name != 'Id' && !(fields.get(name) instanceof List<SObject>)) {
+        copy.put(name, fields.get(name));
+      }
+    }
+    return copy;
   }
 
   private void copyEligibility(
@@ -160,12 +182,7 @@ public with sharing class SetupCopier {
     Map<Id, Id> structureCopies
   ) {
     List<ActivityOffTime__c> copies = new List<ActivityOffTime__c>();
-    for (ActivityOffTime__c row : [
-      SELECT Activity__c, TimeBlock__c, Day__c
-      FROM ActivityOffTime__c
-      WHERE Activity__c IN :activityCopies.keySet() AND TimeBlock__c != NULL
-      WITH USER_MODE
-    ]) {
+    for (ActivityOffTime__c row : offTimes) {
       Id block = structureCopies.get(row.TimeBlock__c);
       if (block != null) {
         copies.add(
