@@ -53,14 +53,9 @@
                   href="#"
                   class="menu-action menu-action_disabled"
                   aria-disabled="true"
-                  data-coming={item.coming}
                   data-item={item.key}
                   onclick={handleDisabledClick}
                   ><span class="menu-label">{item.label}</span
-                  ><template lwc:if={item.coming}
-                    ><span class="slds-badge menu-coming" aria-hidden="true"
-                      >Coming</span
-                    ></template
                   ><span class="slds-assistive-text" data-reason={item.key}
                     >{item.reason}</span
                   ></a

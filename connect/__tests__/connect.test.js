@@ -1163,7 +1163,7 @@ describe("Shoresh for AI tools and the command line", () => {
         id: "a1",
         name: "Before Placed Soccer",
         origin: "Generated",
-        reason: "ThroughAgent",
+        reason: "AutoSaved",
         savedAt: "2026-10-31T19:40:00.000Z",
         publishedAt: null,
         namedByPublish: false
@@ -1210,7 +1210,7 @@ describe("Shoresh for AI tools and the command line", () => {
       versions: [
         {
           name: "Before Placed Soccer",
-          says: `Generated Schedule · By your AI · ${when}`,
+          says: `Generated Schedule · Auto-saved · ${when}`,
           saved: "2026-10-31T19:40:00.000Z",
           can_delete: true
         },
@@ -1237,7 +1237,7 @@ describe("Shoresh for AI tools and the command line", () => {
       versionWords
     });
     expect(JSON.parse(camps.text).versions[0].says).toBe(
-      "Generated Schedule · By your AI · Oct 31, 12:40 PM"
+      "Generated Schedule · Auto-saved · Oct 31, 12:40 PM"
     );
     const none = await call("list_versions", asked, {
       run: sfAnswering(

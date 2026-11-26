@@ -6,20 +6,10 @@
  * words, the same week and choice always giving the same file and the same pages.
  */
 export { CANT_BE_SHOWN } from "./engine.shoreshScheduleExport.removed.mjs";
-export { printTable } from "./engine.shoreshScheduleExport.table.mjs";
-export {
-  blockText,
-  fileTitle,
-  itemText,
-  scheduleSheets,
-  sheetsFor
-} from "./engine.shoreshScheduleExport.sheets.mjs";
+export { blockText, fileTitle, scheduleSheets, sheetsFor } from "./engine.shoreshScheduleExport.sheets.mjs";
 export {
   EVERY,
-  PAGE_COLUMNS,
   campPlaces,
-  choiceLabel,
-  dayPieces,
   noScheduleYet,
   pagesFor,
   printChoices

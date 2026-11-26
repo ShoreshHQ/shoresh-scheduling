@@ -1,27 +1,8 @@
 @import "c/shoreshTokens";
+@import "c/shoreshScheduleScreen";
 
-/* Shoresh desktop's schedule screen (ScheduleScreen.jsx and its views), in Salesforce's tokens. */
-.schedules {
-  position: relative;
-}
-
-/*
- * What building still needs: the desktop's bronze-tinted box (ScheduleScreen.jsx), its one
- * sentence with links, and "Set up <first>". Bronze only as the tint and border, never text.
- */
-.still-needed-box {
-  max-width: 40rem;
-  margin: 2rem auto;
-  padding: 1rem 1.25rem;
-  border: 1px solid var(--shoresh-caution);
-  border-radius: 8px;
-  background: var(--shoresh-caution-tint);
-  color: var(--shoresh-text);
-}
-
-.still-needed {
-  margin-bottom: 0.75rem;
-}
+/* Shoresh desktop's schedule screen (ScheduleScreen.jsx and its views), in Salesforce's tokens.
+   The layout it shares with Generated Schedule is in c/shoreshScheduleScreen. */
 
 /* A week not started yet: one button, centred. */
 .start {
@@ -43,20 +24,6 @@
   border-radius: 8px;
   background: var(--shoresh-caution-tint);
   font-size: 13px;
-}
-
-/* A refused move: a quiet line under the rail. */
-.notice {
-  margin: 0;
-  font-size: 13px;
-  color: var(--slds-g-color-neutral-base-30, #444);
-}
-
-.tool-undo {
-  margin-left: 0.25rem;
-  min-height: 24px;
-  min-width: 24px;
-  padding: 0 0.5rem;
 }
 
 /* Versions, then Published and Publish, 4 apart at the rail's right edge. */
