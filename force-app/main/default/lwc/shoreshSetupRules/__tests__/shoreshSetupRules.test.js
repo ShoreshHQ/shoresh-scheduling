@@ -5,7 +5,7 @@ import { nsName, nsRecord } from "shoresh-jest/namespace";
 
 const { suggestedCopyName, suggestedCopyStart } = rules;
 // Fixtures are written with bare names and given to the rules as the package would send them
-// (nsRecord: unchanged normally, shoresh__-prefixed in the namespaced run). Expected records go
+// (nsRecord: unchanged normally, Shoresh__-prefixed in the namespaced run). Expected records go
 // through nsRecord too.
 const setupProblems = (setup, t) => rules.setupProblems(nsRecord(setup), t);
 // The set-time notes here are about recurring activities (who they cover), and the changed

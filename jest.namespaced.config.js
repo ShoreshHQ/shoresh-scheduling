@@ -1,5 +1,5 @@
 // The namespaced Jest run: every component's tests run as if the package already had its
-// `shoresh` namespace (jest/namespaced-resolver.js names every schema import shoresh__...), so a
+// `Shoresh` namespace (jest/namespaced-resolver.js names every schema import Shoresh__...), so a
 // bare `__c` name in a component fails its tests here (docs/adr/0009-namespace-safe-names.md).
 // New components are covered automatically. A component's tests hand records in through
 // nsRecord() and check what it sends through bareRecord() (jest/namespace.js).

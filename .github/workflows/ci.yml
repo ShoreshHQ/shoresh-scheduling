@@ -49,7 +49,7 @@ jobs:
           cache: npm
       - run: npm ci
       - name: LWC Jest, as if the package had its namespace
-        # Every component's tests, with every schema import named shoresh__...: a component
+        # Every component's tests, with every schema import named Shoresh__...: a component
         # that spells a field name as text fails here (docs/adr/0009-namespace-safe-names.md).
         run: npm run test:unit:namespaced
       - name: No field or object names written as text

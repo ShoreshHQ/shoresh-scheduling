@@ -10,7 +10,7 @@
     }
   ],
   "name": "shoresh-scheduling",
-  "namespace": "",
+  "namespace": "Shoresh",
   "sfdcLoginUrl": "https://login.salesforce.com",
   "sourceApiVersion": "67.0"
 }
