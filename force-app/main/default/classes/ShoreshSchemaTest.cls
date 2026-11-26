@@ -27,12 +27,12 @@ private class ShoreshSchemaTest {
   static void prefixIsNoneTodayOrTheShoreshNamespace() {
     String prefix = ShoreshSchema.prefix();
     Assert.isTrue(
-      prefix == '' || prefix == 'shoresh__',
+      prefix == '' || prefix == 'Shoresh__',
       'Unexpected namespace prefix: ' + prefix
     );
-    ShoreshSchema.simulatedPrefix = 'shoresh__';
+    ShoreshSchema.simulatedPrefix = 'Shoresh__';
     Assert.areEqual(
-      'shoresh__',
+      'Shoresh__',
       ShoreshSchema.prefix(),
       'Tests can see the namespaced names'
     );
@@ -40,13 +40,13 @@ private class ShoreshSchemaTest {
 
   @IsTest
   static void findsAFieldWithOrWithoutThePrefixInAnyCase() {
-    ShoreshSchema.simulatedPrefix = 'shoresh__';
+    ShoreshSchema.simulatedPrefix = 'Shoresh__';
     Schema.SObjectType week = Week__c.SObjectType;
     Schema.SObjectField start = Week__c.StartDate__c;
     Assert.areEqual(start, ShoreshSchema.field(week, 'StartDate__c'), 'Bare');
     Assert.areEqual(
       start,
-      ShoreshSchema.field(week, 'shoresh__StartDate__c'),
+      ShoreshSchema.field(week, 'Shoresh__StartDate__c'),
       'Prefixed'
     );
     Assert.areEqual(
@@ -63,7 +63,7 @@ private class ShoreshSchemaTest {
 
   @IsTest
   static void findsNothingForNamesTheObjectDoesNotHave() {
-    ShoreshSchema.simulatedPrefix = 'shoresh__';
+    ShoreshSchema.simulatedPrefix = 'Shoresh__';
     Schema.SObjectType week = Week__c.SObjectType;
     Assert.isNull(
       ShoreshSchema.field(week, 'other__StartDate__c'),
@@ -81,7 +81,7 @@ private class ShoreshSchemaTest {
 
   @IsTest
   static void everyFieldRoundTripsThroughItsStoredAndPackagedNames() {
-    ShoreshSchema.simulatedPrefix = 'shoresh__';
+    ShoreshSchema.simulatedPrefix = 'Shoresh__';
     Integer checked = 0;
     for (Schema.SObjectType type : OWN_OBJECTS) {
       for (
@@ -112,9 +112,9 @@ private class ShoreshSchemaTest {
 
   @IsTest
   static void packagedNamesPrefixOnlyCustomFields() {
-    ShoreshSchema.simulatedPrefix = 'shoresh__';
+    ShoreshSchema.simulatedPrefix = 'Shoresh__';
     Assert.areEqual(
-      'shoresh__StartDate__c',
+      'Shoresh__StartDate__c',
       ShoreshTestData.packagedName(Week__c.StartDate__c),
       'Custom field'
     );
@@ -142,7 +142,7 @@ private class ShoreshSchemaTest {
   @IsTest
   static void queryNamesCarryTheRealPrefixAndWorkInSoql() {
     // Queries run against the real org, so simulating the namespace doesn't change them.
-    ShoreshSchema.simulatedPrefix = 'shoresh__';
+    ShoreshSchema.simulatedPrefix = 'Shoresh__';
     Schema.DescribeSObjectResult camp = Camp__c.SObjectType.getDescribe(
       SObjectDescribeOptions.DEFERRED
     );
@@ -198,15 +198,15 @@ private class ShoreshSchemaTest {
   @IsTest
   static void onlyThisPackagesOwnCustomFieldsCount() {
     Assert.isTrue(
-      ShoreshSchema.isOwn('shoresh__Length__c', 'Length__c', 'shoresh__'),
+      ShoreshSchema.isOwn('Shoresh__Length__c', 'Length__c', 'Shoresh__'),
       'Ours, namespaced'
     );
     Assert.isFalse(
-      ShoreshSchema.isOwn('Length__c', 'Length__c', 'shoresh__'),
+      ShoreshSchema.isOwn('Length__c', 'Length__c', 'Shoresh__'),
       'A customer\'s own field on our object'
     );
     Assert.isFalse(
-      ShoreshSchema.isOwn('other__Length__c', 'Length__c', 'shoresh__'),
+      ShoreshSchema.isOwn('other__Length__c', 'Length__c', 'Shoresh__'),
       'Another package\'s field'
     );
     Assert.isTrue(
@@ -221,10 +221,10 @@ private class ShoreshSchemaTest {
 
   @IsTest
   static void takesOffOnlyThisPackagesPrefix() {
-    ShoreshSchema.simulatedPrefix = 'shoresh__';
+    ShoreshSchema.simulatedPrefix = 'Shoresh__';
     Assert.areEqual(
       'Coverage__c',
-      ShoreshSchema.withoutPrefix('shoresh__Coverage__c'),
+      ShoreshSchema.withoutPrefix('Shoresh__Coverage__c'),
       'Own prefix'
     );
     Assert.areEqual(
@@ -264,7 +264,7 @@ private class ShoreshSchemaTest {
       ShoreshSchema.populatedFields(sent),
       'Notes only: no Id, no parent record'
     );
-    ShoreshSchema.simulatedPrefix = 'shoresh__';
+    ShoreshSchema.simulatedPrefix = 'Shoresh__';
     Assert.areEqual(
       expected,
       ShoreshSchema.populatedFields(sent),

@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * Namespace-safety check. Once the package has its namespace, Salesforce names every custom
- * field `shoresh__Field__c`, so code that spells a field or object name as text (`"StartDate__c"`,
+ * field `Shoresh__Field__c`, so code that spells a field or object name as text (`"StartDate__c"`,
  * `record.StartDate__c`, `'Week__c'`, `day + '__c'`) finds nothing. Every such spelling has been
  * replaced (docs/adr/0009-namespace-safe-names.md), so the check allows none: one is a failure.
  *

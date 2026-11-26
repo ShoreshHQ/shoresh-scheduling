@@ -1,13 +1,13 @@
 /**
  * Namespace safety for imports and Undo (namespace retrofit, part 2). Once the package has its
- * `shoresh` namespace, screens name fields with the prefix and rows report them that way. Here
+ * `Shoresh` namespace, screens name fields with the prefix and rows report them that way. Here
  * ShoreshSchema simulates it: a workbook spelled with the prefix saves the same, its log keeps
  * local names, and a log spelled with the prefix is undone exactly as one without; the prefix
  * never lets a field off ImportFields' lists through. Made-up camp only.
  */
 @IsTest
 private class ImportNamespaceTest {
-  private static final String PREFIX = 'shoresh__';
+  private static final String PREFIX = 'Shoresh__';
 
   private class Camp {
     Camp__c camp;

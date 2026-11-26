@@ -1,7 +1,8 @@
 /**
  * Jest resolver for the namespaced run (jest.namespaced.config.js). It answers every
  * `@salesforce/schema/...` import with the name the package will have once it has its namespace
- * (`Week__c.StartDate__c` -> `shoresh__Week__c` / `shoresh__StartDate__c`), the way Salesforce
+ * (`Week__c.StartDate__c` -> `Shoresh__Week__c` / `Shoresh__StartDate__c`; capital S, as the prefix
+ * was registered), the way Salesforce
  * compiles these imports in a namespaced org. Everything else goes to the usual LWC resolver.
  *
  * Without this, the LWC Jest transformer falls back to the bare name, so a component that spells
@@ -12,7 +13,7 @@ const fs = require("node:fs");
 const path = require("node:path");
 const lwcResolver = require("@salesforce/sfdx-lwc-jest/src/resolver");
 
-const PREFIX = "shoresh__";
+const PREFIX = "Shoresh__";
 const SCHEMA = "@salesforce/schema/";
 const CACHE = path.resolve(
   __dirname,

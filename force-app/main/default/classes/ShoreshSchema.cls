@@ -1,7 +1,7 @@
 /**
  * The one place Apex turns object and field names written as text into the platform's own
- * references, so nothing breaks when the package gets its namespace (`shoresh__`). From then on
- * Salesforce names every custom field `shoresh__Field__c` in getName(), describe maps and
+ * references, so nothing breaks when the package gets its namespace (`Shoresh__`). From then on
+ * Salesforce names every custom field `Shoresh__Field__c` in getName(), describe maps and
  * getPopulatedFieldsAsMap() keys, while typed references (Week__c.StartDate__c) keep working.
  *
  * - Compare fields as tokens, never as names: resolve any name with field() first.
@@ -12,7 +12,7 @@
  * docs/adr/0009-namespace-safe-names.md).
  */
 public with sharing class ShoreshSchema {
-  /** Tests set this to 'shoresh__' to see names the way the namespaced package will. */
+  /** Tests set this to 'Shoresh__' to see names the way the namespaced package will. */
   @TestVisible
   private static String simulatedPrefix;
   private static String realPrefix;
@@ -20,12 +20,12 @@ public with sharing class ShoreshSchema {
   // Imports and Undo ask for the same fields' names row after row.
   private static Map<Schema.SObjectField, String> localNames = new Map<Schema.SObjectField, String>();
 
-  /** What Salesforce puts before this package's names: '' today, 'shoresh__' once it has one. */
+  /** What Salesforce puts before this package's names: '' today, 'Shoresh__' once it has one. */
   public static String prefix() {
     return simulatedPrefix != null ? simulatedPrefix : realPrefix();
   }
 
-  /** The package's namespace as the platform names it ("shoresh"), or null before it has one. */
+  /** The package's namespace as the platform names it ("Shoresh"), or null before it has one. */
   public static String namespace() {
     String real = realPrefix().removeEnd('__');
     return String.isBlank(real) ? null : real;

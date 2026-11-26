@@ -7430,7 +7430,7 @@ const CANT_BE_SHOWN = "Can't be shown";var activityEligibilityActivity = {"field
  * run `node scripts/generate-shoresh-schema.js` after adding or removing an object or field.
  *
  * The one place screens get object, field and relationship names. Salesforce adds the package
- * namespace to these imports (`shoresh__StartDate__c` once it has one), so records read and
+ * namespace to these imports (`Shoresh__StartDate__c` in the namespaced package), so records read and
  * saved with them keep working when the namespace arrives. Elsewhere, never spell a name as
  * text: scripts/namespace-safety.js fails CI on any one (docs/adr/0009-namespace-safe-names.md).
  *

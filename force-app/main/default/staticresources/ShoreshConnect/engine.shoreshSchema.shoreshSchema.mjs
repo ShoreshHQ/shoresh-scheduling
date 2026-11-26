@@ -4,7 +4,7 @@ import { schemaName } from "./engine.salesforce-schema.mjs";
  * run `node scripts/generate-shoresh-schema.js` after adding or removing an object or field.
  *
  * The one place screens get object, field and relationship names. Salesforce adds the package
- * namespace to these imports (`shoresh__StartDate__c` once it has one), so records read and
+ * namespace to these imports (`Shoresh__StartDate__c` in the namespaced package), so records read and
  * saved with them keep working when the namespace arrives. Elsewhere, never spell a name as
  * text: scripts/namespace-safety.js fails CI on any one (docs/adr/0009-namespace-safe-names.md).
  *
@@ -321,7 +321,7 @@ const weekSeason = schemaName("Week__c.Season__c");
 const weekSortOrder = schemaName("Week__c.SortOrder__c");
 const weekStartDate = schemaName("Week__c.StartDate__c");
 
-/** What Salesforce puts before every name in this package: "" today, "shoresh__" later. */
+/** What Salesforce puts before every name in this package: "Shoresh__" in the namespaced package, "" in an org deployed without it. */
 export const NAMESPACE_PREFIX = activityEligibilityObject.objectApiName.slice(
   0,
   -"ActivityEligibility__c".length

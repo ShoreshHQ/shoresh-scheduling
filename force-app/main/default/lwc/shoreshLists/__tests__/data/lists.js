@@ -1,6 +1,6 @@
 // The list engine as the screens call it, for tests (not a test itself). The season is written
 // in tests with bare names and handed over as the package would send it: unchanged normally,
-// shoresh__-prefixed in the namespaced run (npm run test:unit:namespaced). What a save would
+// Shoresh__-prefixed in the namespaced run (npm run test:unit:namespaced). What a save would
 // send must name every field the package's way (a bare name fails the namespaced run); it is
 // then given back with bare names, so the tests' expectations read the same in both runs.
 import * as lists from "c/shoreshLists";

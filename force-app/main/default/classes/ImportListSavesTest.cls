@@ -889,7 +889,7 @@ private class ImportListSavesTest {
   static void aListAndLogSpelledWithTheNamespaceAreReadTheSame() {
     Camp c = camp();
     System.runAs(new User(Id = c.scheduler)) {
-      ShoreshSchema.simulatedPrefix = 'shoresh__';
+      ShoreshSchema.simulatedPrefix = 'Shoresh__';
       Map<String, Object> sent = ImportTestPlans.listPlan(
         c.season.Id,
         new List<Object>{
@@ -944,12 +944,12 @@ private class ImportListSavesTest {
       Import__c packaged = ImportTestPlans.packageLog(result.importId);
       Assert.isTrue(
         packaged.Changed__c.contains(
-          '"type":"shoresh__ActivityEligibility__c"'
+          '"type":"Shoresh__ActivityEligibility__c"'
         ),
         packaged.Changed__c
       );
       Assert.isTrue(
-        packaged.Changed__c.contains('"shoresh__TimesPerWeekMin__c"'),
+        packaged.Changed__c.contains('"Shoresh__TimesPerWeekMin__c"'),
         packaged.Changed__c
       );
 

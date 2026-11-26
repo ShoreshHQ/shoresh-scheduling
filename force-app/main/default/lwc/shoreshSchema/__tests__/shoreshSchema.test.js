@@ -16,7 +16,7 @@ const GENERATOR = path.resolve(
   "../../../../../../scripts/generate-shoresh-schema.js"
 );
 
-// Set by jest.namespaced.config.js, where every schema import carries the shoresh__ prefix.
+// Set by jest.namespaced.config.js, where every schema import carries the Shoresh__ prefix.
 const NAMESPACED = globalThis.SHORESH_JEST_NAMESPACED === true;
 
 describe("c/shoreshSchema", () => {
@@ -27,8 +27,8 @@ describe("c/shoreshSchema", () => {
     ).not.toThrow();
   });
 
-  it("has the namespace prefix of the run: none today, shoresh__ in the namespaced run", () => {
-    expect(NAMESPACE_PREFIX).toBe(NAMESPACED ? "shoresh__" : "");
+  it("has the namespace prefix of the run: none today, Shoresh__ in the namespaced run", () => {
+    expect(NAMESPACE_PREFIX).toBe(NAMESPACED ? "Shoresh__" : "");
   });
 
   it("names objects, fields, parents and child lists with the prefix", () => {
@@ -71,7 +71,7 @@ describe("c/shoreshSchema", () => {
     for (const name of names) {
       expect(name).toMatch(/__(c|r)$/);
       expect(name.startsWith(NAMESPACE_PREFIX)).toBe(true);
-      expect(name.slice(NAMESPACE_PREFIX.length)).not.toContain("shoresh__");
+      expect(name.slice(NAMESPACE_PREFIX.length)).not.toContain("Shoresh__");
     }
   });
 
