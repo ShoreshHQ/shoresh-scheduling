@@ -193,7 +193,7 @@ function activityProblems(st, act, group, d, b) {
 export function check(st, act, g, d, b, all) {
   st.ruleChecks++;
   const span = act.span;
-  // When it runs (protocol 3.13): every block of its length must be one it can run in.
+  // When it runs (protocol 3.14): every block of its length must be one it can run in.
   if (act.off && act.off.size && !runsThrough(st, act, d, b)) {
     return all ? null : OFF_TIME;
   }

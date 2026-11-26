@@ -1128,6 +1128,7 @@ describe("When it runs", () => {
     ).toEqual(["When it runs (Main)"]);
   });
 
+  // GEN-3.18
   it("unticking a box saves at once, the whole list, with what was seen", async () => {
     const element = await render(RUNS);
     const handler = jest.fn();

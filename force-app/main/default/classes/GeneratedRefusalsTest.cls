@@ -351,7 +351,7 @@ private class GeneratedRefusalsTest {
     }
   }
 
-  // GEN-3.13 (ADR 0031 piece A): the engine never places an activity where When it runs leaves
+  // GEN-3.14 (ADR 0031 piece A): the engine never places an activity where When it runs leaves
   // that day and time block out; the server says so in the camp's words.
   @IsTest
   static void anActivityIsNeverNewlyPlacedWhereItDoesntRun() {

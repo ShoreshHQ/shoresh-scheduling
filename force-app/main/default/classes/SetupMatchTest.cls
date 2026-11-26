@@ -219,7 +219,7 @@ private class SetupMatchTest {
     }
   }
 
-  // GEN-3.15 (ADR 0031 piece A): a placement where its activity no longer runs is shown as
+  // GEN-3.16 (ADR 0031 piece A): a placement where its activity no longer runs is shown as
   // Update to match setup shows a closure, never refused.
   @IsTest
   static void aPlacementWhereItsActivityNoLongerRunsGetsADot() {

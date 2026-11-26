@@ -1,5 +1,5 @@
 /**
- * When an activity can run (ADR 0031 piece A; protocol GEN-3.13 to 3.16): the boxes unticked in
+ * When an activity can run (ADR 0031 piece A; protocol GEN-3.14 to 3.17): the boxes unticked in
  * its details panel's When it runs grid are times the build never places it, a limit that never
  * gives way (not even to never-blank); a person's own placement there is kept and shown, never
  * refused; and a camp that unticks nothing gets exactly the week it got before.
@@ -43,7 +43,7 @@ function placements(days) {
 }
 
 describe("When it runs", () => {
-  // GEN-3.13
+  // CORE-4.9, GEN-3.14
   it("never places an activity in a box its When it runs leaves out, and places it where it can run", () => {
     const result = generateWeek(
       camp({
@@ -66,7 +66,7 @@ describe("When it runs", () => {
     expect([at(result, 1, "g1", 0), at(result, 1, "g1", 1)]).toContain("swim");
   });
 
-  // GEN-3.13
+  // GEN-3.14
   it("a box left out on Monday says nothing about Tuesday", () => {
     const result = generateWeek(
       camp({
@@ -82,7 +82,7 @@ describe("When it runs", () => {
     expect(at(result, 1, "g1", 0)).toBe("swim");
   });
 
-  // GEN-3.13
+  // GEN-3.14
   it("a multi-block activity needs every block of its length to be one it can run in", () => {
     const result = generateWeek(
       camp({
@@ -106,7 +106,7 @@ describe("When it runs", () => {
     expect(result.stillNeeded).toEqual(["hike · Bunk g1: 1 still needed"]);
   });
 
-  // GEN-3.14
+  // GEN-3.15
   it("a cell where nothing set up for the group runs stays Open and says so, never-blank or not", () => {
     const result = generateWeek(
       camp({
@@ -128,7 +128,7 @@ describe("When it runs", () => {
     expect(at(result, 0, "g1", 1)).not.toBeNull();
   });
 
-  // GEN-3.14: never-blank bends only the weekly maximum, never When it runs.
+  // GEN-3.15: never-blank bends only the weekly maximum, never When it runs.
   it("never-blank goes over a weekly maximum before it would place an activity where it can't run", () => {
     const result = generateWeek(
       camp({
@@ -147,7 +147,7 @@ describe("When it runs", () => {
     expect(day.filter(Boolean).length).toBe(2);
   });
 
-  // GEN-3.15
+  // GEN-3.16
   it("a locked hand edit where its activity can't run is kept, and its placement says so", () => {
     const result = generateWeek(
       camp({
@@ -170,7 +170,7 @@ describe("When it runs", () => {
     expect(dot.reason).toBe("Not running then");
   });
 
-  // GEN-3.15: the same dot on Manual Build, from the grid alone (checks.js).
+  // GEN-3.16: the same dot on Manual Build, from the grid alone (checks.js).
   it("checkWeek dots a placement where its activity can't run, and nothing else", () => {
     const input = camp({
       groups: [group("g1")],
@@ -199,7 +199,7 @@ describe("When it runs", () => {
     expect([...checked.bends]).toEqual([[`${dateAt(0)}|g1|b0`, ["offTime"]]]);
   });
 
-  // GEN-3.16
+  // GEN-3.17
   it(`a camp that unticks nothing gets exactly the week it got before (${SEEDS} random camps)`, () => {
     const changed = [];
     for (let seed = 1; seed <= SEEDS; seed++) {
@@ -216,7 +216,7 @@ describe("When it runs", () => {
     expect(changed).toEqual([]);
   });
 
-  // GEN-3.13, GEN-3.15
+  // GEN-3.14, GEN-3.16
   it(`on random camps with boxes unticked, nothing the build places is in one, and the same camp builds the same week (${SEEDS} seeds)`, () => {
     const bad = [];
     let unticked = 0;

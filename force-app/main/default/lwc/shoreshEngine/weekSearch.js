@@ -1289,7 +1289,7 @@ export function explainOpen(st) {
     } else if (
       !s.eligibleActs.some((act) => runsHere(st, act, s.dayIndex, s.blockId))
     ) {
-      // None of the group's activities runs then (When it runs, protocol 3.13).
+      // None of the group's activities runs then (When it runs, protocol 3.14).
       why = OFF_TIME;
     } else if (!fitsAlone(st, s)) {
       why = LENGTH;

@@ -132,8 +132,11 @@ These never bend for Shoresh.
   closed, away or not at camp.
 - **CORE-4.7** The maximum MAY be exceeded, and only the maximum; every time it is, it MUST be
   shown.
-- **CORE-4.8** Limits CORE-4.1 to 4.6 bind Shoresh. A person's hand edit MAY break them and MUST
+- **CORE-4.8** Limits CORE-4.1 to 4.6 and CORE-4.9 bind Shoresh. A person's hand edit MAY break them and MUST
   then be shown (Greg 2026-10-26).
+- **CORE-4.9** An activity MUST NOT be placed in a day and time block its When it runs leaves out
+  (ADR 0031 piece A); a multi-block activity needs every block of its length to be one it can
+  run in.
 
 ## Layer 5: Placement order
 

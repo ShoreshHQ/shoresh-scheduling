@@ -2,6 +2,7 @@
 
 Date: 2026-11-26. Status: proposed (Greg, 2026-11-26: "plan it all"). The plan for three pieces, each
 its own PR. Each PR fills in its own section's decisions as it is built and marks it accepted.
+Piece A: accepted (built 2026-11-26; "As built" below).
 
 ## Context
 
@@ -46,6 +47,62 @@ overnight tools and counselor phone views are outside Shoresh.
    it, in the panel's own words, through the panel's own save.
 7. **Lists and copies keep it**: an activities download and import round trip doesn't lose it, and Copy
    season carries it over (time blocks matched as Copy season already matches them).
+
+### Piece A as built
+
+- **Stored** as `ActivityOffTime__c`, one row per box unticked: `Activity__c` (master-detail, so
+  it goes with its activity and shares its access), `TimeBlock__c` (a lookup: a time block deleted
+  leaves the row blank, which says nothing and is dropped at the activity's next save) and
+  `Day__c`, the weekday Monday to Sunday. A numbered-days season's Day 3 is stored as its weekday,
+  as every other stored day is (ADR 0025 choice 2). The program is the time block's, so it is not
+  stored again. A trigger refuses a time block of another season and any change in an archived
+  season, as Who can do it's does.
+- **The panel** shows one small table per program (named only when the season has several), the
+  program's days across in the camp's week order and its time blocks down; each box is the
+  recurring activities' day tick (`chip`), ticked = it can run. A box saves the moment it changes,
+  as Who can do it does: the whole list, only while it is still as the director saw it
+  (`ActivitiesController.saveWhenItRuns`); someone else's change since is asked about with the
+  panel's "Changed by someone else" question.
+- **The engine** treats an unticked box as a limit, like an activity's length (protocol GEN-3.14
+  to 3.17, CORE-4.9): no step places it there and never-blank never bends it. A cell where nothing
+  set up for the group runs says so ("No activity for Bunk 4 runs then"). A camp that unticks
+  nothing gets exactly the weeks it got before: the whole engine suite (golden, ported desktop and
+  desktop-differential weeks) passes unchanged, and 150 random camps build byte for byte the same
+  with and without empty When it runs lists.
+- **Shown, never refused:** a hand edit or lock there is kept and its dot says "Not running then"
+  on both schedules; Update to match setup leaves an unlocked placement there out with the same
+  words, as it does a closure. The server refuses only a generated save that newly places one
+  there ("Archery doesn't run in Lunch on Monday."), as it does a closure.
+- **Rainy day** (CLOSE-4.9) never switches to an indoor activity that doesn't run in that block
+  on that day.
+- **AI and command line:** `read_activity_details` / `change_activity_details` gain
+  `when_it_runs`: "whenever", or a list of the boxes it can't run, each said as the panel reads it
+  out ("Lunch, Monday"; "Lunch, Day 1" in a numbered season; " (Main)" after it with several
+  programs). The change goes through the panel's own save, compared under the activity's lock.
+- **Copy season** copies each row onto the copied time block (matched by `CopiedFrom__c`, as Copy
+  season matches time blocks).
+
+**A5, the cases the protocol had to settle:**
+
+- **Electives:** not limited. An elective set is placed by the director, at its own set time
+  (repo ADR 0027), and the engine keeps it like a lock (GEN-2.2); its offerings are chosen for the
+  set, not placed in cells. The engine never picks an elective, so When it runs has nothing to
+  steer there. An offering at a time its activity is unticked is the director's own choice.
+- **Special days:** not limited. A day a special day replaces is never built (GEN-2.8), and its
+  plan is made by hand on the special day's own time blocks, which no grid box names.
+- **Special events:** not limited. An event is placed by hand and kept (GEN-2.2); it isn't an
+  activity.
+- **Imported weeks:** the imported version itself is kept as it was (Versions never change). Step
+  8's floor seeds a build from it only with placements the engine itself may make
+  (`weekFloor.js` seedFromImport asks `allowed`), so an imported placement where its activity
+  can't run isn't carried into a Generate; a week built by hand from the import keeps it, with
+  its "Not running then" dot.
+- **Hand edits and Manual Build:** a person may always put an activity there (CORE-4.8); it is
+  shown, never refused.
+
+**Choices that are hard to undo after release:** the object `ActivityOffTime__c` and its three
+fields; `Day__c` values Monday to Sunday; storing the boxes unticked (nothing stored = whenever)
+rather than the boxes ticked; the AI's word "whenever".
 
 ## Piece B: who leads an activity
 

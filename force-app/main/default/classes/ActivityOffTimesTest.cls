@@ -54,7 +54,7 @@ private class ActivityOffTimesTest {
     return null;
   }
 
-  // GEN-3.17
+  // GEN-3.18
   @IsTest
   static void whenItRunsIsSavedWholeAndEveryScreenReadsItWithTheActivity() {
     Map<String, Id> ids = KeptCamp.keptIds();
@@ -107,7 +107,7 @@ private class ActivityOffTimesTest {
     }
   }
 
-  // GEN-3.17, API-1.103
+  // GEN-3.18, API-1.103
   @IsTest
   static void someoneElsesChangeSinceIsAnsweredNeverOverwritten() {
     Map<String, Id> ids = KeptCamp.keptIds();
@@ -143,7 +143,7 @@ private class ActivityOffTimesTest {
     }
   }
 
-  // GEN-3.17
+  // GEN-3.18
   @IsTest
   static void aBoxThatIsNotADayAndTimeBlockOfTheSeasonIsRefused() {
     Map<String, Id> ids = KeptCamp.keptIds();
