@@ -133,7 +133,7 @@ describe("the save request and ImportListSaves agree", () => {
   const links = apexMap("LINK_FIELDS");
 
   it("reads the server's lists (not an empty match)", () => {
-    expect(Object.keys(plain)).toHaveLength(16);
+    expect(Object.keys(plain)).toHaveLength(17);
     expect(plain.Activity).toEqual(
       expect.arrayContaining(["Name", "Length__c", "Notes__c"])
     );

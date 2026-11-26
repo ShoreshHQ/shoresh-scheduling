@@ -34,7 +34,18 @@ public with sharing class SeasonCopier implements SetupWrite.Steps {
           StartDate__c,
           EndDate__c,
           ShrinkShortWeek__c,
-          NumberedDays__c
+          NumberedDays__c,
+          // Its staff (ADR 0031 piece B), read with it: Copy season stays under its query bound.
+          (
+            SELECT
+              Id,
+              Name,
+              Notes__c,
+              SortOrder__c,
+              SourceSystem__c,
+              OutsideId__c
+            FROM StaffMembers__r
+          )
         FROM Season__c
         WHERE Id = :sourceSeasonId
         WITH USER_MODE
@@ -120,6 +131,7 @@ public with sharing class SeasonCopier implements SetupWrite.Steps {
     copies.putAll(copyIds(programCopies));
     copies.putAll(copyIds(blockCopies));
     Copying made = new Copying(source.Id, season.Id, log);
+    made.staff = source.StaffMembers__r;
     copies.putAll(new SetupCopier(made).copy(copies));
     copies.putAll(new SetTimeCopier(made, copies).copy());
     new ElectiveCopier(made, copies).copy();
@@ -306,6 +318,8 @@ public with sharing class SeasonCopier implements SetupWrite.Steps {
     public final Id sourceSeasonId;
     public final Id newSeasonId;
     public final ImportWriter log;
+    // The source season's staff, read with it (ADR 0031 piece B).
+    public List<StaffMember__c> staff = new List<StaffMember__c>();
 
     public Copying(Id sourceSeasonId, Id newSeasonId, ImportWriter log) {
       this.sourceSeasonId = sourceSeasonId;

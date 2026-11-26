@@ -239,9 +239,10 @@ export function scheduleSheets(view, catalogue, t, offerings = new Map()) {
 /**
  * One thing's week as a sheet (c/shoreshScheduleViews groupGrid, activityGrid, locationGrid): the
  * corner and a column per day, then a row per time block with what is in each day there. An
- * elective set lists its offerings (ELECT-6.3).
+ * elective set lists its offerings (ELECT-6.3). lines: said under the grid, a row each, after an
+ * empty row (who leads, PUB-6.12).
  */
-function gridSheet(name, grid, t, offerings) {
+function gridSheet(name, grid, t, offerings, lines = []) {
   const at = new Map();
   grid.cells.forEach((cell) => {
     for (let r = cell.row; r < cell.row + cell.length; r++) {
@@ -268,7 +269,8 @@ function gridSheet(name, grid, t, offerings) {
       ...grid.rows.map((row, r) => [
         blockText(row),
         ...grid.columns.map((col, c) => text(at.get(`${r}:${c}`)))
-      ])
+      ]),
+      ...(lines.length ? [[], ...lines.map((line) => [line])] : [])
     ]),
     widths: [22, ...grid.columns.map(() => 16)]
   };
@@ -276,8 +278,9 @@ function gridSheet(name, grid, t, offerings) {
 
 /**
  * The Excel file's sheets for a choice: the whole week as scheduleSheets; else a sheet per day,
- * group, activity or location chosen, and a division's a sheet per day with only its groups (a day
- * it has no group on left out). A day's sheet holds the whole camp (a sheet has no pages to split).
+ * group, activity, location or staff member chosen, and a division's a sheet per day with only
+ * its groups (a day it has no group on left out). A day's sheet holds the whole camp (a sheet has
+ * no pages to split).
  */
 export function sheetsFor(view, choice, catalogue, setup, t, offerings) {
   if (choice.kind === "week") {
@@ -288,7 +291,8 @@ export function sheetsFor(view, choice, catalogue, setup, t, offerings) {
   const said = days(view);
   const sheets = chosen.parts.map((part) => {
     if (part.grid) {
-      return gridSheet(part.title, part.grid, t, offerings);
+      const lines = [part.lead, ...(part.lines || [])].filter(Boolean);
+      return gridSheet(part.title, part.grid, t, offerings, lines);
     }
     const shown = view.days[part.day];
     const label = [part.head, said[part.day].label].filter(Boolean).join(" ");

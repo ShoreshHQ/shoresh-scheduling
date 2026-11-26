@@ -1,6 +1,7 @@
 /**
  * Undo's rows that go with their item (ImportUndoDeletes): who a recurring activity covers, the
- * weeks an item is off, and the boxes of When it runs an activity is off (ADR 0031 A7). Of the
+ * weeks an item is off, the boxes of When it runs an activity is off (ADR 0031 A7) and who leads
+ * it (piece B). Of the
  * rows an import made, those whose item this Undo keeps are kept with it.
  */
 public with sharing class ImportUndoKeptRows {
@@ -12,6 +13,20 @@ public with sharing class ImportUndoKeptRows {
             SELECT Id
             FROM ActivityOffTime__c
             WHERE Id IN :ids AND Activity__c IN :keptIds
+            WITH USER_MODE
+          ]
+        )
+        .keySet();
+    }
+    if (term == 'ActivityLeader') {
+      return new Map<Id, ActivityLeader__c>(
+          [
+            SELECT Id
+            FROM ActivityLeader__c
+            WHERE
+              Id IN :ids
+              AND (Activity__c IN :keptIds
+              OR StaffMember__c IN :keptIds)
             WITH USER_MODE
           ]
         )

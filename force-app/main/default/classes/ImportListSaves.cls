@@ -15,6 +15,7 @@ public with sharing class ImportListSaves implements SetupWrite.Steps {
     'Week',
     'LocationType',
     'Location',
+    'StaffMember',
     'Program',
     'Division',
     'Group',

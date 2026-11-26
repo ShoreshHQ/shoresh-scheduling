@@ -48,6 +48,10 @@ public with sharing class AgentSetupFields {
       'groups_that_fit' => Location__c.GroupsThatFit__c,
       'notes' => Location__c.Notes__c
     },
+    // Staff (ADR 0031 piece B): who leads what is set on each activity (who_leads_it).
+    'StaffMember' => new Map<String, Schema.SObjectField>{
+      'notes' => StaffMember__c.Notes__c
+    },
     'Activity' => new Map<String, Schema.SObjectField>{
       'location' => Activity__c.Location__c,
       'length' => Activity__c.Length__c,

@@ -33,7 +33,8 @@ public with sharing class RowSaves {
     public SpecialDaySeed.Seed seeded;
 
     public Boolean saved() {
-      return changed.isEmpty() && theirWho == null &&
+      return changed.isEmpty() &&
+        theirWho == null &&
         theirOffTimes == null &&
         theirLeaders == null;
     }

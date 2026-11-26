@@ -67,6 +67,7 @@ const PAIR_KIND = {
   location: "location",
   LocationType: "locationType",
   locationType: "locationType",
+  StaffMember: "staff",
   Program: "program",
   Division: "division",
   division: "division",

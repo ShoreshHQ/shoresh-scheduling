@@ -83,7 +83,7 @@
     font-size: 12pt;
   }
 
-  /* A special day's notes, as written, under its schedule. */
+  /* A special day's notes, as written, or who leads what at a location, under its schedule. */
   .notes {
     margin: 8pt 0 0;
     white-space: pre-line;

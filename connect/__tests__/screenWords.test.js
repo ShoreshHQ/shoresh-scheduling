@@ -178,6 +178,7 @@ describe("The words an AI receives", () => {
       "groups",
       "time_blocks",
       "locations",
+      "staff",
       "activities",
       "fixed_activities",
       "recurring_activities",

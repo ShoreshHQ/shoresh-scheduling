@@ -444,6 +444,9 @@ export function* generateWeekSteps(input, watch = {}, runWork = RUN_WORK) {
     setupNotes,
     setupBlank: setupBlank.map(({ field, id }) => ({ field, id })),
     overlapping: checked.overlapping,
+    // Who leads it (CORE-6.20): only when a staff member leads two activities at once, so a week
+    // without such a conflict reads exactly as before.
+    ...(checked.leading.length ? { leading: checked.leading } : {}),
     cells: checked.cells,
     ruleChecks,
     openCells: state.openCells.map(({ key, why, cost }) => {

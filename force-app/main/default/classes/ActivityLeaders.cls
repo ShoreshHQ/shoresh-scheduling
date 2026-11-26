@@ -53,7 +53,10 @@ public with sharing class ActivityLeaders {
         );
       }
       result.add(
-        new ActivityLeader__c(Activity__c = activityId, StaffMember__c = staffId)
+        new ActivityLeader__c(
+          Activity__c = activityId,
+          StaffMember__c = staffId
+        )
       );
     }
     return result;

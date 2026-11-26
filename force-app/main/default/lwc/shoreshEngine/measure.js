@@ -174,6 +174,14 @@ export function measureWeek(checked, list, days) {
       dateValue: cell.dateValue,
       blockId: cell.blockId
     })),
+    // A staff member leading two activities at once (CORE-6.20).
+    ...((checked && checked.leading) || []).map((line) => ({
+      key: `leading|${line.dateValue}|${line.blockId}|${line.staffId}`,
+      kind: "leading",
+      text: line.text,
+      dateValue: line.dateValue,
+      blockId: line.blockId
+    })),
     ...(checked && checked.hasSpreadTargets ? checked.spread || [] : []).map(
       (text, i) => {
         const e = (checked.spreadBy || [])[i] || {};

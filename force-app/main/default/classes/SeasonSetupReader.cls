@@ -331,7 +331,7 @@ public with sharing class SeasonSetupReader {
           ORDER BY TimeBlock__c, Day__c
         ),
         (
-          SELECT Id, StaffMember__c
+          SELECT Id, StaffMember__c, StaffMember__r.Name
           FROM Leaders__r
           WHERE StaffMember__c != NULL
           ORDER BY StaffMember__r.SortOrder__c NULLS LAST, StaffMember__r.Name

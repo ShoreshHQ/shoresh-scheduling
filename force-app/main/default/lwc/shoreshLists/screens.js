@@ -77,6 +77,26 @@ function notesColumn(fields) {
   };
 }
 
+/** Staff (ADR 0031 piece B): names and notes; who leads what is set on each activity. */
+function staffScreen(t) {
+  return {
+    key: "staff",
+    kind: "StaffMember",
+    term: "StaffMember",
+    columns: [
+      nameColumn(t.s("StaffMember"), [
+        "staff member",
+        "staff",
+        "staff name",
+        "person",
+        "leader"
+      ]),
+      notesColumn(FIELD.StaffMember)
+    ],
+    records: (setup) => setup.staff || []
+  };
+}
+
 function nameOf(list, id) {
   const found = (list || []).find((r) => r.Id === id);
   return found ? found.Name : null;
@@ -319,6 +339,7 @@ const BUILDERS = {
   groups: groupsScreen,
   timeBlocks: timeBlocksScreen,
   locations: locationsScreen,
+  staff: staffScreen,
   activities: activitiesScreen,
   fixedActivities: fixedScreen,
   recurringActivities: recurringScreen
