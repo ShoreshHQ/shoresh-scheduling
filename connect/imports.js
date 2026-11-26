@@ -259,26 +259,10 @@ function notJson(field) {
   );
 }
 
-/** The command line gives every field as text: save as "true", answers as JSON. */
-function fromCommandLine(given) {
-  const input = {
-    ...given,
-    save: given.save === true || given.save === "true"
-  };
-  if (typeof given.answers === "string") {
-    try {
-      input.answers = JSON.parse(given.answers);
-    } catch {
-      // Said, never read as no answers (API-1.155).
-      input.unreadable = "answers";
-    }
-  }
-  return input;
-}
-
 async function importFile(capability, given, { read, send, answer, load }) {
-  const input = fromCommandLine(given);
-  if (input.unreadable) return notJson(input.unreadable);
+  // The command line types answers as JSON (cli.js typed): text here is refused (API-1.155).
+  if (typeof given.answers === "string") return notJson("answers");
+  const input = { ...given, save: given.save === true };
   const workbook = capability.importsWorkbook;
   if (input.save && !String(input.seen ?? "").trim()) {
     return refused(
@@ -485,7 +469,6 @@ module.exports = {
   importFile,
   undoImport,
   fileOf,
-  fromCommandLine,
   aiWord,
   engineWord
 };

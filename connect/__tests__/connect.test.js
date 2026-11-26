@@ -3361,6 +3361,44 @@ describe("Shoresh for AI tools and the command line", () => {
     }
   });
 
+  // API-1.155
+  it("answersSentAsTextAreRefused: answers or layouts sent as JSON text, not as JSON, are refused naming them", async () => {
+    for (const [name, input, field] of [
+      [
+        "import_list",
+        {
+          season: "Summer 2026",
+          list: "activities",
+          file_name: "a.csv",
+          csv_text: "Name\nSwim",
+          answers: '{"q1": "b"}'
+        },
+        "answers"
+      ],
+      [
+        "import_last_year",
+        {
+          season: "Summer 2026",
+          file_paths: ["/x.xlsx"],
+          layouts: "{}"
+        },
+        "layouts"
+      ]
+    ]) {
+      const seen = [];
+      const done = await call(name, input, {
+        run: sfAnswering(200, "{}", seen)
+      });
+      expect([name, done.text]).toEqual([
+        name,
+        `${field} isn't JSON Shoresh can read, so nothing was imported.`
+      ]);
+      expect(
+        seen.filter((s) => s.args[3].startsWith("/services/apexrest/"))
+      ).toEqual([]);
+    }
+  });
+
   // API-1.96, API-1.25
   it("forgetsOnlyAPatternThatIsThere: a pattern the screen doesn't offer Forget pattern on is refused naming the ones there, before anything is asked", async () => {
     const LWC = "../../force-app/main/default/lwc";

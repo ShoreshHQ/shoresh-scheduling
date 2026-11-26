@@ -12,14 +12,12 @@
 const { CAPABILITIES } = require("./capabilities");
 const { call, toAgent } = require("./client");
 
-const ACTIONS = CAPABILITIES;
-
 const functions = Object.fromEntries(
-  ACTIONS.map(({ name }) => [
+  CAPABILITIES.map(({ name }) => [
     name,
     async (input = {}, { org, run } = {}) =>
       toAgent(await call(name, input, { org, run }))
   ])
 );
 
-module.exports = { ACTIONS, ...functions };
+module.exports = { ACTIONS: CAPABILITIES, ...functions };
