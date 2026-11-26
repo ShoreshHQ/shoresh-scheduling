@@ -79,8 +79,8 @@ public with sharing class SeasonTriggerHandler {
 
     public void write() {
       // Read in five queries, each with the lists inside it (a list inside a query is not a
-      // query of its own). Each is read before the deletes that need it; no delete in between
-      // adds or removes any of those rows.
+      // query of its own), each list walked straight after its query. Each is read before the
+      // deletes that need it; no delete in between adds or removes any of those rows.
       List<Season__c> seasons = [
         SELECT
           Id,
@@ -90,9 +90,11 @@ public with sharing class SeasonTriggerHandler {
         WHERE Id IN :deletable
         WITH SYSTEM_MODE
       ];
+      List<SObject> runs = inside(seasons, ElectiveRun__c.Season__c);
+      List<SObject> coverages = inside(seasons, Coverage__c.Season__c);
       // Elective runs point at the season's elective sets, weeks and schedules, and their
       // choices and seats at its campers, groups, time blocks and offerings; they go first.
-      clear(inside(seasons, ElectiveRun__c.Season__c));
+      clear(runs);
       clear(
         [
           SELECT Id
@@ -105,7 +107,7 @@ public with sharing class SeasonTriggerHandler {
       // recurring activities point at its time blocks and locations; activities at its
       // locations, groups, and divisions (who can do them goes with them). All through
       // restrict-delete lookups.
-      clear(inside(seasons, Coverage__c.Season__c));
+      clear(coverages);
       // Linked choices point at offerings, and their times at time blocks; offerings point at
       // activities. Clearing the sets (with their linked choices) frees both.
       List<ElectiveSet__c> sets = [
@@ -126,13 +128,19 @@ public with sharing class SeasonTriggerHandler {
         WHERE Season__c IN :deletable
         WITH SYSTEM_MODE
       ];
-      clear(inside(programs, FixedActivity__c.Program__c));
-      clear(inside(programs, RecurringActivity__c.Program__c));
+      List<SObject> fixedItems = inside(programs, FixedActivity__c.Program__c);
+      List<SObject> recurringItems = inside(
+        programs,
+        RecurringActivity__c.Program__c
+      );
+      List<SObject> schedules = inside(programs, Schedule__c.Program__c);
+      clear(fixedItems);
+      clear(recurringItems);
       // Schedules point at the season's weeks (restrict-delete); their days go with them. The
       // season's imported weeks go too: they are kept only while their season is (ImportedWeekGuard).
       ImportedWeekGuard.allow();
       try {
-        clear(inside(programs, Schedule__c.Program__c));
+        clear(schedules);
       } finally {
         ImportedWeekGuard.done();
       }
@@ -152,10 +160,14 @@ public with sharing class SeasonTriggerHandler {
       // Special dates point at the season's weeks and special days and events; plans at the
       // special days and events; special events at its locations. Clearing the dates first
       // means no special event is refused for still being on a day.
-      clear(inside(specials, SpecialDate__c.Season__c));
-      clear(inside(specials, PlanPart__c.Season__c));
-      clear(inside(specials, SpecialEvent__c.Season__c));
-      clear(inside(specials, Activity__c.Season__c));
+      List<SObject> dates = inside(specials, SpecialDate__c.Season__c);
+      List<SObject> plans = inside(specials, PlanPart__c.Season__c);
+      List<SObject> events = inside(specials, SpecialEvent__c.Season__c);
+      List<SObject> activities = inside(specials, Activity__c.Season__c);
+      clear(dates);
+      clear(plans);
+      clear(events);
+      clear(activities);
     }
   }
 
