@@ -43,6 +43,7 @@ private class AgentManualBuildTest {
             'restore' => new AgentRestoreVersion(),
             'delete' => new AgentDeleteVersion(),
             'move' => new AgentCells(),
+            'clear yes' => new AgentClearCells.Clear(),
             'accept' => new AgentAccept(),
             'start' => new AgentStartWeek()
           }
@@ -411,9 +412,9 @@ private class AgentManualBuildTest {
     }
   }
 
-  // WEEK-6.14, API-1.143
+  // WEEK-6.14, WEEK-6.15, API-1.143
   @IsTest
-  static void aClearKeepsTheWeekAsBeforeClearFirst() {
+  static void aClearAsksFirstThenKeepsTheWeekAsBeforeClear() {
     System.runAs(ShoreshTestData.scheduler()) {
       GeneratedTestData.camp();
       Id draftId = manualDraft();
@@ -440,11 +441,18 @@ private class AgentManualBuildTest {
       Map<String, Object> clear = new Map<String, Object>{
         'change' => 'Cleared Monday',
         'said' => '',
-        'runs' => new List<Object>{ run }
+        'runs' => new List<Object>{ run },
+        'preview' => new List<Object>{
+          'Group A · Monday: Soccer',
+          'The week as it is now is kept in Versions as "Before Clear Monday".'
+        }
       };
       Test.startTest();
+      // Sent without the person's yes: nothing is done, and the screen's preview is said.
+      List<Object> asked = post('clear', clear.clone());
+      String askedSoccer = periodTwo(draftId);
       Integer before = Limits.getQueries();
-      List<Object> done = post('clear', clear);
+      List<Object> done = post('clear yes', clear);
       Integer used = Limits.getQueries() - before;
       Map<String, Object> clearUndo = undo;
       List<Object> unreadable = post(
@@ -456,6 +464,14 @@ private class AgentManualBuildTest {
         }
       );
       Test.stopTest();
+      Assert.areEqual(200, asked[0], String.valueOf(asked[1]));
+      Assert.areEqual(
+        'Nothing has been done yet. This clears Monday in Week 1 (Main, ' +
+          ManualDrafts.NAME +
+          '). Group A · Monday: Soccer. The week as it is now is kept in Versions as "Before Clear Monday".',
+        asked[1]
+      );
+      Assert.areEqual(soccer, askedSoccer, 'nothing cleared before the yes');
       Assert.areEqual(200, done[0], String.valueOf(done[1]));
       Assert.areEqual(
         'Cleared Monday. The week as it was is kept in Versions as "Before Clear Monday".',
@@ -474,7 +490,8 @@ private class AgentManualBuildTest {
       // What was cleared is in it.
       Assert.areEqual(soccer, periodTwo(kept[0].Id));
       Assert.areEqual('Before Clear Monday', clearUndo.get('version_name'));
-      Assert.isTrue(used < 50, 'A clear used ' + used + ' queries');
+      // Asked and confirmed, as the person's yes sends it again.
+      Assert.isTrue(used < 70, 'A clear used ' + used + ' queries');
       // Only a clear keeps a version here; anything else sent here is refused.
       Assert.areEqual(400, unreadable[0], String.valueOf(unreadable[1]));
     }

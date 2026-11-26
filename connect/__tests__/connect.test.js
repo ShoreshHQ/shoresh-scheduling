@@ -6054,6 +6054,19 @@ describe("Shoresh for AI tools and the command line", () => {
     expect(clearSent[1].args[3]).toBe("/services/apexrest/v1/clear_cells");
     const dayBody = JSON.parse(clearSent[1].stdin);
     expect(dayBody.change).toBe("Cleared Monday");
+    // WEEK-6.15: the screen's own preview goes with it, for Shoresh to ask first.
+    expect(dayBody.preview[dayBody.preview.length - 1]).toBe(
+      'The week as it is now is kept in Versions as "Before Clear Monday".'
+    );
+    expect(dayBody.preview.length).toBeGreaterThan(1);
+    expect(dayBody.confirm).toBeUndefined();
+    const yesSent = [];
+    await call(
+      "clear_day",
+      { ...asked, day: "Monday", confirm: "ticket" },
+      { run: answering(yesSent), edits }
+    );
+    expect(JSON.parse(yesSent[1].stdin).confirm).toBe("ticket");
     expect(dayBody.runs).toEqual(
       asTheScreen({
         kind: "clear",

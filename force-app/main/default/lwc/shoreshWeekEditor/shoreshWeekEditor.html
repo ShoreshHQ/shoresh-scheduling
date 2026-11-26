@@ -604,5 +604,14 @@
       </section>
       <div class="slds-backdrop slds-backdrop_open" role="presentation"></div>
     </template>
+    <template lwc:if={clearAsk}>
+      <c-shoresh-ask
+        heading={clearAsk.heading}
+        lines={clearAsk.lines}
+        confirm-label={clearAsk.confirmLabel}
+        onanswer={handleClearAnswer}
+        data-id="clear-ask"
+      ></c-shoresh-ask>
+    </template>
   </div>
 </template>

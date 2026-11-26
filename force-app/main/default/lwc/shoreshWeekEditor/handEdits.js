@@ -716,6 +716,41 @@ export function toolLabel(tool) {
     : `Copied ${tool.fromName} to ${tool.toName}`;
 }
 
+/**
+ * Clear's preview before it is made (WEEK-6.15), worked out on the week shown: "Clear Monday?",
+ * then what it takes off, a line for each group's day in the order of the week ("Bunk 1 · Monday:
+ * Swim, Color War, Chugim"), what stays and why, and the version it keeps first (WEEK-6.14). The
+ * screen asks it, and an AI's clear_day and clear_week say it (API-1.143). step: toolStep's.
+ */
+export function clearPreview(ctx, step) {
+  const { tool, result, said } = step;
+  const week = result.week;
+  const byRow = new Map();
+  result.cleared.forEach((c) => {
+    const key = `${c.day}|${c.group}`;
+    if (!byRow.has(key)) {
+      byRow.set(key, []);
+    }
+    byRow.get(key).push(c);
+  });
+  const rows = [...byRow.values()].map((placed) => {
+    const { day, group } = placed[0];
+    const names = placed
+      .sort((a, b) => a.block - b.block)
+      .map((c) => ctx.nameOf(c.slot, week[day]));
+    return `${week[day].groups[group].name} · ${ctx.dayNameOf(week[day].dateValue)}: ${names.join(", ")}`;
+  });
+  return {
+    heading: `Clear ${tool.name}?`,
+    lines: [
+      ...rows,
+      ...(said ? [said] : []),
+      `The week as it is now is kept in Versions as "Before Clear ${tool.name}".`
+    ],
+    confirmLabel: "Clear"
+  };
+}
+
 /** What a tool says when it changes nothing. */
 export function toolNothing(tool, said) {
   if (tool.kind === "rain") {

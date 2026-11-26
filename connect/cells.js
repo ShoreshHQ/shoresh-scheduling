@@ -254,7 +254,8 @@ function copyTool(ctx, m, input, weekName) {
 /**
  * clear_day and clear_week (API-1.143) as Manual Build's Edit menu clears (shoreshManualBuild
  * handleClearDay, handleClearGroupDay, handleClearWeek): the day for every group, or for one
- * group, or the whole week, by the week editor's own tool. Generated Schedule has no such tool.
+ * group, or the whole week, by the week editor's own tool, with the screen's own preview
+ * (handEdits.js clearPreview) for Shoresh to ask first. Generated Schedule has no such tool.
  */
 function clearStep(capability, ctx, m, input, weekName) {
   if (ctx.liveLocks) {
@@ -285,7 +286,14 @@ function clearStep(capability, ctx, m, input, weekName) {
   if (step.nothing) {
     return { nothing: step.nothing };
   }
-  return { runs: step.result.runs, label: step.label, said: step.said };
+  // Asked first as the screen asks it (WEEK-6.15): its own preview, said by Shoresh for the yes.
+  const { lines } = m.clearPreview(ctx, step);
+  return {
+    runs: step.result.runs,
+    label: step.label,
+    said: step.said,
+    preview: lines
+  };
 }
 
 /**
@@ -631,7 +639,10 @@ async function editCells(
     // The week as the agent read it: the save holds the week and refuses it if changed since.
     ...(input.seen ? { revision: input.seen } : {}),
     // A rainy day's marks, and the day's marks as read.
-    ...(step.rain ? { rain: step.rain, seen: step.seen } : {})
+    ...(step.rain ? { rain: step.rain, seen: step.seen } : {}),
+    // A clear's preview, and the person's yes to it (API-1.106).
+    ...(step.preview ? { preview: step.preview } : {}),
+    ...(input.confirm === undefined ? {} : { confirm: input.confirm })
   });
   if (saved.undo && saved.undo.kind === "edit") {
     // Its Undo, as the editor's history holds it: the runs back, for this conversation only.
