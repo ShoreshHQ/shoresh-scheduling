@@ -103,7 +103,18 @@ export function camp(spec) {
     EarlyWeekByDay__c: a.early ? a.early.day : null,
     Outdoor__c: a.outdoor,
     RainPlan__c: a.rainPlan,
-    SortOrder__c: sortOf(activities, a)
+    SortOrder__c: sortOf(activities, a),
+    // When it runs (ADR 0031): the boxes unticked, [{ block, day: "Monday" }]; none when not given.
+    ...(a.off
+      ? {
+          OffTimes__r: a.off.map((o, i) => ({
+            Id: `${a.id}-off${i}`,
+            Activity__c: a.id,
+            TimeBlock__c: o.block,
+            Day__c: o.day
+          }))
+        }
+      : {})
   }));
   const eligibilityRecords = [];
   for (const a of activities) {
