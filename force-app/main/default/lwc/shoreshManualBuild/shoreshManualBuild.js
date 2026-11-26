@@ -940,6 +940,8 @@ export default class ShoreshManualBuild extends BuildScreen(LightningElement) {
       return [];
     }
     const disabled = !!this.editsWait;
+    // A Clear keeps the week as saved first (WEEK-6.14): it waits while an edit is on its way.
+    const clearHeld = disabled || this.editBusy;
     const items = [];
     if (this.isDaily) {
       if (this.dayReadable) {
@@ -947,7 +949,7 @@ export default class ShoreshManualBuild extends BuildScreen(LightningElement) {
           value: "clear-day",
           label: "Clear day",
           dataId: "clear-day",
-          disabled
+          disabled: clearHeld
         });
       }
       if (this.canCopyDay) {
@@ -969,7 +971,7 @@ export default class ShoreshManualBuild extends BuildScreen(LightningElement) {
         value: "clear-group-day",
         label: "Clear day",
         dataId: "clear-group-day",
-        disabled,
+        disabled: clearHeld,
         children: this.clearDayTargets.map((target) => ({
           value: `clear-group-day:${target.value}`,
           label: target.label,
@@ -981,7 +983,7 @@ export default class ShoreshManualBuild extends BuildScreen(LightningElement) {
       value: "clear-week",
       label: this.clearWeekLabel,
       dataId: "clear-week",
-      disabled
+      disabled: clearHeld
     });
     return items;
   }

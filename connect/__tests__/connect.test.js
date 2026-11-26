@@ -6096,6 +6096,7 @@ describe("Shoresh for AI tools and the command line", () => {
       { run: answering(weekSent), edits }
     );
     delete read.week_name;
+    expect(weekSent[1].args[3]).toBe("/services/apexrest/v1/clear_cells");
     const weekBody = JSON.parse(weekSent[1].stdin);
     expect(weekBody.change).toBe("Cleared Week 1");
     expect(weekBody.runs).toEqual(

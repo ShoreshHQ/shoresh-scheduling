@@ -6,8 +6,35 @@
  */
 @RestResource(urlMapping='/v1/clear_cells')
 global with sharing class AgentClearCells {
+  private static final String CLEARED = 'Cleared ';
+
   @HttpPost
   global static void post() {
-    AgentRequest.answer(new AgentCells(true));
+    AgentRequest.answer(new Clear());
+  }
+
+  /** A hand edit that keeps the week first, named for what was cleared. */
+  public with sharing class Clear extends AgentCells {
+    protected override Map<String, Object> keepFirst(
+      AgentWeeks.Week week,
+      String change
+    ) {
+      if (!change.startsWith(CLEARED)) {
+        throw new ShoreshException(
+          'That change could not be read. Download Shoresh\'s connector again from Settings in Shoresh.'
+        );
+      }
+      // Generated Schedule has no Clear (its Start over is start_over_week), as on the screen.
+      if (!week.manual) {
+        throw new ShoreshException(
+          'Clear day and Clear week are on Manual Build only. Nothing was changed.'
+        );
+      }
+      String kept = 'Before Clear ' + change.removeStart(CLEARED);
+      return new Map<String, Object>{
+        'version' => AgentScreenVersions.keepVersion(week, kept),
+        'version_name' => kept
+      };
+    }
   }
 }

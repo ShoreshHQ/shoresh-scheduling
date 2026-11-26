@@ -207,6 +207,30 @@ describe("c-shoresh-manual-build: day and week tools", () => {
     );
   });
 
+  // WEEK-6.14
+  it("WEEK-6.14: Clear waits while an edit is still saving, so the version it keeps has that edit", async () => {
+    const element = await render(start(["1,2,", "1,3,"], ["1,2,", "1,3,"]));
+    let answer;
+    saveSlots.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          answer = resolve;
+        })
+    );
+    q(element, '[data-id="clear-day"]').click();
+    await flush();
+    expect(q(element, '[data-id="clear-week"]').disabled).toBe(true);
+    q(element, '[data-id="clear-week"]').click();
+    await flush();
+    expect(keepWeek).toHaveBeenCalledTimes(1);
+    answer({
+      conflicts: [],
+      schedule: start(["1,,", "1,,"], ["1,2,", "1,3,"]).schedule
+    });
+    await flush();
+    expect(q(element, '[data-id="clear-week"]').disabled).toBe(false);
+  });
+
   it("Copy day to… copies each bunk's activities and lists what was left out", async () => {
     // Monday: Bunk 2 has Soccer at Lunch, but Tuesday it isn't at camp then (the fixture's away).
     const element = await render(start(["1,2,", "1,,3"], ["1,3,", "1,,"]));

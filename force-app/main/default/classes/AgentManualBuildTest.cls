@@ -28,23 +28,27 @@ private class AgentManualBuildTest {
     RestContext.request.httpMethod = 'POST';
     RestContext.request.requestBody = Blob.valueOf(JSON.serialize(body));
     RestContext.response = new RestResponse();
-    AgentAskFirstTestCalls.answer(
-      new Map<String, AgentRequest.Change>{
-          'cell' => new AgentCells(),
-          'undo' => new AgentUndo(),
-          'publish' => new AgentPublish(),
-          'unpublish' => new AgentUnpublish(),
-          'lock' => new AgentLock(),
-          'save' => new AgentSaveVersion(),
-          'restore' => new AgentRestoreVersion(),
-          'delete' => new AgentDeleteVersion(),
-          'move' => new AgentCells(),
-          'clear' => new AgentCells(true),
-          'accept' => new AgentAccept(),
-          'start' => new AgentStartWeek()
-        }
-        .get(action)
-    );
+    if (action == 'clear') {
+      // Its own web address, as the connector sends it.
+      AgentClearCells.post();
+    } else {
+      AgentAskFirstTestCalls.answer(
+        new Map<String, AgentRequest.Change>{
+            'cell' => new AgentCells(),
+            'undo' => new AgentUndo(),
+            'publish' => new AgentPublish(),
+            'unpublish' => new AgentUnpublish(),
+            'lock' => new AgentLock(),
+            'save' => new AgentSaveVersion(),
+            'restore' => new AgentRestoreVersion(),
+            'delete' => new AgentDeleteVersion(),
+            'move' => new AgentCells(),
+            'accept' => new AgentAccept(),
+            'start' => new AgentStartWeek()
+          }
+          .get(action)
+      );
+    }
     Map<String, Object> answer = (Map<String, Object>) JSON.deserializeUntyped(
       RestContext.response.responseBody.toString()
     );
@@ -439,7 +443,10 @@ private class AgentManualBuildTest {
         'runs' => new List<Object>{ run }
       };
       Test.startTest();
+      Integer before = Limits.getQueries();
       List<Object> done = post('clear', clear);
+      Integer used = Limits.getQueries() - before;
+      Map<String, Object> clearUndo = undo;
       List<Object> unreadable = post(
         'clear',
         new Map<String, Object>{
@@ -466,7 +473,8 @@ private class AgentManualBuildTest {
       Assert.areEqual(ManualVersions.AUTO_SAVED, kept[0].VersionReason__c);
       // What was cleared is in it.
       Assert.areEqual(soccer, periodTwo(kept[0].Id));
-      Assert.areEqual('Before Clear Monday', undo.get('version_name'));
+      Assert.areEqual('Before Clear Monday', clearUndo.get('version_name'));
+      Assert.isTrue(used < 50, 'A clear used ' + used + ' queries');
       // Only a clear keeps a version here; anything else sent here is refused.
       Assert.areEqual(400, unreadable[0], String.valueOf(unreadable[1]));
     }

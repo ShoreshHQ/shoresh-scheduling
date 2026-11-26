@@ -2515,7 +2515,13 @@ export default class ShoreshWeekEditor extends SaveQueue(LightningElement) {
    */
   @api
   async runClear(asked) {
-    if (this.keepingVersion || this.refuseWhileRestoring() || !this.schedule) {
+    // The version is the week as saved: an edit still on its way would be missing from it.
+    if (
+      this.keepingVersion ||
+      this.busy ||
+      this.refuseWhileRestoring() ||
+      !this.schedule
+    ) {
       return;
     }
     const step = toolStep(this.editCtx, asked);
