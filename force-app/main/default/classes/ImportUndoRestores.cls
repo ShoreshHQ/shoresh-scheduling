@@ -28,17 +28,33 @@ public with sharing class ImportUndoRestores {
     // DIV-1.1: a group moved out of no division goes back into a new holding record.
     NoDivisions.restoreHolders(rows);
     // Undo puts rain plans and last time blocks back as they were, even an outdoor rain plan
-    // (ADR 0006 §18; ImportUndo restores as a SetupWrite RESTORE).
+    // (ADR 0006 §18; ImportUndo restores as a SetupWrite RESTORE). One kind a call: Salesforce
+    // refuses one save whose rows switch kind more than ten times, counted 200 rows at a time
+    // (#465), and a workbook import can change a dozen kinds (INGEST-5.10).
+    Map<Schema.SObjectType, List<SObject>> rowsByKind = new Map<Schema.SObjectType, List<SObject>>();
+    for (SObject row : rows) {
+      Schema.SObjectType kind = row.getSObjectType();
+      if (!rowsByKind.containsKey(kind)) {
+        rowsByKind.put(kind, new List<SObject>());
+      }
+      rowsByKind.get(kind).add(row);
+    }
+    for (List<SObject> sameKind : rowsByKind.values()) {
+      putBack(sameKind);
+    }
+  }
+
+  /** One kind's rows saved; any refusal (a rule, a permission) stops the whole Undo with its reason. */
+  private void putBack(List<SObject> sameKind) {
     List<Database.SaveResult> outcomes = Database.update(
-      rows,
+      sameKind,
       false,
       AccessLevel.USER_MODE
     );
     for (Integer i = 0; i < outcomes.size(); i++) {
       if (!outcomes[i].isSuccess()) {
-        // Any refusal (a rule, a permission) stops the whole Undo with its reason.
         throw ImportUndo.refused(
-          names.get(rows[i].Id),
+          names.get(sameKind[i].Id),
           'couldn\'t put back what it was before',
           outcomes[i].getErrors()[0]
         );
