@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>TimeBlock__c</fullName>
+    <deleteConstraint>SetNull</deleteConstraint>
+    <description
+  >The time block the activity can't run in. Blank once the time block is deleted: such a row says nothing and is dropped at the next save.</description>
+    <label>Time Block</label>
+    <referenceTo>TimeBlock__c</referenceTo>
+    <relationshipLabel>Activity Off Times</relationshipLabel>
+    <relationshipName>ActivityOffTimes</relationshipName>
+    <required>false</required>
+    <trackTrending>false</trackTrending>
+    <type>Lookup</type>
+</CustomField>

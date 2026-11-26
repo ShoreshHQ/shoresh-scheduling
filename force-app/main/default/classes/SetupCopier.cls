@@ -1,6 +1,7 @@
 /**
  * The part of "copy last season" that copies location types, locations, activities (with their
- * rain plans), and who can do each. New records link to their originals by CopiedFrom__c; the
+ * rain plans), who can do each, and when each can't run (its time blocks matched as the
+ * season copy matched them). New records link to their originals by CopiedFrom__c; the
  * original season is only read.
  */
 public with sharing class SetupCopier {
@@ -23,6 +24,7 @@ public with sharing class SetupCopier {
     Map<Id, Location__c> locationCopies = copyLocations(copyLocationTypes());
     Map<Id, Activity__c> activityCopies = copyActivities(locationCopies);
     copyEligibility(activityCopies, structureCopies);
+    copyOffTimes(activityCopies, structureCopies);
     Map<Id, Id> result = new Map<Id, Id>();
     for (Id sourceId : locationCopies.keySet()) {
       result.put(sourceId, locationCopies.get(sourceId).Id);
@@ -150,5 +152,31 @@ public with sharing class SetupCopier {
       );
     }
     log.saveTracked('ActivityEligibility', copies);
+  }
+
+  /** Each box unticked under When it runs, on the copied time block (ADR 0031 A7). */
+  private void copyOffTimes(
+    Map<Id, Activity__c> activityCopies,
+    Map<Id, Id> structureCopies
+  ) {
+    List<ActivityOffTime__c> copies = new List<ActivityOffTime__c>();
+    for (ActivityOffTime__c row : [
+      SELECT Activity__c, TimeBlock__c, Day__c
+      FROM ActivityOffTime__c
+      WHERE Activity__c IN :activityCopies.keySet() AND TimeBlock__c != NULL
+      WITH USER_MODE
+    ]) {
+      Id block = structureCopies.get(row.TimeBlock__c);
+      if (block != null) {
+        copies.add(
+          new ActivityOffTime__c(
+            Activity__c = activityCopies.get(row.Activity__c).Id,
+            TimeBlock__c = block,
+            Day__c = row.Day__c
+          )
+        );
+      }
+    }
+    log.saveTracked('ActivityOffTime', copies);
   }
 }

@@ -6,6 +6,7 @@ import {
   MIN_COST,
   NONE_FOR,
   NO_FIT,
+  OFF_TIME,
   RULE,
   SEARCHED,
   TRADE
@@ -82,6 +83,12 @@ export function reasonFor(
       return "Shoresh couldn't finish checking every way to fill this";
     case NONE_FOR:
       return `No ${t.sIn("Activity")} this ${t.sIn("Week")} is set up for ${groupName}`;
+    case OFF_TIME:
+      // When it runs (ADR 0031): a cell left Open (groupName given) has no activity for the group
+      // that runs then; a placement there (a hand edit) is one that doesn't.
+      return groupName
+        ? `No ${t.sIn("Activity")} for ${groupName} runs then`
+        : "Not running then";
     default:
       return "";
   }

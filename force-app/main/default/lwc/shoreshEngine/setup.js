@@ -1,4 +1,4 @@
-import { FIELD } from "c/shoreshSchema";
+import { CHILDREN, childRows, FIELD } from "c/shoreshSchema";
 import { compareText } from "c/shoreshTerms";
 import { readRow } from "./grid";
 
@@ -14,6 +14,7 @@ const GROUP = FIELD.Group;
 const TIME_BLOCK = FIELD.TimeBlock;
 const LOCATION = FIELD.Location;
 const WEEK_EXCEPTION = FIELD.WeekException;
+const OFF_TIME = FIELD.ActivityOffTime;
 
 const WEEKDAYS = {
   Monday: 1,
@@ -87,6 +88,32 @@ export function earlyDates(dates, byDay, firstDay = 1) {
   return new Set(days.slice(0, ((byDay - (firstDay || 1) + 7) % 7) + 1));
 }
 
+/**
+ * When an activity can't run (ADR 0031 piece A): the boxes its details panel's When it runs grid
+ * has unticked, each "<time block Id>|<weekday 1 Monday ... 7 Sunday>" (offKey). None: it can
+ * run whenever its groups are at camp.
+ */
+function offTimes(record) {
+  const off = new Set();
+  childRows(record, CHILDREN.Activity.OffTimes).forEach((row) => {
+    const weekday = WEEKDAYS[row[OFF_TIME.Day]];
+    if (row[OFF_TIME.TimeBlock] && weekday) {
+      off.add(offKey(row[OFF_TIME.TimeBlock], weekday));
+    }
+  });
+  return off;
+}
+
+/** One box of When it runs: a time block Id and a weekday (1 Monday ... 7 Sunday). */
+export function offKey(blockId, weekday) {
+  return `${blockId}|${weekday}`;
+}
+
+/** Whether an activity as read here can run in this time block on this weekday (ADR 0031 A3). */
+export function runsAt(act, blockId, weekday) {
+  return !act || !act.off || !act.off.has(offKey(blockId, weekday));
+}
+
 /** The activities that run this week, as the generator reads them. */
 export function readActivities(records, weekExceptions, weekId) {
   const closedActivities = new Set();
@@ -127,7 +154,8 @@ export function readActivities(records, weekExceptions, weekId) {
           ? r[ACTIVITY.SortOrder]
           : null,
       priority: r[ACTIVITY.Priority] === "High" ? "high" : "low",
-      early: count && count > 0 && byDay ? { count, byDay } : null
+      early: count && count > 0 && byDay ? { count, byDay } : null,
+      off: offTimes(r)
     };
   });
   return {

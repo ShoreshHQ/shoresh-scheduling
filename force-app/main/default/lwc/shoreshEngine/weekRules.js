@@ -40,6 +40,9 @@ export const NO_FIT = "noFit";
 // already somewhere at an overlapping time. These never give way.
 export const LENGTH = "length";
 export const OVERLAP = "overlap";
+// The activity can't run then: its When it runs leaves this day and time block out (ADR 0031 A3;
+// protocol 3.13). A limit like its length: it never gives way, not even to never-blank.
+export const OFF_TIME = "offTime";
 // Every activity set up for the group is taken then: full, or held for another division (a
 // limit, never a preference).
 export const FULL = "full";
