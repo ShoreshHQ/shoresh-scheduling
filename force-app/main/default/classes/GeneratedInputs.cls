@@ -294,7 +294,14 @@ public with sharing class GeneratedInputs {
         EarlyWeekByDay__c,
         SortOrder__c,
         Outdoor__c,
-        RainPlan__c
+        RainPlan__c,
+        // When it runs (ADR 0031 A3): the boxes unticked, which the build never places in.
+        (
+          SELECT Id, TimeBlock__c, Day__c
+          FROM OffTimes__r
+          WHERE TimeBlock__c != NULL
+          ORDER BY TimeBlock__c, Day__c
+        )
       FROM Activity__c
       WHERE Season__c = :seasonId
       WITH USER_MODE
