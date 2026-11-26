@@ -365,6 +365,8 @@ private class GeneratedRefusalsTest {
         ),
         AccessLevel.USER_MODE
       );
+      // Fill the open cells is a save on a draft (Generate makes it; Lunch stays Open).
+      generated();
       GeneratedInputs.Inputs read = GeneratedTestData.inputs();
       List<Integer> lunchA = GeneratedTestData.at(0, GeneratedTestData.LUNCH);
       GeneratedWeek.Save monday = request(read, GeneratedSaves.FILL_OPEN);
