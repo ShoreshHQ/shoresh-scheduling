@@ -10,6 +10,7 @@ import importPlan from "@salesforce/apex/SpecialScheduleController.importPlan";
 import { downloadWorkbook } from "c/shoreshDownload";
 import { buildTerms } from "c/shoreshTerms";
 import { nsRecord } from "shoresh-jest/namespace";
+import { flush } from "shoresh-jest/flush";
 
 const apex = () => ({ default: jest.fn() });
 jest.mock("@salesforce/apex/SpecialScheduleController.openPlan", () => apex(), {
@@ -122,12 +123,6 @@ function emptyEvent() {
     activities: []
   };
 }
-
-const flush = () =>
-  [...Array(12)].reduce(
-    (chain) => chain.then(() => undefined),
-    Promise.resolve()
-  );
 
 async function render(plan) {
   openPlan.mockResolvedValue(plan);

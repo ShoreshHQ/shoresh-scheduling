@@ -15,6 +15,7 @@ import {
   LABELS,
   opened
 } from "../../shoreshScheduleViews/__tests__/data/scheduleFixture";
+import { flush } from "shoresh-jest/flush";
 
 const apex = () => ({ default: jest.fn() });
 jest.mock(
@@ -65,12 +66,6 @@ function rainyWeek() {
   };
   return view;
 }
-
-const flush = () =>
-  [...Array(10)].reduce(
-    (chain) => chain.then(() => undefined),
-    Promise.resolve()
-  );
 
 async function render() {
   getVersions.mockResolvedValue([PUBLISHED]);

@@ -6,6 +6,7 @@ import ShoreshWeekEditor from "c/shoreshWeekEditor";
 import { buildTerms } from "c/shoreshTerms";
 import { nsRecord } from "shoresh-jest/namespace";
 import { draft } from "./data/draftFixture";
+import { flush } from "shoresh-jest/flush";
 
 const SETUP = { activities: [], locations: [] };
 const LABELS = [
@@ -15,12 +16,6 @@ const FLAGPOLE = { kind: "F", id: "f1", name: "Flagpole", gone: false };
 const SWIM = { kind: "A", id: "a1", name: "Swim", gone: false };
 const SOCCER = { kind: "A", id: "a3", name: "Soccer", gone: false };
 const ITEMS = [FLAGPOLE, SWIM, SOCCER];
-
-const flush = () =>
-  [...Array(10)].reduce(
-    (chain) => chain.then(() => undefined),
-    Promise.resolve()
-  );
 
 async function render(rows, options = {}) {
   const element = createElement("c-shoresh-week-editor", {

@@ -1,12 +1,7 @@
 import { createElement } from "lwc";
 import ShoreshRailPop from "c/shoreshRailPop";
 import RailPopFixture from "c/railPopFixture";
-
-const flush = () =>
-  [...Array(5)].reduce(
-    (chain) => chain.then(() => undefined),
-    Promise.resolve()
-  );
+import { flush } from "shoresh-jest/flush";
 
 function page() {
   const element = createElement("c-rail-pop-fixture", { is: RailPopFixture });

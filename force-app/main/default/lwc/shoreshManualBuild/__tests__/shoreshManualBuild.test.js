@@ -20,6 +20,7 @@ import {
   schedule
 } from "../../shoreshWeekEditor/__tests__/data/draftFixture";
 import { useYoursSendsWhatWasShown } from "../../shoreshWeekEditor/__tests__/data/shownIsSent";
+import { flush } from "shoresh-jest/flush";
 
 const apex = () => ({ default: jest.fn() });
 jest.mock("@salesforce/apex/ManualBuildController.getDraft", () => apex(), {
@@ -66,12 +67,6 @@ const READY = {
 const LABELS = [
   { term: "Group", singular: "Bunk", plural: "Bunks", isCustom: true }
 ];
-
-const flush = () =>
-  [...Array(10)].reduce(
-    (chain) => chain.then(() => undefined),
-    Promise.resolve()
-  );
 
 function later() {
   let answer;

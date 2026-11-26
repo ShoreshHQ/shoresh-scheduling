@@ -7,6 +7,7 @@ import { buildTerms } from "c/shoreshTerms";
 import { downloadWorkbook } from "c/shoreshDownload";
 import { nsRecord } from "shoresh-jest/namespace";
 import { GROUPS, draft } from "./data/draftFixture";
+import { flush } from "shoresh-jest/flush";
 
 jest.mock("c/shoreshDownload", () => ({
   downloadWorkbook: jest.fn(() => Promise.resolve()),
@@ -33,12 +34,6 @@ const VISITING_DAY = {
     rows: ["1", "1"]
   }
 };
-
-const flush = () =>
-  [...Array(10)].reduce(
-    (chain) => chain.then(() => undefined),
-    Promise.resolve()
-  );
 
 function render(props = {}) {
   const element = createElement("c-shoresh-week-editor", {

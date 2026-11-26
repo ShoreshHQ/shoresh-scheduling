@@ -1,12 +1,7 @@
 // The Print and Excel menu (PUB-6.6): the whole week, then each kind opening its choices.
 import { createElement } from "lwc";
 import ShoreshPrintMenu from "c/shoreshPrintMenu";
-
-const flush = () =>
-  [...Array(5)].reduce(
-    (chain) => chain.then(() => undefined),
-    Promise.resolve()
-  );
+import { flush } from "shoresh-jest/flush";
 
 const CHOICES = [
   { kind: "week", label: "Whole Week", options: [] },

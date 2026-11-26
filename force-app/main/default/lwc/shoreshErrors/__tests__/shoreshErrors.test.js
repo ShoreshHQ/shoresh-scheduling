@@ -10,6 +10,7 @@ import {
   SUPPORT_EMAIL
 } from "c/shoreshErrors";
 import keepFromScreen from "@salesforce/apex/ErrorCodes.keepFromScreen";
+import { flush } from "shoresh-jest/flush";
 
 jest.mock(
   "@salesforce/apex/ErrorCodes.keepFromScreen",
@@ -25,11 +26,6 @@ function withoutCode(text) {
   expect(text).toMatch(CODE);
   return text.replace(CODE, "");
 }
-const flush = () =>
-  [...Array(8)].reduce(
-    (chain) => chain.then(() => undefined),
-    Promise.resolve()
-  );
 
 // Shapes as Lightning delivers them to a screen: an AuraHandledException (our own words), an
 // exception our Apex didn't catch, and the platform's or the browser's own failures.

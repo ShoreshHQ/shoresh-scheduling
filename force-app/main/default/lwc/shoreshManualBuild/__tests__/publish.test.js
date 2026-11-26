@@ -16,6 +16,7 @@ import {
   day,
   draft
 } from "../../shoreshWeekEditor/__tests__/data/draftFixture";
+import { flush } from "shoresh-jest/flush";
 
 // Publish on Manual Build (Greg, Manual Build round 1 #1 and round 2 #4): the server previews,
 // the screen asks when there is something to show (what changes, what is still to do), and
@@ -167,12 +168,6 @@ const DONE = {
   publishedChanged: false,
   unchanged: false
 };
-
-const flush = () =>
-  [...Array(10)].reduce(
-    (chain) => chain.then(() => undefined),
-    Promise.resolve()
-  );
 
 async function render(first) {
   getDraft.mockResolvedValue(first);

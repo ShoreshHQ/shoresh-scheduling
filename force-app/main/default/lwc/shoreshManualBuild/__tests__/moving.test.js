@@ -13,6 +13,7 @@ import {
   listedCells,
   useYoursSendsWhatWasShown as shownIsSent
 } from "../../shoreshWeekEditor/__tests__/data/shownIsSent";
+import { flush } from "shoresh-jest/flush";
 
 const apex = () => ({ default: jest.fn() });
 jest.mock("@salesforce/apex/ManualBuildController.getDraft", () => apex(), {
@@ -53,12 +54,6 @@ function later() {
   });
   return { promise, answer };
 }
-
-const flush = () =>
-  [...Array(10)].reduce(
-    (chain) => chain.then(() => undefined),
-    Promise.resolve()
-  );
 
 // Monday: Bunk 1 has Swim in Period 2; Bunk 2 has Soccer in Period 2.
 const MONDAY_ITEMS = [FLAGPOLE, SWIM, SOCCER];

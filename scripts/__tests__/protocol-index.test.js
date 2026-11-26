@@ -5,6 +5,8 @@
  * (docs/protocol/README.md). A new statement needs its test, or a line in NOT_PROVED; raise
  * ENCODED_FLOOR when a change proves more.
  */
+const fs = require("fs");
+const path = require("path");
 const {
   protocolIndex,
   counts,
@@ -66,6 +68,50 @@ describe("the protocol's conformance index", () => {
     expect(
       short.citedBy.every((f) => !f.includes("shoreshCampSetup.test.js"))
     ).toBe(true);
+  });
+
+  it("names in api.md every part of API and the statements written in it", () => {
+    const index = fs.readFileSync(
+      path.join(__dirname, "../../docs/protocol/api.md"),
+      "utf8"
+    );
+    // "| [Title](api/x.md) | about | A-1.1 to 1.10, A-1.15, ... |": each range opened out.
+    // An entry not written so (another layer after "to", a misspelt prefix) is named as wrong.
+    const api = ["API", ""].join("-");
+    const listed = {};
+    for (const [, file, ids] of index.matchAll(
+      /^\| \[[^\]]+\]\((api\/[\w-]+\.md)\) *\|.*\| *([^|]+?) *\| *$/gm
+    )) {
+      listed[`docs/protocol/${file}`] = ids.split(",").flatMap((entry) => {
+        const m = /^(\S+)(\d+)\.(\d+)(?: to (\d+)\.(\d+))?$/.exec(entry.trim());
+        if (!m || m[1] !== api || (m[4] && m[4] !== m[2])) {
+          return [`not an entry: ${entry.trim()}`];
+        }
+        const [from, to] = [Number(m[3]), Number(m[5] || m[3])];
+        return Array.from(
+          { length: to - from + 1 },
+          (_, i) => `${m[2]}.${from + i}`
+        );
+      });
+    }
+    const written = {};
+    for (const s of statements.filter((s) => s.id.startsWith("API-"))) {
+      (written[s.document] = written[s.document] || []).push(s.id.slice(4));
+    }
+    const byNumber = (a, b) =>
+      a.split(".")[0] - b.split(".")[0] || a.split(".")[1] - b.split(".")[1];
+    const parts = fs
+      .readdirSync(path.join(__dirname, "../../docs/protocol/api"))
+      .filter((f) => f.endsWith(".md"))
+      .map((f) => `docs/protocol/api/${f}`)
+      .sort();
+    expect(Object.keys(listed).sort()).toEqual(parts);
+    for (const part of parts) {
+      expect([part, ...(written[part] || []).sort(byNumber)]).toEqual([
+        part,
+        ...listed[part]
+      ]);
+    }
   });
 });
 

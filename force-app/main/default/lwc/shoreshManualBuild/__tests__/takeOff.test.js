@@ -12,6 +12,7 @@ import {
   GROUPS,
   draft
 } from "../../shoreshWeekEditor/__tests__/data/draftFixture";
+import { flush } from "shoresh-jest/flush";
 
 const apex = () => ({ default: jest.fn() });
 jest.mock("@salesforce/apex/ManualBuildController.getDraft", () => apex(), {
@@ -47,12 +48,6 @@ const VISITING_DAY = {
     rows: ["1", "1"]
   }
 };
-
-const flush = () =>
-  [...Array(10)].reduce(
-    (chain) => chain.then(() => undefined),
-    Promise.resolve()
-  );
 
 describe("c-shoresh-manual-build: take a special day off", () => {
   afterEach(() => {

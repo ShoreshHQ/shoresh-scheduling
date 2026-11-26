@@ -12,6 +12,7 @@ import startNewVersion from "@salesforce/apex/ElectiveSeatsController.startNewVe
 import { buildTerms } from "c/shoreshTerms";
 import { nsRecord } from "shoresh-jest/namespace";
 import { MONDAY, TUESDAY, assignedView, runView, seat } from "./data/run";
+import { flush } from "shoresh-jest/flush";
 
 const apex = () => ({ default: jest.fn() });
 jest.mock("@salesforce/apex/ElectiveSeatsController.seatsSetup", () => apex(), {
@@ -69,11 +70,6 @@ const SETUP = {
 const RUN_INFO = runView().run;
 const SITUATION = { runs: [RUN_INFO] };
 
-const flush = () =>
-  [...Array(20)].reduce(
-    (chain) => chain.then(() => undefined),
-    Promise.resolve()
-  );
 const $ = (element, selector) => element.shadowRoot.querySelector(selector);
 const $$ = (element, selector) => [
   ...element.shadowRoot.querySelectorAll(selector)

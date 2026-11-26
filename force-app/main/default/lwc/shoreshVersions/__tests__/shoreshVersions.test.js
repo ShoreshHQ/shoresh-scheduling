@@ -1,6 +1,7 @@
 import { createElement } from "lwc";
 import ShoreshVersions from "c/shoreshVersions";
 import { buildTerms } from "c/shoreshTerms";
+import { flush } from "shoresh-jest/flush";
 
 const VERSIONS = [
   {
@@ -16,12 +17,6 @@ const VERSIONS = [
     savedAt: "2026-10-16T14:00:00.000Z"
   }
 ];
-
-const flush = () =>
-  [...Array(5)].reduce(
-    (chain) => chain.then(() => undefined),
-    Promise.resolve()
-  );
 
 async function render(versions = VERSIONS) {
   const element = createElement("c-shoresh-versions", { is: ShoreshVersions });

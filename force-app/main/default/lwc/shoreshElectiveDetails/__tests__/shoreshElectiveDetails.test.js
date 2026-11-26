@@ -22,6 +22,7 @@ import {
 } from "../linkedChoices";
 import { buildTerms } from "c/shoreshTerms";
 import { nsRecord } from "shoresh-jest/namespace";
+import { flush } from "shoresh-jest/flush";
 
 jest.mock(
   "@salesforce/apex/LinkedChoicesController.linkedChoicePlaces",
@@ -29,12 +30,6 @@ jest.mock(
   { virtual: true }
 );
 
-// A few turns, so a save's answer and the next render have both happened.
-const flush = () =>
-  [...Array(4)].reduce(
-    (chain) => chain.then(() => undefined),
-    Promise.resolve()
-  );
 const terms = buildTerms([
   {
     term: "LinkedChoice",

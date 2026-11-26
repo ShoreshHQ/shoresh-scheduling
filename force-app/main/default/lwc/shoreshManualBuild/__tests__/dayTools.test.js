@@ -9,6 +9,7 @@ import {
   schedule
 } from "../../shoreshWeekEditor/__tests__/data/draftFixture";
 import { editorRoot, find } from "shoresh-jest/week-editor";
+import { flush } from "shoresh-jest/flush";
 
 // Clear day, Clear week and Copy day to… on the Manual Build screen (tools.js works them out;
 // tools.test.js covers the rules). Synthetic camp: draftFixture (Bunk 2 isn't at camp at Lunch).
@@ -46,12 +47,6 @@ const SOCCER = { kind: "A", id: "a3", name: "Soccer", gone: false };
 const ELECTIVE = { kind: "E", id: null, name: "Chugim", gone: false };
 const BOATING = { kind: "A", id: "a2", name: "Boating", gone: false };
 const ITEMS = [FLAGPOLE, SWIM, SOCCER];
-
-const flush = () =>
-  [...Array(10)].reduce(
-    (chain) => chain.then(() => undefined),
-    Promise.resolve()
-  );
 
 /** Monday's and Tuesday's rows, both days with Flagpole, Swim and Soccer. */
 function start(monday, tuesday) {

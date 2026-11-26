@@ -19,6 +19,7 @@ import setLocksOnServer from "@salesforce/apex/GeneratedScheduleController.setLo
 import { buildTerms } from "c/shoreshTerms";
 import { nsRecord } from "shoresh-jest/namespace";
 import { PROGRAM, SCHEDULE, SMALL, WEEK, camp } from "./data/camp";
+import { flush } from "shoresh-jest/flush";
 
 const apex = () => ({ default: jest.fn() });
 jest.mock(
@@ -65,12 +66,6 @@ const SETUP = nsRecord(READY);
 const terms = buildTerms([
   { term: "Group", singular: "Bunk", plural: "Bunks", isCustom: true }
 ]);
-
-const flush = () =>
-  [...Array(10)].reduce(
-    (chain) => chain.then(() => undefined),
-    Promise.resolve()
-  );
 
 /** A saved week: Bunk 1 swims in Period 1 on both days, the rest Open (SMALL's frame). */
 function savedWeek(locks = []) {

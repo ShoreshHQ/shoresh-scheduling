@@ -24,7 +24,7 @@ import removeOnGenerated from "@salesforce/apex/AddedActivityController.removeFr
 import { buildTerms } from "c/shoreshTerms";
 import { nsRecord } from "shoresh-jest/namespace";
 import { PROGRAM, SCHEDULE, SMALL, WEEK, camp, keeping } from "./data/camp";
-import { nextTurn } from "../pieces";
+import { flush, until } from "shoresh-jest/flush";
 
 const apex = () => ({ default: jest.fn() });
 jest.mock(
@@ -83,20 +83,6 @@ const terms = buildTerms([
   { term: "Group", singular: "Bunk", plural: "Bunks", isCustom: true }
 ]);
 
-const flush = () =>
-  [...Array(10)].reduce(
-    (chain) => chain.then(() => undefined),
-    Promise.resolve()
-  );
-/** Gives the page turns until done() says yes (a build runs in pieces, between turns). */
-async function until(done, tries = 200) {
-  await flush();
-  if (done() || !tries) {
-    return;
-  }
-  await nextTurn();
-  await until(done, tries - 1);
-}
 const slow = () => {
   const held = {};
   held.promise = new Promise((resolve) => {

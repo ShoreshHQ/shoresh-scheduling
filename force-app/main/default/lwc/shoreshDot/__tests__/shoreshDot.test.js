@@ -1,7 +1,6 @@
 import { createElement } from "lwc";
 import ShoreshDot from "c/shoreshDot";
-
-const flush = () => Promise.resolve();
+import { flush } from "shoresh-jest/flush";
 
 function render(props = {}) {
   const element = createElement("c-shoresh-dot", { is: ShoreshDot });

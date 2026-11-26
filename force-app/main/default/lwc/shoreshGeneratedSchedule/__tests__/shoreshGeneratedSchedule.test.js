@@ -18,7 +18,6 @@ import { MODE, generateWeek } from "c/shoreshEngine";
 import { buildForAgent, loadWeek } from "c/shoreshGeneratedWeek";
 import { menuForAgent } from "../buildMenu";
 import { NAMESPACE_PREFIX } from "c/shoreshSchema";
-import { nextTurn } from "../pieces";
 import {
   BIG,
   FLAGPOLE,
@@ -30,6 +29,7 @@ import {
   camp,
   keeping
 } from "./data/camp";
+import { flush, until } from "shoresh-jest/flush";
 
 jest.mock(
   "@salesforce/apex/GeneratedScheduleController.getInputs",
@@ -86,28 +86,6 @@ const terms = buildTerms(LABELS);
 
 const CONFLICT_SENTENCE =
   "Someone else changed this schedule since you opened it. Open it again to see their changes.";
-
-const flush = () =>
-  [...Array(10)].reduce(
-    (chain) => chain.then(() => undefined),
-    Promise.resolve()
-  );
-
-// The browser's turn, as the screen gives it between pieces of a build.
-const tick = () => nextTurn();
-
-/** Gives the page turns until done() says yes. */
-async function until(done, tries = 2000) {
-  await flush();
-  if (done()) {
-    return;
-  }
-  if (!tries) {
-    throw new Error("still waiting");
-  }
-  await tick();
-  await until(done, tries - 1);
-}
 
 const q = (element, selector) => find(element, selector);
 

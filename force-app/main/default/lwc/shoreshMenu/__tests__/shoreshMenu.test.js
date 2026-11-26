@@ -7,6 +7,7 @@ import {
   previewScreen
 } from "c/shoreshScreens";
 import { buildTerms } from "c/shoreshTerms";
+import { flush } from "shoresh-jest/flush";
 
 const terms = buildTerms([
   { term: "Group", singular: "Bunk", plural: "Bunks", isCustom: true },
@@ -35,8 +36,6 @@ const terms = buildTerms([
     isCustom: false
   }
 ]);
-
-const flush = () => Promise.resolve();
 
 async function render(
   hasSeason = true,

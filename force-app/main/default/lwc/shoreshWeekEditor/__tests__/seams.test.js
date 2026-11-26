@@ -5,6 +5,7 @@ import ShoreshWeekEditor from "c/shoreshWeekEditor";
 import { buildTerms } from "c/shoreshTerms";
 import { nsRecord } from "shoresh-jest/namespace";
 import { WITH_SOCCER, WITH_SWIM, draft, schedule } from "./data/draftFixture";
+import { flush } from "shoresh-jest/flush";
 
 const SETUP = { activities: [], locations: [] };
 const LABELS = [
@@ -15,12 +16,6 @@ const LABELS = [
 const P2 = "2026-06-29|g1|t2";
 const SWIM_AT_P2 = ["1,2,", "1,,"];
 const LUNCH_KEY = "2026-06-29|g1|t3";
-
-const flush = () =>
-  [...Array(10)].reduce(
-    (chain) => chain.then(() => undefined),
-    Promise.resolve()
-  );
 
 const saved = (items, rows, conflicts = []) => ({
   status: "saved",
