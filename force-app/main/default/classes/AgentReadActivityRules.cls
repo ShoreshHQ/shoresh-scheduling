@@ -1,6 +1,6 @@
 /**
- * read_activity_details: what an activity's details panel holds (who can do it, same division only,
- * early in the week, notes), as the person sees them, through an agent or the command line
+ * read_activity_details: what an activity's details panel holds (who can do it, when it runs, same
+ * division only, early in the week, notes), as the person sees them, through an agent or the command line
  * (docs/protocol/api.md API-1.51). Web address /v1/read_activity_details, GET ?season=&name=. Each
  * value is said as change_activity_details takes it back as seen.
  */

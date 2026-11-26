@@ -58,11 +58,16 @@ public with sharing class ActivityOffTimes {
    * The rows for these boxes (each once). A box that isn't a time block and a weekday is
    * refused in the panel's words; a time block of another season is refused by its trigger.
    */
-  public static List<ActivityOffTime__c> rows(Id activityId, List<String> boxes) {
+  public static List<ActivityOffTime__c> rows(
+    Id activityId,
+    List<String> boxes
+  ) {
     List<ActivityOffTime__c> result = new List<ActivityOffTime__c>();
     for (String box : new Set<String>(boxes ?? new List<String>())) {
       Id blockId = blockOf(box);
-      String weekday = String.isBlank(box) ? null : box.substringAfter(SEPARATOR);
+      String weekday = String.isBlank(box)
+        ? null
+        : box.substringAfter(SEPARATOR);
       if (blockId == null || WeekCalendar.indexOfWeekday(weekday) < 0) {
         throw new ShoreshException(
           'When it runs can only name days and time blocks of this season.'

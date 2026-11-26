@@ -8,6 +8,8 @@
 public with sharing class SetupMatchRules {
   public static final String DELETED = 'Deleted from setup';
   public static final String NOT_AT_CAMP_THEN = 'Not at camp then';
+  // When it runs leaves this day and time block out (ADR 0031 piece A).
+  public static final String NOT_RUNNING_THEN = 'Not running then';
 
   private GeneratedSetup setup;
   public Map<Id, Activity__c> activities;
@@ -68,6 +70,25 @@ public with sharing class SetupMatchRules {
     return closedBy.containsKey(activityId)
       ? closedBy.get(activityId) + ' is closed this ' + week
       : 'Not running this ' + week;
+  }
+
+  /**
+   * Whether an activity's placement on this day covers a time block its When it runs leaves out
+   * (ADR 0031 piece A): blockIds, the placement's time blocks.
+   */
+  public Boolean notRunningThen(String owner, List<Id> blockIds, Date day) {
+    Activity__c activity = owner.startsWith(SlotIds.ACTIVITY)
+      ? activities.get(SlotIds.activityIn(owner))
+      : null;
+    if (activity == null) {
+      return false;
+    }
+    for (Id blockId : blockIds) {
+      if (!ActivityOffTimes.runs(activity, blockId, day)) {
+        return true;
+      }
+    }
+    return false;
   }
 
   /** Why a group's row is not in the week now: away this week, or no longer in the program. */

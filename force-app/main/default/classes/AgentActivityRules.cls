@@ -1,13 +1,15 @@
 /**
  * An activity's details panel through a person's AI (docs/protocol/api.md API-1.51): who can do
- * it, groups from the same division only, early in the week, and notes, by plain names, said as
+ * it, when it runs (AgentActivityRuns), groups from the same division only, early in the week,
+ * and notes, by plain names, said as
  * the panel shows them so the AI can send them back as seen (change_activity_details).
  */
 public with sharing class AgentActivityRules {
   public static final String WHO = 'who_can_do_it';
+  public static final String RUNS = 'when_it_runs';
   private static final String EARLY_DAY = 'early_week_by_day';
 
-  // The panel's rules, in its order (who can do it comes first).
+  // The panel's rules, in its order (who can do it and when it runs come first).
   private static final Map<String, Schema.SObjectField> PANEL_RULES = new Map<String, Schema.SObjectField>{
     'same_division_only' => Activity__c.SameDivisionOnly__c,
     'early_week_count' => Activity__c.EarlyWeekCount__c,
@@ -17,12 +19,12 @@ public with sharing class AgentActivityRules {
 
   /** The panel's fields by plain name, in its order. */
   public static List<String> names() {
-    List<String> result = new List<String>{ WHO };
+    List<String> result = new List<String>{ WHO, RUNS };
     result.addAll(PANEL_RULES.keySet());
     return result;
   }
 
-  /** One of the panel's rules by plain name (null for who can do it, or one it hasn't). */
+  /** One of the panel's rules by plain name (null for who can do it, when it runs, or one it hasn't). */
   public static Schema.SObjectField fieldOf(String key) {
     return PANEL_RULES.get(key);
   }
@@ -69,7 +71,7 @@ public with sharing class AgentActivityRules {
     Id activityId,
     Map<String, Object> given
   ) {
-    if (given.containsKey(EARLY_DAY)) {
+    if (given.containsKey(EARLY_DAY) || given.containsKey(RUNS)) {
       useSeasonOf(activityId);
     }
   }
@@ -105,7 +107,9 @@ public with sharing class AgentActivityRules {
     ];
     DayWords.use(activity.Season__r);
     Map<String, String> result = new Map<String, String>{
-      WHO => AgentActivityWho.said(AgentActivityWho.namesNow(activityId))
+      WHO => AgentActivityWho.said(AgentActivityWho.namesNow(activityId)),
+      RUNS => new AgentActivityRuns(activity.Season__r.Id)
+        .said(ActivityOffTimes.now(activityId))
     };
     for (String key : PANEL_RULES.keySet()) {
       result.put(key, said(key, activity.get(PANEL_RULES.get(key))));

@@ -1,10 +1,11 @@
 /**
- * change_activity_details: change an activity's details (who can do it, same division only, early
- * in the week, notes), as the person, through an agent or the command line (docs/protocol/api.md
+ * change_activity_details: change an activity's details (who can do it, when it runs, same
+ * division only, early in the week, notes), as the person, through an agent or the command line (docs/protocol/api.md
  * API-1.51). Web address /v1/change_activity_details, POST {season, name, fields, seen}. It is the
  * activity details panel's own save (ActivitiesController.saveActivityDetails), made only while
  * each field changed still holds what read_activity_details said (seen); someone else's change since
- * is refused (409) with nothing saved. Who can do it is left as it is unless it is changed.
+ * is refused (409) with nothing saved. Who can do it is left as it is unless it is changed; when
+ * it runs goes through the panel's own save of it (ActivitiesController.saveWhenItRuns).
  */
 @RestResource(urlMapping='/v1/change_activity_details')
 global with sharing class AgentChangeActivityRules implements AgentRequest.Change {
@@ -19,6 +20,9 @@ global with sharing class AgentChangeActivityRules implements AgentRequest.Chang
   private Map<String, Object> given;
   private Activity__c rules;
   private List<Id> chosen;
+  // When it runs, when asked: the season's boxes, and the ones it can't run.
+  private AgentActivityRuns runs;
+  private List<String> offTimes;
   private List<String> said = new List<String>();
 
   @HttpPost
@@ -44,21 +48,10 @@ global with sharing class AgentChangeActivityRules implements AgentRequest.Chang
     // What was seen is said as the panel shows it: compared here, under the lock, so the
     // activity as it is now is the ticket handed to the save.
     refuseIfChangedSince(seen);
-    RowSaves.Result result;
-    try {
-      // The activity details panel's own save (SeenSaves); held since the lock above.
-      result = ActivitiesController.saveActivityDetails(
-        rules,
-        chosen,
-        AgentActivityRules.ticketNow(found.id, chosen)
-      );
-    } catch (Exception e) {
-      throw new ShoreshException(
-        '"' + found.name + '" not saved. ' + ScreenErrors.words(e)
-      );
-    }
-    if (!result.saved()) {
-      throw changedSince();
+    for (RowSaves.Result result : saves()) {
+      if (!result.saved()) {
+        throw changedSince();
+      }
     }
     return 'Changed the ' +
       found.kind +
@@ -67,6 +60,39 @@ global with sharing class AgentChangeActivityRules implements AgentRequest.Chang
       '": ' +
       String.join(said, ', ') +
       '.';
+  }
+
+  /**
+   * The activity details panel's own saves (SeenSaves; ActivityOffTimes), held since the lock:
+   * the rules and who can do it when any is asked, and when it runs when it is.
+   */
+  private List<RowSaves.Result> saves() {
+    List<RowSaves.Result> results = new List<RowSaves.Result>();
+    try {
+      if (offTimes == null || given.size() > 1) {
+        results.add(
+          ActivitiesController.saveActivityDetails(
+            rules,
+            chosen,
+            AgentActivityRules.ticketNow(found.id, chosen)
+          )
+        );
+      }
+      if (offTimes != null) {
+        results.add(
+          ActivitiesController.saveWhenItRuns(
+            found.id,
+            offTimes,
+            ActivityOffTimes.now(found.id)
+          )
+        );
+      }
+    } catch (Exception e) {
+      throw new ShoreshException(
+        '"' + found.name + '" not saved. ' + ScreenErrors.words(e)
+      );
+    }
+    return results;
   }
 
   private void refuseUnknown() {
@@ -117,7 +143,11 @@ global with sharing class AgentChangeActivityRules implements AgentRequest.Chang
       String text = given.get(key) == null
         ? ''
         : String.valueOf(given.get(key)).trim();
-      if (key == AgentActivityRules.WHO) {
+      if (key == AgentActivityRules.RUNS) {
+        runs = new AgentActivityRuns(found.seasonId);
+        offTimes = runs.keysOf(given.get(key));
+        said.add('when it runs ' + runs.said(offTimes));
+      } else if (key == AgentActivityRules.WHO) {
         chosen = AgentActivityWho.idsOf(given.get(key), found);
         said.add(
           'who can do it ' +
@@ -158,9 +188,10 @@ global with sharing class AgentChangeActivityRules implements AgentRequest.Chang
   private void refuseIfChangedSince(Map<String, Object> seen) {
     Map<String, String> now = AgentActivityRules.now(found.id);
     for (String key : given.keySet()) {
-      if (
-        !AgentActivityRules.asShown(key, seen.get(key)).equals(now.get(key))
-      ) {
+      String shown = key == AgentActivityRules.RUNS
+        ? runs.asShown(seen.get(key))
+        : AgentActivityRules.asShown(key, seen.get(key));
+      if (!shown.equals(now.get(key))) {
         throw changedSince();
       }
     }

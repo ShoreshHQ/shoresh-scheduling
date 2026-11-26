@@ -4,7 +4,7 @@
  * each of the director's placements carried over, whole, at the same group and time blocks
  * (matched by record Id), when it still fits: its activity is still in setup and running this
  * week, its group and blocks are still there and in the same order, the group is at camp then,
- * and no fixed or recurring activity is now there. Placements go in the order of the day, so the
+ * its activity runs then (When it runs, ADR 0031), and no fixed or recurring activity is now there. Placements go in the order of the day, so the
  * same draft and setup always give the same day. A placement that can't go is left out, with why.
  */
 public with sharing class SetupMatchCarry {
@@ -20,15 +20,19 @@ public with sharing class SetupMatchCarry {
   private SetupMatchRules rules;
   private SetupMatchNames names;
   private ScheduleGrid target;
+  // The day's date: When it runs is by weekday.
+  private Date day;
 
   public SetupMatchCarry(
     SetupMatchRules rules,
     SetupMatchNames names,
-    ScheduleGrid target
+    ScheduleGrid target,
+    Date day
   ) {
     this.rules = rules;
     this.names = names;
     this.target = target;
+    this.day = day;
     cells = new Map<String, String>(new SetupMatchCells(target).held);
     for (String cell : cells.keySet()) {
       Id setId = SlotIds.electiveIn(SlotIds.owner(cells.get(cell)));
@@ -104,7 +108,21 @@ public with sharing class SetupMatchCarry {
     if (why == null) {
       why = whyNotFrame(placement);
     }
+    if (why == null) {
+      why = whyNotRunning(owner, placement);
+    }
     return why == null ? whyNotFree(placement) : why;
+  }
+
+  /** Its activity doesn't run then: When it runs leaves the day and a time block of it out. */
+  private String whyNotRunning(String owner, List<String> placement) {
+    List<Id> blockIds = new List<Id>();
+    for (String cell : placement) {
+      blockIds.add(Id.valueOf(SetupMatchCells.blockOf(cell)));
+    }
+    return rules.notRunningThen(owner, blockIds, day)
+      ? SetupMatchRules.NOT_RUNNING_THEN
+      : null;
   }
 
   /** Its group is not in the day or not at camp then, or its time blocks changed; or null. */
