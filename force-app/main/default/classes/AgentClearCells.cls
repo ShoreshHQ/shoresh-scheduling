@@ -53,7 +53,10 @@ global with sharing class AgentClearCells {
       String change
     ) {
       refuseUnlessClear(week, change);
-      String kept = 'Before Clear ' + change.removeStart(CLEARED);
+      // Shortened to fit as the version's own name is (RainyDayController.keep), so the name
+      // said and held for Undo is the one saved.
+      String kept = ('Before Clear ' + change.removeStart(CLEARED))
+        .abbreviate(SchedulesController.NAME_LIMIT);
       return new Map<String, Object>{
         'version' => AgentScreenVersions.keepVersion(week, kept),
         'version_name' => kept
