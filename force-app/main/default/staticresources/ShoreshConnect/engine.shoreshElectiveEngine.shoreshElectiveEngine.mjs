@@ -1,4 +1,4 @@
-import { article, buildTerms, compareText } from "./engine.shoreshTerms.shoreshTerms.mjs";
+import { article, buildTerms, compareText, listed } from "./engine.shoreshTerms.shoreshTerms.mjs";
 import { hasOrderingEvidence } from "./engine.shoreshElectiveEngine.rankKind.mjs";
 import { minCostAssign } from "./engine.shoreshElectiveEngine.minCostAssign.mjs";
 
@@ -575,12 +575,7 @@ export function assignSeats({
       }
     }
     const periodWords = (timeId) => periodName.get(timeId) ?? timeId;
-    const periodsWords = (ids) => {
-      const words = ids.map(periodWords);
-      return words.length < 2
-        ? words.join("")
-        : `${words.slice(0, -1).join(", ")} and ${words[words.length - 1]}`;
-    };
+    const periodsWords = (ids) => listed(ids.map(periodWords));
     // Who asked for a set and takes at least one of the periods it has here; anyone else only
     // matched by name (another division's copy).
     const askedFor = (id) => {
