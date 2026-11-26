@@ -401,6 +401,19 @@ const AVAILABILITY = {
 };
 
 /**
+ * Whether a group is at camp in a time block: all day, or only in the part of day it comes for
+ * (a block with no part of day is not one a morning- or afternoon-only group is there for). The
+ * one rule for the week engine, Camp Setup and the server's SetTimePlan.atCamp, held equal by the
+ * shared examples (staticresources/ShoreshRuleExamples.json, atCamp).
+ */
+export function atCamp(availability, partOfDay) {
+  if (availability === "MorningOnly") {
+    return partOfDay === "Morning";
+  }
+  return availability !== "AfternoonOnly" || partOfDay === "Afternoon";
+}
+
+/**
  * Which groups a fixed or recurring activity takes, block by block. A fixed activity takes every
  * group in its program; a recurring one the divisions and groups it covers (every group when it
  * names none). A group not at camp in a time block (morning or afternoon only) is left out of it.
@@ -423,11 +436,10 @@ function whoIsThere(entry, item, fields) {
   (entry.divisions || []).forEach((d) => {
     (d.groups || []).forEach((grp) => {
       if (named.size === 0 || named.has(grp.Id) || named.has(d.division.Id)) {
-        const away = (AVAILABILITY[grp[GROUP.Availability]] || {}).away;
         groups.push({
           group: grp,
-          blocks: span.filter(
-            (block) => !away || block[BLOCK.PartOfDay] !== away
+          blocks: span.filter((block) =>
+            atCamp(grp[GROUP.Availability], block[BLOCK.PartOfDay])
           ).length
         });
       }
@@ -451,8 +463,7 @@ export function coversSomeoneAt(entry, item, fields, block) {
       if (named.size && !named.has(grp.Id) && !named.has(d.division.Id)) {
         return false;
       }
-      const away = (AVAILABILITY[grp[GROUP.Availability]] || {}).away;
-      return !away || block[BLOCK.PartOfDay] !== away;
+      return atCamp(grp[GROUP.Availability], block[BLOCK.PartOfDay]);
     })
   );
 }

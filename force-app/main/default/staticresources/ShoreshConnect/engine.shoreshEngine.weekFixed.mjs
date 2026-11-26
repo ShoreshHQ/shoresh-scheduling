@@ -1,4 +1,4 @@
-import { atCamp } from "./engine.shoreshEngine.setup.mjs";
+import { atCamp } from "./engine.shoreshSetupRules.shoreshSetupRules.mjs";
 import { fillable } from "./engine.shoreshEngine.weekOptions.mjs";
 
 /**
@@ -89,7 +89,7 @@ function readRow(st, grid, day, groupId, row) {
     const k = st.cellKey(groupId, day.index, block.id);
     if (!group || st.locks.has(lockKey(day.date, groupId, block.id))) {
       grid.lockedOpen.add(k);
-    } else if (!atCamp(group, block.partOfDay)) {
+    } else if (!atCamp(group.availability, block.partOfDay)) {
       grid.away.add(k);
     } else {
       open.push(b);

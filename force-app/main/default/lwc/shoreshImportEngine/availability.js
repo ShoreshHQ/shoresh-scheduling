@@ -2,7 +2,7 @@
  * A group here for part of the day (docs/import/names-and-divisions.md, INGEST-2.9; Greg,
  * 2026-10-28): a new group whose cells are all in the morning, on every day it is in the files,
  * comes in as Morning only (and all in the afternoon: Afternoon only), the same field the Groups
- * screen sets and the engine reads (shoreshEngine/setup.js atCamp). Its blank half of the day is
+ * screen sets and the engine reads (c/shoreshSetupRules atCamp). Its blank half of the day is
  * then not a gap. Listed under "Shoresh read these as" with All day (review.md INGEST-5.9).
  */
 import { blocksOf } from "./reading-constants";
@@ -105,7 +105,11 @@ export function readAvailability(usable, timetables, groups, answers) {
   return result;
 }
 
-/** Whether a group is at camp in a timetable's block, by its part of the day (setup.js atCamp). */
+/**
+ * Whether a group is at camp in a timetable's block, by its part of the day (c/shoreshSetupRules
+ * atCamp), except a file's block with no time to place it by: the file doesn't say, so it is not
+ * one the group is away for (saved setup always has a part of day).
+ */
 export function atCampIn(availability, timetable, group, blockIndex) {
   const a = availability && availability.get(group);
   if (!a || a.availability === "AllDay") {

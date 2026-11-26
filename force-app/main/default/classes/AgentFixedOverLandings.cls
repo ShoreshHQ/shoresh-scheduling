@@ -4,11 +4,6 @@
  * each keeps, as fixedOver.js finds them (CORE-3.9).
  */
 public with sharing class AgentFixedOverLandings {
-  private static final Map<String, String> AWAY = new Map<String, String>{
-    'MorningOnly' => 'Afternoon',
-    'AfternoonOnly' => 'Morning'
-  };
-
   /** One recurring activity the fixed activity lands on. */
   public class Landing {
     public RecurringActivity__c item;
@@ -140,7 +135,8 @@ public with sharing class AgentFixedOverLandings {
     for (SeasonSetupReader.DivisionSetup division : plan.entry.divisions) {
       for (Group__c grp : division.groups) {
         if (
-          isCovered(named, division.division.Id, grp.Id) && isThere(grp, block)
+          isCovered(named, division.division.Id, grp.Id) &&
+          SetTimePlan.atCamp(grp, block)
         ) {
           return true;
         }
@@ -154,11 +150,5 @@ public with sharing class AgentFixedOverLandings {
     return named.isEmpty() ||
       named.contains(groupId) ||
       named.contains(divisionId);
-  }
-
-  /** At camp in the block: all day, or the part of day it comes for. */
-  private static Boolean isThere(Group__c grp, TimeBlock__c block) {
-    String away = AWAY.get(grp.Availability__c);
-    return away == null || block.PartOfDay__c != away;
   }
 }
