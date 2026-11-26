@@ -90,70 +90,18 @@ public with sharing class SetupDeletions {
   /** The item's kind, program (for a program's own items), name, and camp; null for others. */
   private static Item itemOf(Id recordId) {
     Schema.SObjectType type = recordId.getSObjectType();
-    if (type == Activity__c.SObjectType) {
-      return activityOf(recordId);
-    }
-    if (type == Location__c.SObjectType) {
-      return locationOf(recordId);
-    }
-    if (type == StaffMember__c.SObjectType) {
-      return staffMemberOf(recordId);
-    }
-    if (type == LocationType__c.SObjectType) {
-      return locationTypeOf(recordId);
+    if (SetupDeletionSeasonItems.handles(type)) {
+      SetupDeletionElectives.Found found = SetupDeletionSeasonItems.of(
+        recordId
+      );
+      return found.campId == null
+        ? null
+        : new Item(found.kind, found.name, found.campId);
     }
     if (type == Program__c.SObjectType) {
       return programOf(recordId);
     }
     return programItemOf(recordId, type);
-  }
-
-  private static Item activityOf(Id recordId) {
-    for (Activity__c row : [
-      SELECT Name, Season__r.Camp__c
-      FROM Activity__c
-      WHERE Id = :recordId
-      WITH USER_MODE
-    ]) {
-      return new Item('Activity', row.Name, row.Season__r.Camp__c);
-    }
-    return null;
-  }
-
-  private static Item locationOf(Id recordId) {
-    for (Location__c row : [
-      SELECT Name, Season__r.Camp__c
-      FROM Location__c
-      WHERE Id = :recordId
-      WITH USER_MODE
-    ]) {
-      return new Item('Location', row.Name, row.Season__r.Camp__c);
-    }
-    return null;
-  }
-
-  private static Item staffMemberOf(Id recordId) {
-    for (StaffMember__c row : [
-      SELECT Name, Season__r.Camp__c
-      FROM StaffMember__c
-      WHERE Id = :recordId
-      WITH USER_MODE
-    ]) {
-      return new Item('StaffMember', row.Name, row.Season__r.Camp__c);
-    }
-    return null;
-  }
-
-  private static Item locationTypeOf(Id recordId) {
-    for (LocationType__c row : [
-      SELECT Name, Season__r.Camp__c
-      FROM LocationType__c
-      WHERE Id = :recordId
-      WITH USER_MODE
-    ]) {
-      return new Item('LocationType', row.Name, row.Season__r.Camp__c);
-    }
-    return null;
   }
 
   private static Item programOf(Id recordId) {

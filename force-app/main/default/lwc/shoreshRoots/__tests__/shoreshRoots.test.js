@@ -210,6 +210,7 @@ describe("c-shoresh-roots: the table", () => {
         "Bunks",
         "Time blocks",
         "Locations",
+        "Staff members",
         "Camp words"
       ],
       [
