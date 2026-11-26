@@ -142,6 +142,8 @@ describe("what Legal says matches the repo", () => {
     for (const name of [
       "Shoresh desktop",
       "SheetJS Community Edition 0.20.3",
+      "Lightning Web Components 8.28.2",
+      "tslib",
       "Inter",
       "JetBrains Mono",
       "SIL Open Font"

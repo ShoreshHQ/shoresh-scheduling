@@ -82,6 +82,8 @@ export const LEGAL = {
   parts: [
     "Shoresh desktop, by Gregory Feitel and contributors (Apache 2.0)",
     "SheetJS Community Edition 0.20.3, by SheetJS (Apache 2.0)",
+    "Lightning Web Components 8.28.2, by Salesforce (MIT), in Shoresh's connector",
+    "tslib, by Microsoft (BSD Zero Clause), in Shoresh's connector",
     "The Inter and JetBrains Mono typefaces (SIL Open Font License 1.1)"
   ]
 };
