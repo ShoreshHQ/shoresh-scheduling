@@ -464,6 +464,64 @@ describe("c/shoreshRootsLooks: what needs a look", () => {
     });
   });
 
+  // A Sunday-to-Thursday camp: the hand draws its days, and a special day on a day the week
+  // doesn't have is drawn on that day, never on Monday.
+  const SUN_THU = {
+    season: MESSY.season,
+    labels: LABELS,
+    programs: [
+      {
+        program: {
+          Id: "p1",
+          Name: "Main",
+          Sunday__c: true,
+          Monday__c: true,
+          Tuesday__c: true,
+          Wednesday__c: true,
+          Thursday__c: true
+        }
+      }
+    ]
+  };
+  const offDayCard = (day) =>
+    looksOf({
+      problems: [
+        {
+          key: "p1",
+          screen: "specialEvents",
+          kind: "specialOffDay",
+          name: "Carnival Night",
+          why: "On Saturday of Week 2, which that Week no longer has.",
+          of: "sd1",
+          day
+        }
+      ],
+      setup: nsRecord(SUN_THU),
+      table: null,
+      terms: t
+    })[0].glimpse.shapes;
+  const letters = (shapes) => shapes.filter((s) => s.text).map((s) => s.value);
+  const outlined = (shapes) =>
+    shapes.filter((s) => s.rect).findIndex((s) => s.cls.includes("dash"));
+
+  it("draws a special day off its week on that day, in the camp's own days", () => {
+    const thursday = offDayCard("Thursday");
+    expect(letters(thursday)).toEqual(["S", "M", "T", "W", "T"]);
+    expect(outlined(thursday)).toBe(4);
+    // Saturday isn't one of the camp's days: it is drawn after Thursday, not on Monday.
+    const saturday = offDayCard("Saturday");
+    expect(letters(saturday)).toEqual(["S", "M", "T", "W", "T", "S"]);
+    expect(outlined(saturday)).toBe(5);
+  });
+
+  it("draws a week not built in the camp's own days", () => {
+    const cards = hand({ ...SUN_THU, weeks: MESSY.weeks });
+    const week = byId(cards, "weekNotBuilt|w2");
+    expect(
+      week.glimpse.shapes.filter((s) => s.text).map((s) => s.value)
+    ).toEqual(["S", "M", "T", "W", "T"]);
+  });
+
   it("is nothing without a season", () => {
     expect(
       looksOf({ problems: [], setup: null, table: null, terms: t })

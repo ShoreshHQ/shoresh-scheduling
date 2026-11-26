@@ -54,6 +54,8 @@ private class IncomingQuestionsTest {
       'More questions from this system couldn\'t be kept here.',
       kept[kept.size() - 1].get('title')
     );
+    // Roots shows this line but leaves it out of its count by this key (shoreshRoots.js MORE).
+    Assert.areEqual('incoming|more', kept[kept.size() - 1].get('key'));
     Assert.isTrue(
       IncomingQuestions.isBatch(text),
       'still a batch\'s questions'

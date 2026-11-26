@@ -1,6 +1,14 @@
 import { FIELD } from "c/shoreshSchema";
 import { screenLabels } from "c/shoreshScreens";
-import { dayLetters, pieces, shortDate, shorten } from "c/shoreshRootsFaces";
+import {
+  campDays,
+  dayLetters,
+  dayStep,
+  pieces,
+  shortDate,
+  shorten
+} from "c/shoreshRootsFaces";
+import { WEEKDAYS } from "c/shoreshImportEngine";
 
 /**
  * Roots' hand: what needs a look in this camp, as cards (repo ADR 0020 choice 10; wiki decisions
@@ -29,7 +37,6 @@ export const HW = 170;
 export const HH = 62;
 
 const { rect, txt, path, tile, well, dashed, flag } = pieces;
-const DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
 const SECTION_OF = {
   weeks: "camp",
   programs: "camp",
@@ -119,14 +126,16 @@ function emptyTiles(cols, rows, w, h) {
   return out;
 }
 
-/** A week with no schedule: its days, every cell an outline (the mock-up's week 4). */
-function emptyWeek() {
+/** A week with no schedule: the camp's days, every cell an outline (the mock-up's week 4). */
+function emptyWeek(days) {
   const out = [];
-  dayLetters().forEach((d, i) => {
-    const x = i * 34.4;
-    out.push(txt(x + 15, 10, d, "g-m", "middle"));
+  const step = dayStep(days, HW + 2);
+  const dw = step - 4.4;
+  dayLetters(days).forEach((d, i) => {
+    const x = i * step;
+    out.push(txt(x + dw / 2, 10, d, "g-m", "middle"));
     for (let r = 0; r < 4; r++) {
-      out.push(dashed(x, 16 + r * 11.5, 30, 10, 2.5, "s500"));
+      out.push(dashed(x, 16 + r * 11.5, dw, 10, 2.5, "s500"));
     }
   });
   return out;
@@ -141,16 +150,25 @@ function emptyEvent() {
   return out;
 }
 
-/** On a day its week no longer has: the week's days, that day an outline under the flag. */
-function offDay(day) {
-  const at = Math.max(0, DAYS.indexOf(day));
+/**
+ * On a day its week no longer has: the camp's days, that day an outline under the flag. A day the
+ * camp doesn't run takes its place in the week after the camp's first day, never Monday's.
+ */
+function offDay(day, runs) {
+  const first = WEEKDAYS.indexOf(runs[0]);
+  const days = [...WEEKDAYS.slice(first), ...WEEKDAYS.slice(0, first)].filter(
+    (d) => d === day || runs.includes(d)
+  );
+  const at = days.indexOf(day);
+  const step = dayStep(days, HW + 2);
+  const dw = step - 4.4;
   const out = [];
-  dayLetters().forEach((d, i) => {
-    const x = i * 34.4;
-    out.push(txt(x + 15, 26, d, "g-m", "middle"));
-    out.push(i === at ? dashed(x, 32, 30, 28, 4, "s700") : well(x, 32, 30, 28));
+  dayLetters(days).forEach((d, i) => {
+    const x = i * step;
+    out.push(txt(x + dw / 2, 26, d, "g-m", "middle"));
+    out.push(i === at ? dashed(x, 32, dw, 28, 4, "s700") : well(x, 32, dw, 28));
   });
-  out.push(flag(at * 34.4 + 6, 0, 18, true));
+  out.push(flag(Math.max(0, at) * step + 6, 0, 18, true));
   return out;
 }
 
@@ -277,9 +295,9 @@ const EMPTY = {
 
 /**
  * One card from the problems of one kind (same screen): what it is called, the words for what is
- * off, and its picture. labels: the screens' names in the camp's words.
+ * off, and its picture. labels: the screens' names in the camp's words; days: the camp's days.
  */
-function fromProblems(kind, list, t, labels) {
+function fromProblems(kind, list, t, labels, days) {
   const first = list[0];
   const one = list.length === 1;
   const names = list.map((p) => p.name);
@@ -351,7 +369,7 @@ function fromProblems(kind, list, t, labels) {
         ...card,
         small: null,
         off: `not in its ${t.sIn("Week")}`,
-        picture: offDay(first.day)
+        picture: offDay(first.day, days)
       };
     case "specialTimes":
       return {
@@ -470,7 +488,7 @@ function weekCards(setup, table) {
         small: shortDate(week[FIELD.Week.StartDate]),
         off: "not built",
         label: `${week.Name} has no schedule yet.`,
-        picture: emptyWeek(),
+        picture: emptyWeek(campDays(setup)),
         nav: { weekId: id }
       };
     });
@@ -602,6 +620,7 @@ export function looksOf({ problems, setup, table, terms, openable }) {
     return [];
   }
   const labels = screenLabels(terms);
+  const days = campDays(setup);
   const sets = new Map(
     ((setup.electives || {}).offerings || []).map((o) => [
       o.Id,
@@ -624,7 +643,7 @@ export function looksOf({ problems, setup, table, terms, openable }) {
   });
   const cards = [...groups.entries()].map(([id, list]) => {
     const first = list[0];
-    const made = fromProblems(first.kind, list, terms, labels);
+    const made = fromProblems(first.kind, list, terms, labels, days);
     return {
       id,
       screen: first.screen,
