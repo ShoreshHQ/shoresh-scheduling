@@ -73,6 +73,33 @@ describe("Apex name-clash check", () => {
     ]);
   });
 
+  it("finds a local that takes over the class's static used without a dot (#540, ImportUndoKindsTest)", () => {
+    const hits = scanApex(
+      `@IsTest
+      private class ImportUndoKindsTest {
+        private static final Integer BEFORE = 99;
+        private static Object entry(Object before) { return before; }
+        @IsTest
+        static void putBack() {
+          Integer before = Limits.getQueries();
+          Integer used = Limits.getQueries() - before;
+          Assert.areEqual(BEFORE, used);
+        }
+      }`,
+      CLASSES
+    );
+    expect(hits).toEqual([
+      expect.objectContaining({
+        line: 7,
+        name: "before",
+        kind: "local",
+        usedAs: "BEFORE",
+        usedOn: 9,
+        clashesWith: "field BEFORE"
+      })
+    ]);
+  });
+
   it("finds a local named like a class used later in its block, in a trigger too", () => {
     expect(
       names(`public class SetupTablesTest {

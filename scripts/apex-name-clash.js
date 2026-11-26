@@ -5,12 +5,14 @@
  * field, not the class, and the class fails to compile; only the org's compiler says so (#46,
  * #48). Jest, Prettier and Code Analyzer don't compile Apex.
  *
- * A hit: a name used with a dot (`Name.member`) where a local, parameter or field in scope has
+ * A hit: a name used with a dot (`Name.member`), or a variable's exact spelling used plainly, where a local, parameter or field in scope has
  * that name under a different spelling. The use meant something else (a class, or a static
  * further out) and gets the variable instead:
  * - field `campLabels` and `CampLabels.forCamp(...)` in the same class (#46);
  * - local `targets` and the class's static `TARGETS.keySet()` later in the method (#48);
- * - local `scheduleUses` and `ScheduleUses.Count` later in its block.
+ * - local `scheduleUses` and `ScheduleUses.Count` later in its block;
+ * - local `before` and the class's static `BEFORE` used without a dot, while both are in
+ *   scope (`Assert.areEqual(BEFORE, used)`, #540): it compiles, and quietly reads the local.
  * Not hits, because they compile: a local's own initializer (`String inUse = InUse.reason(id);`,
  * the local's scope starts after it), a class sharing a name with a static of the same class
  * (`class ItemFields` and `static ... itemFields`), uses without a dot (`new Targets()`), the
@@ -172,7 +174,7 @@ function declarationsOf(code, blocks) {
       kind = "local";
       scope = [statementEnd(code, at), block.end];
     }
-    decls.push({ name: m[2], line: lineAt(code, at), scope, kind });
+    decls.push({ name: m[2], at, line: lineAt(code, at), scope, kind });
     const isProperty =
       code[code.slice(at + m[2].length).search(/\S/) + at + m[2].length] ===
       "{";
@@ -184,6 +186,7 @@ function declarationsOf(code, blocks) {
       for (const more of moreDeclarators(code, at + m[2].length)) {
         decls.push({
           name: more.name,
+          at: more.at,
           line: lineAt(code, more.at),
           scope,
           kind
@@ -263,6 +266,31 @@ function scanApex(source, classNames, isTrigger = false) {
       usedOn: lineAt(code, m.index),
       clashesWith:
         type === used ? `class ${used}` : other ? `${other.kind} ${used}` : used
+    });
+  }
+  // A name used without a dot where a variable of that exact spelling is also in scope: the
+  // use meant that one (a static further out) and gets the nearer variable instead (#540).
+  const declaredAt = new Set(decls.map((d) => d.at));
+  for (const m of code.matchAll(/(?<![\w.])([A-Za-z_]\w*)(?!\s*[.(\w])/g)) {
+    const used = m[1];
+    if (declaredAt.has(m.index)) continue;
+    const d = bindingOf(decls, used, m.index);
+    if (!d || d.name === used || hits.has(d)) continue;
+    const meant = decls.find(
+      (o) =>
+        o !== d &&
+        o.name === used &&
+        o.scope[0] <= m.index &&
+        m.index < o.scope[1]
+    );
+    if (!meant || OPT_OUT.test(lines[d.line - 1] || "")) continue;
+    hits.set(d, {
+      line: d.line,
+      name: d.name,
+      kind: d.kind,
+      usedAs: used,
+      usedOn: lineAt(code, m.index),
+      clashesWith: `${meant.kind} ${used}`
     });
   }
   return [...hits.values()].sort((a, b) => a.line - b.line);
