@@ -255,31 +255,6 @@ export default class ShoreshManualBuild extends BuildScreen(LightningElement) {
     }
   }
 
-  /** Unpublish, when Published's dropdown is open; else Published; null with neither. */
-  unpublishTarget() {
-    const menu = this.template.querySelector('[data-id="published-menu"]');
-    if (!menu) {
-      return null;
-    }
-    return menu.opened
-      ? this.template.querySelector('[data-id="unpublish"]')
-      : menu;
-  }
-
-  /**
-   * Focus fell to the page (or stayed on Publish or Unpublish while they were disabled), rather
-   * than being on something the director chose since.
-   */
-  focusIsLost() {
-    const inside = this.template.activeElement;
-    if (inside) {
-      const id = inside.dataset ? inside.dataset.id : null;
-      return id === "publish" || id === "unpublish" || id === "published-menu";
-    }
-    const page = document.activeElement;
-    return !page || page === document.body;
-  }
-
   /** The editor that draws and edits the week, once it is drawn. */
   get weekEditor() {
     return this.template.querySelector('[data-id="week-editor"]');
@@ -584,9 +559,6 @@ export default class ShoreshManualBuild extends BuildScreen(LightningElement) {
     return lines.length ? lines : null;
   }
 
-  get editable() {
-    return !this.readOnly;
-  }
   get showStart() {
     return (
       this.editable &&
@@ -757,11 +729,6 @@ export default class ShoreshManualBuild extends BuildScreen(LightningElement) {
   get applySeen() {
     return this.server ? this.server.revisions : null;
   }
-  /** Save version (c/shoreshBuildWeek): the week as it is now, kept under a name. */
-  handleSaveVersion(event) {
-    const { name, onDone } = event.detail;
-    return this.buildWeek.saveVersion(name, onDone);
-  }
 
   /**
    * Rainy day (repo docs/adr/0019): the week editor switches the day; first the week is kept as
@@ -774,14 +741,9 @@ export default class ShoreshManualBuild extends BuildScreen(LightningElement) {
   };
 
   /**
-   * Restore (c/shoreshBuildWeek): the version is copied into the week being built, after the week
-   * as it was is kept as "Before Restore" (the way back). Undo starts over, as on the desktop.
+   * The draft as a Restore left it (the version copied into the week being built): Undo and the
+   * counters start over, as on the desktop, on screen now, said so.
    */
-  handleRestore(event) {
-    return this.buildWeek.restoreVersion(event.detail.id);
-  }
-
-  /** The draft as a Restore left it: the counters start over, on screen now, said so. */
   showRestored(draft, id, said) {
     this.checksResetKey += 1;
     this.draft = draft;
@@ -800,15 +762,6 @@ export default class ShoreshManualBuild extends BuildScreen(LightningElement) {
   handleReloadAfterRefusal() {
     this.restoreRefused = false;
     this.load(true);
-  }
-
-  handleDeleteVersion(event) {
-    return this.buildWeek.deleteVersion(event.detail.id);
-  }
-
-  handleRenameVersion(event) {
-    const { id, name, onDone } = event.detail;
-    return this.buildWeek.renameVersion(id, name, onDone);
   }
 
   // ---------- Publish (Greg, Manual Build round 1 #1, round 2 #4; ADR 0008 part 5) ----------
@@ -959,19 +912,6 @@ export default class ShoreshManualBuild extends BuildScreen(LightningElement) {
     if (this.readAfterRun && !this.restoreRefused && this.refresh()) {
       this.readAfterRun = false;
     }
-  }
-
-  /** "Update to match setup" (c/shoreshBuildWeek): the list, read fresh, before anything changes. */
-  handleSetupMatch() {
-    return this.buildWeek.openSetupMatch();
-  }
-
-  handleSetupClose() {
-    this.buildWeek.closeSetupMatch();
-  }
-
-  handleSetupUpdate(event) {
-    return this.buildWeek.updateToMatchSetup(event.detail.keys);
   }
 
   /** The draft as an update left it: Undo starts over, as after Restore. */
