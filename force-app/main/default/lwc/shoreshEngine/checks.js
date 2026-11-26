@@ -31,7 +31,8 @@ import {
   owner,
   slots
 } from "./grid";
-import { compareText, earlyDates, minutes, weekdayOf } from "./setup";
+import { compareText } from "c/shoreshTerms";
+import { earlyDates, minutes, weekdayOf } from "./setup";
 import { BUSY, RELAX_ORDER, RULE as RULES } from "./week";
 import { reasonFor } from "./words";
 

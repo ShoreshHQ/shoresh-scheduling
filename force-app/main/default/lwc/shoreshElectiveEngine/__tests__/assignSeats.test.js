@@ -45,6 +45,34 @@ describe("seat limits", () => {
     ]);
   });
 
+  it("says two activities of the same name with blank seats in the same order, whatever order they came in", () => {
+    const pottery = (id) =>
+      offering("t1", id, { name: "Pottery", seats: null });
+    const said = (offerings) =>
+      assignSeats({ campers: campers(1), times: [{ id: "t1" }], offerings })
+        .findings.filter((f) => f.kind === "NO_SEATS_SET")
+        .map((f) => f.activityId);
+    expect(said([pottery("p2"), pottery("p1")])).toEqual(["p1", "p2"]);
+    expect(said([pottery("p1"), pottery("p2")])).toEqual(["p1", "p2"]);
+  });
+
+  it("keeps a camper's two locked seats at one time in the same order, whatever order they came in", () => {
+    const seated = (locks) =>
+      assignSeats({
+        campers: campers(1),
+        times: [{ id: "t1" }],
+        offerings: [offering("t1", "swim"), offering("t1", "arts")],
+        locks
+      }).seats.map((x) => [x.camperId, x.activityId, x.locked]);
+    const swim = { camperId: "c0", timeId: "t1", activityId: "swim" };
+    const arts = { camperId: "c0", timeId: "t1", activityId: "arts" };
+    expect(seated([swim, arts])).toEqual(seated([arts, swim]));
+    expect(seated([swim, arts])).toEqual([
+      ["c0", "arts", true],
+      ["c0", "swim", true]
+    ]);
+  });
+
   it("seats everyone in an offering with no limit", () => {
     const out = assignSeats({
       campers: campers(40),

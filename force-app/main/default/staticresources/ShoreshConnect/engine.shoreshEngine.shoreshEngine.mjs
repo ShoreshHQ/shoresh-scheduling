@@ -1,4 +1,4 @@
-import { article, buildTerms } from "./engine.shoreshTerms.shoreshTerms.mjs";
+import { article, buildTerms, compareText } from "./engine.shoreshTerms.shoreshTerms.mjs";
 import { blankSetupNote, floorNote, reasonFor } from "./engine.shoreshEngine.words.mjs";
 import { checkWeek, dayWord } from "./engine.shoreshEngine.checks.mjs";
 import {
@@ -11,7 +11,6 @@ import { NOW, nowOf } from "./engine.shoreshEngine.progress.mjs";
 import { fuller, importedFilled, sameFrame, seedFromImport } from "./engine.shoreshEngine.weekFloor.mjs";
 import {
   atCamp,
-  compareText,
   minutes,
   readActivities,
   readDays,

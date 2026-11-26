@@ -25,10 +25,6 @@ const WEEKDAYS = {
   Sunday: 7
 };
 
-// Text compared by character code, never by locale: the week engine's and the import engine's one
-// order (c/shoreshTerms).
-export { compareText };
-
 function sortValue(record, field) {
   const value = record ? record[field] : null;
   return typeof value === "number" && Number.isFinite(value)

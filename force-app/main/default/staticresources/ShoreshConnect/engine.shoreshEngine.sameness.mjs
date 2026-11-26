@@ -1,4 +1,4 @@
-import { compareText } from "./engine.shoreshEngine.setup.mjs";
+import { compareText } from "./engine.shoreshTerms.shoreshTerms.mjs";
 
 /**
  * Protocol rule 9.10 (docs/engine/protocol.md): a fresh build never depends on an activity's place
