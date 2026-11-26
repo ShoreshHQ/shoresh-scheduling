@@ -4,7 +4,7 @@
  * each of the director's placements carried over, whole, at the same group and time blocks
  * (matched by record Id), when it still fits: its activity is still in setup and running this
  * week, its group and blocks are still there and in the same order, the group is at camp then,
- * and no fixed or recurring activity is now there. Placements go in the order of the day, so the
+ * its activity runs then (When it runs, ADR 0031), and no fixed or recurring activity is now there. Placements go in the order of the day, so the
  * same draft and setup always give the same day. A placement that can't go is left out, with why.
  */
 public with sharing class SetupMatchCarry {
@@ -20,6 +20,8 @@ public with sharing class SetupMatchCarry {
   private SetupMatchRules rules;
   private SetupMatchNames names;
   private ScheduleGrid target;
+  // The day's date: When it runs is by weekday.
+  private Date day;
 
   public SetupMatchCarry(
     SetupMatchRules rules,
@@ -36,6 +38,12 @@ public with sharing class SetupMatchCarry {
         timedSets.add(setId + '|' + SetupMatchCells.groupOf(cell));
       }
     }
+  }
+
+  /** The day's date, for When it runs (by weekday). */
+  public SetupMatchCarry onDay(Date day) {
+    this.day = day;
+    return this;
   }
 
   /**
@@ -103,6 +111,9 @@ public with sharing class SetupMatchCarry {
     String why = rules.whyNotActivity(owner);
     if (why == null) {
       why = whyNotFrame(placement);
+    }
+    if (why == null) {
+      why = rules.whyNotRunning(owner, placement, day);
     }
     return why == null ? whyNotFree(placement) : why;
   }

@@ -136,6 +136,13 @@ public with sharing class ManualBuildActivities {
         FROM WeekException__c
         WHERE Activity__c = :activityId
         WITH SYSTEM_MODE
+      ] +
+      // When it runs set on it since (ADR 0031): the director's own work, so it stays.
+      [
+        SELECT COUNT()
+        FROM ActivityOffTime__c
+        WHERE Activity__c = :activityId
+        WITH SYSTEM_MODE
       ] > 0;
   }
 

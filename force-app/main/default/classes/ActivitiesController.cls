@@ -21,6 +21,24 @@ public with sharing class ActivitiesController {
     }
   }
 
+  /**
+   * Saves When it runs: the boxes unticked (ActivityOffTimes keys "<time block Id>|Monday"), all
+   * of them, only while they are as the director saw them (seen); otherwise nothing is saved and
+   * the answer says what someone else saved (theirOffTimes), as Who can do it does.
+   */
+  @AuraEnabled
+  public static RowSaves.Result saveWhenItRuns(
+    Id activityId,
+    List<String> offTimes,
+    List<String> seen
+  ) {
+    try {
+      return ActivityOffTimes.save(activityId, offTimes, seen);
+    } catch (Exception e) {
+      throw ScreenErrors.of(e);
+    }
+  }
+
   /** Who can do it as sent: null (left as it is) when Lightning turned the screen's null into []. */
   private static List<Id> whoSent(
     List<Id> whoCanDoIt,

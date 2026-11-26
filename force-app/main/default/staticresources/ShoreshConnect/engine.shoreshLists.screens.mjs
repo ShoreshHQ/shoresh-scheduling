@@ -19,6 +19,7 @@ import { newRow } from "./engine.shoreshNewRows.shoreshNewRows.mjs";
 import { NONE, listName } from "./engine.shoreshLists.cells.mjs";
 import { whoNames } from "./engine.shoreshLists.who.mjs";
 import { weeksColumn, weeksText } from "./engine.shoreshLists.weeks.mjs";
+import { runsColumn, runsText } from "./engine.shoreshLists.whenItRuns.mjs";
 import {
   divisionsScreen,
   fixedScreen,
@@ -304,6 +305,7 @@ function activitiesScreen(t) {
             .sort()
       },
       weeksColumn(t, "Activity"),
+      runsColumn(t),
       notesColumn(ACTIVITY)
     ],
     records: (setup) => setup.activities || []
@@ -397,6 +399,9 @@ export function cellText(column, value, targets) {
     // As the screen's Weeks column says them (INGEST-1.8).
     case "weeks":
       return weeksText(column, value);
+    // As the activity's details panel says it (ADR 0031 A7).
+    case "runs":
+      return runsText(value);
     case "time": {
       // 12-hour with AM or PM, so it reads back the same.
       const hours = Math.floor(value / 60);

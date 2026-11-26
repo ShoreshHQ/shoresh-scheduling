@@ -15,6 +15,10 @@ import activityEligibilityObject from "@salesforce/schema/ActivityEligibility__c
 import activityEligibilityActivity from "@salesforce/schema/ActivityEligibility__c.Activity__c";
 import activityEligibilityDivision from "@salesforce/schema/ActivityEligibility__c.Division__c";
 import activityEligibilityGroup from "@salesforce/schema/ActivityEligibility__c.Group__c";
+import activityOffTimeObject from "@salesforce/schema/ActivityOffTime__c";
+import activityOffTimeActivity from "@salesforce/schema/ActivityOffTime__c.Activity__c";
+import activityOffTimeDay from "@salesforce/schema/ActivityOffTime__c.Day__c";
+import activityOffTimeTimeBlock from "@salesforce/schema/ActivityOffTime__c.TimeBlock__c";
 import activityObject from "@salesforce/schema/Activity__c";
 import activityCopiedFrom from "@salesforce/schema/Activity__c.CopiedFrom__c";
 import activityEarlyWeekByDay from "@salesforce/schema/Activity__c.EarlyWeekByDay__c";
@@ -345,6 +349,7 @@ export function childRows(row, relationship) {
 /** Object names: OBJECT.Week. */
 export const OBJECT = Object.freeze({
   ActivityEligibility: activityEligibilityObject.objectApiName,
+  ActivityOffTime: activityOffTimeObject.objectApiName,
   Activity: activityObject.objectApiName,
   Assignment: assignmentObject.objectApiName,
   CampLabel: campLabelObject.objectApiName,
@@ -388,6 +393,11 @@ export const FIELD = Object.freeze({
     Activity: activityEligibilityActivity.fieldApiName,
     Division: activityEligibilityDivision.fieldApiName,
     Group: activityEligibilityGroup.fieldApiName
+  }),
+  ActivityOffTime: Object.freeze({
+    Activity: activityOffTimeActivity.fieldApiName,
+    Day: activityOffTimeDay.fieldApiName,
+    TimeBlock: activityOffTimeTimeBlock.fieldApiName
   }),
   Activity: Object.freeze({
     CopiedFrom: activityCopiedFrom.fieldApiName,
@@ -733,6 +743,10 @@ export const PARENT = Object.freeze({
     Division: FIELD.ActivityEligibility.Division.replace(/__c$/, "__r"),
     Group: FIELD.ActivityEligibility.Group.replace(/__c$/, "__r")
   }),
+  ActivityOffTime: Object.freeze({
+    Activity: FIELD.ActivityOffTime.Activity.replace(/__c$/, "__r"),
+    TimeBlock: FIELD.ActivityOffTime.TimeBlock.replace(/__c$/, "__r")
+  }),
   Activity: Object.freeze({
     CopiedFrom: FIELD.Activity.CopiedFrom.replace(/__c$/, "__r"),
     Location: FIELD.Activity.Location.replace(/__c$/, "__r"),
@@ -902,6 +916,7 @@ export const CHILDREN = Object.freeze({
   Activity: Object.freeze({
     Copies: `${NAMESPACE_PREFIX}Copies__r`,
     Eligibilities: `${NAMESPACE_PREFIX}Eligibilities__r`,
+    OffTimes: `${NAMESPACE_PREFIX}OffTimes__r`,
     Offerings: `${NAMESPACE_PREFIX}Offerings__r`,
     RainPlanFor: `${NAMESPACE_PREFIX}RainPlanFor__r`,
     WeekExceptions: `${NAMESPACE_PREFIX}WeekExceptions__r`
@@ -1015,6 +1030,7 @@ export const CHILDREN = Object.freeze({
     SpecialDates: `${NAMESPACE_PREFIX}SpecialDates__r`
   }),
   TimeBlock: Object.freeze({
+    ActivityOffTimes: `${NAMESPACE_PREFIX}ActivityOffTimes__r`,
     Assignments: `${NAMESPACE_PREFIX}Assignments__r`,
     Copies: `${NAMESPACE_PREFIX}Copies__r`,
     ElectiveSets: `${NAMESPACE_PREFIX}ElectiveSets__r`,

@@ -11,6 +11,7 @@ public with sharing class ImportUndoCount {
     'Schedule',
     'Coverage',
     'ActivityEligibility',
+    'ActivityOffTime',
     'LinkedChoiceTime'
   };
 

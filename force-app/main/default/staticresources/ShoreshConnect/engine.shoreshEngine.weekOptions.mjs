@@ -1,6 +1,13 @@
 import { streamFor } from "./engine.shoreshEngine.random.mjs";
-import { earlyDates } from "./engine.shoreshEngine.setup.mjs";
-import { LENGTH, OVERLAP, PREFERENCES, RULE, lexLess } from "./engine.shoreshEngine.weekRules.mjs";
+import { earlyDates, runsAt } from "./engine.shoreshEngine.setup.mjs";
+import {
+  LENGTH,
+  OFF_TIME,
+  OVERLAP,
+  PREFERENCES,
+  RULE,
+  lexLess
+} from "./engine.shoreshEngine.weekRules.mjs";
 
 /**
  * Step 3 of the protocol (docs/engine/protocol.md): each cell's options. Which of a group's
@@ -181,11 +188,15 @@ function activityProblems(st, act, group, d, b) {
 /**
  * Whether `act` can start at this cell. With `all` false: null when it can, else the first
  * reason it can't (the desktop's blockedBy order). With `all` true: null when it can't go here
- * at all (LENGTH or OVERLAP), else every rule it would bend ([] when none).
+ * at all (OFF_TIME, LENGTH or OVERLAP), else every rule it would bend ([] when none).
  */
 export function check(st, act, g, d, b, all) {
   st.ruleChecks++;
   const span = act.span;
+  // When it runs (protocol 3.14): every block of its length must be one it can run in.
+  if (act.off && act.off.size && !runsThrough(st, act, d, b)) {
+    return all ? null : OFF_TIME;
+  }
   const found = [];
   const note = (code) => {
     if (!found.includes(code)) {
@@ -265,6 +276,24 @@ export function check(st, act, g, d, b, all) {
   }
   return all ? found : null;
 }
+
+/** Whether `act` can run in block b and each block of its length after it on day d. */
+function runsThrough(st, act, d, b) {
+  const blocks = st.blocksOf(d);
+  const idx = st.blockIdx(d, b);
+  const weekday = st.days[d].weekday;
+  for (let i = 0; i < act.span; i++) {
+    const block = blocks[idx + i];
+    if (block && !runsAt(act, block.id, weekday)) {
+      return false;
+    }
+  }
+  return true;
+}
+
+/** Whether `act` can start a placement at this cell as far as When it runs goes. */
+export const runsHere = (st, act, d, b) =>
+  !act.off || !act.off.size || runsThrough(st, act, d, b);
 
 export const blockedBy = (st, act, g, d, b) => check(st, act, g, d, b, false);
 export const canPlace = (st, act, g, d, b) =>

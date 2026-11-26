@@ -12,8 +12,8 @@
  * - `full`: it has an indoor rain plan but nothing indoors fits. It keeps its activity and gets
  *   the "Rain plan full" mark;
  * - `noPlan`: it has no rain plan, or its rain plan is outdoors too, and nothing indoors fits.
- * An indoor activity fits a cell when it is one block long, set up for the group, not already the
- * group's that day, and has room in that block: its groups at once aren't taken and its place
+ * An indoor activity fits a cell when it is one block long, set up for the group, runs then (its
+ * When it runs, ADR 0031), not already the group's that day, and has room in that block: its groups at once aren't taken and its place
  * isn't full (counting what stays, what has switched before it, a fixed or recurring activity at
  * the place, and other programs' groups, as the checks count them).
  * Cells are taken block by block, and in each block group by group, so the same day always
@@ -29,7 +29,9 @@ import {
   readOtherPrograms,
   readProgram,
   roomTaken,
-  startsActivity
+  runsAt,
+  startsActivity,
+  weekdayOf
 } from "./engine.shoreshEngine.shoreshEngine.mjs";
 import { placementIn, slots } from "./engine.shoreshWeekEditor.slotEdits.mjs";
 
@@ -240,6 +242,7 @@ export function planRain(day, model, options = {}) {
     })
   );
 
+  const weekday = weekdayOf(day.dateValue);
   candidates.forEach((c) => {
     const groupId = day.groups[c.g].id;
     const at = `0|${c.b}`;
@@ -248,6 +251,7 @@ export function planRain(day, model, options = {}) {
       if (
         act.span > 1 ||
         !model.isFor(id, groupId) ||
+        !runsAt(model.catalog.get(id), day.blocks[c.b].id, weekday) ||
         held.has(`${c.g}|${id}`)
       ) {
         return false;

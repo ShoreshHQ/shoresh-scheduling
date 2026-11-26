@@ -153,6 +153,103 @@
   flex: 1;
 }
 
+/* When it runs: a program's days across, its time blocks down, one tick per box. The ticks are
+   the recurring activities' day ticks (shoreshEditableTable.css .chip): on is the highlight tint
+   (the grid's filled state) with a tick, off an empty slot. */
+.runs {
+  width: auto;
+  border-collapse: collapse;
+}
+
+.runs + .runs {
+  margin-top: var(--shoresh-s2);
+}
+
+.runs-caption {
+  text-align: left;
+  caption-side: top;
+}
+
+.runs-day {
+  padding: 0 1px var(--shoresh-s1);
+  color: var(--shoresh-text-2);
+  font-family: var(--shoresh-font-mono);
+  font-size: var(--shoresh-font-size-label);
+  font-weight: 400;
+  text-align: center;
+}
+
+.runs-block {
+  max-width: calc(var(--shoresh-u) * 24);
+  padding-right: var(--shoresh-s2);
+  overflow: hidden;
+  color: var(--shoresh-text-2);
+  font-weight: 400;
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.runs-cell {
+  padding: 1px;
+}
+
+.chip {
+  position: relative;
+  display: block;
+  margin: 0;
+  cursor: pointer;
+}
+
+.chip-box {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.chip-face {
+  position: relative;
+  display: block;
+  width: var(--shoresh-s5);
+  height: calc(var(--shoresh-u) * 5);
+  border-radius: 4px;
+  box-shadow: inset 0 0 0 1px var(--shoresh-edge);
+}
+
+.chip-box:checked + .chip-face {
+  background: rgba(31, 102, 81, 0.14);
+  box-shadow: none;
+}
+
+/* These boxes hold no letter, so ticked also carries a tick in the deep highlight: on and off
+   differ by more than a tint (WCAG 1.4.11). */
+.chip-box:checked + .chip-face::after {
+  content: "";
+  position: absolute;
+  top: 3px;
+  left: 50%;
+  width: 4px;
+  height: 8px;
+  margin-left: -2px;
+  border: solid var(--shoresh-color-highlight-press);
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+}
+
+.chip-box:focus-visible + .chip-face {
+  box-shadow: var(--shoresh-focus-ring);
+}
+
+.chip-box:disabled,
+.chip-box:disabled + .chip-face {
+  cursor: default;
+  opacity: 0.55;
+}
+
 /* Someone else changed the field: the setup tables' question, laid out as theirs (ADR 0011
    choice 5; shoreshEditableTable.css). */
 .conflict-rows {

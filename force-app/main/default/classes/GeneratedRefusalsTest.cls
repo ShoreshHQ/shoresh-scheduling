@@ -351,6 +351,37 @@ private class GeneratedRefusalsTest {
     }
   }
 
+  // GEN-3.14 (ADR 0031 piece A): the engine never places an activity where When it runs leaves
+  // that day and time block out; the server says so in the camp's words.
+  @IsTest
+  static void anActivityIsNeverNewlyPlacedWhereItDoesntRun() {
+    Map<String, Id> ids = camp();
+    System.runAs(KeptCamp.scheduler(ids)) {
+      Database.insert(
+        new ActivityOffTime__c(
+          Activity__c = ids.get('Soccer'),
+          TimeBlock__c = ids.get('Lunch'),
+          Day__c = 'Monday'
+        ),
+        AccessLevel.USER_MODE
+      );
+      GeneratedInputs.Inputs read = GeneratedTestData.inputs();
+      List<Integer> lunchA = GeneratedTestData.at(0, GeneratedTestData.LUNCH);
+      GeneratedWeek.Save monday = request(read, GeneratedSaves.FILL_OPEN);
+      GeneratedTestData.put(monday.days[0], lunchA, 'Soccer');
+      Test.startTest();
+      Assert.areEqual(
+        'Soccer doesn\'t run in Lunch on Monday.',
+        GeneratedTestData.refusal(monday)
+      );
+      // Tuesday's Lunch isn't left out: the same placement there is saved.
+      GeneratedWeek.Save tuesday = request(read, GeneratedSaves.FILL_OPEN);
+      GeneratedTestData.put(tuesday.days[1], lunchA, 'Soccer');
+      Assert.isNotNull(GeneratedTestData.save(tuesday).scheduleId);
+      Test.stopTest();
+    }
+  }
+
   // CLOSE-6.1
   @IsTest
   static void aGroupMarkedAwayBeforeTheFirstGenerateIsAConflictThatSaysSo() {

@@ -21,6 +21,7 @@ import saveRow from "@salesforce/apex/SetupTablesController.saveRow";
 import mergeLocations from "@salesforce/apex/SetupTablesController.mergeLocations";
 import placedInWeeks from "@salesforce/apex/RunsInController.placedInWeeks";
 import saveActivityDetails from "@salesforce/apex/ActivitiesController.saveActivityDetails";
+import saveWhenItRuns from "@salesforce/apex/ActivitiesController.saveWhenItRuns";
 import saveLinkedChoice from "@salesforce/apex/LinkedChoicesController.saveLinkedChoice";
 import undoImport from "@salesforce/apex/ImportController.undoImport";
 import confirmGuess from "@salesforce/apex/SetupGuessesController.confirmGuess";
@@ -3182,22 +3183,38 @@ export default class ShoreshCampSetup extends LightningElement {
 
   /**
    * A field of an activity's details, saved as the director leaves it: a rule or who can do it
-   * (ActivityDetails), or one of the activity's own fields as a table row. Either is compared and
+   * (ActivityDetails), When it runs (ActivityOffTimes), or one of the activity's own fields as a
+   * table row. Either is compared and
    * set (ADR 0011 choice 5): seen() is read when its turn comes, and the panel hears what someone
    * else changed.
    */
   handleSaveActivityDetails(event) {
-    const { rules, whoCanDoIt, record, seen, onSaved, onFailure, shown } =
-      event.detail;
+    const {
+      rules,
+      whoCanDoIt,
+      activityId,
+      offTimes,
+      record,
+      seen,
+      onSaved,
+      onFailure,
+      shown
+    } = event.detail;
+    let save;
+    if (record) {
+      save = () => saveRow({ record, seen: seen(), extras: null });
+    } else if (offTimes) {
+      save = () => saveWhenItRuns({ activityId, offTimes, seen: seen() });
+    } else {
+      save = () =>
+        saveActivityDetails({
+          rules,
+          whoCanDoIt: whoCanDoIt || null,
+          ticket: seen()
+        });
+    }
     return this.saveForm({
-      save: record
-        ? () => saveRow({ record, seen: seen(), extras: null })
-        : () =>
-            saveActivityDetails({
-              rules,
-              whoCanDoIt: whoCanDoIt || null,
-              ticket: seen()
-            }),
+      save,
       what: `${this.terms.s("Activity")} details not saved.`,
       onSaved,
       onFailure,

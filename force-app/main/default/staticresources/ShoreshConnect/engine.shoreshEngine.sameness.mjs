@@ -50,7 +50,7 @@ function sharedPlaces(model) {
 /**
  * Map activity id -> its settings key: length, weekly minimum and maximum, groups at once (lowered
  * to the groups that fit at a place it has to itself), same division only, priority, early-week
- * goal, who it is for, and a place it shares with others.
+ * goal, who it is for, a place it shares with others, and when it can't run.
  */
 function settingsKeys(model) {
   const keys = new Map();
@@ -78,7 +78,10 @@ function settingsKeys(model) {
         a.sameDivision ? "same" : "",
         a.priority,
         a.early ? `${a.early.count}by${a.early.byDay}` : "",
-        groups
+        groups,
+        // When it can't run (ADR 0031 A3): only said when it has some, so a camp that unticks
+        // nothing keeps every key, and so every week, exactly as before.
+        ...(a.off && a.off.size ? [`off:${[...a.off].sort().join(",")}`] : [])
       ].join("/")
     );
   }

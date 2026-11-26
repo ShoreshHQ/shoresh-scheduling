@@ -19,6 +19,7 @@ import { newRow } from "c/shoreshNewRows";
 import { NONE, listName } from "./cells";
 import { whoNames } from "./who";
 import { weeksColumn, weeksText } from "./weeks";
+import { runsColumn, runsText } from "./whenItRuns";
 import {
   divisionsScreen,
   fixedScreen,
@@ -304,6 +305,7 @@ function activitiesScreen(t) {
             .sort()
       },
       weeksColumn(t, "Activity"),
+      runsColumn(t),
       notesColumn(ACTIVITY)
     ],
     records: (setup) => setup.activities || []
@@ -397,6 +399,9 @@ export function cellText(column, value, targets) {
     // As the screen's Weeks column says them (INGEST-1.8).
     case "weeks":
       return weeksText(column, value);
+    // As the activity's details panel says it (ADR 0031 A7).
+    case "runs":
+      return runsText(value);
     case "time": {
       // 12-hour with AM or PM, so it reads back the same.
       const hours = Math.floor(value / 60);

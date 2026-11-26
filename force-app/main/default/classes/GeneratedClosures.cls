@@ -10,9 +10,16 @@ public with sharing class GeneratedClosures {
   private Map<Id, String> away = new Map<Id, String>();
   private Set<Id> closedActivities = new Set<Id>();
   private Map<Id, String> closedPlaces = new Map<Id, String>();
+  private Map<Id, String> blockNames = new Map<Id, String>();
+  // "that time block", in the camp's word, for a time block no longer in the program.
+  private String thatBlock;
 
   public GeneratedClosures(GeneratedSetup setup) {
     weekName = setup.week.Name;
+    thatBlock = 'that ' + setup.labels().singularInSentence('TimeBlock');
+    for (TimeBlock__c block : setup.blocks) {
+      blockNames.put(block.Id, block.Name);
+    }
     for (WeekException__c mark : setup.exceptions) {
       if (mark.Group__c != null) {
         away.put(mark.Group__c, mark.Group__r.Name);
@@ -23,6 +30,25 @@ public with sharing class GeneratedClosures {
       if (mark.Location__c != null) {
         closedPlaces.put(mark.Location__c, mark.Location__r.Name);
       }
+    }
+  }
+
+  /**
+   * Refuses placing the activity (newly) in a time block on a day its When it runs leaves out
+   * (ADR 0031 piece A): "Archery doesn't run in Period 2 on Monday." The activity is read with its
+   * off times (SlotRules, SeasonSetupReader.activitiesOf).
+   */
+  public void checkRuns(Activity__c activity, String blockId, Date day) {
+    Id block = Id.valueOf(blockId);
+    if (!ActivityOffTimes.runs(activity, block, day)) {
+      throw new ShoreshException(
+        activity.Name +
+          ' doesn\'t run in ' +
+          (blockNames.containsKey(block) ? blockNames.get(block) : thatBlock) +
+          ' on ' +
+          DayWords.say(day) +
+          '.'
+      );
     }
   }
 

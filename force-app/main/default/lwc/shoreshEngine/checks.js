@@ -32,12 +32,12 @@ import {
   slots
 } from "./grid";
 import { compareText } from "c/shoreshTerms";
-import { earlyDates, minutes, weekdayOf } from "./setup";
-import { BUSY, RELAX_ORDER, RULE as RULES } from "./week";
+import { earlyDates, minutes, runsAt, weekdayOf } from "./setup";
+import { BUSY, OFF_TIME, RELAX_ORDER, RULE as RULES } from "./week";
 import { reasonFor } from "./words";
 
-/** The rules in the order they give way, then the time-overlap check. */
-const RULE = [...RELAX_ORDER, BUSY];
+/** The rules in the order they give way, then the time-overlap check, then When it runs. */
+const RULE = [...RELAX_ORDER, BUSY, OFF_TIME];
 
 export { weekdayOf };
 
@@ -235,6 +235,27 @@ function eligibility(ctx) {
       reason: reasonFor(RULES.ELIGIBILITY, { groupName: p.groupName })
     }));
   return flags;
+}
+
+/**
+ * An activity placed at a day and time block its When it runs leaves out (a hand edit, or a
+ * placement from before the box was unticked): shown on the placement, never refused (ADR 0031
+ * A4, CORE-4.8).
+ */
+function offTime(ctx) {
+  return ctx.placements
+    .filter((p) => {
+      const act = isActivity(p) && ctx.activities.get(p.id);
+      if (!act || !act.off || !act.off.size) {
+        return false;
+      }
+      const day = ctx.days[p.d];
+      const weekday = weekdayOf(day.dateValue);
+      return day.blocks
+        .slice(p.first, p.first + p.length)
+        .some((block) => !runsAt(act, block.id, weekday));
+    })
+    .map((p) => ({ p, rule: OFF_TIME, reason: reasonFor(OFF_TIME) }));
 }
 
 function groupsAtOnce(ctx) {
@@ -704,7 +725,8 @@ export function checkWeek(days, model, words) {
     groupsAtOnce,
     sameDivision,
     placeCapacity,
-    busy
+    busy,
+    offTime
   ].map((rule) => rule(ctx));
 
   const reasons = new Map();
