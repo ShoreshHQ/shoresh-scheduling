@@ -2,8 +2,7 @@ import { createElement } from "lwc";
 import ShoreshAsk from "c/shoreshAsk";
 import fs from "fs";
 import path from "path";
-
-const flush = () => Promise.resolve();
+import { flush } from "shoresh-jest/flush";
 
 async function render() {
   const element = createElement("c-shoresh-ask", { is: ShoreshAsk });

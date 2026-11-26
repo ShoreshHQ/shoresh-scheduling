@@ -5,17 +5,12 @@ import ShoreshWeekEditor from "c/shoreshWeekEditor";
 import { buildTerms } from "c/shoreshTerms";
 import { nsRecord } from "shoresh-jest/namespace";
 import { WITH_SWIM, draft, schedule } from "./data/draftFixture";
+import { flush } from "shoresh-jest/flush";
 
 const SETUP = { activities: [], locations: [] };
 const LABELS = [
   { term: "Group", singular: "Bunk", plural: "Bunks", isCustom: true }
 ];
-
-const flush = () =>
-  [...Array(10)].reduce(
-    (chain) => chain.then(() => undefined),
-    Promise.resolve()
-  );
 
 /** What the host's saver answers: the week as it now is. */
 const saved = (items, rows, conflicts = []) => ({

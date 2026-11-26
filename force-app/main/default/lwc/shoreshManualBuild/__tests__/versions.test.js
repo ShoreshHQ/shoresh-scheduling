@@ -18,6 +18,7 @@ import {
   WITH_SWIM,
   draft
 } from "../../shoreshWeekEditor/__tests__/data/draftFixture";
+import { flush } from "shoresh-jest/flush";
 
 // Versions on Manual Build (Save version, Restore, rename, delete) and Start from another week.
 // Synthetic camp: draftFixture.
@@ -98,12 +99,6 @@ const VERSIONS = [
     savedAt: "2026-10-17T14:00:00.000Z"
   }
 ];
-
-const flush = () =>
-  [...Array(10)].reduce(
-    (chain) => chain.then(() => undefined),
-    Promise.resolve()
-  );
 
 // The season with its days numbered, in the record's own field name (WEEK-1.5).
 const numbered = (setup) => ({

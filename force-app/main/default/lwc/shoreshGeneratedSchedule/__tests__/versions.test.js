@@ -27,7 +27,7 @@ import { buildTerms } from "c/shoreshTerms";
 import { nsRecord } from "shoresh-jest/namespace";
 import { FIELD } from "c/shoreshSchema";
 import { PROGRAM, SCHEDULE, WEEK, camp, keeping } from "./data/camp";
-import { nextTurn } from "../pieces";
+import { flush, until } from "shoresh-jest/flush";
 
 const apex = () => ({ default: jest.fn() });
 jest.mock(
@@ -142,19 +142,6 @@ const VERSIONS = [
   }
 ];
 
-const flush = () =>
-  [...Array(10)].reduce(
-    (chain) => chain.then(() => undefined),
-    Promise.resolve()
-  );
-async function until(done, tries = 200) {
-  await flush();
-  if (done() || !tries) {
-    return;
-  }
-  await nextTurn();
-  await until(done, tries - 1);
-}
 const slow = () => {
   const held = {};
   held.promise = new Promise((resolve) => {
@@ -414,9 +401,12 @@ describe("Versions on the Generated Schedule screen", () => {
     expect(lockAt(element, "0-1")).toBe("Locked");
     expect(versions(element).openId).toBe(MINE);
     expect(notice(element)).toBe("Restored Before the trip.");
-    // The list and its button went with the start: focus goes to Rebuild, as after Generate.
+    // The list and its button went with the start: focus goes to the Build menu (Rebuild),
+    // as after Generate.
     await until(
-      () => element.shadowRoot.activeElement === action(element, "Rebuild")
+      () =>
+        element.shadowRoot.activeElement ===
+        q(element, '[data-id="build-menu"]')
     );
     expect(element.shadowRoot.activeElement).toBe(
       q(element, '[data-id="build-menu"]')

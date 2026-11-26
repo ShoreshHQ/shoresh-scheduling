@@ -9,6 +9,7 @@ import { buildTerms } from "c/shoreshTerms";
 import { setDayNaming } from "c/shoreshDayNames";
 import { nsRecord } from "shoresh-jest/namespace";
 import { GROUPS, draft } from "./data/draftFixture";
+import { flush } from "shoresh-jest/flush";
 
 const EVENT_ID_FOR_SETUP = "a0E000000000001AAA";
 // The season setup carries its special events (SeasonSetupController: special.specialEvents).
@@ -56,12 +57,6 @@ const VISITING_DAY = {
 };
 
 const SPECIALS = { days: [VISITING_DAY] };
-
-const flush = () =>
-  [...Array(10)].reduce(
-    (chain) => chain.then(() => undefined),
-    Promise.resolve()
-  );
 
 async function render(items, rows, options = {}) {
   const element = createElement("c-shoresh-week-editor", {

@@ -4,6 +4,7 @@ import { buildTerms } from "c/shoreshTerms";
 import { setupProblems } from "c/shoreshSetupRules";
 import { nsRecord } from "shoresh-jest/namespace";
 import getTable from "@salesforce/apex/RootsController.getTable";
+import { flush } from "shoresh-jest/flush";
 
 jest.mock(
   "@salesforce/apex/RootsController.getTable",
@@ -135,10 +136,6 @@ const TABLE = {
   }
 };
 
-const flush = () => Promise.resolve();
-// A few turns of the microtask queue: the request, its answer, and the redraws after it.
-const settle = () => flush().then(flush).then(flush).then(flush).then(flush);
-
 async function render(setup = SETUP, { active = true, problems, table } = {}) {
   if (table) {
     getTable.mockResolvedValue(table);
@@ -149,7 +146,7 @@ async function render(setup = SETUP, { active = true, problems, table } = {}) {
   element.problems = problems || setupProblems(nsRecord(setup), terms);
   element.active = active;
   document.body.appendChild(element);
-  await settle();
+  await flush();
   return element;
 }
 
@@ -256,12 +253,12 @@ describe("c-shoresh-roots: the table", () => {
     const element = await render(SETUP, { active: false });
     expect(getTable).not.toHaveBeenCalled();
     element.active = true;
-    await settle();
+    await flush();
     expect(getTable).toHaveBeenCalledTimes(1);
     expect(getTable).toHaveBeenCalledWith({ seasonId: "s1" });
     element.active = false;
     element.active = true;
-    await settle();
+    await flush();
     expect(getTable).toHaveBeenCalledTimes(2);
   });
 
@@ -275,7 +272,7 @@ describe("c-shoresh-roots: the table", () => {
     element.problems = [];
     element.active = true;
     document.body.appendChild(element);
-    await settle();
+    await flush();
     expect(toasts).toHaveBeenCalledTimes(1);
     expect(toasts.mock.calls[0][0].detail).toMatchObject({
       title: "Roots could not read your schedules",
@@ -435,7 +432,7 @@ describe("c-shoresh-roots: the hand, what needs a look (slice R2)", () => {
     };
     element.setup = nsRecord(fixed);
     element.problems = setupProblems(nsRecord(fixed), terms);
-    await settle();
+    await flush();
     expect(handCards(element).map((c) => c.dataset.hand)).toEqual(before);
     // Back on Roots: nothing changes until this showing's table is read.
     let answer;
@@ -445,10 +442,10 @@ describe("c-shoresh-roots: the hand, what needs a look (slice R2)", () => {
       })
     );
     element.active = true;
-    await settle();
+    await flush();
     expect(handCards(element).map((c) => c.dataset.hand)).toEqual(before);
     answer(TABLE);
-    await settle();
+    await flush();
     expect(handCards(element).map((c) => c.dataset.hand)).not.toContain(
       "hand:noRainPlan|activities"
     );
@@ -464,7 +461,7 @@ describe("c-shoresh-roots: the hand, what needs a look (slice R2)", () => {
     element.active = false;
     getTable.mockRejectedValue({ body: { message: "Offline" } });
     element.active = true;
-    await settle();
+    await flush();
     expect(handCards(element).map((c) => c.dataset.hand)).toContain(
       "hand:weekNotBuilt|w2"
     );
@@ -485,7 +482,7 @@ describe("c-shoresh-roots: the hand, what needs a look (slice R2)", () => {
       ...SETUP,
       season: { ...SETUP.season, Id: "s2" }
     });
-    await settle();
+    await flush();
     expect(handCards(element).map((c) => c.dataset.hand)).not.toContain(
       "hand:seatsShort|"
     );
@@ -679,7 +676,7 @@ describe("c-shoresh-roots: the camp's workbook", () => {
     // The desktop's word (RootsHomeScreen.jsx, ImportScreen.jsx: "Download worksheet").
     expect(button.label).toBe("Download worksheet");
     button.click();
-    await settle();
+    await flush();
     expect(saved).toHaveLength(1);
     expect(saved[0].download).toBe("Summer 2027 - worksheet.xlsx");
     const bytes = await new Promise((resolve) => {
@@ -757,7 +754,7 @@ describe("c-shoresh-roots: the melds move", () => {
     });
     window.dispatchEvent(new CustomEvent("resize"));
     run(2000);
-    await settle();
+    await flush();
     return table;
   }
 
@@ -936,7 +933,7 @@ describe("c-shoresh-roots: the melds move", () => {
     const pose = element.cardPose("activities");
     expect(pose.w).toBeGreaterThan(0);
     element.travel({ ...pose, p: 0.1 }, "activities");
-    await settle();
+    await flush();
     const face = card(element, "activities").querySelector('[data-id="face"]');
     expect(face.style.opacity).toBe("0");
     const sheet = $(element, '[data-id="sheet"]');
@@ -946,7 +943,7 @@ describe("c-shoresh-roots: the melds move", () => {
       sheet.querySelector('[data-id="ghost"] .name-text').textContent
     ).toBe("Activities");
     element.endTravel();
-    await settle();
+    await flush();
     expect(face.style.opacity).toBe("");
     expect(sheet.hidden).toBe(true);
   });
@@ -959,13 +956,13 @@ describe("c-shoresh-roots: the melds move", () => {
     const pose = element.cardPose(key);
     expect(pose).not.toBeNull();
     element.travel({ ...pose, p: 0.1 }, key);
-    await settle();
+    await flush();
     const sheet = $(element, '[data-id="sheet"]');
     expect(sheet.querySelector("c-shoresh-roots-hand-face").card.name).toBe(
       "Weeks"
     );
     element.endTravel();
-    await settle();
+    await flush();
     expect(element.prepareHome(key)).not.toBeNull();
     expect(handOf(element).shadowRoot.activeElement.dataset.hand).toBe(key);
     element.endTravel();

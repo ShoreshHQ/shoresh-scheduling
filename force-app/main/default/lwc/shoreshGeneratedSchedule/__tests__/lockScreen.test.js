@@ -19,6 +19,7 @@ import setLocksOnServer from "@salesforce/apex/GeneratedScheduleController.setLo
 import { buildTerms } from "c/shoreshTerms";
 import { nsRecord } from "shoresh-jest/namespace";
 import { PROGRAM, SCHEDULE, SMALL, WEEK, camp, keeping } from "./data/camp";
+import { flush, until } from "shoresh-jest/flush";
 
 const apex = () => ({ default: jest.fn() });
 jest.mock(
@@ -65,12 +66,6 @@ const terms = buildTerms([
   { term: "Group", singular: "Bunk", plural: "Bunks", isCustom: true }
 ]);
 
-const flush = () =>
-  [...Array(10)].reduce(
-    (chain) => chain.then(() => undefined),
-    Promise.resolve()
-  );
-
 /** A saved week: Bunk 1 swims in Period 1 on both days, the rest Open (SMALL's frame). */
 function savedWeek(locks = []) {
   const inputs = camp({ ...SMALL, scheduleId: SCHEDULE });
@@ -109,15 +104,6 @@ const cellAt = (element, key) =>
 const editMenu = (element) => q(element, '[data-id="edit-menu"]');
 const menuLabels = (element) => lockLabels(element);
 const filled = (element) => counterText(element);
-
-/** Gives the page turns until done() says yes (a build runs in pieces). */
-async function until(done, tries = 200) {
-  await flush();
-  if (done() || !tries) {
-    return;
-  }
-  await until(done, tries - 1);
-}
 
 async function focusCell(element, key) {
   cellAt(element, key).dispatchEvent(

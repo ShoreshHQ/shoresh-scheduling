@@ -1,11 +1,10 @@
 import { createElement } from "lwc";
 import ShoreshConnectAi from "c/shoreshConnectAi";
 import { connectPrompt, myDomainHost } from "../prompt";
+import { flush } from "shoresh-jest/flush";
 
 const HOST = "maple-grove.my.salesforce.com";
 const SERVER = "<your home folder>/.shoresh/connect/shoresh.js";
-
-const flush = () => Promise.resolve().then(() => Promise.resolve());
 
 function mount(pageHost) {
   delete window.location;

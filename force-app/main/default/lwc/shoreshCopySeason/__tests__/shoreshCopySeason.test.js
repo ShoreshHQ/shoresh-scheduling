@@ -6,6 +6,7 @@ import copySeason from "@salesforce/apex/SeasonSetupController.copySeason";
 import { buildTerms } from "c/shoreshTerms";
 import { FIELD } from "c/shoreshSchema";
 import { nsRecord } from "shoresh-jest/namespace";
+import { flush } from "shoresh-jest/flush";
 
 jest.mock(
   "@salesforce/apex/SeasonSetupController.previewCopy",
@@ -45,13 +46,6 @@ const SAME_DAYS = {
     }
   ]
 };
-
-// Lets pending (mocked) server calls and re-renders finish before checking the screen.
-const flush = () =>
-  [...Array(10)].reduce(
-    (chain) => chain.then(() => undefined),
-    Promise.resolve()
-  );
 
 async function render() {
   const element = createElement("c-shoresh-copy-season", {

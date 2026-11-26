@@ -6,6 +6,7 @@ import { buildTerms } from "c/shoreshTerms";
 import { nsRecord } from "shoresh-jest/namespace";
 import { find, findAll } from "shoresh-jest/week-editor";
 import { draft } from "../../shoreshWeekEditor/__tests__/data/draftFixture";
+import { flush } from "shoresh-jest/flush";
 
 // An archived season's week on Manual Build (WEEK-1.10, ADR 0029): shown and looked at, with no
 // edit controls (no Edit menu, no tiles to drag, no typing in the grid, no Start, Versions or
@@ -100,12 +101,6 @@ const SETUP = {
 const LABELS = [
   { term: "Group", singular: "Bunk", plural: "Bunks", isCustom: true }
 ];
-
-const flush = () =>
-  [...Array(10)].reduce(
-    (chain) => chain.then(() => undefined),
-    Promise.resolve()
-  );
 
 async function render(first, readOnly) {
   getDraft.mockResolvedValue(first);

@@ -2,13 +2,13 @@
 // picked Art. Nothing is picked unless the person picks it; a new name is offered as Add.
 import { createElement } from "lwc";
 import ShoreshNamePick from "c/shoreshNamePick";
+import { flush } from "shoresh-jest/flush";
 
 const OPTIONS = [
   { label: "Archery", value: "a1" },
   { label: "Art", value: "a2" },
   { label: "Swim", value: "a3" }
 ];
-const flush = () => Promise.resolve().then(() => Promise.resolve());
 
 async function render(props = {}) {
   const element = createElement("c-shoresh-name-pick", { is: ShoreshNamePick });

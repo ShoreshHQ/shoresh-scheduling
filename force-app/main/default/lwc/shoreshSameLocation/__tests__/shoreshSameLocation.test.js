@@ -1,6 +1,7 @@
 import { createElement } from "lwc";
 import ShoreshSameLocation from "c/shoreshSameLocation";
 import { buildTerms } from "c/shoreshTerms";
+import { flush } from "shoresh-jest/flush";
 
 const terms = buildTerms([
   { term: "Group", singular: "Bunk", plural: "Bunks", isCustom: true },
@@ -23,8 +24,6 @@ const PLACES = [
   { id: "l2", name: "pool ", fits: 3, activities: 2 },
   { id: "l3", name: "POOL", fits: 2, activities: 0 }
 ];
-
-const flush = () => Promise.resolve();
 
 function render(props = {}) {
   const element = createElement("c-shoresh-same-location", {

@@ -6,6 +6,7 @@ import getVersions from "@salesforce/apex/SchedulesController.getVersions";
 import renameSchedule from "@salesforce/apex/SchedulesController.renameSchedule";
 import { BuildWeek, CHANGED_SINCE, SETUP_CHANGED } from "c/shoreshBuildWeek";
 import { buildTerms } from "c/shoreshTerms";
+import { flush } from "shoresh-jest/flush";
 
 // The week on a build screen, through its interface with a fake screen: what setup changed,
 // "Update to match setup", Publish and Unpublish, and Versions, the same on Generated Schedule and
@@ -52,12 +53,6 @@ const PREVIEW = {
 };
 const NOTHING = { ...PREVIEW, revisions: "r2", dots: [], changes: [] };
 const LEFT = { ...PREVIEW, revisions: "r2", changes: [ROW("k2")] };
-
-const flush = () =>
-  [...Array(8)].reduce(
-    (chain) => chain.then(() => undefined),
-    Promise.resolve()
-  );
 
 const pending = () => {
   let resolve;

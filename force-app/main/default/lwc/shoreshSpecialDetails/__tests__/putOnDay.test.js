@@ -6,6 +6,7 @@ import ShoreshSpecialDetails, { weekdaysOf } from "c/shoreshSpecialDetails";
 import putOnDay from "@salesforce/apex/SpecialPlacingController.putOnDay";
 import { buildTerms } from "c/shoreshTerms";
 import { nsRecord } from "shoresh-jest/namespace";
+import { flush } from "shoresh-jest/flush";
 
 jest.mock(
   "@salesforce/apex/SpecialPlacingController.putOnDay",
@@ -37,12 +38,6 @@ const SETUP = {
     briefs: []
   }
 };
-
-const flush = () =>
-  [...Array(6)].reduce(
-    (chain) => chain.then(() => undefined),
-    Promise.resolve()
-  );
 
 async function render() {
   const element = createElement("c-shoresh-special-details", {

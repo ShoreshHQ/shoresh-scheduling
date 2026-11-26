@@ -7,6 +7,7 @@ import putOnDay from "@salesforce/apex/SpecialPlacingController.putOnDay";
 import takeOffDay from "@salesforce/apex/SpecialPlacingController.takeOffDay";
 import { buildTerms } from "c/shoreshTerms";
 import { nsRecord } from "shoresh-jest/namespace";
+import { flush } from "shoresh-jest/flush";
 
 jest.mock(
   "@salesforce/apex/SpecialPlacingController.putOnDay",
@@ -59,12 +60,6 @@ const SETUP = {
     ]
   }
 };
-
-const flush = () =>
-  [...Array(6)].reduce(
-    (chain) => chain.then(() => undefined),
-    Promise.resolve()
-  );
 
 async function render(itemId = "sd1") {
   const element = createElement("c-shoresh-special-details", {

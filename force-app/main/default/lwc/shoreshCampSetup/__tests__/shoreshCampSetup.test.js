@@ -42,6 +42,7 @@ import {
   draft as manualDraft
 } from "../../shoreshWeekEditor/__tests__/data/draftFixture";
 import { bareName, bareRecord, nsName, nsRecord } from "shoresh-jest/namespace";
+import { flush } from "shoresh-jest/flush";
 
 /** The page's address as Lightning hands it to the page (its wire), with this state. */
 const pageAddress = (state) =>
@@ -243,13 +244,6 @@ function setupWith(overrides = {}) {
     ...overrides
   };
 }
-
-// Lets pending (mocked) server calls and re-renders finish before checking the screen.
-const flush = () =>
-  [...Array(10)].reduce(
-    (chain) => chain.then(() => undefined),
-    Promise.resolve()
-  );
 
 async function render() {
   const element = createElement("c-shoresh-camp-setup", {

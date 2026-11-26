@@ -12,6 +12,7 @@ import { answerAsk } from "shoresh-jest/ask";
 import { buildTerms } from "c/shoreshTerms";
 import { comingIn } from "../summary";
 import { nsRecord } from "shoresh-jest/namespace";
+import { flush } from "shoresh-jest/flush";
 
 jest.mock(
   "@salesforce/apex/ImportController.saveSetup",
@@ -84,13 +85,6 @@ function file(name, text) {
       )
   };
 }
-
-// Lets the screen's promises (reading files, saving) settle, as the other screen tests do.
-const flush = () =>
-  [...Array(20)].reduce(
-    (chain) => chain.then(() => undefined),
-    Promise.resolve()
-  );
 
 async function render() {
   const element = createElement("c-shoresh-import", { is: ShoreshImport });

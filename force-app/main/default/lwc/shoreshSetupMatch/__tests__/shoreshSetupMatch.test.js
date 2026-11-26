@@ -1,5 +1,6 @@
 import { createElement } from "lwc";
 import ShoreshSetupMatch from "c/shoreshSetupMatch";
+import { flush } from "shoresh-jest/flush";
 
 // What "Update to match setup" would change, shown before anything changes. Synthetic camp.
 
@@ -31,8 +32,6 @@ const A_DAY = {
     }
   ]
 };
-
-const flush = () => Promise.resolve();
 
 async function render(props = {}) {
   const element = createElement("c-shoresh-setup-match", {

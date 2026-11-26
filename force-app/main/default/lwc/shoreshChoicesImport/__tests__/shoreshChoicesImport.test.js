@@ -7,6 +7,7 @@ import checkChoices from "@salesforce/apex/ChoicesImportController.checkChoices"
 import bringInChoices from "@salesforce/apex/ChoicesImportController.bringInChoices";
 import { buildTerms } from "c/shoreshTerms";
 import { nsRecord } from "shoresh-jest/namespace";
+import { flush } from "shoresh-jest/flush";
 
 jest.mock(
   "@salesforce/apex/ChoicesImportController.choicesSetup",
@@ -112,12 +113,6 @@ function file(name, text) {
       )
   };
 }
-
-const flush = () =>
-  [...Array(20)].reduce(
-    (chain) => chain.then(() => undefined),
-    Promise.resolve()
-  );
 
 const $ = (element, selector) => element.shadowRoot.querySelector(selector);
 const $$ = (element, selector) => [

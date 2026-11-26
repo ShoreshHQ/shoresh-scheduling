@@ -11,6 +11,7 @@ import {
   ACTIVITIES,
   draft
 } from "../../shoreshWeekEditor/__tests__/data/draftFixture";
+import { flush } from "shoresh-jest/flush";
 
 // Rainy day on Manual Build (repo docs/adr/0019; desktop ScheduleScreen.jsx "Rainy day…",
 // rainyDay.js): Edit > Rainy day… > a day keeps the week as "Before rainy Monday", then switches
@@ -66,12 +67,6 @@ const RECORDS = nsRecord({
   ],
   locations: [{ Id: "l1", Name: "Gym", GroupsThatFit__c: 1 }]
 });
-
-const flush = () =>
-  [...Array(10)].reduce(
-    (chain) => chain.then(() => undefined),
-    Promise.resolve()
-  );
 
 /** The draft with Monday's rows (items Flagpole, Soccer, Gym games) and the season's records. */
 function week(mondayRows, mondayMarks = []) {
