@@ -9,7 +9,8 @@ decisions live in the wiki (`~/Dev/wiki`: `projects/shoresh-scheduling-sf.md`, i
   prototypes) deploys to the test org. See `docs/ci-setup.md`.
 - **Never work in `~/Dev/Shoresh/shoresh-scheduling` itself.** That folder is Greg's local copy: it
   stays on `main`, clean, and is fast-forwarded after every merge. Do all work in your own git
-  worktree outside it (`git worktree add <your scratch dir>/<name> -b <branch> origin/main`). Never
+  worktree under `~/Dev/Shoresh/worktrees/` (`git worktree add ~/Dev/Shoresh/worktrees/<name> -b <branch> origin/main`),
+  where the Shoresh-wide `~/Dev/Shoresh/CLAUDE.md` and its guard apply and a restart can't wipe it. Never
   check out another branch, edit files, stash or commit there. A local hook refuses any commit there.
 - **The desktop app is the spec.** Shoresh began as a desktop app; its code, 166 decision records
   (`docs/adr/`) and Director Guide (`docs/guide/`) answer most product questions. A read-only copy
