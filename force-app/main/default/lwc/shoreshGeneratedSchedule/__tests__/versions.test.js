@@ -403,7 +403,9 @@ describe("Versions on the Generated Schedule screen", () => {
     expect(notice(element)).toBe("Restored Before the trip.");
     // The list and its button went with the start: focus goes to Rebuild, as after Generate.
     await until(
-      () => element.shadowRoot.activeElement === action(element, "Rebuild")
+      () =>
+        element.shadowRoot.activeElement ===
+        q(element, '[data-id="build-menu"]')
     );
     expect(element.shadowRoot.activeElement).toBe(
       q(element, '[data-id="build-menu"]')
