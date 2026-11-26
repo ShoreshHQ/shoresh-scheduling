@@ -6,8 +6,9 @@
  */
 @IsTest
 private class ImportUndoKindsTest {
-  /** The sort order (a special day's notes) each record goes back to. */
-  private static final Integer BEFORE = 99;
+  // The sort order each record goes back to. Not "BEFORE": Apex ignores case, so the local
+  // "before" below (the query count) would hide it.
+  private static final Integer PUT_BACK = 99;
 
   private static Map<String, Object> plan(Id seasonId, List<Object> records) {
     return new Map<String, Object>{
@@ -175,7 +176,7 @@ private class ImportUndoKindsTest {
       );
       for (SObject record : records) {
         changed.add(
-          entry(record, sortOrderOf(record.getSObjectType()), BEFORE)
+          entry(record, sortOrderOf(record.getSObjectType()), PUT_BACK)
         );
       }
       SpecialDay__c colorWar = [
@@ -200,7 +201,7 @@ private class ImportUndoKindsTest {
       Assert.isTrue(used < 60, 'Undo used ' + used + ' queries');
       for (SObject record : records) {
         Assert.areEqual(
-          BEFORE,
+          PUT_BACK,
           sortOrderNow(record),
           String.valueOf(record.getSObjectType())
         );
