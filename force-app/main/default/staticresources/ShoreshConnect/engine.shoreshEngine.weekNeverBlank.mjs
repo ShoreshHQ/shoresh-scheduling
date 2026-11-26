@@ -1,12 +1,6 @@
 import { NOW, tell } from "./engine.shoreshEngine.progress.mjs";
-import { check } from "./engine.shoreshEngine.weekOptions.mjs";
-import {
-  PREFERENCES,
-  PRIORITY_RANK,
-  RULE,
-  SEVERITY,
-  lexLess
-} from "./engine.shoreshEngine.weekRules.mjs";
+import { allowed, busyAt } from "./engine.shoreshEngine.weekOptions.mjs";
+import { PRIORITY_RANK, RULE, lexLess } from "./engine.shoreshEngine.weekRules.mjs";
 
 /**
  * Step 7 of the protocol (docs/engine/protocol.md): never blank. Runs last, after the repairs
@@ -35,18 +29,14 @@ export function* neverBlank(st, slots, from) {
       if (!st.eligibility.get(act.id).has(u.groupId)) {
         continue;
       }
-      const bends = check(st, act, u.groupId, u.dayIndex, u.blockId, true);
+      const bends = allowed(st, act, u.groupId, u.dayIndex, u.blockId);
       if (bends === null) {
-        continue;
-      }
-      if (bends.some((rule) => !PREFERENCES.includes(rule))) {
         continue;
       }
       const over = bends.includes(RULE.WEEKLY_MAX)
         ? st.getCount(u.groupId, act.id) + 1 - act.max
         : 0;
       const rank = [
-        ...SEVERITY.map((rule) => (bends.includes(rule) ? 1 : 0)),
         over,
         PRIORITY_RANK[act.priority],
         st.getCount(u.groupId, act.id),
@@ -64,14 +54,6 @@ export function* neverBlank(st, slots, from) {
   }
 }
 
-/** Whether the group holds anything at a time overlapping this cell. */
-function busyAt(st, s) {
-  return (st.peersByDay[s.dayIndex].get(s.blockId) || []).some((peer) => {
-    const pk = st.cellKey(s.groupId, s.dayIndex, peer);
-    return st.assigned.has(pk) || st.keptKeys.has(pk);
-  });
-}
-
 /**
  * A cell left out for an overlapping one that stayed Open isn't busy after all: it is filled
  * now. Each round frees at least one cell, so the rounds end. (Why each cell still Open is Open
@@ -79,7 +61,9 @@ function busyAt(st, s) {
  */
 export function* finishOpen(st, from) {
   for (let round = 0; round <= st.freeSlots.length; round++) {
-    const freed = [...st.busyThen.values()].filter((s) => !busyAt(st, s));
+    const freed = [...st.busyThen.values()].filter(
+      (s) => !busyAt(st, s.groupId, s.dayIndex, s.blockId)
+    );
     if (!freed.length) {
       break;
     }

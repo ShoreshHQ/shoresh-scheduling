@@ -173,7 +173,5 @@ async function withPersonsYes(
 module.exports = {
   askPerson,
   withPersonsYes,
-  withoutConfirm,
-  WAIT_SECONDS,
-  SHORTEST
+  WAIT_SECONDS
 };

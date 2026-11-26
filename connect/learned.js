@@ -7,6 +7,7 @@
  * the screen gives Change or Forget (an answer remembered now) or Forget pattern (a pattern there
  * now) carries what those actions take back: an answer by its line (API-1.150) or a pattern, and seen.
  */
+const { foldName } = require("./common");
 
 // LearnedEvents.forCamp reads the newest 5000: a full read means older ones were left out.
 const HISTORY_LIMIT = 5000;
@@ -122,15 +123,6 @@ async function forgetPattern(capability, input, { read, send, answer, load }) {
   return { ...done, text: named(done.text), ...(asks && { asks }) };
 }
 
-/** A line as a person or an AI writes it back: case, dashes, quotes and spaces aside. */
-const folded = (text) =>
-  String(text ?? "")
-    .toLowerCase()
-    .replace(/[\u2010-\u2015-]/g, "-")
-    .replace(/["\u201c\u201d]/g, "")
-    .replace(/\s+/g, " ")
-    .trim();
-
 /**
  * The remembered answer the AI named by its line, as read_learned_answers works the lines out
  * (API-1.150): { line } or, when no line or more than one reads so, { refusal }. Shoresh's own
@@ -151,12 +143,12 @@ async function answerLine(input, { read, answer, load }) {
     m.speller(setup)
   )) {
     // As listed, with its date, or without it.
-    const sent = folded(input.line);
+    const sent = foldName(input.line);
     if (
       line.current &&
       line.answer &&
-      (sent === folded(line.title) ||
-        sent === folded(`${line.when}: ${line.title}`))
+      (sent === foldName(line.title) ||
+        sent === foldName(`${line.when}: ${line.title}`))
     ) {
       named.set(line.answer.id, line);
     }

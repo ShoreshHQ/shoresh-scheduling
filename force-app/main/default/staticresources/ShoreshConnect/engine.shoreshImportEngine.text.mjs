@@ -385,7 +385,7 @@ const EMOJI =
  * INGEST-2.20: a name with emoji in it ("🏊 Swim") without them: { text, emoji } ("Swim", "🏊"),
  * emoji "" when it has none. A cell that is only emoji keeps them (nothing else names it).
  */
-export function withoutEmoji(value) {
+function withoutEmoji(value) {
   const text = tidy(value);
   const found = text.match(EMOJI);
   const rest = tidy(text.replace(EMOJI, " "));

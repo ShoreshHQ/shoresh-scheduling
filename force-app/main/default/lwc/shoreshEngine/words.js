@@ -1,4 +1,4 @@
-import { article, buildTerms } from "c/shoreshTerms";
+import { article, buildTerms, listed } from "c/shoreshTerms";
 import {
   BUDGET,
   BUSY,
@@ -113,12 +113,4 @@ export function floorNote(kind, { name, built, imported, terms } = {}) {
     return `The imported ${week}${called} no longer matches this ${week}'s days, ${t.pIn("TimeBlock")} or ${t.pIn("Group")}, so it wasn't compared.`;
   }
   return `This ${week} has ${built} ${built === 1 ? "cell" : "cells"} filled; the imported ${week}${called} has ${imported}.`;
-}
-
-/** "Swim", "Swim and Archery", "Swim, Archery and Canoeing" (the desktop's joinEnglishList). */
-function listed(names) {
-  if (names.length <= 2) {
-    return names.join(" and ");
-  }
-  return `${names.slice(0, -1).join(", ")} and ${names[names.length - 1]}`;
 }

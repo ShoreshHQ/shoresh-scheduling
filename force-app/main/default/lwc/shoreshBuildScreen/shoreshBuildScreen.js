@@ -296,4 +296,64 @@ export const BuildScreen = (Base) =>
       event.stopPropagation();
       this.dispatchEvent(new CustomEvent("backtoroots", { bubbles: true }));
     }
+    /** Unpublish, when Published's dropdown is open; else Published; null with neither. */
+    unpublishTarget() {
+      const menu = this.template.querySelector('[data-id="published-menu"]');
+      if (!menu) {
+        return null;
+      }
+      return menu.opened
+        ? this.template.querySelector('[data-id="unpublish"]')
+        : menu;
+    }
+    /**
+     * Focus fell to the page (or stayed on Publish or Unpublish while they were held), rather than
+     * being on something the director chose since.
+     */
+    focusIsLost() {
+      const inside = this.template.activeElement;
+      if (inside) {
+        const id = inside.dataset ? inside.dataset.id : null;
+        return (
+          id === "publish" || id === "unpublish" || id === "published-menu"
+        );
+      }
+      const page = document.activeElement;
+      return !page || page === document.body;
+    }
+    get editable() {
+      return !this.readOnly;
+    }
+    /**
+     * Save version (c/shoreshBuildWeek): the week as it is now, kept under a name (on Generated
+     * Schedule, its locks and option too).
+     */
+    handleSaveVersion(event) {
+      const { name, onDone } = event.detail;
+      return this.buildWeek.saveVersion(name, onDone);
+    }
+    /**
+     * Restore (c/shoreshBuildWeek): the version becomes the week, after the week as it was is kept
+     * as "Before Restore" (the way back). Each screen shows the week it left (showRestored).
+     */
+    handleRestore(event) {
+      return this.buildWeek.restoreVersion(event.detail.id);
+    }
+    handleDeleteVersion(event) {
+      return this.buildWeek.deleteVersion(event.detail.id);
+    }
+    handleRenameVersion(event) {
+      const { id, name, onDone } = event.detail;
+      return this.buildWeek.renameVersion(id, name, onDone);
+    }
+    /** "Update to match setup" (c/shoreshBuildWeek): the list, read fresh, before anything changes. */
+    handleSetupMatch() {
+      return this.buildWeek.openSetupMatch();
+    }
+    handleSetupClose() {
+      this.buildWeek.closeSetupMatch();
+    }
+    handleSetupUpdate(event) {
+      return this.buildWeek.updateToMatchSetup(event.detail.keys);
+    }
   };

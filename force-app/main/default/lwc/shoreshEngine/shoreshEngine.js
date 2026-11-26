@@ -1,4 +1,5 @@
-import { article, buildTerms } from "c/shoreshTerms";
+import { atCamp } from "c/shoreshSetupRules";
+import { article, buildTerms, compareText } from "c/shoreshTerms";
 import { blankSetupNote, floorNote, reasonFor } from "./words";
 import { checkWeek, dayWord } from "./checks";
 import {
@@ -10,8 +11,6 @@ import { OPEN_WHY } from "./notes";
 import { NOW, nowOf } from "./progress";
 import { fuller, importedFilled, sameFrame, seedFromImport } from "./weekFloor";
 import {
-  atCamp,
-  compareText,
   minutes,
   readActivities,
   readDays,
@@ -677,7 +676,10 @@ export function checkModel(input, model, state) {
     notFor,
     isAway: (groupId, blockId) =>
       groupsInSetup.has(groupId) &&
-      !atCamp(groupsInSetup.get(groupId), parts.get(blockId) || null),
+      !atCamp(
+        groupsInSetup.get(groupId).availability,
+        parts.get(blockId) || null
+      ),
     locked: lockedPlacements(model, state),
     isLockedOpen: (groupId, date, blockId) =>
       Boolean(model.locks) && model.locks.has(lockKey(date, groupId, blockId)),

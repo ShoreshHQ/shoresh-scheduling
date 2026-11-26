@@ -40,6 +40,7 @@ import updateToMatchSetupOnServer from "@salesforce/apex/SetupMatchController.up
 import getVersions from "@salesforce/apex/SchedulesController.getVersions";
 import renameSchedule from "@salesforce/apex/SchedulesController.renameSchedule";
 import { failed } from "c/shoreshErrors";
+import { notRenamed } from "c/shoreshVersions";
 import { publishQuestion } from "c/shoreshPublish";
 
 /** Why "Update to match setup" was refused, with nothing changed (SetupMatch.cls). */
@@ -671,7 +672,7 @@ export class BuildWeek {
       return;
     }
     const renamed = await this.versionsAction(
-      `${this.versionName(id) || "That version"} wasn't renamed.`,
+      notRenamed(this.versionName(id)),
       () => renameSchedule({ scheduleId: id, name })
     );
     onDone(renamed);

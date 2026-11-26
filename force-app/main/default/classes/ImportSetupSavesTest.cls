@@ -761,7 +761,8 @@ private class ImportSetupSavesTest {
       Assert.areEqual(40, result.added.get('Group'));
       Assert.areEqual(60, result.added.get('Activity'));
       Assert.areEqual(8, result.added.get('RecurringActivity'));
-      Assert.isTrue(queries < 45, 'queries: ' + queries);
+      // Bound: measured 31 (2026-11-25).
+      Assert.isTrue(queries < 36, 'queries: ' + queries);
       Assert.areEqual(
         120,
         [SELECT COUNT() FROM ImportAnswer__c WHERE Camp__c = :camp.Id],

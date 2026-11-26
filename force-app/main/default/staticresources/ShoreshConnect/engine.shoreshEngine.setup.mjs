@@ -25,10 +25,6 @@ const WEEKDAYS = {
   Sunday: 7
 };
 
-// Text compared by character code, never by locale: the week engine's and the import engine's one
-// order (c/shoreshTerms).
-export { compareText };
-
 function sortValue(record, field) {
   const value = record ? record[field] : null;
   return typeof value === "number" && Number.isFinite(value)
@@ -229,17 +225,6 @@ export function readSetTimeLocations(fixedActivities, recurringActivities) {
     where.set(r.Id, r[FIELD.RecurringActivity.Location] || null);
   }
   return where;
-}
-
-/**
- * Whether a group is at camp in a time block: all day, or the part of day it comes for. The same
- * rule as the server's SetTimePlan.atCamp and Manual Build's hatched cells.
- */
-export function atCamp(group, partOfDay) {
-  if (group.availability === "MorningOnly") {
-    return partOfDay === "Morning";
-  }
-  return group.availability !== "AfternoonOnly" || partOfDay === "Afternoon";
 }
 
 /**

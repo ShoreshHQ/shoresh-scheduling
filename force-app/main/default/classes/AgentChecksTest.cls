@@ -76,8 +76,8 @@ private class AgentChecksTest {
       Test.stopTest();
       Assert.areEqual(200, after[0], String.valueOf(after[1]));
       // Bound: the screen's own reads of the season's setup, the week and its setup changes, each
-      // on its own: measured 58 (2026-11-25), over the 50 the bar asks until they share one read.
-      Assert.isTrue(queries < 62, queries + ' queries');
+      // on one read of the week's setup: measured 44 (2026-11-25).
+      Assert.isTrue(queries < 49, queries + ' queries');
       Map<String, Object> body = (Map<String, Object>) after[1];
       Assert.areEqual(
         new Set<String>{
@@ -97,6 +97,39 @@ private class AgentChecksTest {
         [SELECT Week__r.Name FROM Schedule__c WHERE Id = :draftId].Week__r.Name,
         body.get('week_name')
       );
+    }
+  }
+
+  // API-1.44: a week on Manual Build only reads that screen's draft in place of what Generate
+  // reads, with its setup changes and accepted lines, as the counter there reads them.
+  @IsTest
+  static void aManualBuildWeeksChecksReadItsDraft() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      GeneratedTestData.camp();
+      Id draftId = ManualDrafts.start(
+          GeneratedTestData.ids.get('Main'),
+          GeneratedTestData.ids.get('Week 1')
+        )
+        .draftId;
+      Test.startTest();
+      List<Object> checks = read();
+      Test.stopTest();
+      Assert.areEqual(200, checks[0], String.valueOf(checks[1]));
+      Map<String, Object> body = (Map<String, Object>) checks[1];
+      Assert.isFalse(
+        body.containsKey('inputs'),
+        'Generate\'s read is not this week\'s'
+      );
+      Map<String, Object> schedule = (Map<String, Object>) ((Map<String, Object>) body.get(
+          'draft'
+        ))
+        .get('schedule');
+      Assert.areEqual(
+        String.valueOf(draftId),
+        ((Map<String, Object>) schedule.get('schedule')).get('id')
+      );
+      Assert.isNotNull(body.get('setup_changes'));
+      Assert.areEqual('[]', body.get('accepted'));
     }
   }
 

@@ -185,14 +185,50 @@ private class GroupPlacementsTest {
         new List<Schedule__c>{ schedule(c, c.weeks[0], 'Draft/Manual') },
         new List<String>{ 'Swim', 'Soccer' }
       );
-      GroupPlacements.partsAtOnce = 1;
-      GroupPlacements.queryBudget = 2;
+      ScheduleDayTexts.partsAtOnce = 1;
+      ScheduleDayTexts.queryBudget = 2;
       Test.startTest();
       GroupPlacements.Result result = GroupPlacements.of(c.ids.get('Group A'));
       Test.stopTest();
       Assert.isFalse(result.complete);
       Assert.areEqual(
         new Map<String, Integer>{ 'Swim' => 4 },
+        named(c, result)
+      );
+    }
+  }
+
+  // CORE-6.19: a day that can't be read (here saved by a newer Shoresh) is said, never counted as
+  // nothing. Before the shared reader (ScheduleDayTexts) such a day was read past its format,
+  // and one that couldn't be parsed was left out without a word.
+  @IsTest
+  static void aDayThatCantBeReadSaysTheCountIsNotComplete() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      Camp c = camp();
+      c.daysPerWeek = 2;
+      write(
+        c,
+        new List<Schedule__c>{ schedule(c, c.weeks[0], 'Draft/Manual') },
+        new List<String>{ 'Swim', 'Soccer' }
+      );
+      ScheduleDay__c newer = [
+        SELECT Id
+        FROM ScheduleDay__c
+        WHERE Schedule__r.Week__c = :c.weeks[0].Id
+        WITH USER_MODE
+        ORDER BY Date__c
+        LIMIT 1
+      ];
+      Database.update(
+        new ScheduleDay__c(Id = newer.Id, GridFormatVersion__c = 99),
+        AccessLevel.SYSTEM_MODE
+      );
+      Test.startTest();
+      GroupPlacements.Result result = GroupPlacements.of(c.ids.get('Group A'));
+      Test.stopTest();
+      Assert.isFalse(result.complete);
+      Assert.areEqual(
+        new Map<String, Integer>{ 'Swim' => 2 },
         named(c, result)
       );
     }

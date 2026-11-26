@@ -352,7 +352,8 @@ private class AgentCampSeasonTest {
         RestContext.response.statusCode,
         RestContext.response.responseBody.toString()
       );
-      Assert.isTrue(queries < 46, 'Queries: ' + queries);
+      // Bound: measured 34 (2026-11-25).
+      Assert.isTrue(queries < 39, 'Queries: ' + queries);
       Assert.areEqual(0, [SELECT COUNT() FROM Season__c WHERE Name = :name]);
     }
   }

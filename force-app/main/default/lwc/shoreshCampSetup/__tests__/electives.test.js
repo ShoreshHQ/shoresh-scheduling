@@ -271,7 +271,6 @@ describe("c-shoresh-camp-setup: Electives", () => {
     expect(shownScreens(element)).toEqual(["roots"]);
     expect(menuItem(element, "electives")).toMatchObject({
       label: "Electives",
-      coming: false,
       disabled: false
     });
     const roots = q(element, "c-shoresh-roots");
@@ -289,7 +288,6 @@ describe("c-shoresh-camp-setup: Electives", () => {
     const element = await render();
     expect(shownScreens(element)).toEqual(["electives"]);
     expect(menuItem(element, "electives")).toMatchObject({
-      coming: false,
       disabled: false
     });
     expect(

@@ -10,10 +10,10 @@ const ORIGINS = {
   Copied: "Copied",
   Imported: "Imported"
 };
+// The origins that are screens a week is built and published on.
+const SCREENS = new Set(["Manual", "Generated"]);
 // VersionReason__c's value for a version kept by the app ("Before Restore").
 const AUTO_SAVED = "AutoSaved";
-// Its value for a version kept before a change the person made through an agent (AgentWeeks).
-const THROUGH_AGENT = "ThroughAgent";
 
 /**
  * "Manual · Auto-saved" (then, when showSaved, " · " and when it was saved). Once the week's
@@ -26,7 +26,6 @@ export function metaOf(version) {
     // An origin Shoresh has no words for is left out, never shown as stored (CORE-6.18).
     ORIGINS[version.origin],
     version.reason === AUTO_SAVED ? "Auto-saved" : null,
-    version.reason === THROUGH_AGENT ? "By your AI" : null,
     version.publishedAt && showSaved ? "Published" : null
   ]
     .filter(Boolean)
@@ -34,12 +33,19 @@ export function metaOf(version) {
   return { meta, showSaved };
 }
 
+/** The screen a schedule was built on, by its Origin__c ("Manual Build"); null for a copy or an import. */
+export function screenOf(origin) {
+  return SCREENS.has(origin) ? ORIGINS[origin] : null;
+}
+
+/** What a failed rename says first, on every screen with Versions (CORE-6.18: the version by name). */
+export function notRenamed(name) {
+  return `${name || "That version"} wasn't renamed.`;
+}
+
 /** A version Shoresh kept by itself ("Before Restore"), not one a person kept or published. */
 export function isAutomatic(version) {
-  return (
-    (version.reason === AUTO_SAVED || version.reason === THROUGH_AGENT) &&
-    !version.publishedAt
-  );
+  return version.reason === AUTO_SAVED && !version.publishedAt;
 }
 
 /**

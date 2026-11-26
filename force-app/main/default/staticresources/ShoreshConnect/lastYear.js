@@ -11,7 +11,6 @@
  */
 const {
   fileOf,
-  fromCommandLine,
   notJson,
   aiWord,
   engineWord
@@ -252,15 +251,11 @@ function savedText(m, t, result, plan) {
 }
 
 async function importLastYear(capability, given, { read, send, answer, load }) {
-  const input = fromCommandLine(given);
-  if (input.unreadable) return notJson(input.unreadable);
-  if (typeof input.layouts === "string") {
-    try {
-      input.layouts = JSON.parse(input.layouts);
-    } catch {
-      return notJson("layouts");
-    }
+  // The command line types these as JSON (cli.js typed): text here is refused (API-1.155).
+  for (const field of ["answers", "layouts"]) {
+    if (typeof given[field] === "string") return notJson(field);
   }
+  const input = { ...given, save: given.save === true };
   if (input.save && !String(input.seen ?? "").trim()) {
     return refused(
       "Send the seen the review gave, so a change someone made since isn't replaced unseen."

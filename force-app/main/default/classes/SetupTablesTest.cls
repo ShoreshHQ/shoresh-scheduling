@@ -149,7 +149,8 @@ private class SetupTablesTest {
         ScheduleUses.Count count = ScheduleUses.count(ids.get('Soccer'));
         Integer used = Limits.getQueries() - before;
         Test.stopTest();
-        // 601 days, none naming Soccer: every one read, 25 at a time (25 queries), plus 2.
+        // 601 day parts, none naming Soccer: every one read, a day's 10 parts together, about 25
+        // at a time (21 queries), plus 2.
         Assert.areEqual(0, count.schedules);
         Assert.isTrue(count.complete);
         Assert.isTrue(used <= 30, 'Queries used: ' + used);
@@ -168,7 +169,7 @@ private class SetupTablesTest {
     ids = KeptCamp.keptIds();
     System.runAs(scheduler()) {
       bigSeason();
-      ScheduleUses.partsAtOnce = 1;
+      ScheduleDayTexts.partsAtOnce = 1;
       Test.startTest();
       ScheduleUses.Count count = ScheduleUses.count(ids.get('Group A'));
       Integer queries = Limits.getQueries();
@@ -176,6 +177,28 @@ private class SetupTablesTest {
       Assert.isFalse(count.complete);
       Assert.isTrue(count.schedules >= 1, 'Found: ' + count.schedules);
       Assert.isTrue(queries < 50, 'Counting used ' + queries + ' queries');
+    }
+  }
+
+  /**
+   * A count late in a request leaves room for what follows (a delete): a second count stops while
+   * the request still has 30 of its 100 queries (ScheduleDayTexts).
+   */
+  @IsTest
+  static void aCountLateInARequestLeavesRoomForWhatFollows() {
+    ids = KeptCamp.keptIds();
+    System.runAs(scheduler()) {
+      bigSeason();
+      ScheduleDayTexts.partsAtOnce = 1;
+      Test.startTest();
+      ScheduleUses.count(ids.get('Group A'));
+      Integer first = Limits.getQueries();
+      ScheduleUses.Count second = ScheduleUses.count(ids.get('Swim'));
+      Integer left = Limits.getLimitQueries() - Limits.getQueries();
+      Test.stopTest();
+      Assert.isTrue(first > 40, 'The first count used ' + first + ' queries');
+      Assert.isFalse(second.complete);
+      Assert.isTrue(left >= 30, 'The request has ' + left + ' queries left');
     }
   }
 
@@ -187,22 +210,22 @@ private class SetupTablesTest {
     System.runAs(scheduler()) {
       bigSeason();
       {
-        ScheduleUses.partsAtOnce = 10;
-        ScheduleUses.queryBudget = 2;
+        ScheduleDayTexts.partsAtOnce = 10;
+        ScheduleDayTexts.queryBudget = 2;
         ScheduleUses.Count count = ScheduleUses.count(ids.get('Group A'));
-        // Two reads of 10 days each: some schedules found, the rest not read.
+        // Two reads (a day's 10 parts each): some schedules found, the rest not read.
         Assert.isTrue(
           count.schedules >= 1 && count.schedules < 61,
           'Found: ' + count.schedules
         );
         Assert.isFalse(count.complete);
-        ScheduleUses.queryBudget = 40;
+        ScheduleDayTexts.queryBudget = 40;
         ScheduleUses.rowBudget = 100;
         count = ScheduleUses.count(ids.get('Soccer'));
         Assert.areEqual(0, count.schedules);
         Assert.isFalse(count.complete);
         ScheduleUses.rowBudget = 40000;
-        ScheduleUses.textBudget = 1;
+        ScheduleDayTexts.textBudget = 1;
         count = ScheduleUses.count(ids.get('Swim'));
         Assert.isFalse(count.complete);
       }

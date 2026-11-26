@@ -16,7 +16,11 @@
 import { FIELD } from "c/shoreshSchema";
 import { compareNames, compareText } from "./order";
 
-/** Letters and digits only, lower case, with "&" and "+" read as "and". */
+/**
+ * Letters and digits only, lower case, with "&" and "+" read as "and": a name as camps type it.
+ * Apex's IncomingBatch.fold and the connector's foldName are the same rule; all three pass
+ * ShoreshRuleExamples.json's foldedNames.
+ */
 export function foldName(name) {
   return String(name || "")
     .toLowerCase()
@@ -140,7 +144,7 @@ export function similarity(a, b) {
  * twenty times), or each spelling in files of its own (one counsellor's "Archary" all week), is
  * still asked.
  */
-export const BOTH_IN_USE = 3;
+const BOTH_IN_USE = 3;
 
 function bothInUse(a, b) {
   const [few, many] = [a.count || 0, b.count || 0].sort((x, y) => x - y);

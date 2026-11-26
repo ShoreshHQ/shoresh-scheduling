@@ -554,17 +554,20 @@ describe("c-shoresh-week-editor: special days and events", () => {
       )[1];
     expect(rule(".messages")).toMatch(/min-height: 32px;/);
     expect(rule(".notice")).toMatch(/margin: 0;/);
-    // The hosts' own lines on the row (the status slot) have no margin either.
+    // The hosts' own lines on the row (the status slot) have no margin either: both hosts take
+    // .notice from the layout they share, and neither sets its own.
     const lwc = require("path").join(__dirname, "..", "..");
+    const read = (file) =>
+      require("fs").readFileSync(require("path").join(lwc, file), "utf8");
+    const shared = read("shoreshScheduleScreen/shoreshScheduleScreen.css");
+    expect(shared.match(/\n\.notice \{([^}]*)\}/)[1]).toMatch(/margin: 0;/);
     [
       "shoreshManualBuild/shoreshManualBuild.css",
-      "shoreshScheduleScreen/shoreshScheduleScreen.css"
+      "shoreshGeneratedSchedule/shoreshGeneratedSchedule.css"
     ].forEach((file) => {
-      const host = require("fs").readFileSync(
-        require("path").join(lwc, file),
-        "utf8"
-      );
-      expect(host.match(/\n\.notice \{([^}]*)\}/)[1]).toMatch(/margin: 0;/);
+      const host = read(file);
+      expect(host).toContain('@import "c/shoreshScheduleScreen";');
+      expect(host).not.toMatch(/\n\.notice \{/);
     });
     // Generate's progress is one line: what it is doing sits in the bar's row.
     const generated = require("fs").readFileSync(

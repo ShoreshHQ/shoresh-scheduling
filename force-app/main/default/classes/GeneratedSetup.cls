@@ -15,6 +15,9 @@ public with sharing class GeneratedSetup {
   public List<WeekException__c> exceptions;
   private CampLabels wordsRead;
   private List<Activity__c> activitiesRead;
+  private List<Location__c> locationsRead;
+  private List<FixedActivity__c> fixedRead;
+  private List<RecurringActivity__c> recurringRead;
 
   public GeneratedSetup(Id programId, Id weekId) {
     program = ProgramReads.programOf(programId);
@@ -52,12 +55,49 @@ public with sharing class GeneratedSetup {
     this.week = week;
   }
 
+  /**
+   * The same setup, on the season's activities and locations a request has already read as setup
+   * reads them (SeasonSetupReader.read): not read again.
+   */
+  public GeneratedSetup withSeason(SeasonSetupReader.SeasonSetup season) {
+    activitiesRead = season.activities;
+    locationsRead = season.locations;
+    return this;
+  }
+
   /** The season's activities as setup reads them (SeasonSetupReader), read when first needed. */
   public List<Activity__c> activityRecords() {
     if (activitiesRead == null) {
       activitiesRead = SeasonSetupReader.activitiesOf(program.Season__c);
     }
     return activitiesRead;
+  }
+
+  /** The season's locations as every screen gets them (SeasonSetupReader), read when first needed. */
+  public List<Location__c> locationRecords() {
+    if (locationsRead == null) {
+      locationsRead = SeasonSetupReader.locationsOf(program.Season__c);
+    }
+    return locationsRead;
+  }
+
+  /**
+   * The program's fixed activities, with what placing them needs (ManualSetUpCells.fixedOf), read
+   * when first needed. For a user who can read it all (SetTimeAccess).
+   */
+  public List<FixedActivity__c> fixedActivityRecords() {
+    if (fixedRead == null) {
+      fixedRead = ManualSetUpCells.fixedOf(program.Id);
+    }
+    return fixedRead;
+  }
+
+  /** The same for its recurring activities (ManualSetUpCells.recurringOf). */
+  public List<RecurringActivity__c> recurringActivityRecords() {
+    if (recurringRead == null) {
+      recurringRead = ManualSetUpCells.recurringOf(program.Id);
+    }
+    return recurringRead;
   }
 
   /** The camp's words, read when first needed. */
@@ -94,6 +134,26 @@ public with sharing class GeneratedSetup {
   /** Start a blank week (BlankWeek), on what is already read. */
   public BlankWeek.Week blankWeek() {
     return BlankWeek.build(this);
+  }
+
+  /**
+   * The same week, on the program's own fixed and recurring activities as Manual Build's open
+   * reads them (SetTimePlanReader.planOf), not the whole season's: only this program's run in it,
+   * so it is the same week in fewer queries (Update to match setup's preview, SetupMatch). Without
+   * access to them, refused in Start a blank week's words.
+   */
+  public BlankWeek.Week blankWeekOfItsOwn() {
+    if (!SetTimeAccess.canRead()) {
+      return blankWeek();
+    }
+    return BlankWeek.build(
+      this,
+      SetTimePlanReader.planOf(
+        this,
+        fixedActivityRecords(),
+        recurringActivityRecords()
+      )
+    );
   }
 
   /**

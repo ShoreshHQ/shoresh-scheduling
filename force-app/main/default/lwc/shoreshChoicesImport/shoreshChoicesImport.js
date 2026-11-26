@@ -1,6 +1,4 @@
 import { LightningElement, api } from "lwc";
-import { loadScript } from "lightning/platformResourceLoader";
-import SHEETJS from "@salesforce/resourceUrl/SheetJS";
 import choicesSetup from "@salesforce/apex/ChoicesImportController.choicesSetup";
 import checkChoices from "@salesforce/apex/ChoicesImportController.checkChoices";
 import bringInChoices from "@salesforce/apex/ChoicesImportController.bringInChoices";
@@ -8,6 +6,7 @@ import {
   foldName,
   FILE_TYPES,
   isReadable,
+  droppedFiles,
   readImportFile,
   refusedFile
 } from "c/shoreshImportEngine";
@@ -40,6 +39,7 @@ import {
   withApart,
   whichRows
 } from "./review";
+import { loadSheetJs } from "c/shoreshDownload";
 
 const STEPS = 3;
 
@@ -161,7 +161,6 @@ export default class ShoreshChoicesImport extends LightningElement {
   done = null;
   // A selector that takes the cursor at the next render.
   focusAfter = null;
-  sheetJsLoaded = false;
 
   /** The screen's heading takes the cursor when it opens (the page asks). */
   @api
@@ -298,21 +297,11 @@ export default class ShoreshChoicesImport extends LightningElement {
     this.dragging = false;
   }
   handleDrop(event) {
-    event.preventDefault();
     this.dragging = false;
-    const list = event.dataTransfer && event.dataTransfer.files;
-    this.readFile(list && list[0]);
+    this.readFile(droppedFiles(event)[0]);
   }
   get dropClass() {
     return this.dragging ? "drop drop_over" : "drop";
-  }
-
-  async ensureSheetJs() {
-    if (!this.sheetJsLoaded) {
-      await loadScript(this, SHEETJS);
-      this.sheetJsLoaded = true;
-    }
-    return window.XLSX;
   }
 
   /** SHA-256 of the file, so a run says which file it came from; none if the browser can't. */
@@ -339,7 +328,7 @@ export default class ShoreshChoicesImport extends LightningElement {
     this.phase = "reading";
     this.status = "Reading the file";
     try {
-      const file = await readImportFile(chosen, () => this.ensureSheetJs());
+      const file = await readImportFile(chosen, () => loadSheetJs(this));
       const activities = this.activities;
       // A linked choice's name is what a sheet says to choose it (desktop ADR 2026-09-29 D6),
       // so it is a name Shoresh knows, never one to settle.

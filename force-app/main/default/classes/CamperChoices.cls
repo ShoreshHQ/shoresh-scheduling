@@ -125,8 +125,8 @@ public with sharing class CamperChoices {
             ChoicesImportLinked.keyOf(choice),
             String.valueOf(choice.r),
             String.valueOf(choice.k),
-            ChoicesImport.fold(choice.d),
-            ChoicesImport.fold(choice.p)
+            IncomingBatch.fold(choice.d),
+            IncomingBatch.fold(choice.p)
           },
           '|'
         )

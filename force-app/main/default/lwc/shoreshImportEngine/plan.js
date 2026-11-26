@@ -3,7 +3,7 @@
  * show: what was found, what is new, what changes, what is left out and why, and what is noted
  * but not set up.
  */
-import { article } from "c/shoreshTerms";
+import { article, listed } from "c/shoreshTerms";
 import { spokenWeekday } from "c/shoreshDayNames";
 import { FIELD } from "c/shoreshSchema";
 import { availabilityKey } from "./availability";
@@ -196,7 +196,7 @@ function readAsIds(proposal) {
  * The answers to remember for this camp (Greg: exact answers, so a similar file does not ask
  * again), and those to forget: "Leave it out for now" means the next import asks again.
  */
-export function answersToKeep(proposal, answers) {
+function answersToKeep(proposal, answers) {
   const ids = new Set([
     ...proposal.reading.pairs.map((x) => x.id),
     ...proposal.reading.disagreements.map((x) => x.id),
@@ -789,7 +789,7 @@ export function undoMessage(result, added) {
   const named = (added || []).filter(Boolean);
   const parts = [
     named.length
-      ? `Import undone. Removed ${named.length > 1 ? `${named.slice(0, -1).join(", ")} and ${named[named.length - 1]}` : named[0]} it added`
+      ? `Import undone. Removed ${listed(named)} it added`
       : "Import undone. Removed what it added"
   ];
   if (result.restored) {

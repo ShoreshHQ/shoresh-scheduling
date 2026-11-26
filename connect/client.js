@@ -22,6 +22,7 @@ const { importFile, undoImport } = require("./imports");
 const { importLastYear } = require("./lastYear");
 const { importSpecialSchedule } = require("./specialFile");
 const { makeFile } = require("./exports");
+const { foldName } = require("./common");
 const {
   readLearned,
   forgetPattern,
@@ -35,7 +36,7 @@ const undoHeld = require("./undo");
 const { forAi } = require("./screenWords");
 const {
   campOf,
-  tooOld,
+  notCampsOwn,
   downloadAgain,
   read,
   send,
@@ -313,7 +314,7 @@ async function callOnce(
   const said = await camp(org, asked);
   // Not read: where Shoresh is (its namespace) isn't known, so nothing is sent (API-1.155).
   if (said.read === false) return campUnread(said.response);
-  const old = tooOld(said);
+  const old = notCampsOwn(said);
   if (old) return { ok: false, status: 400, text: old };
   const { namespace } = said;
   const at = {
@@ -815,12 +816,9 @@ async function weekChecks(capability, input, at, checks, edits) {
     ...lines.look,
     ...lines.notes
   ].filter(m.acceptable);
-  const fold = (text) =>
-    String(text || "")
-      .replace(/\s+/g, " ")
-      .trim()
-      .toLowerCase();
-  const line = shown.find((l) => fold(m.wordsOf(l)) === fold(input.line));
+  const line = shown.find(
+    (l) => foldName(m.wordsOf(l)) === foldName(input.line)
+  );
   if (!line) {
     return {
       ok: false,
@@ -1273,6 +1271,7 @@ function importModules(m) {
     ...m.lists,
     importTable: m.table.importTable,
     buildTerms: m.terms.buildTerms,
+    listed: m.terms.listed,
     screenLabels: m.screens.screenLabels,
     rememberedByKey: m.remembered.rememberedByKey,
     suggestionsFor: m.patterns.suggestionsFor,
@@ -1391,7 +1390,7 @@ async function check({ org, run = runSf } = {}) {
       text: "Salesforce didn't answer just now. Try the test again in a moment."
     };
   }
-  const old = tooOld(said);
+  const old = notCampsOwn(said);
   if (old) return { ok: false, text: old };
   const request = requestFor(byName("read_group_schedule"), {}, said.namespace);
   const out = await run(sfArgs(request, org));

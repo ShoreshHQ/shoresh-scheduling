@@ -1,8 +1,8 @@
 import { countedCells } from "./checks";
 import { CARRIES_ON, slots, startsActivity } from "./grid";
 import { readGrid } from "./weekFixed";
-import { check } from "./weekOptions";
-import { PREFERENCES, RULE } from "./weekRules";
+import { allowed } from "./weekOptions";
+import { RULE } from "./weekRules";
 import { createWeekState } from "./weekState";
 
 /**
@@ -129,8 +129,7 @@ export function seedFromImport(model, importDays, writeDays) {
     ) {
       continue;
     }
-    const bends = check(st, act, p.groupId, p.d, p.blockId, true);
-    if (bends === null || bends.some((r) => !PREFERENCES.includes(r))) {
+    if (!allowed(st, act, p.groupId, p.d, p.blockId)) {
       continue;
     }
     st.place(act, p.groupId, p.d, p.blockId);

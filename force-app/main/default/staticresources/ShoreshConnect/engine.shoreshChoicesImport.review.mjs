@@ -8,7 +8,7 @@
  * them apart, everything not read is listed); the cards are Greg's approved mock-ups
  * (design-research/electives-r1, import-read and import-names; decisions 48 and 53).
  */
-import { SHORT_DAYS, buildTerms } from "./engine.shoreshTerms.shoreshTerms.mjs";
+import { SHORT_DAYS, buildTerms, listed } from "./engine.shoreshTerms.shoreshTerms.mjs";
 import { foldName, holdsNoDivision } from "./engine.shoreshImportEngine.shoreshImportEngine.mjs";
 import { CHOICE_KINDS, sheetLayout } from "./engine.shoreshChoicesReader.shoreshChoicesReader.mjs";
 import { FIELD } from "./engine.shoreshSchema.shoreshSchema.mjs";
@@ -411,9 +411,7 @@ function apartWords(rows) {
     const place = r.bunk || r.division;
     if (place && !seen.includes(place)) seen.push(place);
   }
-  if (seen.length === 0) return "";
-  if (seen.length === 1) return `${seen[0]}.`;
-  return `${seen.slice(0, -1).join(", ")} and ${seen[seen.length - 1]}.`;
+  return seen.length ? `${listed(seen)}.` : "";
 }
 
 /**

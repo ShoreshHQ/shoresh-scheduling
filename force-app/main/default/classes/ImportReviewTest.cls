@@ -143,7 +143,8 @@ private class ImportReviewTest {
         'back, with its who list'
       );
       Assert.isTrue(
-        queries < 40,
+        // Bound: measured 28 (2026-11-25).
+        queries < 33,
         'a second import stays well inside the limits'
       );
     }

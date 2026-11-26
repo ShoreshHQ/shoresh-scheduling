@@ -1,12 +1,18 @@
 /**
  * The camp's Salesforce address (connect/camp.js): the namespace as Salesforce says it, every
- * action at its address with and without one (ADR 0024), and an older connector saying so.
+ * action at its address with and without one (ADR 0024), and a connector older or newer than the camp's saying so.
  * No Salesforce here: the sf command line is a stand-in.
  */
 const fs = require("fs");
 const os = require("os");
 const path = require("path");
-const { campOf, tooOld, ownVersion, address, requestFor } = require("../camp");
+const {
+  campOf,
+  notCampsOwn,
+  ownVersion,
+  address,
+  requestFor
+} = require("../camp");
 const { CAPABILITIES } = require("../capabilities");
 const { call, check } = require("../client");
 
@@ -164,16 +170,16 @@ describe("The camp's Salesforce address", () => {
     expect(seen).toHaveLength(1);
   });
 
+  // API-1.156
   it("olderConnectorSaysSo: a downloaded copy older than the camp's does nothing and says to download it again", async () => {
-    expect(tooOld({ version: "1.0.50" }, "1.0.48")).toBe(
+    expect(notCampsOwn({ version: "1.0.50" }, "1.0.48")).toBe(
       "This copy of Shoresh's connector (1.0.48) is older than your camp's Shoresh (1.0.50), so nothing was done. Download it again from Settings in Shoresh."
     );
-    expect(tooOld({ version: "1.0.50" }, "1.0.50")).toBeNull();
-    expect(tooOld({ version: "1.0.9" }, "1.0.10")).toBeNull();
-    expect(tooOld({ version: "2.0.0" }, "1.9.9")).not.toBeNull();
+    expect(notCampsOwn({ version: "1.0.50" }, "1.0.50")).toBeNull();
+    expect(notCampsOwn({ version: "2.0.0" }, "1.9.9")).not.toBeNull();
     // Run from the repo (no manifest), or a camp that doesn't say: nothing to compare.
-    expect(tooOld({ version: "1.0.50" }, null)).toBeNull();
-    expect(tooOld({ version: null }, "1.0.48")).toBeNull();
+    expect(notCampsOwn({ version: "1.0.50" }, null)).toBeNull();
+    expect(notCampsOwn({ version: null }, "1.0.48")).toBeNull();
 
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), "shoresh-"));
     fs.writeFileSync(
@@ -182,6 +188,31 @@ describe("The camp's Salesforce address", () => {
     );
     expect(ownVersion(dir)).toBe("1.0.48");
     expect(ownVersion(path.join(dir, "none"))).toBeNull();
+  });
+
+  // API-1.156
+  it("newerConnectorSaysSo: a copy newer than the camp's does nothing and says so", async () => {
+    expect(notCampsOwn({ version: "1.0.50" }, "1.0.52")).toBe(
+      "This copy of Shoresh's connector (1.0.52) is newer than your camp's Shoresh (1.0.50) and works differently from its screens, so nothing was done. Download it again from Settings in Shoresh."
+    );
+    // Compared as numbers, not text: 1.0.10 is newer than 1.0.9.
+    expect(notCampsOwn({ version: "1.0.9" }, "1.0.10")).toMatch(/is newer/);
+
+    // The built copy, with its manifest beside it, as a camp downloads it: nothing is sent.
+    const shipped = require("../../force-app/main/default/staticresources/ShoreshConnect/client.js");
+    const sent = [];
+    const run = async (args) => {
+      sent.push(args);
+      return "HTTP/1.1 200\ncontent-type: application/json\n\n{}";
+    };
+    const done = await shipped.call(
+      "build_week",
+      { season: "Summer 2026", week: "Week 1" },
+      { camp: async () => ({ namespace: "", version: "1.0.0" }), run }
+    );
+    expect(done.ok).toBe(false);
+    expect(done.text).toMatch(/is newer than your camp's Shoresh \(1\.0\.0\)/);
+    expect(sent).toHaveLength(0);
   });
 
   it("shipsItsVersion: the camp's static resource names the version its manifest has", () => {

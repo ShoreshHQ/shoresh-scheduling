@@ -82,8 +82,8 @@ private class LinkedChoicesTest {
   static void aSeasonTooBigToReadSaysTheWeekIsNotComplete() {
     System.runAs(ShoreshTestData.scheduler()) {
       LinkedChoicesMenu menu = new LinkedChoicesMenu();
-      LinkedChoicePlaces.partsAtOnce = 1;
-      LinkedChoicePlaces.queryBudget = 1;
+      ScheduleDayTexts.partsAtOnce = 1;
+      ScheduleDayTexts.queryBudget = 1;
 
       LinkedChoicePlaces.Places places = LinkedChoicesController.linkedChoicePlaces(
         menu.setId
@@ -95,6 +95,34 @@ private class LinkedChoicesTest {
         'Tuesday',
         LinkedChoicePlaces.weekdayOf(MONDAY.addDays(1))
       );
+    }
+  }
+
+  // CORE-6.19: a day naming the set that can't be read (here saved by a newer Shoresh) makes the
+  // week say it is not complete. Before the shared reader (ScheduleDayTexts) it was left out
+  // without a word.
+  @IsTest
+  static void aDayThatCantBeReadSaysTheWeekIsNotComplete() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      LinkedChoicesMenu menu = new LinkedChoicesMenu();
+      ScheduleDay__c tuesday = [
+        SELECT Id
+        FROM ScheduleDay__c
+        WHERE Date__c = :MONDAY.addDays(1)
+        WITH USER_MODE
+        LIMIT 1
+      ];
+      Database.update(
+        new ScheduleDay__c(Id = tuesday.Id, GridFormatVersion__c = 99),
+        AccessLevel.SYSTEM_MODE
+      );
+      Test.startTest();
+      LinkedChoicePlaces.Places places = LinkedChoicesController.linkedChoicePlaces(
+        menu.setId
+      );
+      Test.stopTest();
+      Assert.isFalse(places.complete);
+      Assert.areEqual(1, places.cells.size(), 'Monday only was read');
     }
   }
 

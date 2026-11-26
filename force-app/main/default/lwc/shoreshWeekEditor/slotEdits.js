@@ -22,6 +22,11 @@ import {
 // SlotIds; a saved row is read and written there too.
 export { CARRIES_ON, OPEN, identity, isSetTime, owner, slots };
 
+/** One slot ({ day, group, block } positions), the same in Daily and Group View. */
+export function slotKey(slot) {
+  return `${slot.day}|${slot.group}|${slot.block}`;
+}
+
 /**
  * Whether a placement can be moved, stretched, or taken out: an activity; on a special day's own
  * schedule (ownPlan) also a fixed or recurring activity brought in when it started, an ordinary

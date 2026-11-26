@@ -560,8 +560,8 @@ limits.
     one would be undone by the next Rebuild. Changing cells (drag, type, Delete, undo) comes with
     locks in G4, reusing Manual Build's editing then.
 26. **Shared layout CSS** `c/shoreshScheduleScreen` (CSS only, like `c/shoreshTokens`): the
-    toolbar, view toggle, pills, Activity View cards and legend. Manual Build still has its own
-    copy; it moves over in a later cleanup, so its in-flight PR isn't disturbed.
+    toolbar, view toggle, pills, Activity View cards and legend. Manual Build imports it too
+    (wave 4 review, 2026-11-25), so the rules both build screens share are written once.
 
 ## Differences from the desktop (G3)
 

@@ -14,7 +14,7 @@ import { NONE } from "./engine.shoreshLists.cells.mjs";
 import { CHANGE, newValueOf } from "./engine.shoreshLists.proposal.mjs";
 import { cellText, listScreen } from "./engine.shoreshLists.screens.mjs";
 import { weekRecords } from "./engine.shoreshLists.weeks.mjs";
-import { buildTerms, countOf } from "./engine.shoreshTerms.shoreshTerms.mjs";
+import { buildTerms, countOf, listed } from "./engine.shoreshTerms.shoreshTerms.mjs";
 
 function quoted(name) {
   return `“${name}”`;
@@ -143,9 +143,7 @@ export function saveListLabel(added, changed, t) {
     const parts = Object.keys(counts)
       .filter((term) => counts[term])
       .map((term) => counted(words, counts[term], term));
-    return parts.length > 1
-      ? `${parts.slice(0, -1).join(", ")} and ${parts[parts.length - 1]}`
-      : parts.join("");
+    return listed(parts);
   };
   const parts = [];
   const adding = said(added);

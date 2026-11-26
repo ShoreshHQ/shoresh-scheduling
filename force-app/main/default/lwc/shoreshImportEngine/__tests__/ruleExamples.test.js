@@ -2,12 +2,18 @@
  * The shared rule examples (staticresources/ShoreshRuleExamples.json), which the Apex must also
  * pass (RuleExamplesTest), so the two can't drift apart.
  */
+import { atCamp } from "c/shoreshSetupRules";
 import { buildTerms } from "c/shoreshTerms";
 import { describe as describeQuestion } from "../../shoreshLearned/kinds";
 import { linkedChoiceName } from "../electives";
 import { foldName } from "../names";
 
-const { foldedNames, deletedLinkedChoices, learnedChoices } = JSON.parse(
+const {
+  foldedNames,
+  deletedLinkedChoices,
+  learnedChoices,
+  atCamp: atCampCases
+} = JSON.parse(
   require("fs").readFileSync(
     require("path").join(
       __dirname,
@@ -40,6 +46,14 @@ describe("the shared rule examples", () => {
     (question, answers) => {
       const { choices } = describeQuestion(question, "", buildTerms([]));
       expect(choices.map((c) => c.value).sort()).toEqual([...answers].sort());
+    }
+  );
+
+  // GEN-2.6
+  it.each(atCampCases.map((e) => [e.availability, e.partOfDay, e.atCamp]))(
+    "availability %s, part of day %s: at camp %s",
+    (availability, partOfDay, there) => {
+      expect(atCamp(availability, partOfDay)).toBe(there);
     }
   );
 });

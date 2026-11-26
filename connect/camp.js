@@ -6,7 +6,8 @@
  * namespace isn't guessed: Salesforce says it, as the prefix of the package's own ShoreshConnect
  * static resource (none where Shoresh isn't packaged, as in the test org). The same record's
  * description names the connector version the camp ships (scripts/build-connect.js writes it), so
- * an older download says so instead of working the camp's data with older screens' modules.
+ * a download older or newer than the camp's says so instead of working the camp's data with other
+ * screens' modules.
  */
 const fs = require("fs");
 const path = require("path");
@@ -63,14 +64,22 @@ async function campOf(ask) {
   };
 }
 
-/** Why this copy can't be used with the camp (it is older than the camp's), or null. */
-function tooOld(camp, own = ownVersion()) {
+/**
+ * Why this copy can't be used with the camp, or null: it is older or newer than the camp's, so its
+ * modules (the build engine among them) aren't the camp's screens' (API-1.156). Only the camp's own
+ * copy works.
+ */
+function notCampsOwn(camp, own = ownVersion()) {
   const ours = versionIn(own);
   if (!camp.version || !ours) return null;
   const theirs = camp.version.split(".").map(Number);
   const mine = ours.split(".").map(Number);
   for (let i = 0; i < 3; i++) {
-    if (mine[i] > theirs[i]) return null;
+    if (mine[i] > theirs[i]) {
+      return downloadAgain(
+        `(${own}) is newer than your camp's Shoresh (${camp.version}) and works differently from its screens, so nothing was done`
+      );
+    }
     if (mine[i] < theirs[i]) {
       return downloadAgain(
         `(${own}) is older than your camp's Shoresh (${camp.version}), so nothing was done`
@@ -131,7 +140,7 @@ function requestFor(capability, input = {}, namespace = "") {
 module.exports = {
   queryFields,
   campOf,
-  tooOld,
+  notCampsOwn,
   ownVersion,
   downloadAgain,
   address,

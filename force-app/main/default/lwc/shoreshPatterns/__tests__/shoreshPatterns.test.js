@@ -18,7 +18,6 @@ import {
   patternGroups,
   patternsOf,
   stem,
-  suggestionFor,
   suggestionsFor,
   templatesOf,
   withLearning
@@ -49,6 +48,9 @@ const kindCard = (name, shape = "weeks|some|one") => ({
   learn: { shape }
 });
 const bandOf = (rows) => evaluate(patternGroups(rows)[0]).band;
+// One card's suggestion, as the import asks for it (suggestionsFor), or null.
+const suggestionFor = (card, rows) =>
+  suggestionsFor([card], rows)[card.id] || null;
 
 describe("the templates: a fixed menu, never a search", () => {
   // MEMO-3.1

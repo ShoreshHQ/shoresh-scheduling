@@ -1,27 +1,8 @@
 @import "c/shoreshTokens";
+@import "c/shoreshScheduleScreen";
 
-/* Shoresh desktop's schedule screen (ScheduleScreen.jsx and its views), in Salesforce's tokens. */
-.schedules {
-  position: relative;
-}
-
-/*
- * What building still needs: the desktop's bronze-tinted box (ScheduleScreen.jsx), its one
- * sentence with links, and "Set up <first>". Bronze only as the tint and border, never text.
- */
-.still-needed-box {
-  max-width: 40rem;
-  margin: 2rem auto;
-  padding: 1rem 1.25rem;
-  border: 1px solid var(--shoresh-caution);
-  border-radius: 8px;
-  background: var(--shoresh-caution-tint);
-  color: var(--shoresh-text);
-}
-
-.still-needed {
-  margin-bottom: 0.75rem;
-}
+/* Manual Build (desktop ScheduleScreen.jsx). The layout it shares with Generated Schedule is in
+   c/shoreshScheduleScreen. */
 
 /* A week not started yet: one button, centred. */
 .start {
@@ -33,52 +14,4 @@
      sideways, so a menu taller than the zone was cut off after its first row (UX pass). */
   min-height: 60vh;
   box-sizing: border-box;
-}
-
-/* After Start a blank week: what could not be placed, with the "needs a look" dot. */
-.not-placed {
-  margin-bottom: 16px;
-  padding: 8px 12px;
-  border: 1px solid var(--shoresh-caution);
-  border-radius: 8px;
-  background: var(--shoresh-caution-tint);
-  font-size: 13px;
-}
-
-/* A refused move: a quiet line under the rail. */
-.notice {
-  margin: 0;
-  font-size: 13px;
-  color: var(--slds-g-color-neutral-base-30, #444);
-}
-
-.tool-undo {
-  margin-left: 0.25rem;
-  min-height: 24px;
-  min-width: 24px;
-  padding: 0 0.5rem;
-}
-
-/* Versions, then Published and Publish, 4 apart at the rail's right edge. */
-/* Publish and, once published, its own menu beside it: one split button. Wide enough for
-   "Published ▾" from the start, so the word changing or the menu coming never moves the bar. */
-.publish {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 1px;
-  min-width: 8.75rem;
-}
-
-/* When the week was published, in Published's dropdown: it may wrap. */
-.published {
-  max-width: calc(var(--shoresh-u) * 72);
-  padding-top: var(--shoresh-s2);
-  padding-bottom: var(--shoresh-s2);
-  white-space: normal;
-  color: var(--shoresh-text-2);
-}
-
-.changed-since {
-  margin-left: var(--shoresh-space-word);
 }

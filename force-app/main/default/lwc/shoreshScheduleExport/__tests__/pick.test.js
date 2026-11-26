@@ -1,10 +1,8 @@
 // Print and Excel by choice (PUB-6.6 to PUB-6.11): the whole week, a day, a bunk, an activity, a
 // location or a division, and a big camp's day split into readable pages. Made-up data only.
+import { PAGE_COLUMNS, choiceLabel, dayPieces } from "../pick";
 import {
   EVERY,
-  PAGE_COLUMNS,
-  choiceLabel,
-  dayPieces,
   fileTitle,
   pagesFor,
   printChoices,

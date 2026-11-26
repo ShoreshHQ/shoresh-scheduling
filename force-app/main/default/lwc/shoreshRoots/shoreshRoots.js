@@ -40,9 +40,17 @@ const KEYS_MOVE = new Set(["ArrowRight", "ArrowLeft", "ArrowDown", "ArrowUp"]);
 const NUDGE = 950;
 const isHand = (key) => typeof key === "string" && key.startsWith("hand:");
 
-/** How many questions an import kept for later (Import__c.Open__c, JSON); 0 if none or unreadable. */
+// What starts the key of a question a batch from another system kept (IncomingBatch), and the key
+// of its closing line when more didn't fit (IncomingQuestions.MORE_KEY).
+const INCOMING = "incoming|";
+const MORE = `${INCOMING}more`;
+
+/**
+ * How many questions an import kept for later (Import__c.Open__c, JSON); 0 if none or unreadable.
+ * A batch's closing line that more couldn't be kept (API-6.7) is shown, not counted.
+ */
 function openQuestions(text) {
-  return questionList(text).length;
+  return questionList(text).filter((q) => !(q && q.key === MORE)).length;
 }
 
 /** The import's open questions, [{ key, title }] (none when unreadable). */
@@ -57,9 +65,6 @@ function questionList(text) {
     return [];
   }
 }
-
-// What starts the key of a question a batch from another system kept (IncomingBatch).
-const INCOMING = "incoming|";
 
 /**
  * Roots, the home screen: the canasta table (wiki decisions 60 to 68, approved 2026-10-24; repo

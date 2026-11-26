@@ -32,7 +32,7 @@ private class RuleExamplesTest {
       Map<String, Object> example = (Map<String, Object>) each;
       Assert.areEqual(
         (String) example.get('fold'),
-        ChoicesImport.fold((String) example.get('name'))
+        IncomingBatch.fold((String) example.get('name'))
       );
     }
   }
@@ -73,6 +73,27 @@ private class RuleExamplesTest {
       for (String answer : answers) {
         Assert.isTrue(LearnedChoices.allows(question, answer), question);
       }
+    }
+  }
+
+  // GEN-2.6
+  @IsTest
+  static void aGroupIsAtCampWhereTheEngineAndCampSetupSayItIs() {
+    List<Object> cases = (List<Object>) examples().get('atCamp');
+    Assert.isFalse(cases.isEmpty());
+    for (Object each : cases) {
+      Map<String, Object> example = (Map<String, Object>) each;
+      Group__c grp = new Group__c(
+        Availability__c = (String) example.get('availability')
+      );
+      TimeBlock__c block = new TimeBlock__c(
+        PartOfDay__c = (String) example.get('partOfDay')
+      );
+      Assert.areEqual(
+        (Boolean) example.get('atCamp'),
+        SetTimePlan.atCamp(grp, block),
+        JSON.serialize(example)
+      );
     }
   }
 }

@@ -286,4 +286,4 @@ async function makeFile(
   };
 }
 
-module.exports = { makeFile, saveFile, downloadsFolder, printoutPage };
+module.exports = { makeFile, downloadsFolder };

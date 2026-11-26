@@ -3,6 +3,7 @@ import {
   buildTerms,
   capital,
   guessPlural,
+  listed,
   shortDate,
   SHORT_DAYS
 } from "c/shoreshTerms";
@@ -193,6 +194,15 @@ describe("small words", () => {
     expect(article("Yom")).toBe("a Yom");
     expect(capital("swim")).toBe("Swim");
     expect(SHORT_DAYS.Wednesday).toBe("Wed");
+  });
+
+  it("lists names as the desktop does: no comma before the last, two names with and alone", () => {
+    expect(listed([])).toBe("");
+    expect(listed(["Swim"])).toBe("Swim");
+    expect(listed(["Swim", "Archery"])).toBe("Swim and Archery");
+    expect(listed(["Swim", "Archery", "Canoe"])).toBe(
+      "Swim, Archery and Canoe"
+    );
   });
 });
 

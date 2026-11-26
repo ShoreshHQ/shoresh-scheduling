@@ -34,16 +34,26 @@ public with sharing class SchedulesController {
 
   @AuraEnabled
   public static ScheduleViews.ScheduleView openSchedule(Id scheduleId) {
-    ScheduleViews.ScheduleView view;
+    return openSchedules(new List<Id>{ scheduleId })[0];
+  }
+
+  /**
+   * Several schedules as openSchedule opens each, in order, read together (a week's published
+   * programs, AgentWeekView): the same queries however many.
+   */
+  public static List<ScheduleViews.ScheduleView> openSchedules(
+    List<Id> scheduleIds
+  ) {
+    List<ScheduleViews.ScheduleView> views;
     try {
-      view = ScheduleViews.openWithSpecials(scheduleId);
+      views = ScheduleViews.openAllWithSpecials(scheduleIds);
     } catch (Exception e) {
       throw ScreenErrors.ofLoading(e);
     }
-    if (view == null) {
+    if (views.contains(null)) {
       throw ScreenErrors.of(ScreenErrorWords.SCHEDULE_NOT_FOUND);
     }
-    return view;
+    return views;
   }
 
   /** Gives a schedule (a version) a new name. */

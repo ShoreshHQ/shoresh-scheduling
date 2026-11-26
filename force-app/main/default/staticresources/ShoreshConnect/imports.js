@@ -218,13 +218,6 @@ const OWN_WORDS = {
   WeekException: (t) => [`${t.sIn("Week")} off`, `${t.pIn("Week")} off`]
 };
 
-/** "Lunch, Rest and Flag". */
-function listed(names) {
-  return names.length > 1
-    ? `${names.slice(0, -1).join(", ")} and ${names[names.length - 1]}`
-    : names.join("");
-}
-
 /** The screen's summary once saved: "Added 3 activities", "Changed 1 location", and what a new special day left out. */
 function savedWords(result, t, m) {
   const lines = [];
@@ -254,7 +247,7 @@ function savedWords(result, t, m) {
   // so it hears it.
   const blocks = `${seed.timeBlocks} ${seed.timeBlocks === 1 ? t.sIn("TimeBlock") : t.pIn("TimeBlock")}`;
   const brought = seed.broughtIn || [];
-  const copied = brought.length ? `, with ${listed(brought)} copied` : "";
+  const copied = brought.length ? `, with ${m.listed(brought)} copied` : "";
   const startsFrom = `Each new ${t.sIn("SpecialDay")} starts from ${seed.program}'s ${blocks}${copied}.`;
   return [said, startsFrom, ...m.seededLines(seed, "", t)].join(" ");
 }
@@ -266,26 +259,10 @@ function notJson(field) {
   );
 }
 
-/** The command line gives every field as text: save as "true", answers as JSON. */
-function fromCommandLine(given) {
-  const input = {
-    ...given,
-    save: given.save === true || given.save === "true"
-  };
-  if (typeof given.answers === "string") {
-    try {
-      input.answers = JSON.parse(given.answers);
-    } catch {
-      // Said, never read as no answers (API-1.155).
-      input.unreadable = "answers";
-    }
-  }
-  return input;
-}
-
 async function importFile(capability, given, { read, send, answer, load }) {
-  const input = fromCommandLine(given);
-  if (input.unreadable) return notJson(input.unreadable);
+  // The command line types answers as JSON (cli.js typed): text here is refused (API-1.155).
+  if (typeof given.answers === "string") return notJson("answers");
+  const input = { ...given, save: given.save === true };
   const workbook = capability.importsWorkbook;
   if (input.save && !String(input.seen ?? "").trim()) {
     return refused(
@@ -492,7 +469,6 @@ module.exports = {
   importFile,
   undoImport,
   fileOf,
-  fromCommandLine,
   aiWord,
   engineWord
 };

@@ -31,8 +31,8 @@ public with sharing class AgentRequest {
   /**
    * Runs one change and answers {"message": sentence}: 200 when done, or its refusal (refused),
    * with nothing changed. One that asks first adds its preview and confirm as their own parts
-   * (AgentAskFirst.asked). Every change takes the right to change schedules (AgentAccess), refused
-   * in the same words for every one.
+   * (AgentAskFirst.asked). Every change takes the right to change schedules, refused in the same
+   * words for every one: one address is one verb (API-1.11), so only a read is a GET.
    */
   public static void answer(Change change) {
     RestResponse response = RestContext.response;
@@ -43,7 +43,9 @@ public with sharing class AgentRequest {
     AgentAskFirst.asked = null;
     AgentRefusal.forAgent = true;
     try {
-      AgentAccess.require();
+      if (RestContext.request.httpMethod != 'GET') {
+        AgentWeeks.requireScheduler();
+      }
       Map<String, Object> body = AgentFields.sent();
       String confirm = change instanceof AgentAskFirst.Preview
         ? AgentAskFirst.taken(body)

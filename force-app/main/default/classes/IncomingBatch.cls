@@ -218,8 +218,17 @@ public with sharing class IncomingBatch {
     );
   }
 
-  /** Lower case, punctuation and spacing aside, as the import compares names. */
+  /**
+   * A name as camps type it (API-1.25): lower case, punctuation and spacing aside, "&" and "+" read
+   * as "and". The import's foldName and the connector's foldName are the same rule; all three pass
+   * ShoreshRuleExamples.json's foldedNames (RuleExamplesTest).
+   */
   public static String fold(String name) {
-    return ChoicesImport.fold(name);
+    return name == null
+      ? ''
+      : name.toLowerCase()
+          .replace('&', ' and ')
+          .replace('+', ' and ')
+          .replaceAll('[^\\p{L}\\p{N}]+', '');
   }
 }

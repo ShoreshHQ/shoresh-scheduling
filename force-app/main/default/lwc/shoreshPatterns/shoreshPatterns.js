@@ -24,7 +24,7 @@
  * to learn from.
  */
 import { similarity } from "c/shoreshImportEngine";
-import { shortDate } from "c/shoreshTerms";
+import { listed, shortDate } from "c/shoreshTerms";
 import { CAMP_WORDS } from "./campWords";
 
 export { CAMP_WORDS };
@@ -357,9 +357,7 @@ export function joinNames(names, total = names.length) {
   if (more > 0) {
     return `${shown.join(", ")} and ${more} more`;
   }
-  return shown.length > 1
-    ? `${shown.slice(0, -1).join(", ")} and ${shown[shown.length - 1]}`
-    : shown[0] || "";
+  return listed(shown);
 }
 
 /** Names in reading order: "Lunch 2" before "Lunch 10". */
@@ -400,6 +398,12 @@ export function fromAnswers(supporters) {
   return `answers for ${names} (${stamps.join(", ")})`;
 }
 
+function groupsByKey(rows) {
+  return new Map(
+    patternGroups(rows).map((g) => [groupKey(g.template, g.antecedent), g])
+  );
+}
+
 /**
  * The answer a pattern suggests for a question card, or null: { value, band, text, template,
  * antecedent }. card: { id, options: [{ value }], learn: { shape, same } } (learn.same: the
@@ -407,16 +411,6 @@ export function fromAnswers(supporters) {
  * only an answer the card offers. A question of another shape than the pattern's answers is
  * held at "suggest" (MEMO-3.3). It is a suggestion: pre-selected, never applied (MEMO-6.5).
  */
-export function suggestionFor(card, rows) {
-  return suggest(card, groupsByKey(rows));
-}
-
-function groupsByKey(rows) {
-  return new Map(
-    patternGroups(rows).map((g) => [groupKey(g.template, g.antecedent), g])
-  );
-}
-
 function suggest(card, groups) {
   const learn = card.learn || {};
   const values = new Set((card.options || []).map((o) => o.value));

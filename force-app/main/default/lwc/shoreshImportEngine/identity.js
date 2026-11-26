@@ -14,7 +14,7 @@ import { looseKey } from "./text";
 export { NO_DIVISION_NAME };
 
 /** The camp's groups: [{ name, division, noDivision }]. */
-export function campGroupList(existing) {
+function campGroupList(existing) {
   const list = [];
   for (const entry of (existing && existing.programs) || []) {
     for (const d of entry.divisions || []) {

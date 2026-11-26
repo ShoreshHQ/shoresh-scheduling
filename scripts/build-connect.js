@@ -314,7 +314,7 @@ function bumpVersionIfChanged(before) {
 
 /**
  * The version in the static resource's description too, where the connector reads it with the
- * person's sign-in (connect/camp.js): an older download then says so.
+ * person's sign-in (connect/camp.js): a download older or newer than the camp's then says so (API-1.156).
  */
 function describeVersion() {
   const { version } = JSON.parse(

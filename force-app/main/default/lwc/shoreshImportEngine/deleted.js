@@ -13,7 +13,7 @@
  */
 import { foldName } from "./names";
 
-export const DELETED_PREFIX = "deleted|";
+const DELETED_PREFIX = "deleted|";
 export const DELETED = "deleted";
 export const BRING_BACK = "back";
 

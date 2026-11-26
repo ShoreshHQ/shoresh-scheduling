@@ -60,7 +60,7 @@ global with sharing class AgentBuild implements AgentRequest.Change {
 
   /**
    * What Generated Schedule reads for the week: its getInputs, the season's setup and the camp's
-   * words, exactly as the screen reads them. Also what /v1/week_checks starts from (AgentChecks).
+   * words, exactly as the screen reads them.
    */
   public static Map<String, Object> readOf(AgentWeeks.Week week) {
     Map<String, Object> read = setupOf(week);
@@ -72,20 +72,16 @@ global with sharing class AgentBuild implements AgentRequest.Change {
   }
 
   /**
-   * The season's setup and the camp's words, as both schedule screens read them (Manual Build's
+   * The season's setup and the camp's words, as both schedule screens read them (the week's
    * checks start from them too, AgentChecks).
    */
   public static Map<String, Object> setupOf(AgentWeeks.Week week) {
-    Id campId = [
-      SELECT Camp__c
-      FROM Season__c
-      WHERE Id = :week.season.Id
-      WITH USER_MODE
-    ]
-    .Camp__c;
+    SeasonSetupReader.SeasonSetup setup = SeasonSetupController.getSeasonSetup(
+      week.season.Id
+    );
     return new Map<String, Object>{
-      'setup' => SeasonSetupController.getSeasonSetup(week.season.Id),
-      'labels' => CampLabels.forCamp(campId).all()
+      'setup' => setup,
+      'labels' => CampLabels.forCamp(setup.season.Camp__c).all()
     };
   }
 

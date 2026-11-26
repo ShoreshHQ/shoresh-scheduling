@@ -29,7 +29,7 @@ import {
  *     unreadable?: "all" or "some" when kept notes couldn't be read (readNotes), so it is said }
  */
 
-export const NOTES_VERSION = 1;
+const NOTES_VERSION = 1;
 // Under the field's 131,072 characters, with room to spare (the server refuses anything longer).
 export const NOTES_MAX = 120000;
 

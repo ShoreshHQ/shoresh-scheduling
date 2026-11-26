@@ -5,6 +5,7 @@ import getVersions from "@salesforce/apex/SchedulesController.getSavedSchedules"
 import openSchedule from "@salesforce/apex/SchedulesController.openSchedule";
 import renameSchedule from "@salesforce/apex/SchedulesController.renameSchedule";
 import { closeRefusal, failed, floatRefusal } from "c/shoreshErrors";
+import { notRenamed } from "c/shoreshVersions";
 import { FIELD } from "c/shoreshSchema";
 import {
   activityCards,
@@ -275,33 +276,37 @@ export default class ShoreshSchedules extends LightningElement {
 
   async handleRename(event) {
     const { id, name, onDone } = event.detail;
+    const was = this.versions.find((v) => v.id === id);
     let saved = false;
-    await this.run(async () => {
-      await renameSchedule({ scheduleId: id, name });
-      saved = true;
-      this.versions = this.versions.map((v) => {
-        return v.id === id ? { ...v, name } : v;
-      });
-      if (this.opened && this.opened.schedule.id === id) {
-        this.opened = {
-          ...this.opened,
-          schedule: { ...this.opened.schedule, name }
-        };
-      }
-      this.dispatchEvent(
-        new ShowToastEvent({ title: "Renamed.", variant: "success" })
-      );
-      // Manual Build's and Generated Schedule's Versions lists say the new name (WEEK-6.7).
-      this.dispatchEvent(
-        new CustomEvent("scheduleschanged", {
-          detail: {
-            weekId: this.weekId,
-            programId: this.programId,
-            season: false
-          }
-        })
-      );
-    }, "Not renamed. The name is as it was.");
+    await this.run(
+      async () => {
+        await renameSchedule({ scheduleId: id, name });
+        saved = true;
+        this.versions = this.versions.map((v) => {
+          return v.id === id ? { ...v, name } : v;
+        });
+        if (this.opened && this.opened.schedule.id === id) {
+          this.opened = {
+            ...this.opened,
+            schedule: { ...this.opened.schedule, name }
+          };
+        }
+        this.dispatchEvent(
+          new ShowToastEvent({ title: "Renamed.", variant: "success" })
+        );
+        // Manual Build's and Generated Schedule's Versions lists say the new name (WEEK-6.7).
+        this.dispatchEvent(
+          new CustomEvent("scheduleschanged", {
+            detail: {
+              weekId: this.weekId,
+              programId: this.programId,
+              season: false
+            }
+          })
+        );
+      },
+      notRenamed(was && was.name)
+    );
     onDone(saved);
   }
 

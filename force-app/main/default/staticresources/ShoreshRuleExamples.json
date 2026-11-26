@@ -1,5 +1,5 @@
 {
-  "about": "Rules written in both Apex and the screens. Both sides' tests read these examples: shoreshImportEngine ruleExamples.test.js and RuleExamplesTest.",
+  "about": "Rules written in both Apex and the screens. Both sides' tests read these examples: shoreshImportEngine ruleExamples.test.js and RuleExamplesTest; foldedNames, a name as camps type it, the connector's too (connect common.test.js).",
   "foldedNames": [
     {
       "name": "Arts & Crafts",
@@ -16,6 +16,14 @@
     {
       "name": "ÉCOLE d'été",
       "fold": "écoledété"
+    },
+    {
+      "name": "Day-Camp",
+      "fold": "daycamp"
+    },
+    {
+      "name": "Swim \u2013 Deep End",
+      "fold": "swimdeepend"
     },
     {
       "name": "",
@@ -116,6 +124,58 @@
     {
       "question": "move|Sam Levi|Bunk 1|Bunk 2",
       "answers": []
+    }
+  ],
+  "atCamp": [
+    {
+      "availability": "AllDay",
+      "partOfDay": "Morning",
+      "atCamp": true
+    },
+    {
+      "availability": "AllDay",
+      "partOfDay": "Afternoon",
+      "atCamp": true
+    },
+    {
+      "availability": "MorningOnly",
+      "partOfDay": "Morning",
+      "atCamp": true
+    },
+    {
+      "availability": "MorningOnly",
+      "partOfDay": "Afternoon",
+      "atCamp": false
+    },
+    {
+      "availability": "AfternoonOnly",
+      "partOfDay": "Morning",
+      "atCamp": false
+    },
+    {
+      "availability": "AfternoonOnly",
+      "partOfDay": "Afternoon",
+      "atCamp": true
+    },
+    {
+      "availability": null,
+      "partOfDay": "Afternoon",
+      "atCamp": true
+    },
+    {
+      "availability": "AllDay",
+      "partOfDay": null,
+      "atCamp": true
+    },
+    {
+      "availability": "MorningOnly",
+      "partOfDay": null,
+      "atCamp": false
+    },
+    {
+      "availability": "AfternoonOnly",
+      "partOfDay": null,
+      "atCamp": false
     }
   ]
 }

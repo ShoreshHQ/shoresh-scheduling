@@ -47,7 +47,7 @@ function refusal(text) {
 }
 
 /** INGEST-1.1: refused on its size alone, before any of it is read. */
-export function checkFileSize(byteLength, limits = IMPORT_LIMITS) {
+function checkFileSize(byteLength, limits = IMPORT_LIMITS) {
   if (byteLength > limits.maxBytes) {
     throw refusal(
       `That file is too large to import (over ${Math.round(limits.maxBytes / (1024 * 1024))} MB). Nothing was imported.`
@@ -93,6 +93,12 @@ export async function readImportFile(file, loadSheetJs) {
     file.name,
     new Uint8Array(await file.arrayBuffer())
   );
+}
+
+/** The files dropped on an import screen's drop zone (none if it carried none), the browser's own opening of them stopped. */
+export function droppedFiles(event) {
+  event.preventDefault();
+  return (event.dataTransfer && event.dataTransfer.files) || [];
 }
 
 /** The bytes text takes in a UTF-8 file (TextEncoder is not in every place this runs). */
@@ -199,7 +205,7 @@ export function isReadable(name, types = FILE_TYPES.list) {
 }
 
 /** Whether a file is text (comma- or tab-separated) rather than an Excel workbook. */
-export function isCsv(name) {
+function isCsv(name) {
   return /\.(csv|tsv|txt)$/i.test(String(name || ""));
 }
 
