@@ -9,6 +9,7 @@ import {
   MIN_COST,
   NO_FIT,
   NONE_FOR,
+  OFF_TIME,
   OVERLAP,
   SEARCHED,
   TRADE
@@ -42,7 +43,8 @@ export const OPEN_WHY = Object.freeze({
   [SEARCHED]: SEARCHED,
   [MIN_COST]: MIN_COST,
   [BUDGET]: BUDGET,
-  [TRADE]: TRADE
+  [TRADE]: TRADE,
+  [OFF_TIME]: OFF_TIME
 });
 
 const BLANK_FIELDS = new Set(["atOnce", "fit"]);

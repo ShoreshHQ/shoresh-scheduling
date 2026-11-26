@@ -51,6 +51,7 @@ import {
 } from "./engine.shoreshLists.scope.mjs";
 import { resolveColumn } from "./engine.shoreshLists.refs.mjs";
 import { checkWeeks } from "./engine.shoreshLists.weeks.mjs";
+import { checkRuns } from "./engine.shoreshLists.whenItRuns.mjs";
 import { FIELD } from "./engine.shoreshSchema.shoreshSchema.mjs";
 
 /** Keep or Change, for one difference. */
@@ -99,6 +100,10 @@ function blankValue(column) {
   if (column.type === "weeks") {
     // Every week, as an item added by hand starts (INGEST-1.8).
     return { off: [], of: 0 };
+  }
+  if (column.type === "runs") {
+    // Whenever, as an activity added by hand starts (ADR 0031 A7).
+    return { off: [], said: [] };
   }
   if (column.type === "list" || column.type === "days") {
     return [];
@@ -1274,6 +1279,9 @@ export function listProposal(input) {
   used
     .filter(({ column }) => column.type === "weeks")
     .forEach(({ column }) => checkWeeks(read, column, setup));
+  used
+    .filter(({ column }) => column.type === "runs")
+    .forEach(({ column }) => checkRuns(read, column, setup));
   const deletions = {
     gone: deletionsIn(answers),
     back: deletionsIn(answers, BRING_BACK)
@@ -1745,7 +1753,7 @@ function describeRow(r, used, screen, setup, answers, deletions) {
 
 /** Whether a value is "nothing": none, No, no maximum or limit, or everyone (no list). */
 function isEmpty(column, value) {
-  if (column.type === "weeks") {
+  if (column.type === "weeks" || column.type === "runs") {
     return !value || !(value.off || []).length;
   }
   if (column.type === "list") {
@@ -1764,6 +1772,10 @@ function normal(column, value) {
   if (column.type === "weeks") {
     // The weeks off, by place: how many weeks the season has is only for the words.
     return [...((value && value.off) || [])].sort((a, b) => a - b);
+  }
+  if (column.type === "runs") {
+    // The boxes off: their words are only for the screen.
+    return [...((value && value.off) || [])].sort();
   }
   if (column.type === "list" || column.type === "days") {
     return [...(value || [])].sort();

@@ -326,6 +326,32 @@ describe("planRain", () => {
     expect(both.full).toEqual([{ g: 0, b: 1, activityId: "soccer" }]);
   });
 
+  // CLOSE-4.9, ADR 0031: an indoor activity that doesn't run then (its When it runs) doesn't fit.
+  it("never switches to an indoor activity that doesn't run in that block on that day", () => {
+    // 2026-06-29 is a Monday. Gym games doesn't run in Period 2 on Mondays: Bunk 1 goes to Art.
+    const offGym = (weekday) => ({
+      ...withArt,
+      activityRecords: withArt.activityRecords.map((r) => {
+        if (r.Id !== "gym") {
+          return r;
+        }
+        return {
+          ...r,
+          ...nsRecord({
+            OffTimes__r: [{ Id: "o1", TimeBlock__c: "t2", Day__c: weekday }]
+          })
+        };
+      })
+    });
+    expect(
+      plan([",1,", ",,", ",,", ",,"], {}, offGym("Monday")).switches
+    ).toEqual([{ g: 0, b: 1, from: "soccer", to: "art" }]);
+    // Unticked on Tuesday only: Monday's rain plan still fits.
+    expect(
+      plan([",1,", ",,", ",,", ",,"], {}, offGym("Tuesday")).switches
+    ).toEqual([{ g: 0, b: 1, from: "soccer", to: "gym" }]);
+  });
+
   // CLOSE-5.1
   it("the same day always gives the same switch", () => {
     const rows = [",1,", ",1,", ",1,", ",1,"];

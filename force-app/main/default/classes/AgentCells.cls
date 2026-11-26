@@ -12,11 +12,12 @@
  * screen's words for them (change, and said: what stayed or was left out). This makes them the
  * screen's own hand edit (GeneratedHandEdit: the same save, conflicts and
  * locking), each run made only when its cells still hold what the agent saw, so someone else's
- * change is never replaced unseen. As on the screen, no version is kept: the answer gives the
+ * change is never replaced unseen. As on the screen, no version is kept, except before a day or
+ * week is cleared (AgentClearCells: "Before Clear Monday", WEEK-6.14): the answer gives the
  * week's revision after the edit, so the connector can hold its Undo (the runs back, as the
  * editor's history holds them) for the rest of the conversation (AgentUndo, API-1.14).
  */
-public with sharing class AgentCells implements AgentRequest.Change {
+public virtual with sharing class AgentCells implements AgentRequest.Change {
   private static final Set<String> FIELDS = new Set<String>{
     'season',
     'week',
@@ -28,7 +29,7 @@ public with sharing class AgentCells implements AgentRequest.Change {
     'revision'
   };
 
-  public Set<String> fields() {
+  public virtual Set<String> fields() {
     return FIELDS;
   }
 
@@ -42,6 +43,7 @@ public with sharing class AgentCells implements AgentRequest.Change {
       );
     }
     String seen = AgentSchedules.holdAsSeen(week, body, 'revision');
+    Map<String, Object> kept = keepFirst(week, change);
     SlotEdits.Edit edit = new SlotEdits.Edit();
     edit.runs = runs;
     // One edit, as the screen sends one step: made whole or not at all.
@@ -55,9 +57,28 @@ public with sharing class AgentCells implements AgentRequest.Change {
       change
     );
     undo.put('seen', result.revision);
+    undo.putAll(kept);
     AgentUndoHeld.hold(undo);
     String said = AgentFields.text(body, 'said');
-    return change + '.' + (String.isBlank(said) ? '' : ' ' + said);
+    return change +
+      '.' +
+      (String.isBlank(said) ? '' : ' ' + said) +
+      (kept.isEmpty()
+        ? ''
+        : ' The week as it was is kept in Versions as "' +
+          kept.get('version_name') +
+          '".');
+  }
+
+  /**
+   * The version kept before the edit, as the screen keeps one ({ version, version_name } for its
+   * Undo), or none: a hand edit keeps none.
+   */
+  protected virtual Map<String, Object> keepFirst(
+    AgentWeeks.Week week,
+    String change
+  ) {
+    return new Map<String, Object>();
   }
 
   /**

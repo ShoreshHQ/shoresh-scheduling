@@ -296,7 +296,7 @@ public class ImportTestPlans {
   /**
    * A plan or an import's log as the namespaced package will spell it: every custom name (a key,
    * or text such as a log's object or field, ending in __c) given ShoreshSchema's prefix. Set
-   * ShoreshSchema.simulatedPrefix = 'shoresh__' first.
+   * ShoreshSchema.simulatedPrefix = 'Shoresh__' first.
    */
   public static Object packaged(Object value) {
     return packagedValue(JSON.deserializeUntyped(JSON.serialize(value)));

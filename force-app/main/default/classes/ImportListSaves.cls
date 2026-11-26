@@ -96,6 +96,10 @@ public with sharing class ImportListSaves implements SetupWrite.Steps {
     for (String kind : ORDER) {
       saveKind(kind, byKind.get(kind));
     }
+    // When it runs (ADR 0031 A7): the boxes taken off and put back, once every activity and time
+    // block is in.
+    new ImportListOffTimes(writer, keys, plan.seasonId)
+      .save(byKind.get('ActivityOffTime'));
     // Weeks an item is on again: a workbook's Which weeks, or a list's Weeks (INGEST-1.8).
     extras.weeksBackOn(weeksBackOn);
     if (workbook) {

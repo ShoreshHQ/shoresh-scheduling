@@ -4,7 +4,7 @@ import { schemaName } from "./engine.salesforce-schema.mjs";
  * run `node scripts/generate-shoresh-schema.js` after adding or removing an object or field.
  *
  * The one place screens get object, field and relationship names. Salesforce adds the package
- * namespace to these imports (`shoresh__StartDate__c` once it has one), so records read and
+ * namespace to these imports (`Shoresh__StartDate__c` in the namespaced package), so records read and
  * saved with them keep working when the namespace arrives. Elsewhere, never spell a name as
  * text: scripts/namespace-safety.js fails CI on any one (docs/adr/0009-namespace-safe-names.md).
  *
@@ -16,6 +16,10 @@ const activityEligibilityObject = schemaName("ActivityEligibility__c");
 const activityEligibilityActivity = schemaName("ActivityEligibility__c.Activity__c");
 const activityEligibilityDivision = schemaName("ActivityEligibility__c.Division__c");
 const activityEligibilityGroup = schemaName("ActivityEligibility__c.Group__c");
+const activityOffTimeObject = schemaName("ActivityOffTime__c");
+const activityOffTimeActivity = schemaName("ActivityOffTime__c.Activity__c");
+const activityOffTimeDay = schemaName("ActivityOffTime__c.Day__c");
+const activityOffTimeTimeBlock = schemaName("ActivityOffTime__c.TimeBlock__c");
 const activityObject = schemaName("Activity__c");
 const activityCopiedFrom = schemaName("Activity__c.CopiedFrom__c");
 const activityEarlyWeekByDay = schemaName("Activity__c.EarlyWeekByDay__c");
@@ -317,7 +321,7 @@ const weekSeason = schemaName("Week__c.Season__c");
 const weekSortOrder = schemaName("Week__c.SortOrder__c");
 const weekStartDate = schemaName("Week__c.StartDate__c");
 
-/** What Salesforce puts before every name in this package: "" today, "shoresh__" later. */
+/** What Salesforce puts before every name in this package: "Shoresh__" in the namespaced package, "" in an org deployed without it. */
 export const NAMESPACE_PREFIX = activityEligibilityObject.objectApiName.slice(
   0,
   -"ActivityEligibility__c".length
@@ -346,6 +350,7 @@ export function childRows(row, relationship) {
 /** Object names: OBJECT.Week. */
 export const OBJECT = Object.freeze({
   ActivityEligibility: activityEligibilityObject.objectApiName,
+  ActivityOffTime: activityOffTimeObject.objectApiName,
   Activity: activityObject.objectApiName,
   Assignment: assignmentObject.objectApiName,
   CampLabel: campLabelObject.objectApiName,
@@ -389,6 +394,11 @@ export const FIELD = Object.freeze({
     Activity: activityEligibilityActivity.fieldApiName,
     Division: activityEligibilityDivision.fieldApiName,
     Group: activityEligibilityGroup.fieldApiName
+  }),
+  ActivityOffTime: Object.freeze({
+    Activity: activityOffTimeActivity.fieldApiName,
+    Day: activityOffTimeDay.fieldApiName,
+    TimeBlock: activityOffTimeTimeBlock.fieldApiName
   }),
   Activity: Object.freeze({
     CopiedFrom: activityCopiedFrom.fieldApiName,
@@ -734,6 +744,10 @@ export const PARENT = Object.freeze({
     Division: FIELD.ActivityEligibility.Division.replace(/__c$/, "__r"),
     Group: FIELD.ActivityEligibility.Group.replace(/__c$/, "__r")
   }),
+  ActivityOffTime: Object.freeze({
+    Activity: FIELD.ActivityOffTime.Activity.replace(/__c$/, "__r"),
+    TimeBlock: FIELD.ActivityOffTime.TimeBlock.replace(/__c$/, "__r")
+  }),
   Activity: Object.freeze({
     CopiedFrom: FIELD.Activity.CopiedFrom.replace(/__c$/, "__r"),
     Location: FIELD.Activity.Location.replace(/__c$/, "__r"),
@@ -903,6 +917,7 @@ export const CHILDREN = Object.freeze({
   Activity: Object.freeze({
     Copies: `${NAMESPACE_PREFIX}Copies__r`,
     Eligibilities: `${NAMESPACE_PREFIX}Eligibilities__r`,
+    OffTimes: `${NAMESPACE_PREFIX}OffTimes__r`,
     Offerings: `${NAMESPACE_PREFIX}Offerings__r`,
     RainPlanFor: `${NAMESPACE_PREFIX}RainPlanFor__r`,
     WeekExceptions: `${NAMESPACE_PREFIX}WeekExceptions__r`
@@ -1016,6 +1031,7 @@ export const CHILDREN = Object.freeze({
     SpecialDates: `${NAMESPACE_PREFIX}SpecialDates__r`
   }),
   TimeBlock: Object.freeze({
+    ActivityOffTimes: `${NAMESPACE_PREFIX}ActivityOffTimes__r`,
     Assignments: `${NAMESPACE_PREFIX}Assignments__r`,
     Copies: `${NAMESPACE_PREFIX}Copies__r`,
     ElectiveSets: `${NAMESPACE_PREFIX}ElectiveSets__r`,

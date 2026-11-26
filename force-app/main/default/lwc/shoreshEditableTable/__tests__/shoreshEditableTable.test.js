@@ -39,7 +39,7 @@ const ROWS = [
 ];
 
 // Properties naming objects or fields, and the records, as a screen of the package hands them
-// over (nsName / nsRecord: unchanged normally, shoresh__-prefixed in the namespaced run).
+// over (nsName / nsRecord: unchanged normally, Shoresh__-prefixed in the namespaced run).
 const NAME_PROPS = ["objectApiName", "filterField", "sameNameScope"];
 const RECORD_PROPS = ["rows", "weekExceptions", "newRowDefaults", "rowActions"];
 

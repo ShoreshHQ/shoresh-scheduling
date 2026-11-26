@@ -1,5 +1,6 @@
 /**
- * The attached records an import makes for an item (who can do it, who it covers, weeks off), for
+ * The attached records an import makes for an item (who can do it, when it can't run, who it
+ * covers, weeks off), for
  * ImportProvenance: an item whose attached records were added, changed or deleted by hand since
  * its import counts as changed (docs/import/review.md INGEST-5.7).
  */
@@ -7,6 +8,7 @@ public with sharing class ImportProvenanceAttached {
   // Attached records an import also makes: a hand change to one is a change to its item.
   private static final List<String> ATTACHED_TERMS = new List<String>{
     'ActivityEligibility',
+    'ActivityOffTime',
     'Coverage',
     'WeekException'
   };
@@ -48,6 +50,14 @@ public with sharing class ImportProvenanceAttached {
       [
         SELECT Id, Activity__c, LastModifiedDate
         FROM ActivityEligibility__c
+        WHERE Activity__c IN :ids
+        WITH USER_MODE
+      ]
+    );
+    rows.addAll(
+      [
+        SELECT Id, Activity__c, LastModifiedDate
+        FROM ActivityOffTime__c
         WHERE Activity__c IN :ids
         WITH USER_MODE
       ]
@@ -98,6 +108,7 @@ public with sharing class ImportProvenanceAttached {
     }
     List<SObject> rows = new List<SObject>();
     rows.addAll(deletedRows(ActivityEligibility__c.Activity__c, made));
+    rows.addAll(deletedRows(ActivityOffTime__c.Activity__c, made));
     rows.addAll(deletedRows(Coverage__c.RecurringActivity__c, made));
     rows.addAll(deletedRows(WeekException__c.Activity__c, made));
     rows.addAll(deletedRows(WeekException__c.FixedActivity__c, made));
@@ -131,6 +142,9 @@ public with sharing class ImportProvenanceAttached {
   private static Schema.SObjectType ownerObject(Schema.SObjectField owner) {
     if (owner == ActivityEligibility__c.Activity__c) {
       return ActivityEligibility__c.SObjectType;
+    }
+    if (owner == ActivityOffTime__c.Activity__c) {
+      return ActivityOffTime__c.SObjectType;
     }
     return owner == Coverage__c.RecurringActivity__c
       ? Coverage__c.SObjectType

@@ -140,10 +140,14 @@ describe("electives data", () => {
   });
 
   it("has no separate electives permission set (decision 48.1)", () => {
-    // The others are the API's access pieces, one per capability (api-access.test.js).
+    // The others are the API's access pieces, one per capability (api-access.test.js), and
+    // See error details, an admin's reader of support codes (CORE-6.15).
     expect(
       fs.readdirSync(PERMISSION_SETS).filter((f) => !/^(Send|Read)_/.test(f))
-    ).toEqual(["Shoresh_Scheduler.permissionset-meta.xml"]);
+    ).toEqual([
+      "See_Error_Details.permissionset-meta.xml",
+      "Shoresh_Scheduler.permissionset-meta.xml"
+    ]);
   });
 
   it("refuses deleting anything a set, offering, linked choice, run, choice or seat points at", () => {

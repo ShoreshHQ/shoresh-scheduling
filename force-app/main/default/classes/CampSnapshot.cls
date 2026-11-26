@@ -59,7 +59,8 @@ public class CampSnapshot {
           child(
             ActivityEligibility__c.SObjectType,
             ActivityEligibility__c.Activity__c
-          )
+          ),
+          child(ActivityOffTime__c.SObjectType, ActivityOffTime__c.Activity__c)
         }
       ),
       read(

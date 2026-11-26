@@ -1,10 +1,11 @@
 /**
- * change_activity_details: change an activity's details (who can do it, same division only, early
- * in the week, notes), as the person, through an agent or the command line (docs/protocol/api.md
+ * change_activity_details: change an activity's details (who can do it, when it runs, same
+ * division only, early in the week, notes), as the person, through an agent or the command line (docs/protocol/api.md
  * API-1.51). Web address /v1/change_activity_details, POST {season, name, fields, seen}. It is the
  * activity details panel's own save (ActivitiesController.saveActivityDetails), made only while
  * each field changed still holds what read_activity_details said (seen); someone else's change since
- * is refused (409) with nothing saved. Who can do it is left as it is unless it is changed.
+ * is refused (409) with nothing saved. Who can do it is left as it is unless it is changed; when
+ * it runs goes through the panel's own save of it (ActivitiesController.saveWhenItRuns).
  */
 @RestResource(urlMapping='/v1/change_activity_details')
 global with sharing class AgentChangeActivityRules implements AgentRequest.Change {
@@ -19,6 +20,8 @@ global with sharing class AgentChangeActivityRules implements AgentRequest.Chang
   private Map<String, Object> given;
   private Activity__c rules;
   private List<Id> chosen;
+  // When it runs, when asked: the season's boxes, and the ones it can't run.
+  private AgentActivityRuns runs;
   private List<String> said = new List<String>();
 
   @HttpPost
@@ -36,7 +39,7 @@ global with sharing class AgentChangeActivityRules implements AgentRequest.Chang
     given = AgentSetupFields.given(body.get('fields'));
     refuseUnknown();
     Map<String, Object> seen = AgentSetupFields.given(body.get('seen'));
-    refuseUnseen(seen);
+    AgentActivityAsked.refuseUnseen(given, seen);
     AgentActivityRules.useSeasonIfDayAsked(found.id, given);
     // Read the asked values first: one that doesn't read is refused before anything is locked.
     readAsked();
@@ -44,21 +47,10 @@ global with sharing class AgentChangeActivityRules implements AgentRequest.Chang
     // What was seen is said as the panel shows it: compared here, under the lock, so the
     // activity as it is now is the ticket handed to the save.
     refuseIfChangedSince(seen);
-    RowSaves.Result result;
-    try {
-      // The activity details panel's own save (SeenSaves); held since the lock above.
-      result = ActivitiesController.saveActivityDetails(
-        rules,
-        chosen,
-        AgentActivityRules.ticketNow(found.id, chosen)
-      );
-    } catch (Exception e) {
-      throw new ShoreshException(
-        '"' + found.name + '" not saved. ' + ScreenErrors.words(e)
-      );
-    }
-    if (!result.saved()) {
-      throw changedSince();
+    for (RowSaves.Result result : saves()) {
+      if (!result.saved()) {
+        throw changedSince();
+      }
     }
     return 'Changed the ' +
       found.kind +
@@ -67,6 +59,33 @@ global with sharing class AgentChangeActivityRules implements AgentRequest.Chang
       '": ' +
       String.join(said, ', ') +
       '.';
+  }
+
+  /**
+   * The activity details panel's own saves (SeenSaves; ActivityOffTimes), held since the lock:
+   * the rules and who can do it when any is asked, and when it runs when it is.
+   */
+  private List<RowSaves.Result> saves() {
+    List<RowSaves.Result> results = new List<RowSaves.Result>();
+    try {
+      if (runs == null || given.size() > 1) {
+        results.add(
+          ActivitiesController.saveActivityDetails(
+            rules,
+            chosen,
+            AgentActivityRules.ticketNow(found.id, chosen)
+          )
+        );
+      }
+      if (runs != null) {
+        results.add(runs.save(found.id));
+      }
+    } catch (Exception e) {
+      throw new ShoreshException(
+        '"' + found.name + '" not saved. ' + ScreenErrors.words(e)
+      );
+    }
+    return results;
   }
 
   private void refuseUnknown() {
@@ -90,27 +109,13 @@ global with sharing class AgentChangeActivityRules implements AgentRequest.Chang
     }
   }
 
-  /** Each changed field needs what was seen in it: Shoresh never reads it in its place. */
-  private void refuseUnseen(Map<String, Object> seen) {
-    List<String> missing = new List<String>();
-    for (String key : AgentActivityRules.names()) {
-      if (given.containsKey(key) && !seen.containsKey(key)) {
-        missing.add(key);
-      }
-    }
-    if (!missing.isEmpty()) {
-      throw new ShoreshException(
-        'Say what each field held when you read it (seen: ' +
-          String.join(missing, ', ') +
-          '), as read_activity_details gives it, so a change someone made since isn\'t overwritten.'
-      );
-    }
-  }
-
   /** The values asked, as the panel's save takes them, in the panel's order. */
   private void readAsked() {
     rules = new Activity__c(Id = found.id);
-    for (String key : AgentActivityRules.names()) {
+    // When it runs first: the season's boxes, read only when it is asked.
+    runs = AgentActivityRuns.askedIn(given, found.seasonId);
+    said.addAll(AgentActivityAsked.saidOf(runs));
+    for (String key : AgentActivityAsked.rulesAndWho()) {
       if (!given.containsKey(key)) {
         continue;
       }
@@ -159,7 +164,8 @@ global with sharing class AgentChangeActivityRules implements AgentRequest.Chang
     Map<String, String> now = AgentActivityRules.now(found.id);
     for (String key : given.keySet()) {
       if (
-        !AgentActivityRules.asShown(key, seen.get(key)).equals(now.get(key))
+        !AgentActivityAsked.asShown(key, seen.get(key), runs)
+          .equals(now.get(key))
       ) {
         throw changedSince();
       }

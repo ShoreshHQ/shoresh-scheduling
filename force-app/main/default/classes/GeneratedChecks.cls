@@ -5,7 +5,8 @@
  * - fixed and recurring activities stay where they are (GeneratedCellRules);
  * - nothing is put where a group isn't at camp (GeneratedCellRules: part of day; GeneratedClosures: away
  *   this week); a leftover there may be cleared;
- * - only this season's activities, and none closed this week (GeneratedClosures);
+ * - only this season's activities, none closed this week (GeneratedClosures), and none where its
+ *   When it runs leaves that day and time block out (ADR 0031 piece A);
  * - something not set up yet (an elective, a trip) stays where it is, and is never newly placed;
  * - Fill the open cells changes only cells that were Open;
  * - a locked cell is never changed (ScheduleGridLocks): its lock is the director's, and the
@@ -163,7 +164,9 @@ public with sharing class GeneratedChecks {
     if (!SlotIds.owner(slot).startsWith(SlotIds.ACTIVITY)) {
       throw GeneratedFrames.unreadable();
     }
-    closures.check(at[0], rules.seasonActivity(slot));
+    Activity__c activity = rules.seasonActivity(slot);
+    closures.check(at[0], activity);
+    closures.checkRuns(activity, at[1], day.day);
   }
 
   /**

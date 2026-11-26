@@ -204,7 +204,10 @@ Each rule is clue, meaning, example, test.
     import's own kept version is the import's, and goes with it. A copied season that keeps
     anything stays, with what it keeps. A holding record of a group with no division (DIV-1.1) comes back
     as a new holding record of the same name, which the director never sees. Too big a camp for
-    Salesforce to undo (or import) in one go changes nothing and says so plainly. Import a list's
+    Salesforce to undo (or import) in one go changes nothing and says so plainly. Undo puts back
+    one kind of record a call, since Salesforce refuses one save of more than ten kinds, or whose
+    rows switch kind more than ten times counted 200 at a time (#465): an import that changed a
+    dozen kinds, or a large camp's who lists of both kinds, undoes whole. Import a list's
     own Undo asks first, naming what goes in the camp's words ("Undo specials.csv? Remove 1
     special day and 1 special event"), never a bare count.
     Example: copy "Summer 2026" to "Summer 2027", then Undo last import in "Summer 2027": the
@@ -215,7 +218,9 @@ Each rule is clue, meaning, example, test.
     `ingest510UndoingCopySeasonTakesTheWholeCopyAway`,
     `ingest510ACopyChangedSinceKeepsTheChangeAndItsSeason`,
     `ingest510WhatTriggersWorkedOutGoesBackToo`; `AgentCopyAndMatchTest`
-    `ingest510TheAisCopyIsUndoneByTheAisUndo`; screen "INGEST-5.10: saves the list once every
+    `ingest510TheAisCopyIsUndoneByTheAisUndo`; `ImportUndoKindsTest`
+    `ingest510AnImportThatChangedElevenKindsIsAllPutBack`; `ImportUndoWhoTest`
+    `ingest510ALargeCampsWhoListsOfBothKindsAreAllUndone`; screen "INGEST-5.10: saves the list once every
     difference is answered, then its Undo names what it removes and puts back"; screen "a camp too big for one request says so,
     and that trying again won't help" (`shoreshErrors`).
 

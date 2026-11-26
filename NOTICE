@@ -35,6 +35,16 @@ License, Version 1.1, as packaged by Fontsource 5.2.8 (@fontsource/inter,
 force-app/main/default/staticresources/ShoreshFonts/. Their licence texts are in that folder
 and in docs/licenses/Inter-OFL.txt and docs/licenses/JetBrainsMono-OFL.txt.
 
+Shoresh's AI connector (force-app/main/default/staticresources/ShoreshConnect, also the
+Claude desktop extension Shoresh.mcpb) carries SheetJS Community Edition 0.20.3 unchanged as
+engine.SheetJS.cjs, and its two views (week-view.html, print-view.html) are compiled with
+Lightning Web Components 8.28.2 (@lwc/engine-dom and the LWC packages it uses,
+https://github.com/salesforce/lwc), Copyright (c) Salesforce, Inc., licensed under the MIT
+License, and tslib (https://github.com/microsoft/tslib) as built into @lwc/engine-dom,
+Copyright (c) Microsoft Corporation, licensed under the BSD Zero Clause License. Their licence texts:
+docs/licenses/LWC-MIT.txt and docs/licenses/tslib-0BSD.txt, also at the end of the connector's
+NOTICE.txt.
+
 This repository includes development-assistant skills (not part of the packaged app) from
 Salesforce sf-skills (https://github.com/forcedotcom/sf-skills, commit 625863f),
 Copyright (c) 2026 Salesforce, Inc., licensed under the Apache License, Version 2.0, in

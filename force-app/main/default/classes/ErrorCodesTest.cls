@@ -152,4 +152,78 @@ private class ErrorCodesTest {
     }
     Assert.isTrue(seen.size() > 40, 'Codes differ: ' + seen.size());
   }
+
+  /** A System Administrator (View All Data, as a camp's admin has), with a permission set. */
+  private static User adminWith(String permissionSetName) {
+    String unique = String.valueOf(Crypto.getRandomInteger()).replace('-', '');
+    User admin = new User(
+      Alias = 'admin',
+      Email = 'admin' + unique + '@example.com',
+      Username = 'admin' + unique + '@example.com.shoresh',
+      LastName = 'Admin',
+      ProfileId = [SELECT Id FROM Profile WHERE Name = 'System Administrator']
+      .Id,
+      TimeZoneSidKey = 'America/New_York',
+      LocaleSidKey = 'en_US',
+      EmailEncodingKey = 'UTF-8',
+      LanguageLocaleKey = 'en_US'
+    );
+    System.runAs(new User(Id = UserInfo.getUserId())) {
+      Database.insert(admin, AccessLevel.SYSTEM_MODE);
+      Database.insert(
+        new PermissionSetAssignment(
+          AssigneeId = admin.Id,
+          PermissionSetId = [
+            SELECT Id
+            FROM PermissionSet
+            WHERE Name = :permissionSetName
+          ]
+          .Id
+        ),
+        AccessLevel.SYSTEM_MODE
+      );
+    }
+    return admin;
+  }
+
+  // CORE-6.15: a camp's admin reads every Error Log in full, its detail too, through the
+  // packaged permission set See error details; a scheduler reads none of it.
+  @IsTest
+  static void seeErrorDetailsReadsEveryLogInFull() {
+    Test.startTest();
+    String code = ErrorCodes.keep(
+      'System.ListException: List index out of bounds: 3'
+    );
+    Test.stopTest();
+    User admin = adminWith('See_Error_Details');
+    User scheduler = ShoreshTestData.scheduler();
+    List<ErrorLog__c> read;
+    System.runAs(admin) {
+      read = [
+        SELECT Name, CreatedDate, Detail__c, Person__r.Name
+        FROM ErrorLog__c
+        WHERE Name = :code
+        WITH USER_MODE
+      ];
+    }
+    Assert.areEqual(1, read.size(), 'The log is there for the admin');
+    Assert.areEqual(
+      'System.ListException: List index out of bounds: 3',
+      read[0].Detail__c
+    );
+    Assert.isNotNull(read[0].Person__r, 'Who it happened to');
+    // No other permission set grants it: the scheduler's own query is refused.
+    Boolean refused = false;
+    System.runAs(scheduler) {
+      try {
+        Assert.fail(
+          'Read: ' + [SELECT Detail__c FROM ErrorLog__c WITH USER_MODE].size()
+        );
+      } catch (QueryException e) {
+        refused = e.getMessage()
+          .contains(String.valueOf(ErrorLog__c.SObjectType));
+      }
+    }
+    Assert.isTrue(refused, 'A scheduler reads no Error Log');
+  }
 }

@@ -289,6 +289,22 @@ async function printViewFile() {
     .replace("/* SHORESH_PRINTOUT_CODE */", () => code);
 }
 
+// Shoresh's licence and NOTICE, carried in the extension (a zip a camp downloads on its own),
+// with the licence texts of what the views bundle: the LWC engine (MIT) and tslib (0BSD) (API-1.157).
+const ROOT = path.resolve(__dirname, "..");
+const LICENSE_FILE = "LICENSE.txt";
+const NOTICE_FILE = "NOTICE.txt";
+const BUNDLED_LICENCES = ["LWC-MIT.txt", "tslib-0BSD.txt"];
+
+function noticeFile() {
+  return [
+    fs.readFileSync(path.join(ROOT, "NOTICE"), "utf8"),
+    ...BUNDLED_LICENCES.map((f) =>
+      fs.readFileSync(path.join(ROOT, "docs/licenses", f), "utf8")
+    )
+  ].join("\n\n");
+}
+
 /** What the extension holds besides its manifest, file by file. */
 function contents() {
   return fs
@@ -346,6 +362,8 @@ async function build() {
   fs.copyFileSync(SHEETJS, path.join(TO, SHEETJS_FILE));
   fs.writeFileSync(path.join(TO, VIEW_FILE), await viewFile());
   fs.writeFileSync(path.join(TO, PRINT_FILE), await printViewFile());
+  fs.copyFileSync(path.join(ROOT, "LICENSE"), path.join(TO, LICENSE_FILE));
+  fs.writeFileSync(path.join(TO, NOTICE_FILE), noticeFile());
   bumpVersionIfChanged(before);
   describeVersion();
   console.log(
@@ -368,6 +386,8 @@ module.exports = {
   printViewFile,
   PRINT_FILE,
   SHEETJS_FILE,
+  LICENSE_FILE,
+  NOTICE_FILE,
   flatName,
   ENGINE_ENTRY,
   CHECKS_ENTRIES,

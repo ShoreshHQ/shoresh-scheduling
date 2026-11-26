@@ -136,6 +136,16 @@ public with sharing class ImportWriter {
     }
   }
 
+  /**
+   * An item whose own rows a list added or removed (when an activity runs, ImportListOffTimes):
+   * counted as changed, once, unless this import added it.
+   */
+  public void countOwnRows(Id ownerId) {
+    if (!createdRows.containsKey(ownerId)) {
+      countChange(ImportFields.termOf(ownerId.getSObjectType()), ownerId);
+    }
+  }
+
   /** A camp word a workbook set back to Shoresh's own (removed): logged for Undo to put back. */
   public void logWordOff(CampLabel__c label) {
     changed.add(new ImportLogEntries.WordOff(label).toLog());

@@ -1411,8 +1411,8 @@ time_block, activity, location, source_system, camper_id, camper_name, camper_nu
 ## 34. People: who can use Shoresh
 
 Shoresh has no screen for people. Who can use it is set in Salesforce **Setup** (the gear, top
-right, then **Setup**; you need to be a Salesforce administrator), with one permission set:
-**Shoresh Scheduler**. The names below are the ones on screen in November 2026.
+right, then **Setup**; you need to be a Salesforce administrator), with one permission set for
+staff: **Shoresh Scheduler** (an administrator can add **See error details**, below). The names below are the ones on screen in November 2026.
 
 ### Give someone Shoresh
 
@@ -1460,6 +1460,25 @@ A connection user (section 33) can be given **Shoresh Scheduler** the same way. 
 every **Send …** and **Read …** in the tables in section 33, in every season of your camp. To
 allow less, give it only the **Send …** and **Read …** permission sets it needs instead, and
 share only the seasons it needs (section 33, step 4).
+
+### Look up a support code (Salesforce administrators)
+
+When something goes wrong that Shoresh can't explain, the message ends "For support: K7Q-4MX.".
+The code finds an Error Log record in your own Salesforce with when it happened, who it happened
+to and the technical detail. Only someone with the permission set **See error details** can read
+it; nobody has it until an administrator gives it.
+
+1. Give yourself **See error details**: do steps 1 to 5 of _Give someone Shoresh_ above on your
+   own name, choosing **See error details** instead of **Shoresh Scheduler**.
+2. Click the gear, top right, then **Developer Console**. It opens in a new window.
+3. At the bottom, click the **Query Editor** tab, and paste (with the code you were given):
+   `SELECT Name, CreatedDate, Person__r.Name, Detail__c FROM ErrorLog__c WHERE Name = 'K7Q-4MX'`
+4. Click **Execute**. One row shows: the code, when, who, and the detail (double-click the
+   **Detail__c** cell to read all of it).
+
+In the test org, without **See error details**, step 4 says "No such column 'Detail__c'". Once Shoresh is
+installed from the AppExchange, the names have its prefix: `shoresh__ErrorLog__c`,
+`shoresh__Person__r`, `shoresh__Detail__c`.
 
 ## 35. Getting started (Settings)
 

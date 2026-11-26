@@ -33,7 +33,15 @@ public with sharing class SlotRules {
     Set<Id> activityIds
   ) {
     return [
-      SELECT Id, Name, Location__c
+      SELECT
+        Id,
+        Name,
+        Location__c,
+        (
+          SELECT TimeBlock__c, Day__c
+          FROM OffTimes__r
+          WHERE TimeBlock__c != NULL
+        )
       FROM Activity__c
       WHERE Id IN :activityIds AND Season__c = :seasonId
       WITH USER_MODE
@@ -41,7 +49,8 @@ public with sharing class SlotRules {
   }
 
   /**
-   * The same, on the season's activities already read in user mode (Id, Name, Location__c), so a
+   * The same, on the season's activities already read in user mode (Id, Name, Location__c, and
+   * when it can't run: OffTimes__r, SeasonSetupReader.activitiesOf), so a
    * request that has them reads none again.
    */
   public SlotRules(Setup setup, List<Activity__c> seasonActivities) {

@@ -25,10 +25,19 @@ the director's computer, so support saw what the director saw.
 2. **Where the detail is kept: an Error Log record in the camp's own org.** No outside service,
    and nothing leaves the org. The record's name is the code; it holds who it happened to
    (`Person__c`), the detail (kind, message, where in Shoresh) and, as its Created date, when.
-   No permission set grants it, so only an admin, or Shoresh support logged in as one
-   (subscriber support login), reads it: Setup's Developer Console or any SOQL tool,
+   The packaged permission set **See error details** grants it (read only: the record, every
+   record, and its Detail and Person fields), and nothing else does; a camp's admin gives it to
+   themselves (Greg 2026-11-26: "admins can see and should see an error's technical details";
+   steps in `docs/try-camp-setup.md` §34). Checked 2026-11-26 in the test org (deployed, not
+   installed): the System Administrator could find the record by its code and see when, but not
+   who or the detail ("No such column 'Detail__c'"); no profile or permission set had the fields.
+   What an installed package gives the admin profile depends on how it is installed and isn't
+   checked yet (there is no package version); the permission set makes the fields readable
+   either way. It grants no View All: an admin's own View All Data reaches every log.
+   With it, the admin, or Shoresh support logged in as one (subscriber support login), reads it:
+   Setup's Developer Console or any SOQL tool,
    `SELECT Name, CreatedDate, Person__r.Name, Detail__c FROM ErrorLog__c WHERE Name = 'K7Q-4MX'`
-   (with the package's namespace prefix once it has one). Global search also finds it by code. The detail is
+   (with the package's namespace prefix once it has one). The detail is
    the platform's own message and stack, which can rarely quote a typed value (a name), as the debug
    log always did; it stays in the camp's org and is not cleared on its own.
 3. **Kept even when the request is undone.** A refused save undoes everything its request wrote,

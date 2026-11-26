@@ -132,8 +132,11 @@ These never bend for Shoresh.
   closed, away or not at camp.
 - **CORE-4.7** The maximum MAY be exceeded, and only the maximum; every time it is, it MUST be
   shown.
-- **CORE-4.8** Limits CORE-4.1 to 4.6 bind Shoresh. A person's hand edit MAY break them and MUST
+- **CORE-4.8** Limits CORE-4.1 to 4.6 and CORE-4.9 bind Shoresh. A person's hand edit MAY break them and MUST
   then be shown (Greg 2026-10-26).
+- **CORE-4.9** An activity MUST NOT be placed in a day and time block its When it runs leaves out
+  (ADR 0031 piece A); a multi-block activity needs every block of its length to be one it can
+  run in.
 
 ## Layer 5: Placement order
 
@@ -199,7 +202,12 @@ These never bend for Shoresh.
   can't be read or heard as another; the same code MUST find its detail, who and when in an Error
   Log record in the camp's own org, kept even when the request is undone, with no outside service.
   Shoresh's own refusals MUST NOT carry one; one request MUST have one code; a code the server
-  gave MUST NOT be given a second (ADR 0030; Greg 2026-11-21). Tests: ErrorCodesTest;
+  gave MUST NOT be given a second (ADR 0030; Greg 2026-11-21). A camp's Salesforce admin MUST be
+  able to read every Error Log record in full, its technical detail too, through the packaged
+  permission set **See error details** (read only: the object and its fields; the admin's View
+  All Data reaches every record); no other permission set grants it (Greg 2026-11-26: "admins can see and should see an error's technical details"). Tests:
+  ErrorCodesTest (seeErrorDetailsReadsEveryLogInFull); error-log-access.test.js "only See error details
+  grants the Error Log (CORE-6.15)";
   ScreenErrorsTest anythingElseSaysShoreshCouldNotTellWhy; shoreshErrors.test.js "support codes
   (CORE-6.15)".
 - **CORE-6.19** A count Shoresh can't make MUST be said, never shown as a smaller number or a

@@ -2,7 +2,7 @@
  * Test helpers for namespace-safe fixtures. Write fixtures with bare names, as today, and pass
  * every record a mocked Apex method returns through nsRecord(). In the normal Jest run it changes
  * nothing; in the namespaced run (npm run test:unit:namespaced) it renames `StartDate__c` to
- * `shoresh__StartDate__c`, which is what Salesforce will send once the package has its namespace.
+ * `Shoresh__StartDate__c`, which is what Salesforce sends in the namespaced package.
  *
  *   import { nsRecord, nsName } from "shoresh-jest/namespace";
  *   getSeasonSetup.mockResolvedValue(nsRecord(SETUP));
@@ -14,7 +14,7 @@ import { NAMESPACE_PREFIX } from "c/shoreshSchema";
 
 const CUSTOM = /__(c|r)$/;
 
-/** A bare custom name as the package has it: "Week__c" -> "shoresh__Week__c" when namespaced. */
+/** A bare custom name as the package has it: "Week__c" -> "Shoresh__Week__c" when namespaced. */
 export function nsName(name) {
   return CUSTOM.test(name) && !name.startsWith(NAMESPACE_PREFIX)
     ? NAMESPACE_PREFIX + name
@@ -44,7 +44,7 @@ export function nsRecord(value) {
 }
 
 /**
- * A name a component sent, with the package's prefix taken off ("shoresh__Week__c" ->
+ * A name a component sent, with the package's prefix taken off ("Shoresh__Week__c" ->
  * "Week__c"). In the namespaced run a custom name without the prefix fails the test.
  */
 export function bareName(name) {

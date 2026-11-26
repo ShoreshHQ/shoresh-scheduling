@@ -19,6 +19,7 @@ import mergeLocations from "@salesforce/apex/SetupTablesController.mergeLocation
 import placedInWeeks from "@salesforce/apex/RunsInController.placedInWeeks";
 import undoImport from "@salesforce/apex/ImportController.undoImport";
 import saveActivityDetails from "@salesforce/apex/ActivitiesController.saveActivityDetails";
+import saveWhenItRuns from "@salesforce/apex/ActivitiesController.saveWhenItRuns";
 import confirmGuess from "@salesforce/apex/SetupGuessesController.confirmGuess";
 import openPlan from "@salesforce/apex/SpecialScheduleController.openPlan";
 import followProgramDays from "@salesforce/apex/SeasonSetupController.followProgramDays";
@@ -162,6 +163,11 @@ jest.mock("@salesforce/apex/ImportController.undoImport", () => apex(), {
 });
 jest.mock(
   "@salesforce/apex/ActivitiesController.saveActivityDetails",
+  () => apex(),
+  { virtual: true }
+);
+jest.mock(
+  "@salesforce/apex/ActivitiesController.saveWhenItRuns",
   () => apex(),
   { virtual: true }
 );
@@ -4248,6 +4254,30 @@ describe("c-shoresh-camp-setup", () => {
       expect(first.onSaved).toHaveBeenCalled();
       expect(second.onFailure).toHaveBeenCalledWith("No.");
       expect(toasts).toEqual([]);
+    });
+
+    // ADR 0031 piece A: When it runs goes to its own save, the whole list with what was seen.
+    it("a box of When it runs unticked goes to saveWhenItRuns, the whole list and what was seen", async () => {
+      saveWhenItRuns.mockResolvedValue({ id: "a1" });
+      const element = await renderWith(
+        setupWith({
+          activities: [{ Id: "a1", Name: "Archery" }]
+        })
+      );
+      await openScreen(element, "activities");
+      const details = q(element, "c-shoresh-activity-details");
+      await details.open("a1");
+      await flush();
+      const box = details.shadowRoot.querySelector('[data-box="t1|Monday"]');
+      box.checked = false;
+      box.dispatchEvent(new CustomEvent("change"));
+      await flush();
+      await flush();
+      expect(sentTo(saveWhenItRuns)).toEqual([
+        { activityId: "a1", offTimes: ["t1|Monday"], seen: [] }
+      ]);
+      expect(saveActivityDetails).not.toHaveBeenCalled();
+      saveWhenItRuns.mockReset();
     });
 
     // Live bug: "Same division" on an activity for everyone was refused as "Who can do it wasn't

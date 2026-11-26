@@ -58,6 +58,7 @@ export {
   readLocations,
   readProgram
 } from "./checkInputs";
+export { runsAt, weekdayOf } from "./setup";
 export {
   CARRIES_ON,
   KIND,

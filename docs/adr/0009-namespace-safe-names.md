@@ -1,14 +1,14 @@
 # 0009: Namespace-safe names
 
 Status: accepted (2026-10-17). Built in PRs #28–#32, #34, #36 and the close-out. Plan: wiki
-`projects/shoresh-namespace-plan`. Greg chose the prefix `shoresh` (2026-10-17); it is registered
-later, from the one-time namespace org, with his go-ahead.
+`projects/shoresh-namespace-plan`. Greg chose the prefix `shoresh` (2026-10-17); it was registered as `Shoresh` (capital S) and
+linked to the Dev Hub on 2026-11-26, from the one-time namespace org.
 
 ## Why
 
 Shoresh ships as a managed package. Once it has its namespace, Salesforce names every custom
-object, field and relationship with the prefix: `Week__c` becomes `shoresh__Week__c`,
-`StartDate__c` becomes `shoresh__StartDate__c`. Typed Apex (`new Week__c(StartDate__c = …)`,
+object, field and relationship with the prefix: `Week__c` becomes `Shoresh__Week__c`,
+`StartDate__c` becomes `Shoresh__StartDate__c`. Typed Apex (`new Week__c(StartDate__c = …)`,
 static SOQL) and metadata are renamed for us. Names written as text are not. A screen reading
 `record.StartDate__c` would see blanks, a save naming `"Season__c"` would fail, and an Apex
 check comparing names as text would refuse good data (Undo, for one, would have said every
@@ -56,12 +56,12 @@ import "can't be read").
   `__e`, `__Share`, `__History`, `__x`, `__b`). Tests and the two schema homes aren't scanned.
   It allows none.
 - **The namespaced Jest run** (`npm run test:unit:namespaced`, the same CI job): every component's tests run with
-  every schema import named `shoresh__…`. Tests hand records in through `nsRecord()` and check
+  every schema import named `Shoresh__…`. Tests hand records in through `nsRecord()` and check
   what a component sends through `bareRecord()` (`jest/namespace.js`), which fails on a bare or
   undefined name. New components are covered automatically; an exclusion needs a reason in
   `jest.namespaced.config.js`.
 - **Apex tests with the prefix simulated** (CI's "Scratch org deploy and Apex tests" job, on pull
-  requests): `ShoreshSchema.simulatedPrefix = 'shoresh__'` makes
+  requests): `ShoreshSchema.simulatedPrefix = 'Shoresh__'` makes
   Shoresh read names as the namespaced package will. Import and Undo are tested with plans and
   logs spelled with the prefix.
 - **Mutation checks when converting code (review practice):** swap each converted name back to
@@ -78,5 +78,5 @@ After the namespace is registered and set in `sfdx-project.json`:
    `getSObject(field)` behave as designed.
 2. Renew the test org (it becomes namespaced), deploy, run CI, and walk through
    `docs/try-camp-setup.md`: every setup screen, list and workbook import, Undo, Manual Build
-   and the schedule page. This proves records reach the screens with `shoresh__` keys and that
+   and the schedule page. This proves records reach the screens with `Shoresh__` keys and that
    the compiled schema imports carry the prefix.

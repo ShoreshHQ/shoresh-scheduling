@@ -1,6 +1,7 @@
 /**
  * The part of "copy last season" that copies location types, locations, activities (with their
- * rain plans), and who can do each. New records link to their originals by CopiedFrom__c; the
+ * rain plans), who can do each, and when each can't run (its time blocks matched as the
+ * season copy matched them). New records link to their originals by CopiedFrom__c; the
  * original season is only read.
  */
 public with sharing class SetupCopier {
@@ -8,6 +9,8 @@ public with sharing class SetupCopier {
   private final Id newSeasonId;
   // The copy's import log (SeasonCopier).
   private final ImportWriter log;
+  // Each copied activity's unticked boxes, read with it: Copy season stays under its query bound.
+  private final List<ActivityOffTime__c> offTimes = new List<ActivityOffTime__c>();
 
   public SetupCopier(SeasonCopier.Copying made) {
     this.sourceSeasonId = made.sourceSeasonId;
@@ -23,6 +26,7 @@ public with sharing class SetupCopier {
     Map<Id, Location__c> locationCopies = copyLocations(copyLocationTypes());
     Map<Id, Activity__c> activityCopies = copyActivities(locationCopies);
     copyEligibility(activityCopies, structureCopies);
+    copyOffTimes(activityCopies, structureCopies);
     Map<Id, Id> result = new Map<Id, Id>();
     for (Id sourceId : locationCopies.keySet()) {
       result.put(sourceId, locationCopies.get(sourceId).Id);
@@ -97,12 +101,20 @@ public with sharing class SetupCopier {
         EarlyWeekByDay__c,
         Notes__c,
         SortOrder__c,
-        FormerNames__c
+        FormerNames__c,
+        (
+          SELECT Activity__c, TimeBlock__c, Day__c
+          FROM OffTimes__r
+          WHERE TimeBlock__c != NULL
+        )
       FROM Activity__c
       WHERE Season__c = :sourceSeasonId
       WITH USER_MODE
     ]) {
-      Activity__c copy = activity.clone(false, true, false, false);
+      for (ActivityOffTime__c row : activity.OffTimes__r) {
+        offTimes.add(row);
+      }
+      Activity__c copy = fieldsOf(activity);
       copy.Season__c = newSeasonId;
       copy.Location__c = activity.Location__c == null
         ? null
@@ -130,6 +142,18 @@ public with sharing class SetupCopier {
     return copies;
   }
 
+  /** A copy of the activity's fields, without the boxes read with it (a clone would keep them). */
+  private static Activity__c fieldsOf(Activity__c activity) {
+    Activity__c copy = new Activity__c();
+    Map<String, Object> fields = activity.getPopulatedFieldsAsMap();
+    for (String name : fields.keySet()) {
+      if (name != 'Id' && !(fields.get(name) instanceof List<SObject>)) {
+        copy.put(name, fields.get(name));
+      }
+    }
+    return copy;
+  }
+
   private void copyEligibility(
     Map<Id, Activity__c> activityCopies,
     Map<Id, Id> structureCopies
@@ -150,5 +174,26 @@ public with sharing class SetupCopier {
       );
     }
     log.saveTracked('ActivityEligibility', copies);
+  }
+
+  /** Each box unticked under When it runs, on the copied time block (ADR 0031 A7). */
+  private void copyOffTimes(
+    Map<Id, Activity__c> activityCopies,
+    Map<Id, Id> structureCopies
+  ) {
+    List<ActivityOffTime__c> copies = new List<ActivityOffTime__c>();
+    for (ActivityOffTime__c row : offTimes) {
+      Id block = structureCopies.get(row.TimeBlock__c);
+      if (block != null) {
+        copies.add(
+          new ActivityOffTime__c(
+            Activity__c = activityCopies.get(row.Activity__c).Id,
+            TimeBlock__c = block,
+            Day__c = row.Day__c
+          )
+        );
+      }
+    }
+    log.saveTracked('ActivityOffTime', copies);
   }
 }

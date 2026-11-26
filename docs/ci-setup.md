@@ -125,8 +125,8 @@ version of each pull request is checked. A `docs` pull request doesn't join the 
 
 ## Namespace-safety checks (in "LWC Jest and Code Analyzer")
 
-Once the package has its `shoresh` namespace, Salesforce names every custom field
-`shoresh__Field__c`, so code that writes `StartDate__c` as text finds nothing (blank cells, failed
+The package has the namespace `Shoresh` (registered with a capital S, linked to the Dev Hub
+2026-11-26), so in the packaged app Salesforce names every custom field `Shoresh__Field__c`, so code that writes `StartDate__c` as text finds nothing (blank cells, failed
 saves). Every such spelling has been replaced; two checks keep it that way
 (`docs/adr/0009-namespace-safe-names.md`):
 
@@ -135,12 +135,15 @@ saves). Every such spelling has been replaced; two checks keep it that way
   as text in LWC JavaScript or templates, or in an Apex string literal, and on Apex `getName()`.
   Tests, comments, `c/shoreshSchema` and `ShoreshSchema.cls` don't count. It allows none.
 - **Namespaced Jest run** (`npm run test:unit:namespaced`): every component's tests run with every
-  `@salesforce/schema` import named `shoresh__...`; new components are included automatically.
+  `@salesforce/schema` import named `Shoresh__...`; new components are included automatically.
   Tests hand records in through `nsRecord()` and check what is sent through `bareRecord()`
   (`jest/namespace.js`). The engine's seed sweeps (listed in `jest.namespaced.config.js`) are left
   out of this run only: they read setup through the same code the other suites already cover here.
 
-Neither proves the namespaced org works; that is checked after the namespace is registered.
+Neither proves the namespaced org works. The test org is still created without the namespace
+(`--no-namespace` in `scripts/renew-test-org.sh`), so CI keeps checking the same un-namespaced app
+it always has; the first real namespaced check is a package version (`sf package version create
+--code-coverage`), which needs Greg's go-ahead.
 
 ## Checks that catch org-only mistakes early (in "LWC Jest and Code Analyzer")
 

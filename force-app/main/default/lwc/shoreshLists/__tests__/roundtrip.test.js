@@ -610,6 +610,7 @@ const DOWNLOADS = {
       "Early in the week",
       "Who can do it",
       "Weeks",
+      "When it runs",
       "Notes"
     ],
     [
@@ -626,6 +627,7 @@ const DOWNLOADS = {
       "1 by Wednesday",
       "Bunk 3, Juniors (Main)",
       "Every week",
+      "Whenever",
       "'+Bring towels"
     ],
     [
@@ -642,6 +644,7 @@ const DOWNLOADS = {
       "",
       "Everyone",
       "Off Week 2",
+      "Whenever",
       ""
     ]
   ],

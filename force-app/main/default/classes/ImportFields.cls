@@ -19,6 +19,8 @@ public with sharing class ImportFields {
     'Location' => Location__c.SObjectType,
     'Activity' => Activity__c.SObjectType,
     'ActivityEligibility' => ActivityEligibility__c.SObjectType,
+    // When an activity can't run (ADR 0031 A2).
+    'ActivityOffTime' => ActivityOffTime__c.SObjectType,
     'FixedActivity' => FixedActivity__c.SObjectType,
     'RecurringActivity' => RecurringActivity__c.SObjectType,
     'Coverage' => Coverage__c.SObjectType,
@@ -122,6 +124,11 @@ public with sharing class ImportFields {
       ActivityEligibility__c.Activity__c,
       ActivityEligibility__c.Division__c,
       ActivityEligibility__c.Group__c
+    },
+    ActivityOffTime__c.SObjectType => new Set<Schema.SObjectField>{
+      ActivityOffTime__c.Activity__c,
+      ActivityOffTime__c.TimeBlock__c,
+      ActivityOffTime__c.Day__c
     },
     FixedActivity__c.SObjectType => new Set<Schema.SObjectField>{
       FixedActivity__c.Name,

@@ -52,7 +52,7 @@ fi
 
 echo "Creating a new 30-day test org..."
 if ! sf org create scratch --definition-file config/project-scratch-def.json \
-  --target-dev-hub "$HUB" --alias "$ALIAS" --duration-days 30 --wait 15 >/dev/null; then
+  --target-dev-hub "$HUB" --alias "$ALIAS" --duration-days 30 --wait 15 --no-namespace >/dev/null; then
   echo "Creating the new test org failed. There is now no test org, and the automatic checks will"
   echo "fail until there is one. Do not simply re-run: ask Claude to check the Dev Hub first, in"
   echo "case the org was created anyway after the wait ran out."

@@ -4689,6 +4689,34 @@ describe("Shoresh for AI tools and the command line", () => {
     );
   });
 
+  // API-1.157
+  it("carriesItsLicences: the connector carries Shoresh's licence and NOTICE, with the licence texts of what it bundles", () => {
+    const { TO, LICENSE_FILE, NOTICE_FILE } = require("../../scripts/build-connect");
+    const ROOT = path.resolve(__dirname, "../..");
+    const read = (...p) => fs.readFileSync(path.join(...p), "utf8");
+    expect(read(TO, LICENSE_FILE)).toBe(read(ROOT, "LICENSE"));
+    const notice = read(TO, NOTICE_FILE);
+    expect(notice.startsWith(read(ROOT, "NOTICE"))).toBe(true);
+    for (const licence of ["LWC-MIT.txt", "tslib-0BSD.txt"]) {
+      expect(notice).toContain(read(ROOT, "docs/licenses", licence));
+    }
+    // Every bundled library the views carry is named in NOTICE and Settings' Legal, LWC at the
+    // engine version the views were built with (each view marks it), so an upgrade can't go stale.
+    const { parts } = require("../../force-app/main/default/lwc/shoreshAbout/aboutText.js").LEGAL;
+    const { version } = require("@lwc/engine-dom/package.json");
+    for (const view of ["week-view.html", "print-view.html"]) {
+      const text = read(TO, view);
+      expect([view, text.includes(`/** version: ${version} */`)]).toEqual([view, true]);
+      expect(notice).toContain(`Lightning Web Components ${version}`);
+      expect(parts.some((p) => p.startsWith(`Lightning Web Components ${version},`))).toBe(true);
+      if (/Microsoft Corporation/.test(text)) {
+        expect(notice).toContain("tslib");
+        expect(parts.some((p) => p.startsWith("tslib,"))).toBe(true);
+      }
+    }
+    expect(notice).toContain("SheetJS Community Edition 0.20.3");
+  });
+
   it("shipsInsideThePackage: the connector is the ShoreshConnect static resource, the same files as connect/, needing only Node", () => {
     const { connectorFiles, FROM, TO } = require("../../scripts/build-connect");
     expect(
@@ -4699,7 +4727,8 @@ describe("Shoresh for AI tools and the command line", () => {
             f !== "manifest.json" &&
             !f.endsWith(".mjs") &&
             !f.endsWith(".cjs") &&
-            !f.endsWith(".html")
+            !f.endsWith(".html") &&
+            !f.endsWith(".txt")
         )
         .sort()
     ).toEqual(connectorFiles());
@@ -6050,9 +6079,23 @@ describe("Shoresh for AI tools and the command line", () => {
       { run: answering(clearSent), edits }
     );
     expect(cleared.ok).toBe(true);
-    expect(clearSent[1].args[3]).toBe("/services/apexrest/v1/copy_cells");
+    // WEEK-6.14: its own address, where the week is kept as "Before Clear Monday" first.
+    expect(clearSent[1].args[3]).toBe("/services/apexrest/v1/clear_cells");
     const dayBody = JSON.parse(clearSent[1].stdin);
     expect(dayBody.change).toBe("Cleared Monday");
+    // WEEK-6.15: the screen's own preview goes with it, for Shoresh to ask first.
+    expect(dayBody.preview[dayBody.preview.length - 1]).toBe(
+      'The week as it is now is kept in Versions as "Before Clear Monday".'
+    );
+    expect(dayBody.preview.length).toBeGreaterThan(1);
+    expect(dayBody.confirm).toBeUndefined();
+    const yesSent = [];
+    await call(
+      "clear_day",
+      { ...asked, day: "Monday", confirm: "ticket" },
+      { run: answering(yesSent), edits }
+    );
+    expect(JSON.parse(yesSent[1].stdin).confirm).toBe("ticket");
     expect(dayBody.runs).toEqual(
       asTheScreen({
         kind: "clear",
@@ -6095,6 +6138,7 @@ describe("Shoresh for AI tools and the command line", () => {
       { run: answering(weekSent), edits }
     );
     delete read.week_name;
+    expect(weekSent[1].args[3]).toBe("/services/apexrest/v1/clear_cells");
     const weekBody = JSON.parse(weekSent[1].stdin);
     expect(weekBody.change).toBe("Cleared Week 1");
     expect(weekBody.runs).toEqual(

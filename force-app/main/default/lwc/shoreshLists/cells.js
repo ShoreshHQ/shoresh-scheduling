@@ -15,6 +15,7 @@ import {
   timeRange
 } from "c/shoreshImportEngine";
 import { readWeeks } from "./weeks";
+import { readRuns } from "./whenItRuns";
 
 const FORMULA_START = /^[=+\-@\t\r\n]/;
 
@@ -429,7 +430,7 @@ function bareHour(hour, text) {
 /**
  * One cell, read for its column: { value }, { blank: true }, or { problem } (the reason, shown
  * with the row). column.type: text, ref, whole, wholeOrNone, yesNo, choice, list, early, days,
- * day, weeks, time ({ value, unsure } for a 5 or 6 o'clock time without AM or PM).
+ * day, weeks, runs, time ({ value, unsure } for a 5 or 6 o'clock time without AM or PM).
  */
 export function readCell(column, raw) {
   const text = tidy(unescapeCell(raw));
@@ -490,6 +491,8 @@ export function readCell(column, raw) {
     }
     case "weeks":
       return readWeeks(column, text);
+    case "runs":
+      return readRuns(column, text);
     default:
       // Every list's name, and a name in another list's column (which may add it), is a
       // Salesforce name: longer than it keeps is never Ready to save, for the save to refuse

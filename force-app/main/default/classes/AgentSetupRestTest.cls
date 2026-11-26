@@ -217,7 +217,7 @@ private class AgentSetupRestTest {
       Test.stopTest();
       Assert.areEqual(200, read[0], String.valueOf(read[1]));
       Assert.areEqual(
-        'The activity "Swim" details hold who_can_do_it: ["Group A"]; same_division_only: no; early_week_count: (blank); early_week_by_day: (blank); notes: (blank). Send these back as seen when changing them.',
+        'The activity "Swim" details hold who_can_do_it: ["Group A"]; when_it_runs: whenever; same_division_only: no; early_week_count: (blank); early_week_by_day: (blank); notes: (blank). Send these back as seen when changing them.',
         read[1]
       );
       Assert.areEqual(200, changed[0], String.valueOf(changed[1]));
@@ -280,6 +280,107 @@ private class AgentSetupRestTest {
             'There is no division or group called "Lake" that you can see.'
           ),
         String.valueOf(nobody[1])
+      );
+    }
+  }
+
+  // API-1.51 (ADR 0031 piece A): when it runs, read and changed as the panel's grid has it.
+  @IsTest
+  static void whenItRunsIsTheDetailsPanelsGrid() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      GeneratedTestData.camp();
+      String season = seasonName();
+      Id swim = GeneratedTestData.ids.get('Swim');
+      Test.startTest();
+      List<Object> changed = ask(
+        new AgentChangeActivityRules(),
+        'POST',
+        new Map<String, Object>{
+          'season' => season,
+          'name' => 'Swim',
+          'fields' => new Map<String, Object>{
+            'when_it_runs' => new List<String>{
+              'lunch, monday',
+              'Period 2, Tuesday'
+            }
+          },
+          'seen' => new Map<String, Object>{ 'when_it_runs' => 'whenever' }
+        }
+      );
+      List<Object> read = ask(
+        new AgentReadActivityRules(),
+        'GET',
+        new Map<String, Object>{ 'season' => season, 'name' => 'Swim' }
+      );
+      // Seen in another order and case is what was read.
+      List<Object> back = ask(
+        new AgentChangeActivityRules(),
+        'POST',
+        new Map<String, Object>{
+          'season' => season,
+          'name' => 'Swim',
+          'fields' => new Map<String, Object>{ 'when_it_runs' => 'whenever' },
+          'seen' => new Map<String, Object>{
+            'when_it_runs' => '["Period 2, Tuesday", "Lunch, Monday"]'
+          }
+        }
+      );
+      List<Object> stale = ask(
+        new AgentChangeActivityRules(),
+        'POST',
+        new Map<String, Object>{
+          'season' => season,
+          'name' => 'Swim',
+          'fields' => new Map<String, Object>{
+            'when_it_runs' => new List<String>{ 'Lunch, Monday' }
+          },
+          'seen' => new Map<String, Object>{
+            'when_it_runs' => '["Lunch, Monday"]'
+          }
+        }
+      );
+      List<Object> noBox = ask(
+        new AgentChangeActivityRules(),
+        'POST',
+        new Map<String, Object>{
+          'season' => season,
+          'name' => 'Swim',
+          'fields' => new Map<String, Object>{
+            'when_it_runs' => new List<String>{ 'Lunch, Sunday' }
+          },
+          'seen' => new Map<String, Object>{ 'when_it_runs' => 'whenever' }
+        }
+      );
+      Test.stopTest();
+      Assert.areEqual(200, changed[0], String.valueOf(changed[1]));
+      Assert.areEqual(
+        'Changed the activity "Swim": when it runs ["Lunch, Monday","Period 2, Tuesday"].',
+        changed[1]
+      );
+      Assert.isTrue(
+        String.valueOf(read[1])
+          .contains(
+            'when_it_runs: ["Lunch, Monday","Period 2, Tuesday"]; same_division_only'
+          ),
+        String.valueOf(read[1])
+      );
+      Assert.areEqual(200, back[0], String.valueOf(back[1]));
+      Assert.areEqual(
+        0,
+        [
+          SELECT COUNT()
+          FROM ActivityOffTime__c
+          WHERE Activity__c = :swim
+          WITH SYSTEM_MODE
+        ],
+        'Whenever: every box ticked again'
+      );
+      Assert.areEqual(409, stale[0], String.valueOf(stale[1]));
+      Assert.areEqual(400, noBox[0], String.valueOf(noBox[1]));
+      Assert.isTrue(
+        String.valueOf(noBox[1])
+          .contains('When it runs has no box "Lunch, Sunday"'),
+        String.valueOf(noBox[1])
       );
     }
   }

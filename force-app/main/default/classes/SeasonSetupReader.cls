@@ -284,7 +284,8 @@ public with sharing class SeasonSetupReader {
   }
 
   /**
-   * The season's activities, with who can do each, as every screen gets them. Manual Build's
+   * The season's activities, with who can do each and when each can't run (its off times, ADR
+   * 0031 A2), as every screen gets them. Manual Build's
    * draft carries them too, and "Add <name>" sends back the one it added, so its checks read the
    * same records as the setup screen, as fresh as the draft.
    */
@@ -310,7 +311,13 @@ public with sharing class SeasonSetupReader {
         SortOrder__c,
         FormerNames__c,
         CreatedDate,
-        (SELECT Id, Division__c, Group__c FROM Eligibilities__r)
+        (SELECT Id, Division__c, Group__c FROM Eligibilities__r),
+        (
+          SELECT Id, TimeBlock__c, Day__c
+          FROM OffTimes__r
+          WHERE TimeBlock__c != NULL
+          ORDER BY TimeBlock__c, Day__c
+        )
       FROM Activity__c
       WHERE Season__c = :seasonId
       WITH USER_MODE
