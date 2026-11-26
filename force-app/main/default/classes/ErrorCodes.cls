@@ -87,7 +87,7 @@ public with sharing class ErrorCodes {
       codes.add(event.Code__c);
     }
     // System mode: the trigger runs as Salesforce's Automated Process user, and the log is
-    // granted to no one (reviewer notes, system mode row 3). People can add to it only through
+    // granted only by See error details, read only (reviewer notes, system mode row 3). People can add to it only through
     // keepFromScreen, never read, change or delete it; Person__c is who really sent it.
     for (ErrorLog__c kept : [
       SELECT Name

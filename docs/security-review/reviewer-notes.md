@@ -16,7 +16,7 @@ or create and edit, no delete, no system permissions). Season__c is Private with
 shipped; the scheduling objects are controlled by their season, so seeing a season means seeing
 what is in it. The camp's own words, saved import answers and learned answers (`CampLabel__c`,
 `ImportAnswer__c`, `LearnedEvent__c`) are controlled by their camp, and `Camp__c` is Public
-Read/Write inside the org: a camp is the organization, so everyone with Shoresh shares them. The Error Log (`ErrorLog__c`) is Private and granted to no one: an admin, or Shoresh support logged in as one, reads it by the support code a person was shown. Its detail is the platform's own message and stack, which can rarely quote a typed value (a name); it stays in the camp's org and is not cleared on its own. System mode, where used, skips object and field permissions only, never record sharing.
+Read/Write inside the org: a camp is the organization, so everyone with Shoresh shares them. The Error Log (`ErrorLog__c`) is Private and granted only by the permission set **See error details** (read only, View All on that object, its two fields readable), which a camp's admin gives themselves: the admin, or Shoresh support logged in as one, reads it by the support code a person was shown. Shoresh Scheduler doesn't grant it. Its detail is the platform's own message and stack, which can rarely quote a typed value (a name); it stays in the camp's org and is not cleared on its own. System mode, where used, skips object and field permissions only, never record sharing.
 
 ## Code Analyzer suppressions (`code-analyzer.yml`)
 

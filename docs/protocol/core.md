@@ -199,7 +199,11 @@ These never bend for Shoresh.
   can't be read or heard as another; the same code MUST find its detail, who and when in an Error
   Log record in the camp's own org, kept even when the request is undone, with no outside service.
   Shoresh's own refusals MUST NOT carry one; one request MUST have one code; a code the server
-  gave MUST NOT be given a second (ADR 0030; Greg 2026-11-21). Tests: ErrorCodesTest;
+  gave MUST NOT be given a second (ADR 0030; Greg 2026-11-21). A camp's Salesforce admin MUST be
+  able to read every Error Log record in full, its technical detail too, through the packaged
+  permission set **See error details** (read only, every record); no other permission set grants
+  it (Greg 2026-11-26: "admins can see and should see an error's technical details"). Tests:
+  ErrorCodesTest (seeErrorDetailsReadsEveryLogInFull);
   ScreenErrorsTest anythingElseSaysShoreshCouldNotTellWhy; shoreshErrors.test.js "support codes
   (CORE-6.15)".
 - **CORE-6.19** A count Shoresh can't make MUST be said, never shown as a smaller number or a

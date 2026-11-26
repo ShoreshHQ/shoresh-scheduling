@@ -152,4 +152,44 @@ private class ErrorCodesTest {
     }
     Assert.isTrue(seen.size() > 40, 'Codes differ: ' + seen.size());
   }
+
+  // CORE-6.15: a camp's admin reads every Error Log in full, its detail too, through the
+  // packaged permission set See error details; a scheduler reads none of it.
+  @IsTest
+  static void seeErrorDetailsReadsEveryLogInFull() {
+    Test.startTest();
+    String code = ErrorCodes.keep(
+      'System.ListException: List index out of bounds: 3'
+    );
+    Test.stopTest();
+    User admin = ShoreshTestData.userWith('See_Error_Details');
+    User scheduler = ShoreshTestData.scheduler();
+    List<ErrorLog__c> read;
+    System.runAs(admin) {
+      read = [
+        SELECT Name, CreatedDate, Detail__c, Person__r.Name
+        FROM ErrorLog__c
+        WHERE Name = :code
+        WITH USER_MODE
+      ];
+    }
+    Assert.areEqual(1, read.size(), 'The log is there for the admin');
+    Assert.areEqual(
+      'System.ListException: List index out of bounds: 3',
+      read[0].Detail__c
+    );
+    Assert.isNotNull(read[0].Person__r, 'Who it happened to');
+    // No other permission set grants it: the scheduler's own query is refused.
+    Boolean refused = false;
+    System.runAs(scheduler) {
+      try {
+        Assert.fail(
+          'Read: ' + [SELECT Detail__c FROM ErrorLog__c WITH USER_MODE].size()
+        );
+      } catch (QueryException e) {
+        refused = true;
+      }
+    }
+    Assert.isTrue(refused, 'A scheduler reads no Error Log');
+  }
 }
