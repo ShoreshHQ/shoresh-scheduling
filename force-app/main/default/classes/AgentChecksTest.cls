@@ -100,6 +100,39 @@ private class AgentChecksTest {
     }
   }
 
+  // API-1.44: a week on Manual Build only reads that screen's draft in place of what Generate
+  // reads, with its setup changes and accepted lines, as the counter there reads them.
+  @IsTest
+  static void aManualBuildWeeksChecksReadItsDraft() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      GeneratedTestData.camp();
+      Id draftId = ManualDrafts.start(
+          GeneratedTestData.ids.get('Main'),
+          GeneratedTestData.ids.get('Week 1')
+        )
+        .draftId;
+      Test.startTest();
+      List<Object> checks = read();
+      Test.stopTest();
+      Assert.areEqual(200, checks[0], String.valueOf(checks[1]));
+      Map<String, Object> body = (Map<String, Object>) checks[1];
+      Assert.isFalse(
+        body.containsKey('inputs'),
+        'Generate\'s read is not this week\'s'
+      );
+      Map<String, Object> schedule = (Map<String, Object>) ((Map<String, Object>) body.get(
+          'draft'
+        ))
+        .get('schedule');
+      Assert.areEqual(
+        String.valueOf(draftId),
+        ((Map<String, Object>) schedule.get('schedule')).get('id')
+      );
+      Assert.isNotNull(body.get('setup_changes'));
+      Assert.areEqual('[]', body.get('accepted'));
+    }
+  }
+
   // API-1.30
   @IsTest
   static void aWeekNeverBuiltHasNoChecks() {
