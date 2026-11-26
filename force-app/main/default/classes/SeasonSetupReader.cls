@@ -75,6 +75,7 @@ public with sharing class SeasonSetupReader {
       ORDER BY SortOrder__c NULLS LAST, Name, Id
     ];
     result.locations = locationsOf(seasonId);
+    result.staff = staffOf(seasonId);
     result.activities = activitiesOf(seasonId);
     result.weekExceptions = [
       SELECT
@@ -283,9 +284,20 @@ public with sharing class SeasonSetupReader {
     ];
   }
 
+  /** The season's staff (ADR 0031 piece B), in the Staff list's order. */
+  public static List<StaffMember__c> staffOf(Id seasonId) {
+    return [
+      SELECT Id, Name, Notes__c, SortOrder__c, SourceSystem__c, OutsideId__c
+      FROM StaffMember__c
+      WHERE Season__c = :seasonId
+      WITH USER_MODE
+      ORDER BY SortOrder__c NULLS LAST, Name, Id
+    ];
+  }
+
   /**
-   * The season's activities, with who can do each and when each can't run (its off times, ADR
-   * 0031 A2), as every screen gets them. Manual Build's
+   * The season's activities, with who can do each, when each can't run (its off times, ADR
+   * 0031 A2) and who leads each (piece B), as every screen gets them. Manual Build's
    * draft carries them too, and "Add <name>" sends back the one it added, so its checks read the
    * same records as the setup screen, as fresh as the draft.
    */
@@ -317,6 +329,12 @@ public with sharing class SeasonSetupReader {
           FROM OffTimes__r
           WHERE TimeBlock__c != NULL
           ORDER BY TimeBlock__c, Day__c
+        ),
+        (
+          SELECT Id, StaffMember__c
+          FROM Leaders__r
+          WHERE StaffMember__c != NULL
+          ORDER BY StaffMember__r.SortOrder__c NULLS LAST, StaffMember__r.Name
         )
       FROM Activity__c
       WHERE Season__c = :seasonId
@@ -338,6 +356,8 @@ public with sharing class SeasonSetupReader {
     public List<LocationType__c> locationTypes;
     @AuraEnabled
     public List<Location__c> locations;
+    @AuraEnabled
+    public List<StaffMember__c> staff;
     @AuraEnabled
     public List<Activity__c> activities;
     @AuraEnabled
