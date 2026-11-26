@@ -17,7 +17,7 @@ public with sharing class ActivityLeaderTriggerHandler {
     // One read: each activity's season, with the staff named that are in it (Copy season saves
     // leaders within its query bound).
     Map<Id, Id> seasonOfActivity = new Map<Id, Id>();
-    Set<Id> inSeason = new Set<Id>();
+    Set<String> inSeason = new Set<String>();
     for (Season__c season : [
       SELECT
         Id,

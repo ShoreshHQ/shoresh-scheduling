@@ -14,12 +14,17 @@ public with sharing class SetupCopier {
   // And who leads each (ADR 0031 piece B), with the source season's staff.
   private final List<ActivityLeader__c> leaders = new List<ActivityLeader__c>();
   private final List<StaffMember__c> staff;
+  // The source season's location types and locations, read with it (SeasonCopier).
+  private final List<LocationType__c> locationTypes;
+  private final List<Location__c> locations;
 
   public SetupCopier(SeasonCopier.Copying made) {
     this.sourceSeasonId = made.sourceSeasonId;
     this.newSeasonId = made.newSeasonId;
     this.log = made.log;
     this.staff = made.staff;
+    this.locationTypes = made.locationTypes;
+    this.locations = made.locations;
   }
 
   /**
@@ -44,12 +49,7 @@ public with sharing class SetupCopier {
 
   private Map<Id, LocationType__c> copyLocationTypes() {
     Map<Id, LocationType__c> copies = new Map<Id, LocationType__c>();
-    for (LocationType__c type : [
-      SELECT Id, Name, SortOrder__c
-      FROM LocationType__c
-      WHERE Season__c = :sourceSeasonId
-      WITH USER_MODE
-    ]) {
+    for (LocationType__c type : locationTypes) {
       LocationType__c copy = type.clone(false, true, false, false);
       copy.Season__c = newSeasonId;
       copy.CopiedFrom__c = type.Id;
@@ -63,12 +63,7 @@ public with sharing class SetupCopier {
     Map<Id, LocationType__c> typeCopies
   ) {
     Map<Id, Location__c> copies = new Map<Id, Location__c>();
-    for (Location__c location : [
-      SELECT Id, Name, GroupsThatFit__c, LocationType__c, Notes__c, SortOrder__c
-      FROM Location__c
-      WHERE Season__c = :sourceSeasonId
-      WITH USER_MODE
-    ]) {
+    for (Location__c location : locations) {
       Location__c copy = location.clone(false, true, false, false);
       copy.Season__c = newSeasonId;
       copy.LocationType__c = location.LocationType__c == null

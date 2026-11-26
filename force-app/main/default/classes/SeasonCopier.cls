@@ -35,7 +35,19 @@ public with sharing class SeasonCopier implements SetupWrite.Steps {
           EndDate__c,
           ShrinkShortWeek__c,
           NumberedDays__c,
-          // Its staff (ADR 0031 piece B), read with it: Copy season stays under its query bound.
+          // Its location types, locations and staff (ADR 0031 piece B), read with it: Copy season
+          // stays under its query bound.
+          (SELECT Id, Name, SortOrder__c FROM LocationTypes__r),
+          (
+            SELECT
+              Id,
+              Name,
+              GroupsThatFit__c,
+              LocationType__c,
+              Notes__c,
+              SortOrder__c
+            FROM Locations__r
+          ),
           (
             SELECT
               Id,
@@ -132,6 +144,12 @@ public with sharing class SeasonCopier implements SetupWrite.Steps {
     copies.putAll(copyIds(blockCopies));
     Copying made = new Copying(source.Id, season.Id, log);
     // Walked in a loop, never held as a list: a long Staff list can't be assigned directly.
+    for (LocationType__c type : source.LocationTypes__r) {
+      made.locationTypes.add(type);
+    }
+    for (Location__c location : source.Locations__r) {
+      made.locations.add(location);
+    }
     for (StaffMember__c person : source.StaffMembers__r) {
       made.staff.add(person);
     }
@@ -321,7 +339,9 @@ public with sharing class SeasonCopier implements SetupWrite.Steps {
     public final Id sourceSeasonId;
     public final Id newSeasonId;
     public final ImportWriter log;
-    // The source season's staff, read with it (ADR 0031 piece B).
+    // The source season's location types, locations and staff, read with it (ADR 0031 piece B).
+    public List<LocationType__c> locationTypes = new List<LocationType__c>();
+    public List<Location__c> locations = new List<Location__c>();
     public List<StaffMember__c> staff = new List<StaffMember__c>();
 
     public Copying(Id sourceSeasonId, Id newSeasonId, ImportWriter log) {
