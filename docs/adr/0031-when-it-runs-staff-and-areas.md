@@ -70,8 +70,9 @@ overnight tools and counselor phone views are outside Shoresh.
   desktop-differential weeks) passes unchanged, and 150 random camps build byte for byte the same
   with and without empty When it runs lists.
 - **Shown, never refused:** a hand edit or lock there is kept and its dot says "Not running then"
-  on both schedules; Update to match setup leaves an unlocked placement there out with the same
-  words, as it does a closure. The server refuses only a generated save that newly places one
+  on both schedules; Update to match setup lists a placement there with the same words among the
+  changes the director chooses, and takes it out (a locked one too) only if chosen, exactly as it
+  does a closure. The server refuses only a generated save that newly places one
   there ("Archery doesn't run in Lunch on Monday."), as it does a closure.
 - **Rainy day** (CLOSE-4.9) never switches to an indoor activity that doesn't run in that block
   on that day.

@@ -199,7 +199,8 @@ describe("When it runs", () => {
     expect([...checked.bends]).toEqual([[`${dateAt(0)}|g1|b0`, ["offTime"]]]);
   });
 
-  // GEN-3.17
+  // GEN-3.17: no rows and an empty list read the same. That the weeks match main's is shown by
+  // the golden, ported and desktop-differential suites, unchanged.
   it(`a camp that unticks nothing gets exactly the week it got before (${SEEDS} random camps)`, () => {
     const changed = [];
     for (let seed = 1; seed <= SEEDS; seed++) {
