@@ -25,21 +25,61 @@ public with sharing class ImportUndoWho {
     for (ImportLogEntries.Who entry : entries) {
       undoOne(entry);
     }
-    Database.delete(remove, AccessLevel.USER_MODE);
+    // One kind a call: Salesforce refuses one save whose rows switch kind more than ten times,
+    // counted 200 rows at a time (#465), and a large camp's lists run to thousands of rows of
+    // both kinds (INGEST-5.10).
+    for (List<SObject> sameKind : byKind(remove).values()) {
+      deleteKind(sameKind);
+    }
+    Map<Schema.SObjectType, List<String>> namesByKind = new Map<Schema.SObjectType, List<String>>();
+    for (Integer i = 0; i < putBack.size(); i++) {
+      Schema.SObjectType kind = putBack[i].getSObjectType();
+      if (!namesByKind.containsKey(kind)) {
+        namesByKind.put(kind, new List<String>());
+      }
+      namesByKind.get(kind).add(putBackNames[i]);
+    }
+    Map<Schema.SObjectType, List<SObject>> putBackByKind = byKind(putBack);
+    for (Schema.SObjectType kind : putBackByKind.keySet()) {
+      insertKind(putBackByKind.get(kind), namesByKind.get(kind));
+    }
+  }
+
+  private static void deleteKind(List<SObject> sameKind) {
+    Database.delete(sameKind, AccessLevel.USER_MODE);
+  }
+
+  /** One kind's rows put back; a refusal names the list's owner (names, in the same order). */
+  private static void insertKind(List<SObject> sameKind, List<String> names) {
     List<Database.SaveResult> outcomes = Database.insert(
-      putBack,
+      sameKind,
       false,
       AccessLevel.USER_MODE
     );
     for (Integer i = 0; i < outcomes.size(); i++) {
       if (!outcomes[i].isSuccess()) {
         throw ImportUndo.refused(
-          putBackNames[i],
+          names[i],
           'couldn\'t put back who it was for',
           outcomes[i].getErrors()[0]
         );
       }
     }
+  }
+
+  /** Rows by their kind, each kind's in the order given. */
+  private static Map<Schema.SObjectType, List<SObject>> byKind(
+    List<SObject> rows
+  ) {
+    Map<Schema.SObjectType, List<SObject>> result = new Map<Schema.SObjectType, List<SObject>>();
+    for (SObject row : rows) {
+      Schema.SObjectType kind = row.getSObjectType();
+      if (!result.containsKey(kind)) {
+        result.put(kind, new List<SObject>());
+      }
+      result.get(kind).add(row);
+    }
+    return result;
   }
 
   /** The owners as they are now (kind by kind), and which divisions and groups still exist. */

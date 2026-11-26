@@ -267,4 +267,144 @@ private class ImportUndoWhoTest {
       }
     }
   }
+
+  /**
+   * A large camp's Undo of an import that replaced who can do 164 activities (11 bunks each:
+   * 1,804 rows) and who a recurring activity covers (11 bunks): every row goes and the lists come
+   * back. Salesforce refuses one save whose rows switch kind more than ten times, counted 200
+   * rows at a time (#465): the old single delete was 10 + 1 = 11 chunks. Each kind now goes in its
+   * own call (INGEST-5.10).
+   */
+  @IsTest
+  static void ingest510ALargeCampsWhoListsOfBothKindsAreAllUndone() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      // The clash check runs once, at the end of the setup, as a screen save does.
+      SetTimeGuard.defer();
+      Camp c;
+      Id importId;
+      List<Activity__c> activities = new List<Activity__c>();
+      try {
+        c = camp();
+        importId = setUpLargeCamp(c, activities);
+        SetTimeGuard.checkPending();
+      } finally {
+        SetTimeGuard.resume();
+      }
+      Test.startTest();
+      Integer before = Limits.getQueries();
+      ImportController.undoImport(importId);
+      Integer used = Limits.getQueries() - before;
+      Test.stopTest();
+      Assert.isTrue(used < 60, 'Undo used ' + used + ' queries');
+      Assert.areEqual(
+        activities.size(),
+        [
+          SELECT COUNT()
+          FROM ActivityEligibility__c
+          WHERE Activity__c IN :activities AND Division__c = :c.juniors
+          WITH USER_MODE
+        ]
+      );
+      Assert.areEqual(
+        0,
+        [
+          SELECT COUNT()
+          FROM ActivityEligibility__c
+          WHERE Activity__c IN :activities AND Group__c != NULL
+          WITH USER_MODE
+        ]
+      );
+      List<Coverage__c> meeting = [
+        SELECT Division__c, Group__c
+        FROM Coverage__c
+        WHERE RecurringActivity__c = :c.meeting.Id
+        WITH USER_MODE
+      ];
+      Assert.areEqual(1, meeting.size());
+      Assert.areEqual(c.juniors, meeting[0].Division__c);
+    }
+  }
+
+  /**
+   * The large camp's lists as a workbook import left them, with its record (activities: filled
+   * here): 11 senior bunks can do each of 164 activities, and Meeting covers them, in place of
+   * Juniors.
+   */
+  private static Id setUpLargeCamp(Camp c, List<Activity__c> activities) {
+    Id importId = changeArcheryWho(c).importId;
+    List<Group__c> bunks = new List<Group__c>();
+    for (Integer i = 0; i < 11; i++) {
+      bunks.add(
+        new Group__c(
+          Division__c = c.seniors,
+          Name = 'Senior bunk ' + i,
+          Availability__c = 'MorningOnly',
+          SortOrder__c = 10 + i
+        )
+      );
+    }
+    insert as user bunks;
+    List<String> after = new List<String>();
+    for (Group__c bunk : bunks) {
+      after.add(bunk.Id);
+    }
+    after.sort();
+    for (Integer i = 0; i < 164; i++) {
+      activities.add(ShoreshTestData.activity(c.season.Id, 'Craft ' + i, null));
+    }
+    insert as user activities;
+    List<ActivityEligibility__c> eligible = new List<ActivityEligibility__c>();
+    List<Coverage__c> covered = new List<Coverage__c>();
+    List<Object> changed = new List<Object>();
+    for (Activity__c activity : activities) {
+      for (Group__c bunk : bunks) {
+        eligible.add(
+          new ActivityEligibility__c(
+            Activity__c = activity.Id,
+            Group__c = bunk.Id
+          )
+        );
+      }
+      changed.add(
+        new ImportLogEntries.Who(
+            activity,
+            ShoreshSchema.localName(ActivityEligibility__c.SObjectType)
+          )
+          .lists(new List<String>{ c.juniors }, after)
+          .toLog()
+      );
+    }
+    // Meeting covered the bunks in place of Juniors.
+    delete as user [
+      SELECT Id
+      FROM Coverage__c
+      WHERE RecurringActivity__c = :c.meeting.Id
+      WITH USER_MODE
+    ];
+    for (Group__c bunk : bunks) {
+      covered.add(
+        new Coverage__c(
+          Season__c = c.season.Id,
+          RecurringActivity__c = c.meeting.Id,
+          Group__c = bunk.Id
+        )
+      );
+    }
+    changed.add(
+      new ImportLogEntries.Who(
+          c.meeting,
+          ShoreshSchema.localName(Coverage__c.SObjectType)
+        )
+        .lists(new List<String>{ c.juniors }, after)
+        .toLog()
+    );
+    insert as user eligible;
+    insert as user covered;
+    // The import's record as a workbook import that replaced all 165 lists would leave it.
+    Database.update(
+      new Import__c(Id = importId, Changed__c = JSON.serialize(changed)),
+      AccessLevel.SYSTEM_MODE
+    );
+    return importId;
+  }
 }
