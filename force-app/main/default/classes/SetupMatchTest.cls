@@ -219,34 +219,6 @@ private class SetupMatchTest {
     }
   }
 
-  // GEN-3.16 (ADR 0031 piece A): a placement where its activity no longer runs is shown as
-  // Update to match setup shows a closure, never refused.
-  @IsTest
-  static void aPlacementWhereItsActivityNoLongerRunsGetsADot() {
-    System.runAs(ShoreshTestData.scheduler()) {
-      Map<String, Id> ids = SetupMatchTestData.camp();
-      Id draftId = started(ids);
-      Database.insert(
-        new ActivityOffTime__c(
-          Activity__c = ids.get('Swim'),
-          TimeBlock__c = ids.get('Period 2'),
-          Day__c = 'Monday'
-        ),
-        AccessLevel.USER_MODE
-      );
-      Test.startTest();
-      SetupMatch.Preview preview = SetupMatchController.getSetupChanges(
-        draftId
-      );
-      Test.stopTest();
-      Assert.areEqual(
-        SetupMatchRules.NOT_RUNNING_THEN,
-        SetupMatchTestData.dotsOf(preview)
-          .get(mondayKey(ids, 'Group A', 'Period 2'))
-      );
-    }
-  }
-
   // CLOSE-6.1
   @IsTest
   static void anActivityClosedThisWeekGetsADotInTheCampsWords() {

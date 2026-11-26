@@ -26,13 +26,11 @@ public with sharing class SetupMatchCarry {
   public SetupMatchCarry(
     SetupMatchRules rules,
     SetupMatchNames names,
-    ScheduleGrid target,
-    Date day
+    ScheduleGrid target
   ) {
     this.rules = rules;
     this.names = names;
     this.target = target;
-    this.day = day;
     cells = new Map<String, String>(new SetupMatchCells(target).held);
     for (String cell : cells.keySet()) {
       Id setId = SlotIds.electiveIn(SlotIds.owner(cells.get(cell)));
@@ -40,6 +38,12 @@ public with sharing class SetupMatchCarry {
         timedSets.add(setId + '|' + SetupMatchCells.groupOf(cell));
       }
     }
+  }
+
+  /** The day's date, for When it runs (by weekday). */
+  public SetupMatchCarry onDay(Date day) {
+    this.day = day;
+    return this;
   }
 
   /**
@@ -109,20 +113,9 @@ public with sharing class SetupMatchCarry {
       why = whyNotFrame(placement);
     }
     if (why == null) {
-      why = whyNotRunning(owner, placement);
+      why = rules.whyNotRunning(owner, placement, day);
     }
     return why == null ? whyNotFree(placement) : why;
-  }
-
-  /** Its activity doesn't run then: When it runs leaves the day and a time block of it out. */
-  private String whyNotRunning(String owner, List<String> placement) {
-    List<Id> blockIds = new List<Id>();
-    for (String cell : placement) {
-      blockIds.add(Id.valueOf(SetupMatchCells.blockOf(cell)));
-    }
-    return rules.notRunningThen(owner, blockIds, day)
-      ? SetupMatchRules.NOT_RUNNING_THEN
-      : null;
   }
 
   /** Its group is not in the day or not at camp then, or its time blocks changed; or null. */

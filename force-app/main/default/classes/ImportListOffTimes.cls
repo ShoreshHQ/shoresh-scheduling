@@ -17,9 +17,20 @@ public with sharing class ImportListOffTimes {
     this.seasonId = seasonId;
   }
 
+  /** A list's boxes (none: null): those taken off added, then those put back (remove) removed. */
+  public void save(List<ImportPlan.Entry> entries) {
+    List<ImportPlan.Entry> taken = new List<ImportPlan.Entry>();
+    List<ImportPlan.Entry> putBack = new List<ImportPlan.Entry>();
+    for (ImportPlan.Entry entry : entries ?? new List<ImportPlan.Entry>()) {
+      (entry.text('remove') == 'true' ? putBack : taken).add(entry);
+    }
+    add(taken);
+    remove(putBack);
+  }
+
   /** The boxes newly off, each naming its activity and time block (ImportListRows). */
-  public void add(List<ImportPlan.Entry> entries) {
-    if (entries == null) {
+  private void add(List<ImportPlan.Entry> entries) {
+    if (entries.isEmpty()) {
       return;
     }
     ImportListRows build = new ImportListRows(seasonId, keys, KIND);
@@ -42,7 +53,7 @@ public with sharing class ImportListOffTimes {
   }
 
   /** The boxes back on: each one of this season's, logged so Undo brings it back. */
-  public void remove(List<ImportPlan.Entry> entries) {
+  private void remove(List<ImportPlan.Entry> entries) {
     Set<Id> ids = new Set<Id>();
     for (ImportPlan.Entry entry : entries) {
       Id recordId = entry.id();

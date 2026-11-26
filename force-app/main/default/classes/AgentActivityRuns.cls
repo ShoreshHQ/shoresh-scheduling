@@ -68,6 +68,34 @@ public with sharing class AgentActivityRuns {
     }
   }
 
+  /** The boxes asked for (askedIn), as the save takes them. */
+  public List<String> asked { get; private set; }
+
+  /** When it runs as asked in a change's fields, or null when it isn't asked. */
+  public static AgentActivityRuns askedIn(
+    Map<String, Object> given,
+    Id seasonId
+  ) {
+    if (!given.containsKey(AgentActivityRules.RUNS)) {
+      return null;
+    }
+    AgentActivityRuns runs = new AgentActivityRuns(seasonId);
+    runs.asked = runs.keysOf(given.get(AgentActivityRules.RUNS));
+    return runs;
+  }
+
+  /**
+   * The panel's own save of the boxes asked for (ActivitiesController.saveWhenItRuns), with what
+   * the activity holds now as seen: the caller compared what was seen under the activity's lock.
+   */
+  public RowSaves.Result save(Id activityId) {
+    return ActivitiesController.saveWhenItRuns(
+      activityId,
+      asked,
+      ActivityOffTimes.now(activityId)
+    );
+  }
+
   /** The boxes as said: whenever, or the ones it can't run, a list A to Z. */
   public String said(List<String> keys) {
     List<String> names = new List<String>();

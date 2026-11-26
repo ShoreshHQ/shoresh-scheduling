@@ -14,6 +14,7 @@ import { NONE } from "./engine.shoreshLists.cells.mjs";
 import { CHANGE, newValueOf } from "./engine.shoreshLists.proposal.mjs";
 import { cellText, listScreen } from "./engine.shoreshLists.screens.mjs";
 import { weekRecords } from "./engine.shoreshLists.weeks.mjs";
+import { runsRecords } from "./engine.shoreshLists.whenItRuns.mjs";
 import { buildTerms, countOf, listed } from "./engine.shoreshTerms.shoreshTerms.mjs";
 
 function quoted(name) {
@@ -480,19 +481,26 @@ export function listPlan(proposal, answers, seasonId, fileName) {
       }
       records.push(record);
       weeksOff.push(...newWeeksOff(screen, row, record.key, proposal.setup));
+      weeksOff.push(...newRunsOff(screen, row, record.key, proposal.setup));
     } else if (row.status === "changed") {
       const chosen = row.differences
         .filter((d) => d.answer === CHANGE)
         .map((d) => d.column);
       // INGEST-1.8: the weeks are its weeks off, saved after the items.
       const weeks = chosen.includes("weeks");
-      const fields = chosen.filter((key) => key !== "weeks");
+      // ADR 0031 A7: so is when an activity runs, its boxes off.
+      const runs = chosen.includes("runs");
+      const fields = chosen.filter((key) => key !== "weeks" && key !== "runs");
       if (fields.length) {
         records.push(recordFor(screen, row, fields));
       }
       if (weeks) {
         const to = row.differences.find((d) => d.column === "weeks").to;
         weeksOff.push(...weekRecords(proposal.setup, screen.kind, row.id, to));
+      }
+      if (runs) {
+        const to = row.differences.find((d) => d.column === "runs").to;
+        weeksOff.push(...runsRecords(proposal.setup, row.id, to));
       }
     }
   });
@@ -539,6 +547,12 @@ export function listPlan(proposal, answers, seasonId, fileName) {
 function newWeeksOff(screen, row, key, setup) {
   const column = screen.columns.find((c) => c.type === "weeks");
   return column ? weekRecords(setup, screen.kind, key, row.values.weeks) : [];
+}
+
+/** A new activity's boxes off, when its row says some (ADR 0031 A7); it runs whenever else. */
+function newRunsOff(screen, row, key, setup) {
+  const column = screen.columns.find((c) => c.type === "runs");
+  return column ? runsRecords(setup, key, row.values.runs) : [];
 }
 
 const PROGRAM_KIND = { division: "Division", timeBlock: "TimeBlock" };
@@ -647,10 +661,12 @@ function recordFor(screen, row, columnKeys) {
       ? row.differences.find((d) => d.column === key).to
       : row.values[key];
     // A column only one kind has (an event's place): not written for the other. The weeks are
-    // the item's weeks off, records of their own (listPlan).
+    // the item's weeks off, and when an activity runs its boxes off: records of their own
+    // (listPlan).
     if (
       column.scope ||
       column.type === "weeks" ||
+      column.type === "runs" ||
       (column.onlyKind && column.onlyKind !== kind)
     ) {
       return;

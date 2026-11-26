@@ -22,7 +22,6 @@ global with sharing class AgentChangeActivityRules implements AgentRequest.Chang
   private List<Id> chosen;
   // When it runs, when asked: the season's boxes, and the ones it can't run.
   private AgentActivityRuns runs;
-  private List<String> offTimes;
   private List<String> said = new List<String>();
 
   @HttpPost
@@ -40,7 +39,7 @@ global with sharing class AgentChangeActivityRules implements AgentRequest.Chang
     given = AgentSetupFields.given(body.get('fields'));
     refuseUnknown();
     Map<String, Object> seen = AgentSetupFields.given(body.get('seen'));
-    refuseUnseen(seen);
+    AgentActivityAsked.refuseUnseen(given, seen);
     AgentActivityRules.useSeasonIfDayAsked(found.id, given);
     // Read the asked values first: one that doesn't read is refused before anything is locked.
     readAsked();
@@ -69,7 +68,7 @@ global with sharing class AgentChangeActivityRules implements AgentRequest.Chang
   private List<RowSaves.Result> saves() {
     List<RowSaves.Result> results = new List<RowSaves.Result>();
     try {
-      if (offTimes == null || given.size() > 1) {
+      if (runs == null || given.size() > 1) {
         results.add(
           ActivitiesController.saveActivityDetails(
             rules,
@@ -78,14 +77,8 @@ global with sharing class AgentChangeActivityRules implements AgentRequest.Chang
           )
         );
       }
-      if (offTimes != null) {
-        results.add(
-          ActivitiesController.saveWhenItRuns(
-            found.id,
-            offTimes,
-            ActivityOffTimes.now(found.id)
-          )
-        );
+      if (runs != null) {
+        results.add(runs.save(found.id));
       }
     } catch (Exception e) {
       throw new ShoreshException(
@@ -116,38 +109,20 @@ global with sharing class AgentChangeActivityRules implements AgentRequest.Chang
     }
   }
 
-  /** Each changed field needs what was seen in it: Shoresh never reads it in its place. */
-  private void refuseUnseen(Map<String, Object> seen) {
-    List<String> missing = new List<String>();
-    for (String key : AgentActivityRules.names()) {
-      if (given.containsKey(key) && !seen.containsKey(key)) {
-        missing.add(key);
-      }
-    }
-    if (!missing.isEmpty()) {
-      throw new ShoreshException(
-        'Say what each field held when you read it (seen: ' +
-          String.join(missing, ', ') +
-          '), as read_activity_details gives it, so a change someone made since isn\'t overwritten.'
-      );
-    }
-  }
-
   /** The values asked, as the panel's save takes them, in the panel's order. */
   private void readAsked() {
     rules = new Activity__c(Id = found.id);
-    for (String key : AgentActivityRules.names()) {
+    // When it runs first: the season's boxes, read only when it is asked.
+    runs = AgentActivityRuns.askedIn(given, found.seasonId);
+    said.addAll(AgentActivityAsked.saidOf(runs));
+    for (String key : AgentActivityAsked.rulesAndWho()) {
       if (!given.containsKey(key)) {
         continue;
       }
       String text = given.get(key) == null
         ? ''
         : String.valueOf(given.get(key)).trim();
-      if (key == AgentActivityRules.RUNS) {
-        runs = new AgentActivityRuns(found.seasonId);
-        offTimes = runs.keysOf(given.get(key));
-        said.add('when it runs ' + runs.said(offTimes));
-      } else if (key == AgentActivityRules.WHO) {
+      if (key == AgentActivityRules.WHO) {
         chosen = AgentActivityWho.idsOf(given.get(key), found);
         said.add(
           'who can do it ' +
@@ -188,10 +163,10 @@ global with sharing class AgentChangeActivityRules implements AgentRequest.Chang
   private void refuseIfChangedSince(Map<String, Object> seen) {
     Map<String, String> now = AgentActivityRules.now(found.id);
     for (String key : given.keySet()) {
-      String shown = key == AgentActivityRules.RUNS
-        ? runs.asShown(seen.get(key))
-        : AgentActivityRules.asShown(key, seen.get(key));
-      if (!shown.equals(now.get(key))) {
+      if (
+        !AgentActivityAsked.asShown(key, seen.get(key), runs)
+          .equals(now.get(key))
+      ) {
         throw changedSince();
       }
     }

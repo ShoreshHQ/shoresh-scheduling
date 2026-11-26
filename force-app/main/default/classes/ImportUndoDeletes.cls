@@ -232,48 +232,17 @@ public with sharing class ImportUndoDeletes {
     }
   }
 
-  /** Coverage rows and weeks off of an item this Undo keeps: kept with it, unnamed. */
+  /**
+   * Coverage rows, weeks off and boxes of When it runs of an item this Undo keeps: kept with it,
+   * unnamed.
+   */
   private List<SObject> withoutKeptItems(String term, List<SObject> rows) {
     // Nothing kept, nothing to keep with it: no query.
     if (!KEPT_WITH_ITEMS.contains(term) || keptIds.isEmpty()) {
       return rows;
     }
     Set<Id> ids = new Map<Id, SObject>(rows).keySet();
-    Set<Id> kept = term == 'ActivityOffTime'
-      ? new Map<Id, ActivityOffTime__c>(
-            [
-              SELECT Id
-              FROM ActivityOffTime__c
-              WHERE Id IN :ids AND Activity__c IN :keptIds
-              WITH USER_MODE
-            ]
-          )
-          .keySet()
-      : term == 'Coverage'
-          ? new Map<Id, Coverage__c>(
-                [
-                  SELECT Id
-                  FROM Coverage__c
-                  WHERE Id IN :ids AND RecurringActivity__c IN :keptIds
-                  WITH USER_MODE
-                ]
-              )
-              .keySet()
-          : new Map<Id, WeekException__c>(
-                [
-                  SELECT Id
-                  FROM WeekException__c
-                  WHERE
-                    Id IN :ids
-                    AND (Group__c IN :keptIds
-                    OR Location__c IN :keptIds
-                    OR Activity__c IN :keptIds
-                    OR FixedActivity__c IN :keptIds
-                    OR RecurringActivity__c IN :keptIds)
-                  WITH USER_MODE
-                ]
-              )
-              .keySet();
+    Set<Id> kept = ImportUndoKeptRows.keptWith(term, ids, keptIds);
     // Kept rows are no longer the import's, so a week the import added keeps them too.
     createdIds.removeAll(kept);
     keptIds.addAll(kept);

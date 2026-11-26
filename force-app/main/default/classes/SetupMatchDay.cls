@@ -41,7 +41,8 @@ public with sharing class SetupMatchDay {
     // Why each placement left out of the day now can't go (none when the day goes).
     Map<String, String> carried = new Map<String, String>();
     if (target != null) {
-      SetupMatchCarry carry = new SetupMatchCarry(rules, names, target, day);
+      SetupMatchCarry carry = new SetupMatchCarry(rules, names, target)
+        .onDay(day);
       carried = carry.carry(before);
       now = SetupMatchCells.gridOf(target, carry.cells, names);
     }

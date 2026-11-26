@@ -8112,6 +8112,16 @@ FIELD.Week;/*
  * off a camp workbook's "Which weeks" sheet saves (WeekException records, plan.js weekRecords).
  */
 FIELD.WeekException;/*
+ * When an activity runs (ADR 0031 A7): one column of the Activities list, in the words its
+ * details panel says it (c/shoreshActivityDetails runsShown): "Whenever", or "Not " and the boxes
+ * unticked, each "<time block>, <day>" (" (<program>)" after it when the season has several),
+ * joined by "; ", in the panel's order: programs, their time blocks, then the camp's week. A
+ * cell's value is { off: [boxes, "<time block Id>|<weekday>"], said: [each box's words] }: read
+ * here as words, matched to the season's boxes in the proposal (checkRuns), and saved as the
+ * boxes off, one ActivityOffTime record each, as a list's Weeks are (weeks.js weekRecords).
+ */
+FIELD.ActivityOffTime;
+FIELD.Program;/*
  * The Electives screen's list (plan §6.2, slice E4): the offerings of every elective set, one
  * row each. An offering is named by its activity and belongs to one set, so the list is scoped
  * by set as a program's lists are by program (scope.js resolveSets): the set column can be left

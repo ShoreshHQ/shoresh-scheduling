@@ -73,22 +73,20 @@ public with sharing class SetupMatchRules {
   }
 
   /**
-   * Whether an activity's placement on this day covers a time block its When it runs leaves out
-   * (ADR 0031 piece A): blockIds, the placement's time blocks.
+   * Not running then, when an activity's placement on this day (its cells, "groupId|blockId")
+   * covers a time block its When it runs leaves out (ADR 0031 piece A); else null.
    */
-  public Boolean notRunningThen(String owner, List<Id> blockIds, Date day) {
+  public String whyNotRunning(String owner, List<String> placement, Date day) {
     Activity__c activity = owner.startsWith(SlotIds.ACTIVITY)
       ? activities.get(SlotIds.activityIn(owner))
       : null;
-    if (activity == null) {
-      return false;
-    }
-    for (Id blockId : blockIds) {
+    for (String cell : activity == null ? new List<String>() : placement) {
+      Id blockId = Id.valueOf(SetupMatchCells.blockOf(cell));
       if (!ActivityOffTimes.runs(activity, blockId, day)) {
-        return true;
+        return NOT_RUNNING_THEN;
       }
     }
-    return false;
+    return null;
   }
 
   /** Why a group's row is not in the week now: away this week, or no longer in the program. */
