@@ -1,6 +1,6 @@
 /**
  * A program's week laid out on its own fixed and recurring activities as a screen read them
- * (SetTimePlanReader.planOf: Update to match setup's preview, Manual Build's open) is the week laid
+ * (GeneratedSetup.blankWeekOfItsOwn: Update to match setup's preview) is the week laid
  * out on the whole season's (SetTimePlanReader.read: Start a blank week, Generate's first week):
  * another program's activity at the same time, an activity off the week and a recurring
  * activity's groups make no difference. Synthetic camp (GeneratedTestData: Flagpole in Period 1,
@@ -50,16 +50,7 @@ private class SetTimePlanOfTest {
         ids.get('Week 1')
       );
       String season = JSON.serialize(setup.blankWeek());
-      String program = JSON.serialize(
-        BlankWeek.build(
-          setup,
-          SetTimePlanReader.planOf(
-            setup,
-            setup.fixedActivityRecords(),
-            setup.recurringActivityRecords()
-          )
-        )
-      );
+      String program = JSON.serialize(setup.blankWeekOfItsOwn());
       Test.stopTest();
       Assert.areEqual(season, program);
       // The cases above are in the week: Lineup and Rest placed, Flagpole off, no Morning dip.

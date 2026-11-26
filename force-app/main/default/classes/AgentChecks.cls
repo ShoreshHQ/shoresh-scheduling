@@ -39,13 +39,11 @@ global with sharing class AgentChecks implements AgentRequest.Read {
     // The program's setup for the week, read once for the draft and its setup changes, on the
     // season's activities and locations the season's setup has just read (G8).
     GeneratedSetup setup = loaded(week, read);
-    List<ScheduleDays.DayGrid> draftDays;
+    List<ScheduleDays.DayGrid> draftDays = new List<ScheduleDays.DayGrid>();
     if (week.manual) {
       read.put('draft', ManualBuildViews.openWith(week.draft.Id, setup));
     } else {
-      GeneratedInputs.Inputs inputs = inputsOf(setup);
-      read.put('inputs', inputs);
-      draftDays = inputs.draftDays;
+      read.put('inputs', inputsOf(setup, draftDays));
     }
     read.put('setup_changes', setupChangesOf(week, setup, draftDays));
     read.put('accepted', WeekAccepts.accepted(week.draft.Id));
@@ -72,24 +70,27 @@ global with sharing class AgentChecks implements AgentRequest.Read {
     }
   }
 
-  private static GeneratedInputs.Inputs inputsOf(GeneratedSetup setup) {
+  private static GeneratedInputs.Inputs inputsOf(
+    GeneratedSetup setup,
+    List<ScheduleDays.DayGrid> draftDays
+  ) {
     try {
-      return GeneratedInputs.read(setup);
+      return GeneratedInputs.read(setup, draftDays);
     } catch (Exception e) {
       throw ScreenErrors.ofLoading(e);
     }
   }
 
-  /** draftDays: the draft's days as already read, or null to read them (Manual Build's). */
+  /** draftDays: Generated Schedule's as getInputs read them; Manual Build's are read here. */
   private static SetupMatch.Preview setupChangesOf(
     AgentWeeks.Week week,
     GeneratedSetup setup,
     List<ScheduleDays.DayGrid> draftDays
   ) {
     try {
-      return SetupMatch.of(
+      return SetupMatch.onSetup(
         setup,
-        draftDays ?? ScheduleDays.read(week.draft.Id)
+        week.manual ? ScheduleDays.read(week.draft.Id) : draftDays
       );
     } catch (Exception e) {
       throw ScreenErrors.ofLoading(e);

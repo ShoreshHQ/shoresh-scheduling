@@ -131,18 +131,29 @@ public with sharing class SetupMatch {
 
   /** What setup changed since the draft's week started (Manual Build's or Generated Schedule's). */
   public static Preview of(Id draftId) {
-    Schedule__c draft = draftOf(draftId);
-    return of(
-      new GeneratedSetup(draft.Program__c, draft.Week__c),
-      ScheduleDays.read(draftId)
-    );
+    // A Manual Build or Generated Schedule draft the user can see, or refused.
+    List<Schedule__c> found = [
+      SELECT Id, Program__c, Week__c, Status__c, Origin__c
+      FROM Schedule__c
+      WHERE Id = :draftId
+      WITH USER_MODE
+    ];
+    if (found.isEmpty() || !isDraft(found[0])) {
+      throw notFound();
+    }
+    Schedule__c draft = found[0];
+    return planFor(
+        new GeneratedSetup(draft.Program__c, draft.Week__c),
+        ScheduleDays.read(draftId)
+      )
+      .preview;
   }
 
   /**
    * The same, on a draft's days and its program's setup for the week, both as a request has
    * already read them (AgentChecks): nothing read again.
    */
-  public static Preview of(
+  public static Preview onSetup(
     GeneratedSetup setup,
     List<ScheduleDays.DayGrid> draftDays
   ) {
@@ -268,7 +279,7 @@ public with sharing class SetupMatch {
     plan.preview.revisions = WeekTickets.stamp(draftDays);
     BlankWeek.Week target;
     try {
-      target = blankWeek(setup);
+      target = setup.blankWeekOfItsOwn();
     } catch (ShoreshException e) {
       // The week can't be laid out from setup now (no time blocks, no group at camp, no day it
       // runs, or no access to its set-time items): said, never guessed at.
@@ -303,40 +314,6 @@ public with sharing class SetupMatch {
       plan.preview.dots.addAll(compared.dots);
     }
     return plan;
-  }
-
-  /**
-   * The week setup makes now, on the program's own fixed and recurring activities as Manual
-   * Build's open reads them (SetTimePlanReader.planOf), not the whole season's: the same week
-   * (only this program's items run in it) in fewer queries. Without access to them, refused in
-   * Start a blank week's words, as before.
-   */
-  private static BlankWeek.Week blankWeek(GeneratedSetup setup) {
-    if (!SetTimeAccess.canRead()) {
-      return setup.blankWeek();
-    }
-    return BlankWeek.build(
-      setup,
-      SetTimePlanReader.planOf(
-        setup,
-        setup.fixedActivityRecords(),
-        setup.recurringActivityRecords()
-      )
-    );
-  }
-
-  /** A Manual Build or Generated Schedule draft the user can see, or refused. */
-  private static Schedule__c draftOf(Id draftId) {
-    List<Schedule__c> found = [
-      SELECT Id, Program__c, Week__c, Status__c, Origin__c
-      FROM Schedule__c
-      WHERE Id = :draftId
-      WITH USER_MODE
-    ];
-    if (found.isEmpty() || !isDraft(found[0])) {
-      throw notFound();
-    }
-    return found[0];
   }
 
   /**

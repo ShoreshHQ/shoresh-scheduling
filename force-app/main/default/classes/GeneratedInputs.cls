@@ -22,9 +22,6 @@ public with sharing class GeneratedInputs {
     // The Generated draft, or null when the week has not been generated yet.
     @AuraEnabled
     public Id scheduleId;
-    // The draft's days as read, for the rest of the request (AgentChecks' setup changes); not
-    // sent.
-    public transient List<ScheduleDays.DayGrid> draftDays;
     // What the draft's days were saved at (WeekTickets.stamp); sent back with a save.
     // Empty when there is no draft.
     @AuraEnabled
@@ -94,11 +91,21 @@ public with sharing class GeneratedInputs {
   }
 
   public static Inputs read(Id programId, Id weekId) {
-    return read(new GeneratedSetup(programId, weekId));
+    return read(
+      new GeneratedSetup(programId, weekId),
+      new List<ScheduleDays.DayGrid>()
+    );
   }
 
-  /** The same, on the program's setup for the week a request has already read (AgentChecks). */
-  public static Inputs read(GeneratedSetup setup) {
+  /**
+   * The same, on the program's setup for the week a request has already read (AgentChecks);
+   * draftDays: filled with the draft's days as read, for the rest of the request (none before the
+   * week is first built).
+   */
+  public static Inputs read(
+    GeneratedSetup setup,
+    List<ScheduleDays.DayGrid> draftDays
+  ) {
     Inputs inputs = new Inputs();
     inputs.programId = setup.program.Id;
     inputs.weekId = setup.week.Id;
@@ -121,7 +128,7 @@ public with sharing class GeneratedInputs {
       inputs.notPlaced = blank.notPlaced;
     } else {
       days = found.daysById.get(draft.Id);
-      inputs.draftDays = days;
+      draftDays.addAll(days);
       inputs.scheduleId = draft.Id;
       inputs.revision = WeekTickets.stamp(days);
       inputs.option = draft.EngineOption__c == null

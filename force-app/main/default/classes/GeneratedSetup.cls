@@ -137,6 +137,26 @@ public with sharing class GeneratedSetup {
   }
 
   /**
+   * The same week, on the program's own fixed and recurring activities as Manual Build's open
+   * reads them (SetTimePlanReader.planOf), not the whole season's: only this program's run in it,
+   * so it is the same week in fewer queries (Update to match setup's preview, SetupMatch). Without
+   * access to them, refused in Start a blank week's words.
+   */
+  public BlankWeek.Week blankWeekOfItsOwn() {
+    if (!SetTimeAccess.canRead()) {
+      return blankWeek();
+    }
+    return BlankWeek.build(
+      this,
+      SetTimePlanReader.planOf(
+        this,
+        fixedActivityRecords(),
+        recurringActivityRecords()
+      )
+    );
+  }
+
+  /**
    * Manual Build's rules for the cells (SlotRules), with the activities placed: on the season's
    * activities when this request has read them already (activityRecords), else read for these.
    */
