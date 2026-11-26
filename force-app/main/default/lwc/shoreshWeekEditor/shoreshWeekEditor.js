@@ -218,9 +218,10 @@ export default class ShoreshWeekEditor extends SaveQueue(LightningElement) {
   @api setUpWith;
   // Rainy day (repo docs/adr/0019): keeps the week as a version under the name given ("Before
   // rainy Monday") before a day is switched: (name) => Promise. Left out, no "Rainy day…" in Edit.
+  // Clear day and Clear week keep theirs with it too ("Before Clear Monday", WEEK-6.14).
   @api rainyWith;
-  // The version before a rainy day is being kept.
-  rainyWorking = false;
+  // The version before a rainy day or a Clear is being kept.
+  keepingVersion = false;
   // For each rainy-day Undo step: { date, before, after }, the day's "Rain plan full" marks
   // before and after it (what its Undo and Redo leave).
   stepRain = new Map();
@@ -2506,6 +2507,38 @@ export default class ShoreshWeekEditor extends SaveQueue(LightningElement) {
   }
 
   /**
+   * Clear day and Clear week (WEEK-6.14): with nothing to clear, only that is said. Otherwise the
+   * week is first kept as a version named for what was pressed ("Before Clear Monday", "Before
+   * Clear Week 1"), so what was cleared is there after Undo has gone, then the clear is worked out
+   * again on the week as it is now and made as one Undo step. When the version can't be kept,
+   * nothing is cleared and it says why.
+   */
+  @api
+  async runClear(asked) {
+    if (this.keepingVersion || this.refuseWhileRestoring() || !this.schedule) {
+      return;
+    }
+    const step = toolStep(this.editCtx, asked);
+    if (step.nothing) {
+      this.say(step.nothing);
+      return;
+    }
+    this.keepingVersion = true;
+    try {
+      await this.rainyWith(`Before Clear ${asked.name}`);
+    } catch (e) {
+      this.reportError(failed(`${asked.name} could not be cleared.`, e));
+      return;
+    } finally {
+      this.keepingVersion = false;
+    }
+    if (!this.schedule) {
+      return;
+    }
+    this.runTool(asked);
+  }
+
+  /**
    * Makes a tool's change as one Undo step and shows "Cleared Monday · Undo" (with what stayed
    * or was left out); with nothing to change, says so instead. The week as the director saw it
    * goes with the change: after a question, the tool is worked out again around anyone else's.
@@ -2601,7 +2634,7 @@ export default class ShoreshWeekEditor extends SaveQueue(LightningElement) {
       value: "rainy",
       label: "Rainy day…",
       dataId: "rainy-day",
-      disabled: !!this.restoring || this.rainyWorking || this.busy,
+      disabled: !!this.restoring || this.keepingVersion || this.busy,
       children
     };
   }
@@ -2631,7 +2664,7 @@ export default class ShoreshWeekEditor extends SaveQueue(LightningElement) {
    * as one Undo step, with the receipt and its Undo on the line.
    */
   async runRainyDay(date) {
-    if (this.rainyWorking || this.refuseWhileRestoring() || !this.schedule) {
+    if (this.keepingVersion || this.refuseWhileRestoring() || !this.schedule) {
       return;
     }
     const isAway = (week, d, g, b) => this.isAwayOn(week, d, g, b);
@@ -2641,14 +2674,14 @@ export default class ShoreshWeekEditor extends SaveQueue(LightningElement) {
       this.say(rainReceipt(first.label, planned.rain));
       return;
     }
-    this.rainyWorking = true;
+    this.keepingVersion = true;
     try {
       await this.rainyWith(`Before rainy ${first.name}`);
     } catch (e) {
       this.reportError(failed("The rainy day could not be applied.", e));
       return;
     } finally {
-      this.rainyWorking = false;
+      this.keepingVersion = false;
     }
     if (!this.schedule) {
       return;

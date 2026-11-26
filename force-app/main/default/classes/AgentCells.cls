@@ -12,8 +12,9 @@
  * screen's words for them (change, and said: what stayed or was left out). This makes them the
  * screen's own hand edit (GeneratedHandEdit: the same save, conflicts and
  * locking), each run made only when its cells still hold what the agent saw, so someone else's
- * change is never replaced unseen. As on the screen, no version is kept: the answer gives the
- * week's revision after the edit, so the connector can hold its Undo (the runs back, as the
+ * change is never replaced unseen. As on the screen, no version is kept, except before a day or
+ * week is cleared (/v1/clear_cells, AgentClearCells: "Before Clear Monday", WEEK-6.14): the answer
+ * gives the week's revision after the edit, so the connector can hold its Undo (the runs back, as the
  * editor's history holds them) for the rest of the conversation (AgentUndo, API-1.14).
  */
 public with sharing class AgentCells implements AgentRequest.Change {
@@ -27,6 +28,17 @@ public with sharing class AgentCells implements AgentRequest.Change {
     'runs',
     'revision'
   };
+  private static final String CLEARED = 'Cleared ';
+  // A day or week cleared (clear_day, clear_week): the week is kept as a version first.
+  private final Boolean keepsVersion;
+
+  public AgentCells() {
+    this(false);
+  }
+
+  public AgentCells(Boolean keepsVersion) {
+    this.keepsVersion = keepsVersion;
+  }
 
   public Set<String> fields() {
     return FIELDS;
@@ -36,12 +48,23 @@ public with sharing class AgentCells implements AgentRequest.Change {
     AgentWeeks.Week week = AgentSchedules.eitherOf(body);
     String change = AgentFields.text(body, 'change');
     List<SlotEdits.Run> runs = runsOf(body.get('runs'));
-    if (String.isBlank(change) || runs.isEmpty()) {
+    if (
+      String.isBlank(change) ||
+      runs.isEmpty() ||
+      (keepsVersion && !change.startsWith(CLEARED))
+    ) {
       throw new ShoreshException(
         'That change could not be read. Download Shoresh\'s connector again from Settings in Shoresh.'
       );
     }
     String seen = AgentSchedules.holdAsSeen(week, body, 'revision');
+    // The version Clear keeps first, named for what was pressed: "Before Clear Monday" (WEEK-6.14).
+    String kept = keepsVersion
+      ? 'Before Clear ' + change.removeStart(CLEARED)
+      : null;
+    Id versionId = keepsVersion
+      ? AgentScreenVersions.keepVersion(week, kept)
+      : null;
     SlotEdits.Edit edit = new SlotEdits.Edit();
     edit.runs = runs;
     // One edit, as the screen sends one step: made whole or not at all.
@@ -55,9 +78,18 @@ public with sharing class AgentCells implements AgentRequest.Change {
       change
     );
     undo.put('seen', result.revision);
+    if (keepsVersion) {
+      undo.put('version', versionId);
+      undo.put('version_name', kept);
+    }
     AgentUndoHeld.hold(undo);
     String said = AgentFields.text(body, 'said');
-    return change + '.' + (String.isBlank(said) ? '' : ' ' + said);
+    return change +
+      '.' +
+      (String.isBlank(said) ? '' : ' ' + said) +
+      (keepsVersion
+        ? ' The week as it was is kept in Versions as "' + kept + '".'
+        : '');
   }
 
   /**
