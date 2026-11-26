@@ -114,7 +114,7 @@ public with sharing class SetupCopier {
       for (ActivityOffTime__c row : activity.OffTimes__r) {
         offTimes.add(row);
       }
-      Activity__c copy = activity.clone(false, true, false, false);
+      Activity__c copy = fieldsOf(activity);
       copy.Season__c = newSeasonId;
       copy.Location__c = activity.Location__c == null
         ? null
@@ -140,6 +140,18 @@ public with sharing class SetupCopier {
     // (SeasonCopier copies as a SetupWrite COPY).
     log.amend(withRainPlans);
     return copies;
+  }
+
+  /** A copy of the activity's fields, without the boxes read with it (a clone would keep them). */
+  private static Activity__c fieldsOf(Activity__c activity) {
+    Activity__c copy = new Activity__c();
+    Map<String, Object> fields = activity.getPopulatedFieldsAsMap();
+    for (String name : fields.keySet()) {
+      if (name != 'Id' && !(fields.get(name) instanceof List<SObject>)) {
+        copy.put(name, fields.get(name));
+      }
+    }
+    return copy;
   }
 
   private void copyEligibility(
