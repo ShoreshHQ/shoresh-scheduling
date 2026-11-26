@@ -276,6 +276,8 @@ export default class ShoreshWeekEditor extends SaveQueue(LightningElement) {
   focusUndoAfterRender = false;
   // After a day or week tool, focus goes to its line's Undo.
   focusToolUndoAfterRender = false;
+  // Clear's question closed with nothing cleared: focus goes back to the Edit menu (WCAG 2.4.3).
+  focusEditMenuAfterRender = false;
   // Where keyboard focus goes once the page has drawn (after a list line was clicked).
   focusAfterRender = null;
   // "Set it up" done: { key } of its cell, focused once drawn ("Open <name>" if the day is replaced).
@@ -502,6 +504,8 @@ export default class ShoreshWeekEditor extends SaveQueue(LightningElement) {
   @api
   clear() {
     this.focusCellWhenDrawn = null;
+    // A Clear asked about another week is never made on this one.
+    this.clearAsk = null;
     this.locatedKey = null;
     this.draft = null;
     this.notice = null;
@@ -2538,9 +2542,13 @@ export default class ShoreshWeekEditor extends SaveQueue(LightningElement) {
   }
 
   async handleClearAnswer(event) {
+    if (!this.clearAsk) {
+      return;
+    }
     const { asked } = this.clearAsk;
     this.clearAsk = null;
     if (!event.detail.yes || this.busy || !this.schedule) {
+      this.focusEditMenuAfterRender = true;
       return;
     }
     this.keepingVersion = true;
@@ -2548,6 +2556,7 @@ export default class ShoreshWeekEditor extends SaveQueue(LightningElement) {
       await this.rainyWith(`Before Clear ${asked.name}`);
     } catch (e) {
       this.reportError(failed(`${asked.name} could not be cleared.`, e));
+      this.focusEditMenuAfterRender = true;
       return;
     } finally {
       this.keepingVersion = false;
@@ -3545,6 +3554,10 @@ export default class ShoreshWeekEditor extends SaveQueue(LightningElement) {
       // The line's Undo is gone with the line: focus goes to the Edit menu, where Undo and Redo
       // are.
       this.focusUndoAfterRender = false;
+      this.focusEditMenu();
+    }
+    if (this.focusEditMenuAfterRender) {
+      this.focusEditMenuAfterRender = false;
       this.focusEditMenu();
     }
     if (this.focusToolUndoAfterRender) {

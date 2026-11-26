@@ -36,15 +36,15 @@ global with sharing class AgentClearCells {
       AgentAskFirst.stateIs(
         WeekTickets.stamp(ScheduleDays.read(week.draft.Id))
       );
+      String what = change.removeStart(CLEARED);
+      // One line each, as the screen lists them.
       return 'This clears ' +
-        change.removeStart(CLEARED) +
-        ' in ' +
-        week.name +
+        (what == week.name ? what : what + ' in ' + week.name) +
         ' (' +
         week.program.Name +
         ', ' +
         AgentSchedules.screenOf(week) +
-        '). ' +
+        '):\n' +
         sentences(body.get('preview'));
     }
 
@@ -89,6 +89,6 @@ global with sharing class AgentClearCells {
       String text = ((String) line).trim();
       said.add(text.endsWith('.') ? text : text + '.');
     }
-    return String.join(said, ' ');
+    return String.join(said, '\n');
   }
 }

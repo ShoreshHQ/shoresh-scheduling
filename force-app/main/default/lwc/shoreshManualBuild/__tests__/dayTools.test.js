@@ -206,6 +206,10 @@ describe("c-shoresh-manual-build: day and week tools", () => {
     ]);
     await answerClear(element, false);
     expect(q(element, '[data-id="clear-ask"]')).toBeNull();
+    // Focus goes back to the Edit menu, where Clear was chosen.
+    expect(q(element, "c-shoresh-week-editor").shadowRoot.activeElement).toBe(
+      q(element, '[data-id="edit-menu"]')
+    );
     expect(keepWeek).not.toHaveBeenCalled();
     expect(saveSlots).not.toHaveBeenCalled();
   });
@@ -248,6 +252,8 @@ describe("c-shoresh-manual-build: day and week tools", () => {
     const empty = await render(start(["1,,", "1,,"], ["1,2,", "1,,"]));
     q(empty, '[data-id="clear-day"]').click();
     await flush();
+    // Nothing to clear: nothing is asked (WEEK-6.15).
+    expect(q(empty, '[data-id="clear-ask"]')).toBeNull();
     await answerClear(empty);
     expect(keepWeek).not.toHaveBeenCalled();
     document.body.removeChild(empty);

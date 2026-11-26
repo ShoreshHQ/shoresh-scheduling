@@ -747,7 +747,9 @@ export function clearPreview(ctx, step) {
       ...(said ? [said] : []),
       `The week as it is now is kept in Versions as "Before Clear ${tool.name}".`
     ],
-    confirmLabel: "Clear"
+    confirmLabel: "Clear",
+    // How many of the lines are group days (the rest: what stays, the version kept).
+    rows: rows.length
   };
 }
 

@@ -14,6 +14,9 @@
 const { locksAfter } = require("./undo");
 const { foldName: fold } = require("./common");
 
+// The most group days a clear's yes dialog names (WEEK-6.15).
+const MOST_ROWS = 20;
+
 /** A refusal in Shoresh's words: nothing was changed. */
 class Refused extends Error {
   constructor(text, status = 400) {
@@ -287,12 +290,21 @@ function clearStep(capability, ctx, m, input, weekName) {
     return { nothing: step.nothing };
   }
   // Asked first as the screen asks it (WEEK-6.15): its own preview, said by Shoresh for the yes.
-  const { lines } = m.clearPreview(ctx, step);
+  // The person's yes dialog doesn't scroll, so it names at most MOST_ROWS group days.
+  const { lines, rows } = m.clearPreview(ctx, step);
+  const preview =
+    rows > MOST_ROWS
+      ? [
+          ...lines.slice(0, MOST_ROWS),
+          `And ${rows - MOST_ROWS} more.`,
+          ...lines.slice(rows)
+        ]
+      : lines;
   return {
     runs: step.result.runs,
     label: step.label,
     said: step.said,
-    preview: lines
+    preview
   };
 }
 
