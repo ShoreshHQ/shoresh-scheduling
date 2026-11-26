@@ -2,10 +2,10 @@
 
 **Rule (Greg, 2026-10-16): exactly two Salesforce orgs. Never create a third.**
 
-| Org                                    | Alias            | Used for                                                                                                 |
-| -------------------------------------- | ---------------- | -------------------------------------------------------------------------------------------------------- |
-| Dev Hub (Greg's Developer Edition org) | `shoresh-devhub` | The main org: owns the test org, and later the package                                                   |
-| The test org                           | `shoresh-test`   | Everything else: the automatic checks on every pull request, Claude sessions, and Greg trying things out |
+| Org                                    | Alias            | Used for                                                                                                  |
+| -------------------------------------- | ---------------- | --------------------------------------------------------------------------------------------------------- |
+| Dev Hub (Greg's Developer Edition org) | `shoresh-devhub` | The main org: owns the test org, and later the package                                                    |
+| The test org                           | `shoresh-test`   | Everything else: the automatic org checks (batches, nightly), Claude sessions, and Greg trying things out |
 
 No extra orgs for experiments, prototypes, or parallel checks: those deploy to the test org too.
 The scripts enforce this: `scripts/renew-test-org.sh` deletes the old test org before creating
@@ -15,8 +15,8 @@ deploys to the existing test org instead of creating one.
 ## How the checks use it
 
 The "Scratch org deploy and Apex tests" check logs in to the test org with the encrypted secret
-`SFDX_AUTH_URL_CI`, deploys the pull request, and runs the Apex tests it needs: only for a
-`batch/` pull request and the nightly run on main (both below). One check at a time, so two
+`SFDX_AUTH_URL_CI`, deploys, and runs the Apex tests needed, but only for a `batch/` pull request,
+the nightly run on main and a run started by hand (all below). One check at a time, so two
 pull requests never deploy over each other. Tests run one class at a time (see below). Because
 the test org is also used by hand, the
 deploy ignores change-tracking conflicts: the repository is always what should end up in the org.
@@ -302,7 +302,7 @@ It deletes the old test org, creates a new 30-day one, hands its login to GitHub
 date. Then re-run the failed check: on the pull request, **Checks** tab → **CI** →
 **Re-run all jobs**. Each renewal is also a clean from-scratch check.
 
-Current test org: created 2026-11-19, expires 2026-12-19, on the new Dev Hub (Developer Edition org 00Dbm000014tFy6, signed up 2026-10-20). The old Dev Hub (00DgK00000VLOOr) was frozen by Salesforce on 2026-10-20 because a sign-in came through a VPN, and with one admin it could not be unfrozen. Turn any VPN off before signing in to Salesforce.
+Current test org: created 2026-11-18, expires 2026-12-19, on the new Dev Hub (Developer Edition org 00Dbm000014tFy6, signed up 2026-10-20). The old Dev Hub (00DgK00000VLOOr) was frozen by Salesforce on 2026-10-20 because a sign-in came through a VPN, and with one admin it could not be unfrozen. Turn any VPN off before signing in to Salesforce.
 
 ## What the secret can do
 
