@@ -49,7 +49,11 @@ public with sharing class ActivityLeaders {
         staffId.getSObjectType() != StaffMember__c.SObjectType
       ) {
         throw new ShoreshException(
-          'Who leads it can only name this season\'s staff.'
+          'Who leads it can only name this ' +
+            labels(activityId).singularInSentence('Season') +
+            '\'s ' +
+            labels(activityId).pluralInSentence('StaffMember') +
+            '.'
         );
       }
       result.add(
@@ -60,6 +64,19 @@ public with sharing class ActivityLeaders {
       );
     }
     return result;
+  }
+
+  /** The camp's words, read only to say a refusal. */
+  private static CampLabels labels(Id activityId) {
+    return CampLabels.forCamp(
+      [
+        SELECT Season__r.Camp__c
+        FROM Activity__c
+        WHERE Id = :activityId
+        WITH USER_MODE
+      ]
+      .Season__r.Camp__c
+    );
   }
 
   /**

@@ -1755,6 +1755,7 @@ describe("c-shoresh-camp-setup", () => {
         "groups",
         "timeBlocks",
         "locations",
+        "staff",
         "campWords"
       ]);
       expect(camp.items[1].disabled).toBe(false);
@@ -4560,6 +4561,7 @@ describe("c-shoresh-camp-setup", () => {
         "groups",
         "timeBlocks",
         "locations",
+        "staff",
         "campWords",
         "activities",
         "fixedActivities",
@@ -4576,7 +4578,8 @@ describe("c-shoresh-camp-setup", () => {
         ["divisions", "Bunks →"],
         ["groups", "Time blocks →"],
         ["timeBlocks", "Locations →"],
-        ["locations", "Camp words →"],
+        ["locations", "Staff members →"],
+        ["staff", "Camp words →"],
         ["campWords", "Activities →"],
         ["activities", "Fixed activities →"],
         ["fixedActivities", "Recurring activities →"],
@@ -4609,6 +4612,13 @@ describe("c-shoresh-camp-setup", () => {
       await openScreen(element, "locations");
       nextOn(element, "locations").click();
       await flush();
+      expect(shownScreens(element)).toEqual(["staff"]);
+      expect(element.shadowRoot.activeElement).toBe(
+        q(element, '[data-screen="staff"] [data-heading]')
+      );
+      // Staff's next is Camp words, whose heading is inside its own component.
+      nextOn(element, "staff").click();
+      await flush();
       expect(shownScreens(element)).toEqual(["campWords"]);
       const words = q(element, "c-shoresh-camp-labels");
       expect(words.shadowRoot.activeElement).toBe(
@@ -4639,6 +4649,7 @@ describe("c-shoresh-camp-setup", () => {
         "groups",
         "timeBlocks",
         "locations",
+        "staff",
         "campWords",
         "activities",
         "fixedActivities",
@@ -5892,6 +5903,7 @@ describe("an archived season", () => {
         "programs",
         "recurringActivities",
         "specialEvents",
+        "staff",
         "timeBlocks"
       ].map((key) => `${key}-list-import`)
     );

@@ -126,7 +126,7 @@ private class ActivityLeadersTest {
       Database.insert(stranger, AccessLevel.USER_MODE);
       Test.startTest();
       Assert.areEqual(
-        'Who leads it can only name this season\'s staff.',
+        'Who leads it can only name this season\'s staff members.',
         refusal(ids.get('Swim'), new List<Id>{ ids.get('Gym') })
       );
       String otherSeason = refusal(
@@ -169,7 +169,7 @@ private class ActivityLeadersTest {
       Test.stopTest();
       Assert.isFalse(result.isSuccess());
       Assert.areEqual(
-        StaffMemberTriggerHandler.ID_TAKEN,
+        'Another staff member in this season has this outside ID from this system.',
         result.getErrors()[0].getMessage()
       );
       Assert.areEqual(
@@ -245,6 +245,100 @@ private class ActivityLeadersTest {
       Assert.areEqual(1, leaders.size());
       Assert.areEqual(ids.get('Swim'), leaders[0].Activity__r.CopiedFrom__c);
       Assert.areEqual(ids.get('Eli'), leaders[0].StaffMember__r.CopiedFrom__c);
+    }
+  }
+
+  // API-1.158: the Staff list imported adds a person and changes another's notes, and Undo takes
+  // both back.
+  @IsTest
+  static void theStaffListImportsAndUndoesLikeLocations() {
+    Map<String, Id> ids = KeptCamp.keptIds();
+    System.runAs(KeptCamp.scheduler(ids)) {
+      Test.startTest();
+      ImportSetupSaves.Result result = ImportController.saveList(
+        JSON.serialize(
+          ImportTestPlans.listPlan(
+            ids.get('Season'),
+            new List<Object>{
+              new Map<String, Object>{
+                'kind' => 'StaffMember',
+                'id' => ids.get('Dana'),
+                'fields' => new Map<String, Object>{
+                  'Notes__c' => 'Archery certified'
+                },
+                'refs' => new Map<String, Object>()
+              },
+              new Map<String, Object>{
+                'kind' => 'StaffMember',
+                'key' => 'StaffMember:Noa',
+                'fields' => new Map<String, Object>{ 'Name' => 'Noa' }
+              }
+            }
+          )
+        )
+      );
+      Assert.areEqual(
+        'Archery certified',
+        [
+          SELECT Notes__c
+          FROM StaffMember__c
+          WHERE Id = :ids.get('Dana')
+          WITH USER_MODE
+        ]
+        .Notes__c
+      );
+      Assert.areEqual(
+        1,
+        [SELECT COUNT() FROM StaffMember__c WHERE Name = 'Noa' WITH USER_MODE]
+      );
+      ImportController.undoImport(result.importId);
+      Test.stopTest();
+      Assert.areEqual(
+        0,
+        [SELECT COUNT() FROM StaffMember__c WHERE Name = 'Noa' WITH USER_MODE]
+      );
+      Assert.isNull(
+        [
+          SELECT Notes__c
+          FROM StaffMember__c
+          WHERE Id = :ids.get('Dana')
+          WITH USER_MODE
+        ]
+        .Notes__c
+      );
+    }
+  }
+
+  // ADR 0031 B7: Undo of a Copy season keeps a season someone added staff to since.
+  @IsTest
+  static void undoingACopyKeepsTheSeasonWhenStaffWereAddedSince() {
+    Map<String, Id> ids = KeptCamp.keptIds();
+    System.runAs(KeptCamp.scheduler(ids)) {
+      Id copyId = new SeasonCopier(
+          ids.get('Season'),
+          Date.newInstance(2027, 6, 28)
+        )
+        .copy('Summer 2027');
+      Database.insert(
+        new StaffMember__c(Season__c = copyId, Name = 'Noa'),
+        AccessLevel.USER_MODE
+      );
+      Id importId = [
+        SELECT Id
+        FROM Import__c
+        WHERE Season__c = :copyId
+        WITH USER_MODE
+        ORDER BY CreatedDate DESC
+        LIMIT 1
+      ]
+      .Id;
+      Test.startTest();
+      ImportController.undoImport(importId);
+      Test.stopTest();
+      Assert.areEqual(
+        1,
+        [SELECT COUNT() FROM StaffMember__c WHERE Name = 'Noa' WITH SYSTEM_MODE]
+      );
     }
   }
 }

@@ -14,40 +14,39 @@ public with sharing class ActivityLeaderTriggerHandler {
       activityIds.add(row.Activity__c);
       staffIds.add(row.StaffMember__c);
     }
-    Map<Id, Activity__c> activities = new Map<Id, Activity__c>(
-      [
-        SELECT Id, Season__c
-        FROM Activity__c
-        WHERE Id IN :activityIds
-        WITH SYSTEM_MODE
-      ]
-    );
-    Map<Id, StaffMember__c> staff = new Map<Id, StaffMember__c>(
-      [
-        SELECT Id, Season__c
-        FROM StaffMember__c
-        WHERE Id IN :staffIds
-        WITH SYSTEM_MODE
-      ]
-    );
-    Set<Id> seasonIds = new Set<Id>();
-    for (Activity__c activity : activities.values()) {
-      seasonIds.add(activity.Season__c);
+    // One read: each activity's season, with the staff named that are in it (Copy season saves
+    // leaders within its query bound).
+    Map<Id, Id> seasonOfActivity = new Map<Id, Id>();
+    Set<Id> inSeason = new Set<Id>();
+    for (Season__c season : [
+      SELECT
+        Id,
+        (SELECT Id FROM Activities__r WHERE Id IN :activityIds),
+        (SELECT Id FROM StaffMembers__r WHERE Id IN :staffIds)
+      FROM Season__c
+      WHERE Id IN (SELECT Season__c FROM Activity__c WHERE Id IN :activityIds)
+      WITH SYSTEM_MODE
+    ]) {
+      for (Activity__c activity : season.Activities__r) {
+        seasonOfActivity.put(activity.Id, season.Id);
+      }
+      for (StaffMember__c person : season.StaffMembers__r) {
+        inSeason.add(season.Id + '|' + person.Id);
+      }
     }
     SetupSeasons.LazyLabels labelsBySeason = SetupSeasons.labelsWhenNeeded(
-      seasonIds
+      new Set<Id>(seasonOfActivity.values())
     );
     for (ActivityLeader__c row : rows) {
-      Activity__c activity = activities.get(row.Activity__c);
-      StaffMember__c person = staff.get(row.StaffMember__c);
+      Id seasonId = seasonOfActivity.get(row.Activity__c);
       if (
-        activity != null &&
-        person != null &&
-        person.Season__c != activity.Season__c
+        seasonId != null &&
+        row.StaffMember__c != null &&
+        !inSeason.contains(seasonId + '|' + row.StaffMember__c)
       ) {
         row.addError(
           SetupSeasons.otherSeason(
-            labelsBySeason.get(activity.Season__c),
+            labelsBySeason.get(seasonId),
             'StaffMember',
             'Activity'
           )

@@ -245,7 +245,7 @@ These never bend for Shoresh.
   sentence is never cut at one. A stored value Shoresh has no words for (a version's origin) MUST
   be left out, never shown as stored (review 2026-11-25 wave 2, lwc-screens-b findings 5 and 7).
   Tests: shoreshErrors.test.js "CORE-6.18"; shoreshVersions words.test.js "CORE-6.18".
-- **CORE-6.20** A staff member who leads two different activities placed in overlapping time
-  blocks on the same day MUST be shown in the Why list, once per day and time ("Dana leads
-  Archery and Swim, Monday 10:00"), and never fixed: the generator never reads Who leads it. The
+- **CORE-6.20** A staff member who leads two different activities placed in the same time block
+  of a day MUST be shown in the Why list, once per day and time block ("Dana leads Archery and
+  Swim · Monday · Period 2"), and never fixed: the generator never reads Who leads it. The
   same activity with several groups at once is no conflict (ADR 0031 piece B).

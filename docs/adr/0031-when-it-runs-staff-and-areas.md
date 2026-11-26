@@ -162,12 +162,17 @@ rather than the boxes ticked; the AI's word "whenever".
   (API-2.7); Undo last import covers it. A staff member from outside keeps that system's name:
   only its batches change it (API-4.11, as campers' names, API-4.2); one added by hand in Camp
   Setup is renamed freely. Not an AI tool (API-1.6).
+- **Electives:** not covered. Who leads it names who leads an activity's regular placements; an
+  elective is placed by the director at its own set time (as for When it runs, A5), so the By
+  staff member page and the Why list's conflict line look at regular activities only.
 - **Copy season** copies the staff (with the camp system's ID, so that system finds the same
   person next season) and who leads each copied activity.
 
 **Choices that are hard to undo after release:** the objects `StaffMember__c` and
 `ActivityLeader__c` and their fields; the camp word `StaffMember`; leaders stored per activity
-(not per cell); the AI's word "nobody".
+(not per cell); the AI's word "nobody"; the outside door's `global` surface (`IncomingStaff`, its
+`Record` with `season`, `source_system`, `staff_id`, `staff_name`, the address `/v1/staff` and
+the Flow action `staff`).
 
 ## Piece C: areas of camp (walking distance)
 

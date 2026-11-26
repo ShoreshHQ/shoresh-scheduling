@@ -1027,7 +1027,7 @@ export default class ShoreshActivityDetails extends LightningElement {
             .filter((o) => ids.includes(o.value))
             .map((o) => o.label)
             .join(", ")
-        : "None";
+        : "Nobody";
     }
     if (field === WHO_KEY) {
       const ids = value || [];

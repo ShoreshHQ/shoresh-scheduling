@@ -127,8 +127,9 @@ describe("Who leads it", () => {
           }))
         })
       );
+      // Everything but the Why list's own conflict lines, byte for byte.
       const { leading, ...rest } = led;
-      if (JSON.stringify(rest.days) !== JSON.stringify(plain.days)) {
+      if (JSON.stringify(rest) !== JSON.stringify(plain)) {
         changed.push(seed);
       }
       expect(leading === undefined || Array.isArray(leading)).toBe(true);

@@ -131,7 +131,10 @@ public with sharing class SeasonCopier implements SetupWrite.Steps {
     copies.putAll(copyIds(programCopies));
     copies.putAll(copyIds(blockCopies));
     Copying made = new Copying(source.Id, season.Id, log);
-    made.staff = source.StaffMembers__r;
+    // Walked in a loop, never held as a list: a long Staff list can't be assigned directly.
+    for (StaffMember__c person : source.StaffMembers__r) {
+      made.staff.add(person);
+    }
     copies.putAll(new SetupCopier(made).copy(copies));
     copies.putAll(new SetTimeCopier(made, copies).copy());
     new ElectiveCopier(made, copies).copy();

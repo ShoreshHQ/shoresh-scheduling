@@ -236,6 +236,22 @@ private class SetTimeSetupTest {
     Map<String, Id> ids = camp();
     System.runAs(scheduler(ids)) {
       List<Id> saved = saveBoth(ids);
+      // Staff from the camp's own system and who leads an activity (ADR 0031 piece B): the copy
+      // carries them inside the same bound.
+      StaffMember__c dana = new StaffMember__c(
+        Season__c = ids.get('Season'),
+        Name = 'Dana',
+        SourceSystem__c = 'CampMinder',
+        OutsideId__c = 'S-1'
+      );
+      Database.insert(dana, AccessLevel.USER_MODE);
+      Database.insert(
+        new ActivityLeader__c(
+          Activity__c = ids.get('Swim'),
+          StaffMember__c = dana.Id
+        ),
+        AccessLevel.USER_MODE
+      );
       // The copy runs in a transaction of its own on screen; give it its own limits here too.
       Test.startTest();
       Id copyId = SeasonSetupController.copySeason(

@@ -152,6 +152,7 @@ public with sharing class ImportUndoDeletes {
       Program__c.Season__c,
       LocationType__c.Season__c,
       Location__c.Season__c,
+      StaffMember__c.Season__c,
       Activity__c.Season__c,
       Coverage__c.Season__c,
       ElectiveSet__c.Season__c,

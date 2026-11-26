@@ -1295,7 +1295,7 @@ describe("Who leads it", () => {
       "Archery · Who leads it"
     );
     expect(q(element, '[data-id="theirs"]').textContent.trim()).toBe("Dana");
-    expect(q(element, '[data-id="yours"]').textContent.trim()).toBe("None");
+    expect(q(element, '[data-id="yours"]').textContent.trim()).toBe("Nobody");
     q(element, '[data-id="keep-theirs"]').click();
     await flush();
     expect(group(element).value).toEqual(["s1"]);

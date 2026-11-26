@@ -94,17 +94,18 @@ public with sharing class AgentImportStamp {
 
   /**
    * The season and what hangs on it directly: the season, weeks, location types, locations,
-   * programs, activities, who recurring activities cover, elective sets, imports.
+   * staff, programs, activities, who recurring activities cover, elective sets, imports.
    */
   private static List<Tally> seasonTallies(Id seasonId) {
     List<Tally> own = fresh(1);
-    List<Tally> lists = fresh(8);
+    List<Tally> lists = fresh(9);
     List<String> relationships = inside(
       Season__c.SObjectType,
       new List<Schema.SObjectField>{
         Week__c.Season__c,
         LocationType__c.Season__c,
         Location__c.Season__c,
+        StaffMember__c.Season__c,
         Program__c.Season__c,
         Activity__c.Season__c,
         Coverage__c.Season__c,
@@ -118,6 +119,7 @@ public with sharing class AgentImportStamp {
         (SELECT SystemModstamp FROM Weeks__r),
         (SELECT SystemModstamp FROM LocationTypes__r),
         (SELECT SystemModstamp FROM Locations__r),
+        (SELECT SystemModstamp FROM StaffMembers__r),
         (SELECT SystemModstamp FROM Programs__r),
         (SELECT SystemModstamp FROM Activities__r),
         (SELECT SystemModstamp FROM Coverages__r),

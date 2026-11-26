@@ -11,7 +11,14 @@
  * duplicate whoever saves it, and returns no name.
  */
 public with sharing class StaffMemberTriggerHandler {
-  public static final String ID_TAKEN = 'Another staff member in this season has this outside ID from this system.';
+  /** "Another counselor in this season has this outside ID from this system.", in the camp's words. */
+  public static String idTaken(CampLabels labels) {
+    return 'Another ' +
+      labels.singularInSentence('StaffMember') +
+      ' in this ' +
+      labels.singularInSentence('Season') +
+      ' has this outside ID from this system.';
+  }
 
   public static void beforeSave(List<StaffMember__c> staff) {
     // A delete (no new rows) is only checked for an archived season (ArchivedSeasons).
@@ -54,11 +61,14 @@ public with sharing class StaffMemberTriggerHandler {
     ]) {
       taken.add(existing.OutsideMatch__c);
     }
+    SetupSeasons.LazyLabels labels = SetupSeasons.labelsWhenNeeded(
+      seasonsOf(staff)
+    );
     for (StaffMember__c person : staff) {
       if (
         person.OutsideMatch__c != null && !taken.add(person.OutsideMatch__c)
       ) {
-        person.OutsideId__c.addError(ID_TAKEN);
+        person.OutsideId__c.addError(idTaken(labels.get(person.Season__c)));
       }
     }
   }
@@ -106,5 +116,13 @@ public with sharing class StaffMemberTriggerHandler {
       person.SourceSystem__c.normalizeSpace().toLowerCase() +
       '|' +
       person.OutsideId__c.trim();
+  }
+
+  private static Set<Id> seasonsOf(List<StaffMember__c> staff) {
+    Set<Id> result = new Set<Id>();
+    for (StaffMember__c person : staff) {
+      result.add(person.Season__c);
+    }
+    return result;
   }
 }
