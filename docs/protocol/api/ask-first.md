@@ -1,4 +1,4 @@
-# API protocol: Changes: what was seen, asking first, the person's yes
+# API protocol: Asking first, what was seen and the person's yes
 
 Part of the API protocol, [Data in and out](../api.md), which holds its terms, sources and
 numbering. How every AI change behaves as the screen's own: it leaves exactly what the screen

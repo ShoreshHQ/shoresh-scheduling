@@ -76,17 +76,21 @@ describe("the protocol's conformance index", () => {
       "utf8"
     );
     // "| [Title](api/x.md) | about | A-1.1 to 1.10, A-1.15, ... |": each range opened out.
+    // An entry not written so (another layer after "to", a misspelt prefix) is named as wrong.
+    const api = ["API", ""].join("-");
     const listed = {};
     for (const [, file, ids] of index.matchAll(
-      /^\| \[[^\]]+\]\((api\/[\w-]+\.md)\) \|.*\| ([^|]+) \|$/gm
+      /^\| \[[^\]]+\]\((api\/[\w-]+\.md)\) *\|.*\| *([^|]+?) *\| *$/gm
     )) {
-      listed[`docs/protocol/${file}`] = ids.split(", ").flatMap((part) => {
-        const [, layer, from, to] = /-(\d+)\.(\d+)(?: to \d+\.(\d+))?$/.exec(
-          part
-        );
+      listed[`docs/protocol/${file}`] = ids.split(",").flatMap((entry) => {
+        const m = /^(\S+)(\d+)\.(\d+)(?: to (\d+)\.(\d+))?$/.exec(entry.trim());
+        if (!m || m[1] !== api || (m[4] && m[4] !== m[2])) {
+          return [`not an entry: ${entry.trim()}`];
+        }
+        const [from, to] = [Number(m[3]), Number(m[5] || m[3])];
         return Array.from(
-          { length: (to ? Number(to) : Number(from)) - Number(from) + 1 },
-          (_, i) => `${layer}.${Number(from) + i}`
+          { length: to - from + 1 },
+          (_, i) => `${m[2]}.${from + i}`
         );
       });
     }
@@ -98,6 +102,7 @@ describe("the protocol's conformance index", () => {
       a.split(".")[0] - b.split(".")[0] || a.split(".")[1] - b.split(".")[1];
     const parts = fs
       .readdirSync(path.join(__dirname, "../../docs/protocol/api"))
+      .filter((f) => f.endsWith(".md"))
       .map((f) => `docs/protocol/api/${f}`)
       .sort();
     expect(Object.keys(listed).sort()).toEqual(parts);

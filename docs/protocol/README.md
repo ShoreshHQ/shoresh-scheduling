@@ -37,7 +37,8 @@ CORE  layers 1-6                                 docs/protocol/core.md
 ```
 
 Every sub-protocol is written here: docs/protocol/{elect,special,close,lock,memo,pub,div,prog,week,api}.md,
-with API's statements in parts by area (docs/protocol/api/*.md, listed in api.md), plus GEN (docs/engine/protocol.md) and INGEST (docs/import/*.md).
+with API's statements in parts by area (`docs/protocol/api/*.md`, listed in api.md), plus GEN
+(docs/engine/protocol.md) and INGEST (`docs/import/*.md`).
 
 ## Statements and their numbers
 
