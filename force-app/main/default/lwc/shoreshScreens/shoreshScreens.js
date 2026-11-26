@@ -38,6 +38,7 @@ export function screenLabels(t) {
     groups: t.p("Group"),
     timeBlocks: t.p("TimeBlock"),
     locations: t.p("Location"),
+    staff: t.p("StaffMember"),
     campWords: "Camp words",
     activities: t.p("Activity"),
     fixedActivities: t.p("FixedActivity"),
@@ -67,6 +68,7 @@ const SECTIONS = [
       "groups",
       "timeBlocks",
       "locations",
+      "staff",
       "campWords"
     ]
   },

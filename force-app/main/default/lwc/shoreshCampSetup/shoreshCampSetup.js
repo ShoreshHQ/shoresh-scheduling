@@ -22,6 +22,7 @@ import mergeLocations from "@salesforce/apex/SetupTablesController.mergeLocation
 import placedInWeeks from "@salesforce/apex/RunsInController.placedInWeeks";
 import saveActivityDetails from "@salesforce/apex/ActivitiesController.saveActivityDetails";
 import saveWhenItRuns from "@salesforce/apex/ActivitiesController.saveWhenItRuns";
+import saveWhoLeadsIt from "@salesforce/apex/ActivitiesController.saveWhoLeadsIt";
 import saveLinkedChoice from "@salesforce/apex/LinkedChoicesController.saveLinkedChoice";
 import undoImport from "@salesforce/apex/ImportController.undoImport";
 import confirmGuess from "@salesforce/apex/SetupGuessesController.confirmGuess";
@@ -84,6 +85,7 @@ function campWeek(setup) {
 }
 const WEEK = FIELD.Week;
 const LOCATION = FIELD.Location;
+const STAFF = FIELD.StaffMember;
 const ACTIVITY = FIELD.Activity;
 const OFFER = FIELD.Offering;
 // The season forms' inputs (their data-field) and the season fields they hold. A season's Status
@@ -108,6 +110,7 @@ const FLUSH_SCREENS = new Set([
   "groups",
   "timeBlocks",
   "locations",
+  "staff",
   "activities",
   "fixedActivities",
   "recurringActivities",
@@ -127,6 +130,7 @@ const COUNTED = {
   groups: "Group",
   timeBlocks: "TimeBlock",
   locations: "Location",
+  staff: "StaffMember",
   activities: "Activity",
   fixedActivities: "FixedActivity",
   recurringActivities: "RecurringActivity"
@@ -140,6 +144,7 @@ const SCREENS = [
   "groups",
   "timeBlocks",
   "locations",
+  "staff",
   "campWords",
   "activities",
   "fixedActivities",
@@ -1680,6 +1685,46 @@ export default class ShoreshCampSetup extends LightningElement {
       { fieldName: LOCATION.Notes, label: "Notes", type: "text", more: true }
     ];
   }
+  /**
+   * A staff member's row (ADR 0031 piece B), as a location's: their name, the activities they
+   * lead (set on each activity's Who leads it, never edited here), and their notes in the row's
+   * details.
+   */
+  get staffColumns() {
+    return this.memo("staffColumns", [this.setup, this.terms], () =>
+      this.readStaffColumns()
+    );
+  }
+  readStaffColumns() {
+    const t = this.terms;
+    const activities = (this.setup && this.setup.activities) || [];
+    return [
+      { fieldName: "Name", label: "Name", type: "text", required: true },
+      {
+        fieldName: "leads",
+        label: `${t.p("Activity")} led`,
+        type: "readonly",
+        textFor: (saved) =>
+          activities
+            .filter(
+              (a) =>
+                saved.Id &&
+                childRows(a, CHILDREN.Activity.Leaders).some(
+                  (row) => row[FIELD.ActivityLeader.StaffMember] === saved.Id
+                )
+            )
+            .map((a) => a.Name)
+            .join(", ")
+      },
+      { fieldName: STAFF.Notes, label: "Notes", type: "text", more: true }
+    ];
+  }
+  get staffDefaults() {
+    return this.memo("staffDefaults", [this.seasonId], () => ({
+      [STAFF.Season]: this.seasonId,
+      ...newRow("StaffMember")
+    }));
+  }
   get hasLocationTypes() {
     return ((this.setup && this.setup.locationTypes) || []).length > 0;
   }
@@ -2543,6 +2588,7 @@ export default class ShoreshCampSetup extends LightningElement {
       ),
       timeBlocks: inPrograms((e) => (e.timeBlocks || []).length),
       locations: (setup.locations || []).length,
+      staff: (setup.staff || []).length,
       activities: (setup.activities || []).length,
       fixedActivities: inPrograms((e) => (e.fixedActivities || []).length),
       recurringActivities: inPrograms(
@@ -2633,6 +2679,8 @@ export default class ShoreshCampSetup extends LightningElement {
       countActivities: [t.sIn("Activity"), t.pIn("Activity")],
       noLocations: `No ${t.pIn("Location")} yet`,
       sameLocation: `Same ${t.sIn("Location")}?`,
+      addStaffMember: `Add ${t.s("StaffMember")}`,
+      noStaff: `No ${t.pIn("StaffMember")} yet`,
       catalogue: `${t.s("Activity")} catalogue`,
       addActivity: `Add ${t.s("Activity")}`,
       noActivities: `No ${t.pIn("Activity")} yet`,
@@ -3183,7 +3231,8 @@ export default class ShoreshCampSetup extends LightningElement {
 
   /**
    * A field of an activity's details, saved as the director leaves it: a rule or who can do it
-   * (ActivityDetails), When it runs (ActivityOffTimes), or one of the activity's own fields as a
+   * (ActivityDetails), When it runs (ActivityOffTimes), Who leads it (ActivityLeaders), or one of
+   * the activity's own fields as a
    * table row. Either is compared and
    * set (ADR 0011 choice 5): seen() is read when its turn comes, and the panel hears what someone
    * else changed.
@@ -3194,6 +3243,7 @@ export default class ShoreshCampSetup extends LightningElement {
       whoCanDoIt,
       activityId,
       offTimes,
+      leaders,
       record,
       seen,
       onSaved,
@@ -3205,6 +3255,8 @@ export default class ShoreshCampSetup extends LightningElement {
       save = () => saveRow({ record, seen: seen(), extras: null });
     } else if (offTimes) {
       save = () => saveWhenItRuns({ activityId, offTimes, seen: seen() });
+    } else if (leaders) {
+      save = () => saveWhoLeadsIt({ activityId, leaders, seen: seen() });
     } else {
       save = () =>
         saveActivityDetails({

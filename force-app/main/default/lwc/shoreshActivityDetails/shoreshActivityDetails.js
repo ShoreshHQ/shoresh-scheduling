@@ -32,6 +32,13 @@ const WHO_INPUT = "whoCanDoIt";
 const RUNS_KEY = "runs";
 const RUNS_INPUT = "whenItRuns";
 const OFF = FIELD.ActivityOffTime;
+// Who leads it (ADR 0031 piece B): the staff members' Ids, saved whole
+// (ActivitiesController.saveWhoLeadsIt), as When it runs is.
+const LEADS_KEY = "leads";
+const LEADS_INPUT = "whoLeadsIt";
+const LEADER = FIELD.ActivityLeader;
+// Each list saved whole: its key -> the draft's field and the save's.
+const WHOLE = { [RUNS_KEY]: "offTimes", [LEADS_KEY]: "leaders" };
 const PROGRAM = FIELD.Program;
 // Each rule's input (its data-field) and the activity field it saves.
 const RULE_FIELDS = {
@@ -101,7 +108,8 @@ const SAME = "same";
  * opening another activity waits for those saves' answers, so the question is never dropped.
  *
  * Fires: save { rules, whoCanDoIt, onSaved, onFailure(message), shown() }, or for When it runs
- * save { activityId, offTimes, seen(), onSaved, onFailure(message), shown() }
+ * save { activityId, offTimes, seen(), onSaved, onFailure(message), shown() }, and for Who leads
+ * it save { activityId, leaders, seen(), onSaved, onFailure(message), shown() }
  * (shown: whether the form still shows that activity; a refusal it can't show is said at the top);
  * close { activityId } (Close pressed: the page puts the cursor back on the row's button)
  */
@@ -164,9 +172,11 @@ export default class ShoreshActivityDetails extends LightningElement {
       if (!keep(WHO_KEY)) {
         this.seen[WHO_KEY] = saved.whoCanDoIt;
       }
-      if (!keep(RUNS_KEY)) {
-        this.seen[RUNS_KEY] = saved.offTimes;
-      }
+      Object.entries(WHOLE).forEach(([key, list]) => {
+        if (!keep(key)) {
+          this.seen[key] = saved[list];
+        }
+      });
     }
     if (!saved || !this.draft) {
       this.draft = saved;
@@ -181,7 +191,8 @@ export default class ShoreshActivityDetails extends LightningElement {
     this.draft = {
       rules,
       whoCanDoIt: keep(WHO_KEY) ? this.draft.whoCanDoIt : saved.whoCanDoIt,
-      offTimes: keep(RUNS_KEY) ? this.draft.offTimes : saved.offTimes
+      offTimes: keep(RUNS_KEY) ? this.draft.offTimes : saved.offTimes,
+      leaders: keep(LEADS_KEY) ? this.draft.leaders : saved.leaders
     };
   }
 
@@ -224,7 +235,10 @@ export default class ShoreshActivityDetails extends LightningElement {
       .filter((row) => row[OFF.TimeBlock] && row[OFF.Day])
       .map((row) => offKey(row[OFF.TimeBlock], row[OFF.Day]))
       .sort();
-    return { rules, whoCanDoIt, offTimes };
+    const leaders = childRows(activity, CHILDREN.Activity.Leaders)
+      .map((row) => row[LEADER.StaffMember])
+      .filter(Boolean);
+    return { rules, whoCanDoIt, offTimes, leaders };
   }
 
   /** Every division, then every group (with its division), across the season's programs. */
@@ -343,6 +357,26 @@ export default class ShoreshActivityDetails extends LightningElement {
 
   get offTimes() {
     return this.draft ? this.draft.offTimes : [];
+  }
+
+  get leaders() {
+    return this.draft ? this.draft.leaders : [];
+  }
+
+  /** The season's staff, in the Staff list's order: Who leads it's ticks. */
+  get staffOptions() {
+    return ((this._setup && this._setup.staff) || []).map((person) => ({
+      label: person.Name,
+      value: person.Id
+    }));
+  }
+
+  get hasStaff() {
+    return this.staffOptions.length > 0;
+  }
+
+  get leadsError() {
+    return this.errors[LEADS_KEY];
   }
 
   /**
@@ -474,6 +508,7 @@ export default class ShoreshActivityDetails extends LightningElement {
       together: `${t.p("Group")} together`,
       whoCanDoIt: "Who can do it",
       whenItRuns: "When it runs",
+      whoLeadsIt: "Who leads it",
       sameDivision: `Only ${t.pIn("Group")} from the same ${t.sIn("Division")} at the same time`,
       // One group, read as "Early in the week: How many … By …" (WCAG 1.3.1).
       early: "Early in the week",
@@ -585,6 +620,12 @@ export default class ShoreshActivityDetails extends LightningElement {
     this.save(WHO_KEY);
   }
 
+  /** A leader is ticked once, so Who leads it is saved at once, as Who can do it is. */
+  handleLeadsChange(event) {
+    this.update(LEADS_KEY, { leaders: [...event.detail.value] });
+    this.save(LEADS_KEY);
+  }
+
   /** A box of When it runs is chosen once, so it is saved at once, as Who can do it is. */
   handleRunsChange(event) {
     const box = event.target.dataset.box;
@@ -667,8 +708,8 @@ export default class ShoreshActivityDetails extends LightningElement {
    * field does.
    */
   save(field, input) {
-    if (field === RUNS_KEY) {
-      this.saveRuns();
+    if (WHOLE[field]) {
+      this.saveWhole(field);
       return;
     }
     const fields = EARLY_WEEK.includes(field) ? EARLY_WEEK : [field];
@@ -772,23 +813,24 @@ export default class ShoreshActivityDetails extends LightningElement {
   }
 
   /**
-   * Sends When it runs whole, with what it held when the director saw it (read when the save's
-   * turn comes), answered as any other field: saved, refused, or someone else changed it.
+   * Sends a list saved whole (When it runs, Who leads it), with what it held when the director
+   * saw it (read when the save's turn comes), answered as any other field: saved, refused, or
+   * someone else changed it.
    */
-  saveRuns() {
-    if (!this.dirty.has(RUNS_KEY)) {
+  saveWhole(key) {
+    if (!this.dirty.has(key)) {
       return;
     }
-    const fields = [RUNS_KEY];
+    const fields = [key];
     const activityId = this.activityId;
-    this.dirty.delete(RUNS_KEY);
-    this.sending.set(RUNS_KEY, (this.sending.get(RUNS_KEY) || 0) + 1);
+    this.dirty.delete(key);
+    this.sending.set(key, (this.sending.get(key) || 0) + 1);
     const done = () => {
-      const left = (this.sending.get(RUNS_KEY) || 0) - 1;
+      const left = (this.sending.get(key) || 0) - 1;
       if (left > 0) {
-        this.sending.set(RUNS_KEY, left);
+        this.sending.set(key, left);
       } else {
-        this.sending.delete(RUNS_KEY);
+        this.sending.delete(key);
       }
     };
     const onSaved = () => {
@@ -796,7 +838,7 @@ export default class ShoreshActivityDetails extends LightningElement {
         return;
       }
       done();
-      this.errors = { ...this.errors, [RUNS_KEY]: null };
+      this.errors = { ...this.errors, [key]: null };
       const mark = this.template.querySelector("c-shoresh-saved-mark");
       if (mark) {
         mark.saved();
@@ -807,22 +849,23 @@ export default class ShoreshActivityDetails extends LightningElement {
         return;
       }
       done();
-      if (this.sending.has(RUNS_KEY)) {
+      if (this.sending.has(key)) {
         return;
       }
-      this.dirty.add(RUNS_KEY);
-      this.errors = { ...this.errors, [RUNS_KEY]: message };
+      this.dirty.add(key);
+      this.errors = { ...this.errors, [key]: message };
     };
-    const offTimes = [...this.draft.offTimes];
+    const list = WHOLE[key];
+    const value = [...this.draft[list]];
     this.sendSeen(
-      RUNS_KEY,
+      key,
       fields,
-      { [RUNS_KEY]: offTimes },
+      { [key]: value },
       {
         activityId,
-        offTimes,
+        [list]: value,
         // Leaving waits for this answer, so the details still show this activity.
-        seen: () => [...(this.seen[RUNS_KEY] || [])]
+        seen: () => [...(this.seen[key] || [])]
       },
       {
         done,
@@ -904,6 +947,10 @@ export default class ShoreshActivityDetails extends LightningElement {
     if (theirRuns) {
       changed.push(RUNS_KEY);
     }
+    const theirLeaders = result ? result.theirLeaders : null;
+    if (theirLeaders) {
+      changed.push(LEADS_KEY);
+    }
     if (!changed.length) {
       if (activityId === this.activityId) {
         // Saved: typing since is compared with what was sent.
@@ -934,6 +981,8 @@ export default class ShoreshActivityDetails extends LightningElement {
           theirs = theirWho;
         } else if (f === RUNS_KEY) {
           theirs = theirRuns;
+        } else if (f === LEADS_KEY) {
+          theirs = theirLeaders;
         }
         return {
           field: f,
@@ -970,6 +1019,15 @@ export default class ShoreshActivityDetails extends LightningElement {
   shown(field, value) {
     if (field === RUNS_KEY) {
       return this.runsShown(value || []);
+    }
+    if (field === LEADS_KEY) {
+      const ids = value || [];
+      return ids.length
+        ? this.staffOptions
+            .filter((o) => ids.includes(o.value))
+            .map((o) => o.label)
+            .join(", ")
+        : "None";
     }
     if (field === WHO_KEY) {
       const ids = value || [];
@@ -1021,6 +1079,7 @@ export default class ShoreshActivityDetails extends LightningElement {
     const rules = { ...this.draft.rules };
     let whoCanDoIt = this.draft.whoCanDoIt;
     let offTimes = this.draft.offTimes;
+    let leaders = this.draft.leaders;
     rows.forEach(({ field: f, theirs }) => {
       this.dirty.delete(f);
       this.seen[f] = theirs;
@@ -1028,11 +1087,13 @@ export default class ShoreshActivityDetails extends LightningElement {
         whoCanDoIt = theirs || [];
       } else if (f === RUNS_KEY) {
         offTimes = theirs || [];
+      } else if (f === LEADS_KEY) {
+        leaders = theirs || [];
       } else {
         rules[f] = theirs;
       }
     });
-    this.draft = { ...this.draft, rules, whoCanDoIt, offTimes };
+    this.draft = { ...this.draft, rules, whoCanDoIt, offTimes, leaders };
     this.closeConflict(field);
     this.save(field);
   }
@@ -1103,6 +1164,9 @@ function inputOf(field) {
   }
   if (field === RUNS_KEY) {
     return RUNS_INPUT;
+  }
+  if (field === LEADS_KEY) {
+    return LEADS_INPUT;
   }
   return Object.keys(INPUT_FIELDS).find((k) => INPUT_FIELDS[k] === field);
 }

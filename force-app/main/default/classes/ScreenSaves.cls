@@ -62,6 +62,11 @@ public with sharing class ScreenSaves {
       Location__c.GroupsThatFit__c,
       Location__c.Notes__c
     },
+    StaffMember__c.SObjectType => new Set<Schema.SObjectField>{
+      StaffMember__c.Name,
+      StaffMember__c.SortOrder__c,
+      StaffMember__c.Notes__c
+    },
     // The activity's "more rules" are saved by ActivityDetails, not here.
     Activity__c.SObjectType => new Set<Schema.SObjectField>{
       Activity__c.Name,
@@ -146,6 +151,7 @@ public with sharing class ScreenSaves {
     TimeBlock__c.SObjectType => TimeBlock__c.Program__c,
     LocationType__c.SObjectType => LocationType__c.Season__c,
     Location__c.SObjectType => Location__c.Season__c,
+    StaffMember__c.SObjectType => StaffMember__c.Season__c,
     Activity__c.SObjectType => Activity__c.Season__c,
     FixedActivity__c.SObjectType => FixedActivity__c.Program__c,
     RecurringActivity__c.SObjectType => RecurringActivity__c.Program__c,

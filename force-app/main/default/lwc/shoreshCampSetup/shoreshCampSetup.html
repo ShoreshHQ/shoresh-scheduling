@@ -1052,6 +1052,70 @@
                 </div>
               </div>
 
+              <!-- Staff (ADR 0031 piece B): a list like Locations; who leads an activity is
+                   chosen on the activity. -->
+              <div class={shown.staff} data-screen="staff">
+                <div class="setup-rail" data-id="setup-rail">
+                  <h2 class="slds-assistive-text" tabindex="-1" data-heading>
+                    {labels.screens.staff}
+                  </h2>
+                  <c-shoresh-roots-back></c-shoresh-roots-back>
+                  <template lwc:if={counts.staff.count}>
+                    <span class="rail-count" data-id="count"
+                      ><b class="shoresh-num">{counts.staff.count}</b
+                      >{counts.staff.noun}</span
+                    >
+                  </template>
+                  <span class="rail-spacer"></span>
+                  <c-shoresh-saved-mark
+                    class="rail-saved"
+                    data-id="rail-saved"
+                    silent
+                  ></c-shoresh-saved-mark>
+                  <span class="shoresh-rail-line" role="presentation"></span>
+                  <c-shoresh-list-import
+                    class="rail-import"
+                    data-id="staff-list-import"
+                    variant="rail"
+                    read-only={readOnly}
+                    screen-key="staff"
+                    setup={setup}
+                    terms={terms}
+                    onimported={handleImported}
+                    onlistopen={handleListOpen}
+                  ></c-shoresh-list-import>
+                </div>
+                <div class="shoresh-hairline" role="presentation"></div>
+                <div class="setup-list list_narrow" data-id="staff-list">
+                  <c-shoresh-editable-table
+                    read-only={readOnly}
+                    data-id="staff"
+                    title={labels.screens.staff}
+                    object-api-name={objects.StaffMember}
+                    flag-same-names
+                    columns={staffColumns}
+                    rows={setup.staff}
+                    add-label={labels.addStaffMember}
+                    empty-message={labels.noStaff}
+                    new-row-defaults={staffDefaults}
+                    busy={busy}
+                    onsave={handleSaveRecords}
+                    ondelete={handleDeleteRecord}
+                  ></c-shoresh-editable-table>
+                  <template lwc:if={next.staff}>
+                    <div class="next">
+                      <lightning-button
+                        variant="brand"
+                        label={next.staff.label}
+                        data-id="next"
+                        data-next={next.staff.key}
+                        onclick={handleNext}
+                      ></lightning-button>
+                    </div>
+                  </template>
+                </div>
+              </div>
+
               <!-- Activities (docs/design/setup/activities.html): the list, and one activity's
                    details in a zone beside it, opened from its row's chevron. -->
               <div class={shown.activities} data-screen="activities">

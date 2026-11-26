@@ -32,6 +32,9 @@ Each term has one meaning. The words in "Avoid" do not appear on screens.
   code), and any Saved shown goes (review 2026-11-25 wave 2, lwc-screens-b finding 2; the screen
   reads rather than the server guessing the record, which could undo a word saved elsewhere
   meanwhile). Jest shoreshCampLabels "CORE-1.37".
+- **CORE-1.40** Who leads it MUST be saved whole, and only while it is as the person saw it:
+  someone else's change since MUST be asked about (theirs and yours, by name), never overwritten;
+  someone else having chosen the same is no question (ADR 0031 piece B).
 
 | ID        | Term                   | Definition                                                                                                                                                                                                      | Avoid                          |
 | --------- | ---------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------ |
@@ -68,6 +71,8 @@ Each term has one meaning. The words in "Avoid" do not appear on screens.
 | CORE-1.31 | Still needed           | Placements a group is short of an activity's minimum this week.                                                                                                                                                 | underserved, shortfall         |
 | CORE-1.32 | Spread across the week | How an activity's placements fall across a week's days for a group. Back-to-back days are fine; spread never costs a minimum or a High priority placement (Greg 2026-10-27).                                    | distribution                   |
 | CORE-1.33 | Measures               | Minimums met, priorities met, spread across the week (Greg 2026-10-27).                                                                                                                                         | the words listed in CORE-6.4   |
+| CORE-1.38 | Staff member           | A person who leads activities, in the Camp Setup list Staff. Named on activities, never scheduled: no shifts, time off or availability (ADR 0031 piece B).                                                      | counselor, instructor          |
+| CORE-1.39 | Who leads it           | The staff members named on an activity: none, one or more. They belong to the activity, not to each cell; the generator never reads them.                                                                       | assigned staff                 |
 
 Each definition is the test: a screen, import or build that uses the word for anything else
 breaks the term.
@@ -240,3 +245,7 @@ These never bend for Shoresh.
   sentence is never cut at one. A stored value Shoresh has no words for (a version's origin) MUST
   be left out, never shown as stored (review 2026-11-25 wave 2, lwc-screens-b findings 5 and 7).
   Tests: shoreshErrors.test.js "CORE-6.18"; shoreshVersions words.test.js "CORE-6.18".
+- **CORE-6.20** A staff member who leads two different activities placed in overlapping time
+  blocks on the same day MUST be shown in the Why list, once per day and time ("Dana leads
+  Archery and Swim, Monday 10:00"), and never fixed: the generator never reads Who leads it. The
+  same activity with several groups at once is no conflict (ADR 0031 piece B).

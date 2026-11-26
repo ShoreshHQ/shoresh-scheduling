@@ -108,6 +108,15 @@ public with sharing class SetupDeletions {
       ]) {
         return new Item('Location', row.Name, row.Season__r.Camp__c);
       }
+    } else if (type == StaffMember__c.SObjectType) {
+      for (StaffMember__c row : [
+        SELECT Name, Season__r.Camp__c
+        FROM StaffMember__c
+        WHERE Id = :recordId
+        WITH USER_MODE
+      ]) {
+        return new Item('StaffMember', row.Name, row.Season__r.Camp__c);
+      }
     } else if (type == LocationType__c.SObjectType) {
       for (LocationType__c row : [
         SELECT Name, Season__r.Camp__c
