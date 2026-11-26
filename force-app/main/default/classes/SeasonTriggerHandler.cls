@@ -79,11 +79,9 @@ public with sharing class SeasonTriggerHandler {
 
     public void write() {
       // Read in five queries, each with the lists inside it (a list inside a query is not a
-      // query of its own), walked in loops so a list of any length reads in parts. Each is read
-      // before the deletes that need it; no delete in between adds or removes any of those rows.
-      List<SObject> runs = new List<SObject>();
-      List<SObject> coverages = new List<SObject>();
-      for (Season__c season : [
+      // query of its own). Each is read before the deletes that need it; no delete in between
+      // adds or removes any of those rows.
+      List<Season__c> seasons = [
         SELECT
           Id,
           (SELECT Id FROM ElectiveRuns__r),
@@ -91,17 +89,10 @@ public with sharing class SeasonTriggerHandler {
         FROM Season__c
         WHERE Id IN :deletable
         WITH SYSTEM_MODE
-      ]) {
-        for (SObject run : season.ElectiveRuns__r) {
-          runs.add(run);
-        }
-        for (SObject coverage : season.Coverages__r) {
-          coverages.add(coverage);
-        }
-      }
+      ];
       // Elective runs point at the season's elective sets, weeks and schedules, and their
       // choices and seats at its campers, groups, time blocks and offerings; they go first.
-      clear(runs);
+      clear(inside(seasons, ElectiveRun__c.Season__c));
       clear(
         [
           SELECT Id
@@ -114,28 +105,18 @@ public with sharing class SeasonTriggerHandler {
       // recurring activities point at its time blocks and locations; activities at its
       // locations, groups, and divisions (who can do them goes with them). All through
       // restrict-delete lookups.
-      clear(coverages);
+      clear(inside(seasons, Coverage__c.Season__c));
       // Linked choices point at offerings, and their times at time blocks; offerings point at
       // activities. Clearing the sets (with their linked choices) frees both.
-      List<SObject> sets = new List<SObject>();
-      List<SObject> linkedChoices = new List<SObject>();
-      for (ElectiveSet__c electiveSet : [
+      List<ElectiveSet__c> sets = [
         SELECT Id, (SELECT Id FROM LinkedChoices__r)
         FROM ElectiveSet__c
         WHERE Season__c IN :deletable
         WITH SYSTEM_MODE
-      ]) {
-        sets.add(electiveSet);
-        for (SObject linkedChoice : electiveSet.LinkedChoices__r) {
-          linkedChoices.add(linkedChoice);
-        }
-      }
-      clear(linkedChoices);
+      ];
+      clear(inside(sets, LinkedChoice__c.ElectiveSet__c));
       clear(sets);
-      List<SObject> fixedItems = new List<SObject>();
-      List<SObject> recurringItems = new List<SObject>();
-      List<SObject> schedules = new List<SObject>();
-      for (Program__c program : [
+      List<Program__c> programs = [
         SELECT
           Id,
           (SELECT Id FROM FixedActivities__r),
@@ -144,34 +125,20 @@ public with sharing class SeasonTriggerHandler {
         FROM Program__c
         WHERE Season__c IN :deletable
         WITH SYSTEM_MODE
-      ]) {
-        for (SObject item : program.FixedActivities__r) {
-          fixedItems.add(item);
-        }
-        for (SObject item : program.RecurringActivities__r) {
-          recurringItems.add(item);
-        }
-        for (SObject schedule : program.Schedules__r) {
-          schedules.add(schedule);
-        }
-      }
-      clear(fixedItems);
-      clear(recurringItems);
+      ];
+      clear(inside(programs, FixedActivity__c.Program__c));
+      clear(inside(programs, RecurringActivity__c.Program__c));
       // Schedules point at the season's weeks (restrict-delete); their days go with them. The
       // season's imported weeks go too: they are kept only while their season is (ImportedWeekGuard).
       ImportedWeekGuard.allow();
       try {
-        clear(schedules);
+        clear(inside(programs, Schedule__c.Program__c));
       } finally {
         ImportedWeekGuard.done();
       }
       // Read after the schedules go: a draft's delete puts its events' days right
       // (DeletedDrafts), which can change the special dates.
-      List<SObject> dates = new List<SObject>();
-      List<SObject> plans = new List<SObject>();
-      List<SObject> events = new List<SObject>();
-      List<SObject> activities = new List<SObject>();
-      for (Season__c season : [
+      List<Season__c> specials = [
         SELECT
           Id,
           (SELECT Id FROM SpecialDates__r),
@@ -181,28 +148,40 @@ public with sharing class SeasonTriggerHandler {
         FROM Season__c
         WHERE Id IN :deletable
         WITH SYSTEM_MODE
-      ]) {
-        for (SObject row : season.SpecialDates__r) {
-          dates.add(row);
-        }
-        for (SObject row : season.PlanParts__r) {
-          plans.add(row);
-        }
-        for (SObject row : season.SpecialEvents__r) {
-          events.add(row);
-        }
-        for (SObject row : season.Activities__r) {
-          activities.add(row);
-        }
-      }
+      ];
       // Special dates point at the season's weeks and special days and events; plans at the
       // special days and events; special events at its locations. Clearing the dates first
       // means no special event is refused for still being on a day.
-      clear(dates);
-      clear(plans);
-      clear(events);
-      clear(activities);
+      clear(inside(specials, SpecialDate__c.Season__c));
+      clear(inside(specials, PlanPart__c.Season__c));
+      clear(inside(specials, SpecialEvent__c.Season__c));
+      clear(inside(specials, Activity__c.Season__c));
     }
+  }
+
+  /**
+   * The records in one list inside the records read, by the field the child points at them with
+   * (its relationship name from the platform). Walked in loops, never held as a list, so a list of
+   * any length reads in parts.
+   */
+  private static List<SObject> inside(
+    List<SObject> parents,
+    Schema.SObjectField child
+  ) {
+    List<SObject> rows = new List<SObject>();
+    if (parents.isEmpty()) {
+      return rows;
+    }
+    String relationship = ShoreshSchema.childRelationship(
+      parents.getSObjectType(),
+      child
+    );
+    for (SObject parent : parents) {
+      for (SObject row : parent.getSObjects(relationship)) {
+        rows.add(row);
+      }
+    }
+    return rows;
   }
 
   private static void clear(List<SObject> rows) {

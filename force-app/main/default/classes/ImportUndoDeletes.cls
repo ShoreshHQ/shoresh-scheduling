@@ -289,24 +289,9 @@ public with sharing class ImportUndoDeletes {
       rows.put((Id) (String) ((List<Object>) row)[0], (List<Object>) row);
     }
     // What is inside each is read along with its values: one query.
-    List<String> relationships = insideOf(term);
-    List<String> subqueries = new List<String>();
-    for (String relationship : relationships) {
-      subqueries.add(
-        '(SELECT Id FROM ' +
-          relationship +
-          ' WHERE Id NOT IN :createdIds LIMIT 1)'
-      );
-    }
-    Map<Id, SObject> now = ImportUndoValues.read(
-      ImportFields.ofTerm(term),
-      fields,
-      rows.keySet(),
-      subqueries,
-      new Map<String, Object>{ 'createdIds' => createdIds }
-    );
+    Map<Id, SObject> now = valuesAndInside(term, fields, rows.keySet());
     result.removed += count.goneHolders(rows.keySet(), now.keySet());
-    Set<Id> holding = holdingOthers(now.values(), relationships);
+    Set<Id> holding = holdingOthers(now.values(), insideOf(term).keySet());
     // A special day whose schedule the director saved since holds their work: kept.
     holding.addAll(ImportUndoSpecialDays.revised(term, now.keySet()));
     usedByKeptDays.putAll(ImportUndoSpecialDays.usedBy(keptIds, now.keySet()));
@@ -341,32 +326,63 @@ public with sharing class ImportUndoDeletes {
   }
 
   /**
-   * The relationship names of what is inside a kind (INSIDE), from the platform, for the fields
-   * listed: none for a kind with nothing inside.
+   * What is inside a kind (INSIDE), by its relationship name from the platform, each with the
+   * sub-query that finds one there the import did not make: none for a kind with nothing inside.
    */
-  private static List<String> insideOf(String term) {
-    List<String> relationships = new List<String>();
-    if (!INSIDE.containsKey(term)) {
-      return relationships;
-    }
+  private static Map<String, String> insideOf(String term) {
+    Map<String, String> subqueries = new Map<String, String>();
     Schema.SObjectType type = ImportFields.ofTerm(term);
-    for (Schema.SObjectField child : INSIDE.get(term)) {
-      relationships.add(ShoreshSchema.childRelationship(type, child));
+    for (
+      Schema.SObjectField child : INSIDE.get(term) ??
+        new List<Schema.SObjectField>()
+    ) {
+      String relationship = ShoreshSchema.childRelationship(type, child);
+      subqueries.put(
+        relationship,
+        '(SELECT Id FROM ' +
+          relationship +
+          ' WHERE Id NOT IN :createdIds LIMIT 1)'
+      );
     }
-    return relationships;
+    return subqueries;
+  }
+
+  /**
+   * The records, with the fields the log names (ImportUndoValues.read's columns) and one of what
+   * is inside each that the import did not make, in user mode. Object, field and relationship
+   * names come from the platform.
+   */
+  private Map<Id, SObject> valuesAndInside(
+    String term,
+    Set<String> fields,
+    Set<Id> ids
+  ) {
+    Schema.SObjectType type = ImportFields.ofTerm(term);
+    List<String> selected = ImportUndoValues.columns(type, fields);
+    selected.addAll(insideOf(term).values());
+    return new Map<Id, SObject>(
+      Database.queryWithBinds(
+        'SELECT Id, ' +
+          String.join(selected, ', ') +
+          ' FROM ' +
+          ShoreshSchema.queryName(type) +
+          ' WHERE Id IN :ids',
+        new Map<String, Object>{ 'ids' => ids, 'createdIds' => createdIds },
+        AccessLevel.USER_MODE
+      )
+    );
   }
 
   /** Records with something inside them the import did not make, as read with their values. */
   private static Set<Id> holdingOthers(
     List<SObject> records,
-    List<String> relationships
+    Set<String> relationships
   ) {
     Set<Id> result = new Set<Id>();
     for (SObject record : records) {
       for (String relationship : relationships) {
         // An empty sub-query reads as null, not an empty list.
-        List<SObject> inside = record.getSObjects(relationship);
-        if (inside != null && !inside.isEmpty()) {
+        if (record.getSObjects(relationship)?.isEmpty() == false) {
           result.add(record.Id);
         }
       }

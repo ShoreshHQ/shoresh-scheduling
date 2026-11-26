@@ -66,26 +66,26 @@ public with sharing class ImportUndoValues {
     Set<String> fields,
     Set<Id> ids
   ) {
-    return read(
-      type,
-      fields,
-      ids,
-      new List<String>(),
-      new Map<String, Object>()
+    return new Map<Id, SObject>(
+      Database.queryWithBinds(
+        'SELECT Id, ' +
+          String.join(columns(type, fields), ', ') +
+          ' FROM ' +
+          ShoreshSchema.queryName(type) +
+          ' WHERE Id IN :ids',
+        new Map<String, Object>{ 'ids' => ids },
+        AccessLevel.USER_MODE
+      )
     );
   }
 
   /**
-   * The same, with the caller's sub-queries read along (a sub-query is not a query of its own),
-   * and their binds. The sub-queries are put into the query as given: build them only from the
-   * platform's own relationship names (ShoreshSchema), never from an import's or a person's text.
+   * The columns read reads besides Id: the given fields and the record's name. Only fields
+   * ImportFields lists are ever among them.
    */
-  public static Map<Id, SObject> read(
+  public static List<String> columns(
     Schema.SObjectType type,
-    Set<String> fields,
-    Set<Id> ids,
-    List<String> subqueries,
-    Map<String, Object> binds
+    Set<String> fields
   ) {
     Set<String> columns = new Set<String>{ 'Name' };
     for (String name : fields) {
@@ -100,21 +100,7 @@ public with sharing class ImportUndoValues {
     if (type == Offering__c.SObjectType) {
       columns.add(ImportFields.offeringNameColumn());
     }
-    List<String> selected = new List<String>(columns);
-    selected.addAll(subqueries);
-    Map<String, Object> allBinds = new Map<String, Object>(binds);
-    allBinds.put('ids', ids);
-    return new Map<Id, SObject>(
-      Database.queryWithBinds(
-        'SELECT Id, ' +
-          String.join(selected, ', ') +
-          ' FROM ' +
-          ShoreshSchema.queryName(type) +
-          ' WHERE Id IN :ids',
-        allBinds,
-        AccessLevel.USER_MODE
-      )
-    );
+    return new List<String>(columns);
   }
 
   /**
