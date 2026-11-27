@@ -203,7 +203,7 @@ describe("Areas of camp", () => {
   });
 
   // CORE-6.21: a camp whose location types are Areas reads "area of camp", never one word for two.
-  it("a camp that calls its location types Areas reads area of camp", () => {
+  it("a camp that calls its location types Areas (punctuation aside) reads area of camp", () => {
     const result = generateWeek({
       ...camp({
         mode: "fillOpen",
@@ -223,8 +223,8 @@ describe("Areas of camp", () => {
       terms: buildTerms([
         {
           term: "LocationType",
-          singular: "Area",
-          plural: "Areas",
+          singular: "Area.",
+          plural: "Areas.",
           isCustom: true
         }
       ])

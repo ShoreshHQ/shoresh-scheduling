@@ -253,9 +253,10 @@ export function countOf(t, n, term) {
 export function areaWord(t) {
   const taken = ["Location", "LocationType"].some((term) =>
     ["area", "areas"].includes(
+      // Capitals, spaces and punctuation aside, as a list's headings are matched.
       String(t.s(term) || "")
-        .trim()
         .toLowerCase()
+        .replace(/[^a-z]/g, "")
     )
   );
   return taken ? "area of camp" : "area";
