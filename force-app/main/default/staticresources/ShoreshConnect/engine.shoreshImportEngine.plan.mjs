@@ -8,7 +8,7 @@ import { spokenWeekday } from "./engine.shoreshDayNames.shoreshDayNames.mjs";
 import { FIELD } from "./engine.shoreshSchema.shoreshSchema.mjs";
 import { availabilityKey } from "./engine.shoreshImportEngine.availability.mjs";
 import { broughtBack } from "./engine.shoreshImportEngine.deleted.mjs";
-import { clock, shortClock } from "./engine.shoreshImportEngine.text.mjs";
+import { clock, hasClockTime, shortClock } from "./engine.shoreshImportEngine.text.mjs";
 import { programDays } from "./engine.shoreshImportEngine.weeks.mjs";
 import { dayList, nameList } from "./engine.shoreshImportEngine.questions.mjs";
 import { compareNames, compareText } from "./engine.shoreshImportEngine.order.mjs";
@@ -58,7 +58,8 @@ function blockRecords(proposal) {
           name: b.name,
           start: clock(b.start),
           end: clock(b.end),
-          partOfDay: partOfDay(b.start),
+          // INGEST-2.30: a new block a morning group is still here for is a morning block.
+          partOfDay: b.partOfDay || partOfDay(b.start),
           sortOrder: existingMax + ++n
         });
       } else if (b.change) {
@@ -659,6 +660,26 @@ export function importNotes(proposal, t) {
           text: `${b.name}: the file gives no end time, so it ends at ${shortClock(b.end)}, as long as the other ${t.pIn("TimeBlock")}. Change it on the ${t.p("TimeBlock")} screen if that is wrong.`
         })
       );
+  }
+  // INGEST-2.30: an afternoon block read as morning, as the groups here mornings are here for it.
+  const lateFor = new Map();
+  for (const [group, a] of proposal.availability || []) {
+    if (a.availability === "MorningOnly") {
+      (a.late || []).forEach((x) =>
+        lateFor.set(x.block, [...(lateFor.get(x.block) || []), group])
+      );
+    }
+  }
+  for (const [block, groups] of lateFor) {
+    const who = [...new Set(groups)].sort(compareText);
+    // A block named by its times says them once.
+    const named = hasClockTime(block.name)
+      ? block.name
+      : `${block.name} (${shortClock(block.start)}\u2013${shortClock(block.end)})`;
+    notes.push({
+      key: `lateMorning|${block.fileKey}|${block.name}`,
+      text: `${named} is read as morning: ${who.join(", ")} ${who.length === 1 ? "is" : "are"} here for it and then go${who.length === 1 ? "es" : ""} home.`
+    });
   }
   proposal.activities
     .filter((a) => a.lengthsVary)

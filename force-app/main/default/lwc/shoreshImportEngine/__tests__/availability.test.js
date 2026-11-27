@@ -3,6 +3,7 @@
 // listed under "Shoresh read these as" with All day. Made-up camp only.
 import {
   buildProposal,
+  importNotes,
   planFor,
   questionCards,
   readAsGroups
@@ -111,14 +112,60 @@ describe("INGEST-2.9: a group here for part of the day", () => {
   });
 });
 
-describe("INGEST-2.9 counter-case: blanks that do not start at the afternoon", () => {
-  it("INGEST-2.9 counter-case: a group at Lunch at noon, blank after it, is not read: Morning only would drop its Lunch", () => {
-    const lunchAtNoon = (g, d, b) => {
-      if (b === PM) return "Lunch";
-      if (b === LUNCH) return ROTATION[(g + d) % ROTATION.length];
-      return g < 2 && b > PM ? "" : rotation(g, d, b);
+describe("INGEST-2.30: a group at Lunch at noon, blank after it", () => {
+  const lunchAtNoon = (g, d, b) => {
+    if (b === PM) return "Lunch";
+    if (b === LUNCH) return ROTATION[(g + d) % ROTATION.length];
+    return g < 2 && b > PM ? "" : rotation(g, d, b);
+  };
+  const noonBlock = (p, answers) =>
+    planFor(p, null, "a0S000000000001", { answers }).timeBlocks.find((b) =>
+      b.start.startsWith("12:00")
+    );
+
+  it("INGEST-2.30: comes in Morning only and keeps its Lunch: the noon block is a morning one", () => {
+    const p = propose(week(lunchAtNoon));
+    expect(availabilityOf(p)["Bunk 1"]).toBe("MorningOnly");
+    expect(noonBlock(p, {}).partOfDay).toBe("Morning");
+    expect(p.fixed.map((f) => f.name)).toContain("Lunch");
+    expect(importNotes(p, terms).map((n) => n.text)).toContain(
+      "12:00-12:45 is read as morning: Bunk 1, Bunk 2 are here for it and then go home."
+    );
+  });
+
+  it("INGEST-2.30: counter-case: a morning group gone home by noon keeps the noon block an afternoon one", () => {
+    // Bunk 3 goes home before noon (rule 9); Bunk 1 and 2 eat Lunch at noon first.
+    const both = (g, d, b) => {
+      return g === 2 && b >= PM ? "" : lunchAtNoon(g, d, b);
     };
-    expect(availabilityOf(propose(week(lunchAtNoon)))["Bunk 1"]).toBe("AllDay");
+    const p = propose(week(both));
+    expect(availabilityOf(p)).toMatchObject({
+      "Bunk 1": "AllDay",
+      "Bunk 3": "MorningOnly"
+    });
+    expect(noonBlock(p, {}).partOfDay).toBe("Afternoon");
+  });
+
+  it("INGEST-2.30: a group here afternoons that comes after the noon block leaves it a morning one", () => {
+    const late = (g, d, b) => {
+      return g === 3 && b <= PM ? "" : lunchAtNoon(g, d, b);
+    };
+    const p = propose(week(late));
+    expect(availabilityOf(p)).toMatchObject({
+      "Bunk 1": "MorningOnly",
+      "Bunk 4": "AfternoonOnly"
+    });
+    expect(noonBlock(p, {}).partOfDay).toBe("Morning");
+  });
+
+  it("INGEST-2.30: answered All day, the noon block is an afternoon one again", () => {
+    const answers = {
+      "availability|Bunk 1": "AllDay",
+      "availability|Bunk 2": "AllDay"
+    };
+    const p = propose(week(lunchAtNoon), answers);
+    expect(availabilityOf(p, answers)["Bunk 1"]).toBe("AllDay");
+    expect(noonBlock(p, answers).partOfDay).toBe("Afternoon");
   });
 });
 
@@ -145,5 +192,43 @@ describe("INGEST-5.9: listed under Shoresh read these as", () => {
     expect(partOfDay(after, answers).lines[0].answer).toBe("AllDay");
     const plan = planFor(after, null, "a0S000000000001", { answers });
     expect(plan.remember).toContainEqual({ key: id, answer: "AllDay" });
+  });
+});
+
+describe("INGEST-2.30: a group empty every afternoon, leaving at another time on another day", () => {
+  // Bunk 1 leaves after 12:00-12:45 Monday to Thursday and before it on Friday.
+  const leaves = (g, d, b) => {
+    const from = d === 4 ? PM : PM + 1;
+    return g === 0 && b >= from ? "" : rotation(g, d, b);
+  };
+
+  it("INGEST-2.30: it comes in Morning only, said under what Shoresh read", () => {
+    const p = propose(week(leaves));
+    expect(availabilityOf(p)["Bunk 1"]).toBe("MorningOnly");
+    expect(availabilityOf(p)["Bunk 2"]).toBe("AllDay");
+    expect(partOfDay(p).lines.map((l) => [l.name, l.answer])).toEqual([
+      ["Bunk 1", "MorningOnly"]
+    ]);
+    expect(
+      importNotes(p, terms)
+        .map((n) => n.text)
+        .join(" ")
+    ).toContain(
+      "is read as morning: Bunk 1 is here for it and then goes home."
+    );
+  });
+
+  it("INGEST-2.30: counter-case: leaving for the last block only stays all day", () => {
+    const last = (g, d, b) => {
+      return g === 0 && b === BLOCKS.length - 1 ? "" : rotation(g, d, b);
+    };
+    expect(availabilityOf(propose(week(last)))["Bunk 1"]).toBe("AllDay");
+  });
+
+  it("INGEST-2.30: counter-case: an afternoon there on one day stays all day", () => {
+    const once = (g, d, b) => {
+      return d === 0 ? rotation(g, d, b) : leaves(g, d, b);
+    };
+    expect(availabilityOf(propose(week(once)))["Bunk 1"]).toBe("AllDay");
   });
 });
