@@ -210,11 +210,16 @@ function answersToKeep(proposal, answers) {
   ]);
   const remember = [];
   const forget = [];
+  // INGEST-5.14: an answer carried from another program key is remembered under today's.
+  const carried = new Map(
+    proposal.asks.filter((a) => a.carried).map((a) => [a.id, a.carried])
+  );
   for (const id of [...ids].sort()) {
-    if (answers[id] === "leaveOut") {
+    const answer = answers[id] || carried.get(id);
+    if (answer === "leaveOut") {
       forget.push(id);
-    } else if (answers[id]) {
-      remember.push({ key: id, answer: String(answers[id]) });
+    } else if (answer) {
+      remember.push({ key: id, answer: String(answer) });
     }
   }
   // Brought back: the camp no longer remembers it as deleted.

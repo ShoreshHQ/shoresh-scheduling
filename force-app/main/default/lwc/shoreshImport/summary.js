@@ -39,17 +39,59 @@ function tile(term, names, t) {
 }
 
 /**
+ * INGEST-5.16: a kind's names as the tile opens into them. A name the plan adds more than once (a
+ * recurring activity per group and time: "Free Swim" three times) says when and for whom, so the
+ * director can tell them apart: "Free Swim · 1:15 – 1:55 PM · Otters".
+ */
+function namesOf(records, plan, setup) {
+  // The camp's own time blocks, groups and divisions by Id, then what the import adds.
+  const camp = ((setup && setup.programs) || []).flatMap((entry) => [
+    ...(entry.timeBlocks || []),
+    ...(entry.divisions || []).flatMap((d) => [d.division, ...(d.groups || [])])
+  ]);
+  const nameOf = new Map([
+    ...camp.filter(Boolean).map((r) => [r.Id, r.Name]),
+    ...[
+      ...(plan.timeBlocks || []),
+      ...(plan.groups || []),
+      ...(plan.divisions || [])
+    ]
+      .filter((r) => r.name)
+      .map((r) => [r.key, r.name])
+  ]);
+  const count = new Map();
+  records.forEach((r) => count.set(r.name, (count.get(r.name) || 0) + 1));
+  return records.map((r) => {
+    const name = r.name || "";
+    if (count.get(r.name) < 2) {
+      return name;
+    }
+    const who = (r.who || []).map((key) => nameOf.get(key)).filter(Boolean);
+    const whoText =
+      who.length > 2
+        ? `${who.slice(0, 2).join(", ")} and ${who.length - 2} more`
+        : who.join(", ");
+    return [name, nameOf.get(r.blockKey), whoText].filter(Boolean).join(" · ");
+  });
+}
+
+/**
  * What the plan adds, kind by kind: [{ key, count, label, names }], only kinds with something
  * new. A record the plan only changes (it has an Id) is not counted: it is a question answered.
  */
-export function comingIn(plan, t) {
+export function comingIn(plan, t, setup) {
   if (!plan) {
     return [];
   }
+  // DIV-1.1: a group in no division is held by a record that is no division to the director.
   const tiles = KINDS.map(([list, term]) =>
     tile(
       term,
-      (plan[list] || []).filter((r) => !r.id).map((r) => r.name || ""),
+      namesOf(
+        (plan[list] || []).filter((r) => !r.id && !r.noDivision),
+        plan,
+        setup
+      ),
       t
     )
   );
@@ -84,6 +126,26 @@ export function countTiles(counts, t) {
       names: []
     };
   });
+}
+
+/**
+ * INGEST-5.13: the save's counts less the records that hold a group in no division (DIV-1.1),
+ * which the Divisions screen never shows: "4 divisions" added there were none to see.
+ */
+export function withoutHolders(counts, plan) {
+  const holders = ((plan && plan.divisions) || []).filter(
+    (d) => d.noDivision && !d.id
+  ).length;
+  if (!counts || !holders || !counts.Division) {
+    return counts;
+  }
+  const shown = { ...counts };
+  if (counts.Division > holders) {
+    shown.Division = counts.Division - holders;
+  } else {
+    delete shown.Division;
+  }
+  return shown;
 }
 
 export function total(tiles) {

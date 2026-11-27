@@ -259,10 +259,17 @@ function verdictFor(name, t, facts, decided, ctx) {
   decided = { ...decided, patterns: regular };
   const several = ctx.timetables.filter((x) => !x.leftOut).length > 1;
   const id = `kind|${name}${several ? `|${t.name}` : ""}`;
+  const given = kindAnswer(
+    ctx.answers,
+    id,
+    name,
+    several ? t.name : null,
+    t.name
+  );
   if (decided.verdict !== "ask") {
     // review.md INGEST-5.1: read without asking, and listed under "Read as" with a one-click
     // change; a change that fits the name's pattern is the director's.
-    const changed = ctx.answers[id];
+    const changed = given;
     const kind =
       changed && kindsThatFit(decided).includes(changed)
         ? changed
@@ -277,15 +284,30 @@ function verdictFor(name, t, facts, decided, ctx) {
     several,
     facts: decided,
     timetable: t,
-    timetableFacts: facts
+    timetableFacts: facts,
+    ...(given && !ctx.answers[id] ? { carried: given } : {})
   });
-  const answer = ctx.answers[id];
+  const answer = given;
   return {
     ...decided,
     kind: answer || "activity",
     asked: id,
     leftOut: answer === LEAVE_OUT
   };
+}
+
+/**
+ * INGEST-5.14: a kind answer given before the programs changed. The key names the program only
+ * when there are several ("kind|Lunch|Main"); leaving one program out made it "kind|Lunch" and the
+ * answer was dropped without a word. With one program left, the answer given for that same
+ * program is kept; with several, a one-program answer can't tell which program it was for and is
+ * asked again. The desktop keeps every other answer when one changes (ImportScreen.jsx).
+ */
+function kindAnswer(answers, id, name, program, only) {
+  if (answers[id]) {
+    return answers[id];
+  }
+  return program ? undefined : answers[`kind|${name}|${only}`];
 }
 
 /** The cells of each name in one timetable, names in order: [[name, cells]]. */
