@@ -456,6 +456,29 @@ Each rule is clue, meaning, example, test.
     `plan.js` `blockRecords`, `importNotes`. The level-3 corpus truth follows it
     (`scripts/import-corpus/level3.js`).
 
+31. **Three spellings or more are one question** (import battle test, 2026-11-27; coordinator's
+    call 2026-11-27, Greg can change).
+    Clue: three names or more of one kind joined by similar pairs that are asked, none of them
+    answered on its own (or remembered) and none of the names paired with a name the camp has:
+    "Music" most days, "Musik" once, "Muzic" once. With such a pair or answer, the pairs keep
+    their own questions, so the camp's name still wins and "keep them all" is never offered for
+    names already the same.
+    Meaning: one card, "Are these the same activity?", that lists every spelling with how often
+    the file has it and offers "Same: call them all …" for each, "Different: keep them all", or
+    leave them out. The name chosen is the one kept for all of them; the answer is remembered
+    under the card's key (`spellings|activity|Music|Musik|Muzic`) and reads in camp words under
+    remembered answers, to forget only (it is a name). It was one question per pair: five for four
+    spellings, whose answers could disagree. Two spellings are still one pair's question. The
+    answer is remembered for those very spellings: a later file with a spelling more or fewer asks
+    again. The
+    desktop proposes one merge per pair (`src/ingest/nearDuplicateNames.js`
+    `findNameVariantCandidates`).
+    Test: `names.test.js` "INGEST-2.31: …"; `kinds.test.js` (in camp words). Counter-cases: kept
+    apart, all three stay; two spellings are still one pair; a spelling paired with a name the
+    camp has, or a pair answered alone, keeps the pairs' questions. Code: `names.js` `spellingGroups`,
+    `spellingAnswers`, `mergesFrom`; `reading.js`; `questions.js` `pairCards`, `spellingCard`;
+    `plan.js` `answersToKeep`; `shoreshLearned/kinds.js` `spellings`.
+
 ## With the classification rules
 
 - A division of one is a whole division for classification rule 7: an item only CIT has in one

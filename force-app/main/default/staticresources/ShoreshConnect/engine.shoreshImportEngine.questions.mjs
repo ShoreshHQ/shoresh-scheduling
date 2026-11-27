@@ -26,6 +26,7 @@ import { LEAVE_OUT } from "./engine.shoreshImportEngine.reading.mjs";
 import { COLOUR_ADD, NO_DIVISION, blocksOf } from "./engine.shoreshImportEngine.reading-constants.mjs";
 import { AROUND as CLASH_AROUND, SPECIAL as CLASH_SPECIAL } from "./engine.shoreshImportEngine.clashes.mjs";
 import { WEEKDAYS, shortClock, weekOrder } from "./engine.shoreshImportEngine.text.mjs";
+import { compareText } from "./engine.shoreshImportEngine.order.mjs";
 
 function quoted(name) {
   return `“${name}”`;
@@ -152,6 +153,52 @@ function similarCard(pair, t, answer) {
       { value: "b", label: `Same: call it ${quoted(pair.b)}` },
       { value: "different", label: "Different: keep both" },
       leaveOut("Neither is added this time.")
+    ]
+  };
+}
+
+/**
+ * INGEST-2.31: a card per asked pair, except the pairs of three spellings or more, which are one
+ * card that names them all and asks which one to call them (coordinator's call 2026-11-27, Greg
+ * can change).
+ */
+function pairCards(reading, t, answers) {
+  const groups = reading.spellings || [];
+  const grouped = new Set(groups.flatMap((g) => g.pairs.map((p) => p.id)));
+  return [
+    ...reading.pairs
+      .filter((pair) => !grouped.has(pair.id))
+      .map((pair) => similarCard(pair, t, answers[pair.id])),
+    ...groups.map((g) => spellingCard(g, t))
+  ];
+}
+
+function spellingCard(group, t) {
+  const term = t.sIn(
+    { group: "Group", division: "Division" }[group.kind] || "Activity"
+  );
+  // Most used first, then by name.
+  const names = [...group.names].sort(
+    (a, b) => group.counts[b] - group.counts[a] || compareText(a, b)
+  );
+  return {
+    id: group.id,
+    stage: "preview",
+    lane: "standard",
+    title: `Are these the same ${term}?`,
+    subject: names.join(", "),
+    subtitle: `In the file: ${names.map((n) => `${quoted(n)} ${times1(group.counts[n])}`).join(", ")}.`,
+    detail:
+      new Set(group.pairs.map((p) => p.reason)).size === 1
+        ? SIMILAR_WHY[group.pairs[0].reason]
+        : "They are written almost the same.",
+    options: [
+      ...names.map((n) => ({
+        value: n,
+        label: `Same: call them all ${quoted(n)}`
+      })),
+      { value: "different", label: "Different: keep them all" },
+      leaveOut("None of them is added this time.")
     ]
   };
 }
@@ -891,9 +938,7 @@ export function questionCards(proposal, t, answers) {
   // there would be nothing to save but a program with no days.
   const onlyOneDays = proposal.reading.placements.length === 0;
   const cards = [
-    ...proposal.reading.pairs.map((pair) =>
-      similarCard(pair, t, answers[pair.id])
-    ),
+    ...pairCards(proposal.reading, t, answers),
     ...proposal.reading.timeAsks.map((ask) => timeCard(ask, t)),
     ...proposal.reading.groupAsks.map((ask) => whichGroupCard(ask, t)),
     ...(proposal.reading.splitAsks || []).map((ask) => splitCard(ask, t)),

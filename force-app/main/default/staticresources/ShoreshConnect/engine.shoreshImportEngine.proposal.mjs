@@ -611,7 +611,10 @@ export function buildProposal(input) {
     availability,
     baseOf: new Map(people.groups.map((g) => [g.name, g.base || g.name])),
     noted,
-    similar: unansweredSimilar(reading.pairs, answers)
+    similar: unansweredSimilar(reading.pairs, {
+      ...reading.pairAnswers,
+      ...answers
+    })
   };
   const decisions = decideKinds(usable, ctx);
   const keyOf = keysFor(people.groups, input.existing, reading.identities);

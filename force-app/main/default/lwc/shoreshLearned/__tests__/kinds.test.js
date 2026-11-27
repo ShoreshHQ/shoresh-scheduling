@@ -166,6 +166,21 @@ describe("each remembered question in camp words", () => {
     expect(kindOf("place|Gym", "add", t).answer).toBe("Added");
   });
 
+  it("INGEST-2.31: three spellings answered with one name, in camp words, only to forget", () => {
+    const remembered = kindOf(
+      "spellings|activity|Free Swim|Free swim!|Freeswim",
+      "Free Swim",
+      t
+    );
+    expect(remembered.name).toBe("“Free Swim”, “Free swim!”, “Freeswim”");
+    expect(remembered.answer).toBe("Same: call them all “Free Swim”");
+    expect(remembered.choices).toEqual([]);
+    expect(
+      kindOf("spellings|activity|Free Swim|Free swim!|Freeswim", "different", t)
+        .answer
+    ).toBe("Different: keep them all");
+  });
+
   it("offers the same choices the server accepts", () => {
     expect(
       kindOf("kind|Lunch", "fixed", t).choices.map((c) => c.value)

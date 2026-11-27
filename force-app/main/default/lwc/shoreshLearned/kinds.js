@@ -126,6 +126,22 @@ function similar(p, answer, spell) {
   };
 }
 
+// INGEST-2.31: three spellings or more, one name chosen for them all. Answered with a name, so
+// it can only be forgotten (LearnedChoices).
+function spellings(p, answer) {
+  const names = p.slice(2);
+  const words = { different: "Different: keep them all" };
+  if (names.includes(answer)) {
+    words[answer] = `Same: call them all ${quoted(answer)}`;
+  }
+  return {
+    group: "split",
+    name: names.map(quoted).join(", "),
+    words,
+    choices: []
+  };
+}
+
 function oneOrSeveral(p, t) {
   return {
     group: "split",
@@ -288,6 +304,7 @@ function named(name, words = {}) {
 const FAMILIES = {
   kind: (p, a, t) => classification(p, t),
   similar: (p, a, t, spell) => similar(p, a, spell),
+  spellings: (p, a) => spellings(p, a),
   list: (p, a, t) => oneOrSeveral(p, t),
   change: (p, a, t, spell) => change(p, spell),
   ampm: (p) =>
@@ -332,7 +349,8 @@ export function describe(key, answer, t, spell = (name) => name) {
   const [family0, ...rest] = keyParts(String(key ?? ""));
   // The two names of a similar pair are the question itself: shown as the file wrote them.
   // Runs-in names its item and weeks by Id (runsInName).
-  const raw = family0 === "similar" || rest[0] === "runsIn";
+  const raw =
+    family0 === "similar" || family0 === "spellings" || rest[0] === "runsIn";
   const p = [family0, ...(raw ? rest : rest.map(spell))];
   const family = FAMILIES[p[0]];
   const kind = family
