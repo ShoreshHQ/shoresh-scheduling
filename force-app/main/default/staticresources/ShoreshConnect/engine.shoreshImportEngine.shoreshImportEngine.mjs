@@ -47,7 +47,7 @@ function refusal(text) {
 }
 
 /** INGEST-1.1: refused on its size alone, before any of it is read. */
-function checkFileSize(byteLength, limits = IMPORT_LIMITS) {
+export function checkFileSize(byteLength, limits = IMPORT_LIMITS) {
   if (byteLength > limits.maxBytes) {
     throw refusal(
       `That file is too large to import (over ${Math.round(limits.maxBytes / (1024 * 1024))} MB). Nothing was imported.`
@@ -230,6 +230,9 @@ export {
   broughtBack,
   nextKeyOf
 } from "./engine.shoreshImportEngine.deleted.mjs";
+
+// A schedule PDF read as sheets (INGEST-1.11), by the screen and the connector alike.
+export { sheetsFromPdf, textOf } from "./engine.shoreshImportEngine.pdfSheets.mjs";
 
 // Shared with the per-screen list imports (c/shoreshLists, slice 4c).
 export {

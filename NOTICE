@@ -43,7 +43,12 @@ https://github.com/salesforce/lwc), Copyright (c) Salesforce, Inc., licensed und
 License, and tslib (https://github.com/microsoft/tslib) as built into @lwc/engine-dom,
 Copyright (c) Microsoft Corporation, licensed under the BSD Zero Clause License. Their licence texts:
 docs/licenses/LWC-MIT.txt and docs/licenses/tslib-0BSD.txt, also at the end of the connector's
-NOTICE.txt.
+NOTICE.txt. The connector also carries PDF.js 4.10.38 (pdfjs-dist's legacy build,
+https://github.com/mozilla/pdf.js), Copyright Mozilla Foundation and contributors, licensed under
+the Apache License, Version 2.0, shipped unchanged as engine.pdfjs.mjs and
+engine.pdfjs.worker.mjs, with which it reads a schedule PDF a person's AI imports (see
+docs/adr/0032-reading-a-schedule-pdf.md). Its licence text: docs/licenses/pdfjs-Apache-2.0.txt,
+also at the end of the connector's NOTICE.txt.
 
 This repository includes development-assistant skills (not part of the packaged app) from
 Salesforce sf-skills (https://github.com/forcedotcom/sf-skills, commit 625863f),

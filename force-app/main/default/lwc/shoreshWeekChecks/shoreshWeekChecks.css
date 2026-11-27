@@ -17,6 +17,12 @@
   min-width: 0;
 }
 
+/* A short or over row: when the name and its unit don't both fit beside Accept, the unit goes
+   under, on the right, so the name is never squeezed under it. */
+.line > button:first-child {
+  flex-wrap: wrap;
+}
+
 /* Accept: shown when its line is under the pointer or keyboard focus is on the line or on it.
    Still in the Tab and arrow order while hidden from the eye, so the keyboard reaches it. */
 .accept {
@@ -70,9 +76,13 @@ ul {
 }
 
 /* An under or over row's activity wraps rather than ending in "…": its unit ("5 groups over")
-   is longer than "5 of 4" was, and the name is what the director reads first. */
+   is longer than "5 of 4" was, and the name is what the director reads first. It keeps its own
+   width (the row's nowrap would otherwise let it shrink to nothing under the unit) and wraps only
+   when it is wider than the row. */
 .name {
-  min-width: 0;
+  flex: 1 0 auto;
+  max-width: 100%;
+  white-space: normal;
   overflow-wrap: anywhere;
 }
 

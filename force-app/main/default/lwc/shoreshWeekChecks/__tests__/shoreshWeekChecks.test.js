@@ -788,4 +788,20 @@ describe("c-shoresh-week-checks: the counter", () => {
       /flex-wrap: wrap;/
     );
   });
+
+  // "Archery" was squeezed to nothing under "1 short · 1 group" (live check, 2026-11-27): the row
+  // is nowrap and Accept keeps its width, so the name shrank. The name keeps its width and the
+  // unit goes under it instead.
+  it("a short row's name keeps its width and its unit wraps under it", () => {
+    const css = require("fs").readFileSync(
+      require("path").join(__dirname, "../shoreshWeekChecks.css"),
+      "utf8"
+    );
+    expect(css).toMatch(/\.line > button:first-child\s*{\s*flex-wrap: wrap;\s*}/);
+    const name = css.match(/\n\.name\s*{[^}]*}/)[0];
+    expect(name).toMatch(/flex: 1 0 auto;/);
+    expect(name).toMatch(/max-width: 100%;/);
+    expect(name).toMatch(/white-space: normal;/);
+    expect(name).not.toMatch(/min-width: 0;/);
+  });
 });
