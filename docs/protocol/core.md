@@ -249,3 +249,8 @@ These never bend for Shoresh.
   of a day MUST be shown in the Why list, once per day and time block ("Dana leads Archery and
   Swim · Monday · Period 2"), and never fixed: the generator never reads Who leads it. The
   same activity with several groups at once is no conflict (ADR 0031 piece B).
+- **CORE-6.21** A group that changes area of camp two or more times in a day MUST be shown in the
+  Why list, once per group and day ("Bunk 4 changes area 3 times on Monday"), and never fixed. A
+  change is counted between one placement with an area and the next that day with one; a
+  placement with no area is passed over. A camp with no areas MUST get no such line (ADR 0031
+  piece C).

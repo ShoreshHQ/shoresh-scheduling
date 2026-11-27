@@ -180,6 +180,7 @@ import locationTypeKey from "@salesforce/schema/LocationType__c.Key__c";
 import locationTypeSeason from "@salesforce/schema/LocationType__c.Season__c";
 import locationTypeSortOrder from "@salesforce/schema/LocationType__c.SortOrder__c";
 import locationObject from "@salesforce/schema/Location__c";
+import locationArea from "@salesforce/schema/Location__c.Area__c";
 import locationCopiedFrom from "@salesforce/schema/Location__c.CopiedFrom__c";
 import locationGroupsThatFit from "@salesforce/schema/Location__c.GroupsThatFit__c";
 import locationLocationType from "@salesforce/schema/Location__c.LocationType__c";
@@ -592,6 +593,7 @@ export const FIELD = Object.freeze({
     SortOrder: locationTypeSortOrder.fieldApiName
   }),
   Location: Object.freeze({
+    Area: locationArea.fieldApiName,
     CopiedFrom: locationCopiedFrom.fieldApiName,
     GroupsThatFit: locationGroupsThatFit.fieldApiName,
     LocationType: locationLocationType.fieldApiName,

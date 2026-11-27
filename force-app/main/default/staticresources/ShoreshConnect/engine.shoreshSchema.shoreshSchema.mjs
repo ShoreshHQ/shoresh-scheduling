@@ -181,6 +181,7 @@ const locationTypeKey = schemaName("LocationType__c.Key__c");
 const locationTypeSeason = schemaName("LocationType__c.Season__c");
 const locationTypeSortOrder = schemaName("LocationType__c.SortOrder__c");
 const locationObject = schemaName("Location__c");
+const locationArea = schemaName("Location__c.Area__c");
 const locationCopiedFrom = schemaName("Location__c.CopiedFrom__c");
 const locationGroupsThatFit = schemaName("Location__c.GroupsThatFit__c");
 const locationLocationType = schemaName("Location__c.LocationType__c");
@@ -593,6 +594,7 @@ export const FIELD = Object.freeze({
     SortOrder: locationTypeSortOrder.fieldApiName
   }),
   Location: Object.freeze({
+    Area: locationArea.fieldApiName,
     CopiedFrom: locationCopiedFrom.fieldApiName,
     GroupsThatFit: locationGroupsThatFit.fieldApiName,
     LocationType: locationLocationType.fieldApiName,

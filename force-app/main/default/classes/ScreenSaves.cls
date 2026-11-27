@@ -60,6 +60,7 @@ public with sharing class ScreenSaves {
       Location__c.SortOrder__c,
       Location__c.LocationType__c,
       Location__c.GroupsThatFit__c,
+      Location__c.Area__c,
       Location__c.Notes__c
     },
     StaffMember__c.SObjectType => new Set<Schema.SObjectField>{

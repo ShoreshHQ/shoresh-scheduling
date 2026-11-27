@@ -25,13 +25,16 @@ export function readActivities(records, shortWeek = null, weekDays = 0) {
   );
 }
 
-/** Each place by Id: { name, fit } (how many groups fit at once, at least 1). */
+/**
+ * Each place by Id: { name, fit (how many groups fit at once, at least 1), area (its area of
+ * camp as compared, setup.js areaKey, or null) }.
+ */
 export function readLocations(records) {
-  const { fit, names } = readPlaces(records);
+  const { fit, names, areas } = readPlaces(records);
   return new Map(
     [...fit].map(([id, groupsThatFit]) => [
       id,
-      { name: names.get(id), fit: groupsThatFit }
+      { name: names.get(id), fit: groupsThatFit, area: areas.get(id) || null }
     ])
   );
 }

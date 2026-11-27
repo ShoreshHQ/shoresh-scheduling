@@ -31,7 +31,7 @@ import {
   owner,
   slots
 } from "./grid";
-import { compareText } from "c/shoreshTerms";
+import { areaWord, compareText } from "c/shoreshTerms";
 import { earlyDates, minutes, runsAt, weekdayOf } from "./setup";
 import { BUSY, OFF_TIME, RELAX_ORDER, RULE as RULES } from "./week";
 import { reasonFor } from "./words";
@@ -688,6 +688,61 @@ function leading(ctx, words) {
   return lines;
 }
 
+// A day a group changes area of camp this many times or more is said (ADR 0031 C3): one change, a
+// morning at the lakefront and an afternoon on the fields, is a camp's usual plan.
+const WALKS_SAID = 2;
+
+/**
+ * Walks between areas of camp (ADR 0031 C3): one line per group and day with WALKS_SAID or more
+ * changes of area, by day, then the day's group order. A change is counted between one
+ * placement with an area and the next placement that day with an area, so a placement with no
+ * area (no location, or a location with none) is passed over. Shown, never fixed; a camp with no
+ * areas gets none.
+ */
+function walks(ctx, words) {
+  const lines = [];
+  const areaOf = (p) => {
+    const at = placeOf(ctx, p);
+    return at ? ctx.locations.get(at).area || null : null;
+  };
+  if (![...ctx.locations.values()].some((place) => place.area)) {
+    return lines;
+  }
+  const byDay = groupBy(ctx.placements, (p) => p.d);
+  [...byDay.keys()]
+    .sort((a, b) => a - b)
+    .forEach((d) => {
+      const day = ctx.days[d];
+      day.groups.forEach((grp) => {
+        let last = null;
+        let changes = 0;
+        byDay
+          .get(d)
+          .filter((p) => p.groupId === grp.id)
+          .sort((x, y) => x.first - y.first)
+          .forEach((p) => {
+            const area = areaOf(p);
+            if (!area) {
+              return;
+            }
+            if (last && area !== last) {
+              changes += 1;
+            }
+            last = area;
+          });
+        if (changes >= WALKS_SAID) {
+          lines.push({
+            dateValue: day.dateValue,
+            groupId: grp.id,
+            changes,
+            text: `${grp.name} changes ${areaWord(ctx.t)} ${changes} times on ${words.dayName(day.dateValue)}`
+          });
+        }
+      });
+    });
+  return lines;
+}
+
 function filledCount(ctx) {
   const cells = countedCells(ctx, ctx.days);
   return {
@@ -849,6 +904,7 @@ export function checkWeek(days, model, words) {
     placements,
     overlapping,
     leading: leading(ctx, words),
+    walks: walks(ctx, words),
     ...stillToPlace(ctx),
     cells: filledCount(ctx),
     hasCoverageTargets: activities.some((a) => a.min > 0),

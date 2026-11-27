@@ -493,15 +493,19 @@ export function readCell(column, raw) {
       return readWeeks(column, text);
     case "runs":
       return readRuns(column, text);
-    default:
+    default: {
       // Every list's name, and a name in another list's column (which may add it), is a
-      // Salesforce name: longer than it keeps is never Ready to save, for the save to refuse
-      // (INGEST-1.7).
-      return (column.key === "name" || column.type === "ref") &&
-        text.length > NAME_MOST
+      // Salesforce name, and a short text column says how much it keeps (most): longer than
+      // it keeps is never Ready to save, for the save to refuse (INGEST-1.7).
+      const most =
+        column.key === "name" || column.type === "ref"
+          ? NAME_MOST
+          : column.most;
+      return most && text.length > most
         ? {
-            problem: `"${text.slice(0, 40)}…" is longer than ${NAME_MOST} characters`
+            problem: `"${text.slice(0, 40)}…" is longer than ${most} characters`
           }
         : { value: text };
+    }
   }
 }

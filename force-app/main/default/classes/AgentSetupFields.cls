@@ -46,6 +46,8 @@ public with sharing class AgentSetupFields {
     'Location' => new Map<String, Schema.SObjectField>{
       'location_type' => Location__c.LocationType__c,
       'groups_that_fit' => Location__c.GroupsThatFit__c,
+      // Areas of camp (ADR 0031 piece C): plain text, blank for none.
+      'area' => Location__c.Area__c,
       'notes' => Location__c.Notes__c
     },
     // Staff (ADR 0031 piece B): who leads what is set on each activity (who_leads_it).
