@@ -436,6 +436,26 @@ Each rule is clue, meaning, example, test.
     column not read, or none, have no note. Code: `layouts.js` `ownTimes`; `reading.js`
     (`timedCells`); `plan.js` `importNotes`.
 
+30. **A group empty every afternoon is here mornings, whenever it leaves** (import battle test,
+    2026-11-27; coordinator's call 2026-11-27, Greg can change).
+    Clue: a new group that, on each of its days (two or more), is blank in the afternoon blocks the
+    other groups have from one block on to the end of the day, those being half of that day's
+    afternoon blocks or more, though it leaves at another time on another day (after a 12:00 Lunch
+    on Monday, before it on Friday).
+    Meaning: it comes in Morning only, listed under "Shoresh read these as" with All day, as rule 9
+    does (review.md INGEST-5.9). A new afternoon block it still has cells in (its Lunch at noon) is
+    read as a morning block, so Morning only keeps it, and the review's notes say so ("Lunch
+    (12:00–12:45) is read as morning: Bunk 1, Bunk 2 are here for it and then go home"). Where such a block
+    is the camp's own, a group read as here mornings is not here for it (gone home at noon, rule
+    9), or a group read as here afternoons has it, the group stays all day: the block would
+    otherwise be scheduled for a group gone home, or taken from one that is there. It was all
+    day, scheduled until the end of the afternoon. The desktop has no such rule.
+    Test: `availability.test.js` "INGEST-2.30: …". Counter-cases: leaving for the last block only,
+    or an afternoon there on one day, stays all day; a morning group gone home by noon keeps the
+    noon block an afternoon one; answered All day, the block is an afternoon one again. Code: `availability.js` `emptyEveryAfternoon`, `lateMorning`, `readAvailability`;
+    `plan.js` `blockRecords`, `importNotes`. The level-3 corpus truth follows it
+    (`scripts/import-corpus/level3.js`).
+
 ## With the classification rules
 
 - A division of one is a whole division for classification rule 7: an item only CIT has in one
@@ -461,10 +481,11 @@ Each rule is clue, meaning, example, test.
   blocks miss a half-day division is unsure (rule 6) and its layout is asked (level-3 corpus,
   three camps).
 
-- Rule 9 needs every cell a group has to be on its side of noon: a division that eats a Lunch at
-  12:15 and then goes home stays all day (its afternoon cells are blank, not a gap question), so
-  the director sets it on the Groups screen (level-3 corpus: 26 of 114 half-day camps). Rule 9
-  reads only new groups: a group the camp has keeps its own choice.
+- Rule 9 needs every cell a group has to be on its side of noon; rule 30 reads a division that
+  eats a Lunch at 12:15 and then goes home, when the afternoon after it is half the afternoon or
+  more. Rules 9 and 30 read only new groups: a group the camp has keeps its own choice. Under
+  rule 30 the block it is still here for is a morning block for every group, so a half-day group
+  that leaves before it on one day is scheduled in it that day.
 
 ## What stays the same
 
