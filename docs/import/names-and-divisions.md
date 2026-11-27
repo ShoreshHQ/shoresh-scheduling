@@ -384,20 +384,18 @@ Each rule is clue, meaning, example, test.
     over "Drama") is no room ("Gym" over "Gym" is), and only the grid's cells are read so: a
     heading on two lines stays the group's name. Most of the activities have one room each, or
     the second lines are no rooms ("Art / Rest", "Drama / Rest", "Art / Snack").
-    Meaning: the first line is the activity and the second its place, offered under the places that
-    come in on the review and ticked, so the director sees them and unticks one that is not a
-    place; unticked, it stays out on the next import. As with "Art @ Art room", an activity written
-    in two rooms or more gets no place. It was "Art 101", one activity per room and activity, and
+    Meaning: the first line is the activity and the second a place it may be at, asked on the
+    review under rule 33 (it came in ticked, a place without asking, until Greg's decision of
+    2026-11-27 superseded that). It was "Art 101", one activity per room and activity, and
     no places. The desktop reads a room printed under its activity so in a PDF
     (`src/ingest/textGrid.js`) and proposes places for the director to confirm
     (`src/ingest/locationsFromActivities.js`).
-    Test: `reading.test.js` "INGEST-2.27: …"; `kinds.test.js` (an unticked place reads "Left out"
+    Test: `reading.test.js` "INGEST-2.27: …"; `kinds.test.js` (a place left out reads "Left out"
     under remembered answers). Counter-cases: a few two-line cells, rooms that each hold one
     activity, or under a fifth of the cells keep both lines in the name, with no place; two
     activities in a cell are no activity and room; a second line under every activity is no room; a
     heading on two lines stays the group's name.
-    Code: `sheets.js` `writesRooms`, `sectionToPage`; `proposal.js` `placesFor`; `shoreshImport.js`
-    `handlePlace`.
+    Code: `sheets.js` `writesRooms`, `sectionToPage`.
 
 28. **A cell over blocks written a line for each gives each block its line** (import battle test,
     2026-11-27; coordinator's call 2026-11-27, Greg can change).
@@ -501,6 +499,34 @@ Each rule is clue, meaning, example, test.
     cell, is asked; an activity named with "&", or a period split in two, is no list; a shorter set in one block only is not
     a roll).
     Code: `layouts.js` `blocksCallTheRoll`.
+
+33. **Cell text that may be a place is asked, never assumed** (Greg, 2026-11-27: "most schedules
+    will not come with a location that is the same name. We can ask. But we should not assume.
+    This is why there is a location import that is separate." Supersedes rule 27's place that came
+    in ticked.)
+    Clue: cells that name a place the camp does not have, as a room on the second line (rule 27)
+    or after "@" ("Archery @ Field").
+    Meaning: the review lists each such place under Locations, unticked, with the activities it is
+    written for: one question, "are these places?". Only a place ticked comes in, and only then is
+    an activity linked to it. An activity, set time or Lunch written at two places or more, one or
+    more of which come in, is asked "Where is “Archery” usually?" (in each program, for a set
+    time in two), one of them or "No usual location", which it is until the director picks one;
+    a pick whose place is later left out is none again. Unticked or unanswered, the activity has
+    no place, and its name never takes the room text; the review says a place only when it comes
+    in. A place the camp already has, by name, is the place of an item written only there, as
+    before.
+    With no places, the Roots card for activities with no place opens Locations, whose import
+    brings them in.
+    Example: "Art" over "101" in every cell, "Drama" over "Gym", and once over "Studio": Art and
+    Drama come in with no place, 101, Gym and Studio listed unticked; Gym and Studio ticked, Drama
+    is asked its usual one, none until picked.
+    Test: `reading.test.js` "INGEST-2.33: …" (rooms unticked; ticked, each activity at its room; a
+    room not ticked stays out; two rooms ticked asks the usual one, none until picked, the pick its
+    place; one room ticked is asked too; a pick unticked is none again; no room ticked asks
+    nothing; "@" places the same; a set time in two programs is asked in each; the review names a
+    room only once it comes in); `kinds.test.js` (the usual place in
+    camp words). Code: `items.js` `placesOf`; `proposal.js` `placesFor`; `questions.js`
+    `usualPlaceCard`; `shoreshLearned/kinds.js` `usualPlace`.
 
 ## With the classification rules
 

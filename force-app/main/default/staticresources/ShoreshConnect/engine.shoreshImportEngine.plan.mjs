@@ -405,7 +405,8 @@ function timesAWeek(a, t) {
     parts.push(`${a.groupsAtOnce} ${t.pIn("Group")} at once`);
   }
   parts.push(a.who.names.length ? `${nameList(a.who.names)} only` : "everyone");
-  if (a.place) {
+  // INGEST-2.33: only a place that comes in (the camp's, or ticked) is said.
+  if (a.locationKey) {
     parts.push(a.place);
   }
   return parts.join(" · ");

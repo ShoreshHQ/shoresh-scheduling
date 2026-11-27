@@ -490,7 +490,7 @@ export function readImport(input) {
       firstDayOnceSaved(input.existing, saved, again.read.dayNumbers) === saved;
     reading = settles ? again : readFrom(now);
   }
-  const { unread, colours, skipped, read, roomFiles } = reading;
+  const { unread, colours, skipped, read } = reading;
   // INGEST-2.28: a cell over blocks whose lines don't match them, once per file and wording.
   const oneName = [
     ...new Map(
@@ -611,7 +611,6 @@ export function readImport(input) {
     pages: read.info,
     unread,
     skipped,
-    roomFiles,
     oneName,
     timedCells,
     colours,
