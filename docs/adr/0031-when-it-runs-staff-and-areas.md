@@ -172,7 +172,8 @@ rather than the boxes ticked; the AI's word "whenever".
 `ActivityLeader__c` and their fields; the camp word `StaffMember`; leaders stored per activity
 (not per cell); the AI's word "nobody"; the outside door's `global` surface (`IncomingStaff`, its
 `Record` with `season`, `source_system`, `staff_id`, `staff_name`, the address `/v1/staff` and
-the Flow action `staff`).
+the Flow action `staff`). The outside door's `global` surface staying in the package was
+approved by Greg on 2026-11-26.
 
 ## Piece C: areas of camp (walking distance)
 
