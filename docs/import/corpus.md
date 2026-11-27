@@ -210,6 +210,10 @@ day in 2 oneGroup camps whose groups are already misread (L5-265, L5-315). Lette
 read no one part of the day: an afternoon where no group has anything read shows no one away. Level 4: its half-day groups have the same truth
 (`level4.js`); every one is read right, 204 of 320 perfect as before.
 
+After INGEST-2.32 (2026-11-27; a division gone after Lunch still calls a roll): **320 of 320
+perfect**, nothing asked, no wrong read. The by-activity files with a half-day division are sure
+of their layout, and their half-day groups are Morning only. Levels 1, 2, 4 and 5 unchanged.
+
 ## Level 4
 
 320 camps (`scripts/import-corpus/level4.js`), the same eight layouts as level 1 (40 each), each

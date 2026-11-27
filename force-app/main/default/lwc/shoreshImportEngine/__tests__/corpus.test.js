@@ -203,16 +203,13 @@ describe("Import last year on made-up camps whose weeks differ (level 2)", () =>
 
 // Level 3, hard: doubles, trips, half days, gaps, spelling slips, note lines. The first 80 camps,
 // ten of each layout. Baseline 2026-10-28 after INGEST-2.7 and 2.8 (was 60 perfect, 171 "the
-// files disagree" questions, before them): 79 perfect. Still wrong: L3-030, a by-activity file
-// whose afternoon blocks miss the half-day division on every day, so every page is unsure and its
-// layout is asked (rule 6); unanswered, it is read all-camp. Its availability went from 2 wrong
-// to 6 with INGEST-2.30 (2026-11-27): its half-day groups, who eat Lunch at 12:30, are now meant
-// to be Morning only, and it is still read all-camp; every other camp's part of day is right.
+// files disagree" questions, before them): 79 perfect, L3-030 asked its layout. After INGEST-2.32
+// (2026-11-27; a division gone after Lunch still calls a roll): all 80 perfect, nothing asked.
 const CEILING_3 = {
-  perfectAtLeast: 79,
+  perfectAtLeast: 80,
   errors: 0,
-  questions: { layout: 1 },
-  wrong: { groups: 23, fixed: 2, activities: 21, availability: 6, cells: 406 }
+  questions: {},
+  wrong: {}
 };
 
 describe("Import last year on hard made-up camps (level 3)", () => {
