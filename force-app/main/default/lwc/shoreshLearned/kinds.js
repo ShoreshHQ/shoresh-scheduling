@@ -336,7 +336,11 @@ const FAMILIES = {
       keep: `Kept in ${p[2]}`,
       new: `A new one in ${p[3]}`
     }),
-  week: (p) => named(p[1] === FILE_WEEK ? LAST_YEAR : p[1])
+  week: (p) => named(p[1] === FILE_WEEK ? LAST_YEAR : p[1]),
+  usualPlace: (p, a, t) =>
+    named(withProgram(p[1], p[2]), {
+      none: `No usual ${t.sIn("Location")}`
+    })
 };
 
 /**

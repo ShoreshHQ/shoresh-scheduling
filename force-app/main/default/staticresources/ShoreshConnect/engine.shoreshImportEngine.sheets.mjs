@@ -806,8 +806,8 @@ function twoLines(value) {
 
 /**
  * INGEST-2.27 (coordinator's call 2026-11-27, Greg can change): a file whose cells are written
- * "Activity / Room" on two lines reads each such cell's second line as its place ("Art" at
- * "101"), offered ticked on the review. A file does when its two-line cells are ten or more and a
+ * "Activity / Room" on two lines reads each such cell's second line as a place it may be at
+ * ("Art" at "101"), asked on the review, never assumed (INGEST-2.33). A file does when its two-line cells are ten or more and a
  * fifth of its filled cells, and their second lines repeat (one under two different activities or
  * more). A second line the file also writes as another activity ("Art" over "Drama") is no room;
  * "Gym" over "Gym" is. Most activities have one room, or the second lines are no rooms. The
@@ -975,14 +975,10 @@ export function filesToPages(files, options = {}) {
   const unread = [];
   const colours = [];
   const skipped = new Set();
-  const roomFiles = [];
   const perFile = (files || []).map((file) => {
     const read = [];
     const rooms = writesRooms(file);
     const named = writtenAlone(file.sheets || []);
-    if (rooms) {
-      roomFiles.push(file.name);
-    }
     for (const sheet of file.sheets || []) {
       const rows = (sheet.rows || []).map((row) => {
         return Array.isArray(row) ? row.map(cellText) : [];
@@ -1053,8 +1049,7 @@ export function filesToPages(files, options = {}) {
     pages,
     unread,
     colours,
-    skipped: [...skipped].filter(Boolean),
-    roomFiles
+    skipped: [...skipped].filter(Boolean)
   };
 }
 

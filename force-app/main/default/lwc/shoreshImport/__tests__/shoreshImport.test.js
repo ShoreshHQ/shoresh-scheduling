@@ -1497,6 +1497,40 @@ describe("c-shoresh-import", () => {
       });
     });
 
+    it("INGEST-2.33: an activity at two places ticked is asked its usual one, none until picked", async () => {
+      getAnswers.mockResolvedValue([]);
+      const element = await renderWith(WITH_WEEK);
+      const rows = [
+        "Time,Bunk 1,Bunk 2",
+        "9:00-9:45,Swim @ Pool,Art",
+        "10:00-10:45,Art,Swim @ Lake",
+        "12:00-12:45,Lunch,Lunch"
+      ].join("\n");
+      await choose(element, ["Monday.csv", "Tuesday.csv"], {
+        "Monday.csv": rows,
+        "Tuesday.csv": rows
+      });
+      expect($(element, '[data-card="usualPlace|Swim"]')).toBeNull();
+      const tick = (id) => {
+        const box = $(element, `[data-place="${id}"] lightning-input`);
+        expect(box.checked).toBe(false);
+        box.checked = true;
+        box.dispatchEvent(new CustomEvent("change"));
+      };
+      tick("place|Pool");
+      await flush();
+      tick("place|Lake");
+      await flush();
+      const row = $(element, '[data-card="usualPlace|Swim"]');
+      expect(row.textContent).toContain("Swim");
+      const pressed = [...row.querySelectorAll("button")].filter(
+        (b) => b.getAttribute("aria-pressed") === "true"
+      );
+      expect(pressed.map((b) => b.textContent.trim())).toEqual([
+        "No usual location"
+      ]);
+    });
+
     it("a place deleted before is not brought back silently: it is listed with Bring back", async () => {
       // Deleted on the Locations screen after an earlier import that ticked it.
       getAnswers.mockResolvedValue([

@@ -405,9 +405,15 @@ function mostCommon(values) {
   return [...counts].sort((a, b) => b[1] - a[1] || a[0] - b[0])[0][0];
 }
 
-function onePlace(cells) {
-  const places = new Set(cells.map((c) => c.place).filter(Boolean));
-  return places.size === 1 ? [...places][0] : null;
+/**
+ * Where an item is: its one place, or none (INGEST-2.33: written at two places or more, the
+ * places as first written, for the review to ask which is its usual one).
+ */
+function placesOf(cells) {
+  const places = [...new Set(cells.map((c) => c.place).filter(Boolean))];
+  return places.length > 1
+    ? { place: null, placesWritten: places }
+    : { place: places[0] || null };
 }
 
 export function blockRecordKey(t, index) {
@@ -468,7 +474,7 @@ export function earlyOf(cells, block) {
 
 export function setTimeRecords(decision, keyOf) {
   const t = decision.timetable;
-  const place = onePlace(decision.cells);
+  const where = placesOf(decision.cells);
   if (decision.kind === "fixed") {
     const several = decision.patterns.length > 1;
     return decision.patterns.map((p) => ({
@@ -481,11 +487,11 @@ export function setTimeRecords(decision, keyOf) {
       blockKey: blockRecordKey(t, p.block),
       length: p.length,
       ...earlyOf(decision.cells, p.block),
-      place
+      ...where
     }));
   }
   return withLunchFilled(decision).map((p) =>
-    recurringRecord(decision, keyOf, t, place, p)
+    recurringRecord(decision, keyOf, t, where, p)
   );
 }
 
@@ -574,7 +580,7 @@ export function withLunchFilled(decision) {
   return patterns;
 }
 
-function recurringRecord(decision, keyOf, t, place, p) {
+function recurringRecord(decision, keyOf, t, where, p) {
   return {
     kind: "recurring",
     key: `R|${t.key}|${decision.name}|${p.block}|${p.length}|${p.days.join(",")}`,
@@ -587,7 +593,7 @@ function recurringRecord(decision, keyOf, t, place, p) {
     length: p.length,
     days: WEEKDAYS.filter((d) => p.days.includes(d)),
     who: whoOf(p.groups, decision.facts, keyOf, t.key),
-    place,
+    ...where,
     lunchFor: p.lunchFor
   };
 }
@@ -669,7 +675,7 @@ export function activityRecord(name, cells, allGroups, divisionOf, keyOf) {
     max: Math.max(...perGroupWeek),
     groupsAtOnce: Math.max(...atOnce.values()),
     who,
-    place: onePlace(cells)
+    ...placesOf(cells)
   };
 }
 
