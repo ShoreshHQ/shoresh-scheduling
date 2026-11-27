@@ -346,6 +346,20 @@ Each rule is clue, meaning, example, test.
     differs from sheet to sheet is still a division. Code: `sheets.js` `sheetNamesOverHeading`,
     `filesToPages`.
 
+25. **A cell timed line by line** (import battle test, 2026-11-27).
+    Clue: a cell that carries its own times, often over two blocks and one line per part
+    ("9:30-9:40 Change / 9:40-10:10 Swim Lessons / 10:10-10:40 Open Swim /
+    10:40-10:55 Change").
+    Meaning: its name is the parts without their times and without a "Change" that stands alone
+    between them (the passing time): "Swim Lessons - Open Swim"; "11:40-12:00 Change
+    / 12:00-12:30 Open Swim / 12:30-12:55 Change" is "Open Swim". It was "Change -
+    Swim Lessons - Open Swim Change", a six-line name on the schedule. The desktop
+    reads it so (`src/ingest/extractEntities.js` `stripTimes`), though it drops "Change" anywhere
+    in a timed cell; here a "Change" joined to a word keeps it: "Change/Gear Up 10:00", "Change of
+    Pace 2:00", and "Change Over 9:00", which is passing time and no name.
+    Test: `reading.test.js` "INGEST-2.25: …". Counter-case: Change joined to a word, with a time or
+    not, is part of the name. Code: `text.js` `withoutCellTimes`, `cellName`.
+
 ## With the classification rules
 
 - A division of one is a whole division for classification rule 7: an item only CIT has in one

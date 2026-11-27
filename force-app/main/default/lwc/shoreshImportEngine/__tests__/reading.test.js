@@ -124,6 +124,38 @@ describe("reading a cell", () => {
   });
 });
 
+describe("INGEST-2.25: a cell timed line by line", () => {
+  it("INGEST-2.25: a swim period's lines read as its activities, without the change and the times", () => {
+    expect(
+      cellName(
+        "9:30-9:40 Change\n9:40-10:10- Swim Lessons\n10:10-10:40- Open Swim\n10:40- 10:55 Change"
+      ).name
+    ).toBe("Swim Lessons - Open Swim");
+    expect(
+      cellName("11:40-12:00 Change\n12:00-12:30 Open Swim\n12:30-12:55 Change")
+        .name
+    ).toBe("Open Swim");
+    expect(
+      cellName("1:00-1:20- Change\n1:20-1:50 Open Swim\n1:50-2:15- Change").name
+    ).toBe("Open Swim");
+  });
+
+  it("INGEST-2.25: counter-case: Change joined to a word, with a time or not, is part of the name", () => {
+    expect(cellName("Change/Gear Up").name).toBe("Change/Gear Up");
+    expect(cellName("Change Time/Water Break").name).toBe(
+      "Change Time/Water Break"
+    );
+    expect(cellName("Puppet Show 2:15-2:45").name).toBe("Puppet Show");
+    expect(cellName("Change/Gear Up 10:00").name).toBe("Change/Gear Up");
+    expect(cellName("Change Time/Water Break 2:00-2:15").name).toBe(
+      "Change Time/Water Break"
+    );
+    expect(cellName("Change of Pace 2:00").name).toBe("Change of Pace");
+    expect(cellName("Arts - Crafts 9:00").name).toBe("Arts - Crafts");
+    expect(cellName("Change Over 9:00")).toBeNull();
+  });
+});
+
 describe("reading a file", () => {
   it("reads comma-separated files, quotes and all", () => {
     expect(parseCsv('a,"b, c","say ""hi"""\r\n1,2,3')).toEqual([
@@ -524,7 +556,8 @@ describe("the three layouts", () => {
     ];
 
     it("INGEST-2.23: a note naming a time adds no time block and no page", () => {
-      const note = "• The printed sheet said 10:00-10:45 PM; it is the morning.";
+      const note =
+        "• The printed sheet said 10:00-10:45 PM; it is the morning.";
       const proposal = read([
         csv("Camp.csv", [
           ...day("Monday", []),
@@ -669,7 +702,10 @@ describe("the three layouts", () => {
 
     it("INGEST-2.24: the shared heading is listed once as left out", () => {
       const proposal = read([
-        book({ Otters: "Camp Pine — 2025 — Otters", Wolves: "Camp Pine — 2025 — Wolves" })
+        book({
+          Otters: "Camp Pine — 2025 — Otters",
+          Wolves: "Camp Pine — 2025 — Wolves"
+        })
       ]);
       expect(
         importNotes(proposal, terms)
@@ -680,7 +716,10 @@ describe("the three layouts", () => {
 
     it("INGEST-2.24: counter-case: a heading naming a week keeps its week", () => {
       const proposal = read([
-        book({ Otters: "Camp Pine — Week 3 — Otters", Wolves: "Camp Pine — Week 3 — Wolves" })
+        book({
+          Otters: "Camp Pine — Week 3 — Otters",
+          Wolves: "Camp Pine — Week 3 — Wolves"
+        })
       ]);
       expect(proposal.reading.pages.map((p) => p.week)).toEqual([
         "Week 3",
@@ -690,7 +729,9 @@ describe("the three layouts", () => {
 
     it("INGEST-2.24: counter-case: a file per division keeps its divisions", () => {
       const file = (division, bunks) => ({
-        ...book(Object.fromEntries(bunks.map((b) => [b, `${division} - ${b}`]))),
+        ...book(
+          Object.fromEntries(bunks.map((b) => [b, `${division} - ${b}`]))
+        ),
         name: `${division}.xlsx`
       });
       const one = read([file("Juniors", ["Bunk 1", "Bunk 2"])]);
