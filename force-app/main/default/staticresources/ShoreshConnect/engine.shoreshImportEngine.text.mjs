@@ -207,6 +207,11 @@ export function timeCount(text) {
   return timeTokens(text).length;
 }
 
+/** The times a text writes, each once, as written ("9:30-9:40 Change 9:40 Swim": 9:30, 9:40). */
+export function timesWritten(text) {
+  return [...new Set(timeTokens(text).map((m) => m[0].trim()))];
+}
+
 /** Whether the text holds a clock time ("9:00", "9am", "13:30"). */
 export function hasClockTime(text) {
   return CLOCK.test(tidy(text));

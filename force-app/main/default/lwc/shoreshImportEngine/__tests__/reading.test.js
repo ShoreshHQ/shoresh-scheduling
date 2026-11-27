@@ -570,13 +570,13 @@ describe("INGEST-2.29: a cell with its own times", () => {
     ]);
   });
 
-  it("INGEST-2.29: a cell with more than two times is named by what it is read as", () => {
+  it("INGEST-2.29: a cell with more than two times is named by what it is read as, with its times", () => {
     const notes = notesOf([
       day("Monday", "9.00-9.10 Change 9.10-9.50 Swim 9.50-10.00 Change"),
       day("Tuesday", "Art")
     ]);
     expect(timed(notes)).toEqual([
-      "Times written in cells are not kept; each is in its row's time block: “Swim”."
+      "Times written in cells are not kept; each is in its row's time block: “Swim (9.00, 9.10, 9.50, 10.00)”."
     ]);
   });
 

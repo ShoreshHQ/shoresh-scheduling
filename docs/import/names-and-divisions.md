@@ -425,8 +425,9 @@ Each rule is clue, meaning, example, test.
     Meaning: the activity is read in its row's block, as before, and the review's notes say the
     times were not kept, naming the first three such cells in the order the files are read and how
     many more: "Times written in cells are not kept; each is in its row's time block: “Story Time
-    2:15-2:45”, … and 1 more." A cell with more than two times is named by what it is read as
-    ("Swim"). A time inside its row's block ("Lunch 12:00-12:45" in the 12:00-12:45 row), a cell
+    2:15-2:45”, … and 1 more." A cell with more than two times is named by what it is read as,
+    with the times it writes, each once ("Swim (9:40, 9:50, 10:10)"; it was "Swim" alone, which
+    showed no times). A time inside its row's block ("Lunch 12:00-12:45" in the 12:00-12:45 row), a cell
     in a column that is read as no group's, and a cell that is only a time say nothing. It was
     dropped without a word. The desktop drops the times too (`src/ingest/extractEntities.js`
     `stripTimes`) and says nothing.
