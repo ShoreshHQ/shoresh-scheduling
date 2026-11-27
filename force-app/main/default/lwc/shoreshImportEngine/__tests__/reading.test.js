@@ -156,6 +156,104 @@ describe("INGEST-2.25: a cell timed line by line", () => {
   });
 });
 
+// INGEST-2.27: cells written "Activity" over "Room". Made-up camp only.
+describe("INGEST-2.27: a file that writes each cell's room on its second line", () => {
+  const GROUPS = ["Bunk 1", "Bunk 2", "Bunk 3", "Bunk 4"];
+  const TIMES = ["9:00-9:45", "10:00-10:45", "11:00-11:45", "1:00-1:45"];
+  const ACTS = ["Art", "Drama", "Music", "Science"];
+  // Each activity's own room; Art and Music share 101.
+  const ROOM_OF = {
+    Art: "101",
+    Drama: "Gym",
+    Music: "101",
+    Science: "Studio"
+  };
+  const ROOMS = ["101", "Gym", "Studio"];
+  const DAYS = ["Monday", "Tuesday", "Wednesday"];
+  const sheetFile = (cell, { groups = GROUPS, days = DAYS } = {}) => ({
+    name: "Rooms camp.xlsx",
+    sheets: days.map((day, d) => ({
+      name: day,
+      rows: [
+        ["Time", ...groups],
+        ...TIMES.map((t, b) => [t, ...GROUPS.map((_, g) => cell(g, b, d))])
+      ]
+    }))
+  });
+  const roomed = (g, b, d) => {
+    const act = ACTS[(g + b + d) % 4];
+    return `${act}\n${ROOM_OF[act]}`;
+  };
+  const propose = (file, answers = {}) =>
+    buildProposal({ files: [file], existing: null, terms, answers });
+
+  it("INGEST-2.27: the second line comes in as the activity's place, ticked, and the name stays the activity", () => {
+    const p = propose(sheetFile(roomed));
+    expect(p.activities.map((a) => a.name).sort()).toEqual(ACTS);
+    expect(p.offeredPlaces.map((x) => [x.name, x.ticked])).toEqual(
+      ROOMS.map((r) => [r, true])
+    );
+    expect(p.locations.map((l) => l.name)).toEqual(ROOMS);
+  });
+
+  it("INGEST-2.27: a place unticked stays out", () => {
+    const p = propose(sheetFile(roomed), { "place|Gym": "leave" });
+    expect(p.offeredPlaces.find((x) => x.name === "Gym").ticked).toBe(false);
+    expect(p.locations.map((l) => l.name)).toEqual(["101", "Studio"]);
+  });
+
+  it("INGEST-2.27: counter-case: two activities in a cell are no activity and room", () => {
+    const pair = (g, b, d) =>
+      `${ACTS[(g + b + d) % 4]}\n${ACTS[(g + b + d + 1) % 4]}`;
+    const p = propose(sheetFile(pair));
+    expect(p.offeredPlaces).toEqual([]);
+    expect(p.activities.map((a) => a.name)).toContain("Art Drama");
+  });
+
+  it("INGEST-2.27: counter-case: a second line under every activity is no room", () => {
+    const under = (g, b, d) =>
+      `${ACTS[(g + b + d) % 4]}\n${["Rest", "Snack"][(g + d) % 2]}`;
+    const p = propose(sheetFile(under));
+    expect(p.offeredPlaces).toEqual([]);
+    expect(p.activities.map((a) => a.name)).toContain("Art Rest");
+  });
+
+  it("INGEST-2.27: counter-case: a heading on two lines stays the group's name", () => {
+    const groups = GROUPS.map((g) => `${g}\nJuniors`);
+    const p = propose(sheetFile(roomed, { groups }));
+    expect(p.groups.map((g) => g.name).join(" ")).not.toContain("@");
+    expect(p.locations.map((l) => l.name)).toEqual(ROOMS);
+  });
+
+  it("INGEST-2.27: counter-case: rooms that each hold one activity, or under a fifth of the cells, are no rooms", () => {
+    const own = (g, b, d) => {
+      const act = ACTS[(g + b + d) % 4];
+      return `${act}\nRoom ${act}`;
+    };
+    expect(propose(sheetFile(own)).offeredPlaces).toEqual([]);
+    // Five days of 16 cells: 15 two-line cells are under a fifth, 20 are not.
+    const days = [...DAYS, "Thursday", "Friday"];
+    const some = (rows) => (g, b, d) => {
+      return g === 0 && b < rows ? roomed(g, b, d) : ACTS[(g + b + d) % 4];
+    };
+    expect(propose(sheetFile(some(3), { days })).offeredPlaces).toEqual([]);
+    expect(
+      propose(sheetFile(some(4), { days })).offeredPlaces.length
+    ).toBeGreaterThan(0);
+  });
+
+  it("INGEST-2.27: counter-case: a few two-line cells keep both lines in the name, with no place", () => {
+    const few = (g, b, d) => {
+      return g === 0 && b === 0 ? `Art\n${ROOMS[d]}` : ACTS[(g + b + d) % 4];
+    };
+    const p = propose(sheetFile(few));
+    expect(p.offeredPlaces).toEqual([]);
+    expect(p.activities.map((a) => a.name)).toEqual(
+      expect.arrayContaining(["Art 101"])
+    );
+  });
+});
+
 describe("reading a file", () => {
   it("reads comma-separated files, quotes and all", () => {
     expect(parseCsv('a,"b, c","say ""hi"""\r\n1,2,3')).toEqual([

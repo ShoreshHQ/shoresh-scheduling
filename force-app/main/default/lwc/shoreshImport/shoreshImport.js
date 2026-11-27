@@ -888,7 +888,8 @@ export default class ShoreshImport extends LightningElement {
     if (event.target.checked) {
       answers[event.target.dataset.id] = "add";
     } else {
-      delete answers[event.target.dataset.id];
+      // INGEST-2.27: a place that comes in ticked stays out once unticked.
+      answers[event.target.dataset.id] = "leave";
     }
     this.answers = answers;
     this.recompute();
