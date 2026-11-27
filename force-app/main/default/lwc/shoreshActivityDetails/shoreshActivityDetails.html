@@ -155,6 +155,30 @@
         </template>
       </div>
 
+      <!-- Who leads it (ADR 0031 piece B): the season's staff, ticked like Who can do it. -->
+      <template lwc:if={hasStaff}>
+        <div class="field">
+          <lightning-checkbox-group
+            data-id="who-leads-it"
+            data-field="whoLeadsIt"
+            label={labels.whoLeadsIt}
+            options={staffOptions}
+            value={leaders}
+            onchange={handleLeadsChange}
+            disabled={readOnly}
+          ></lightning-checkbox-group>
+          <template lwc:if={leadsError}>
+            <div
+              class="slds-form-element__help slds-text-color_error"
+              role="alert"
+              data-error="leads"
+            >
+              {leadsError}
+            </div>
+          </template>
+        </div>
+      </template>
+
       <!-- When it runs (ADR 0031 piece A): per program, its days by its time blocks, every box
            ticked until the director unticks a time it can't run; the recurring activities' day
            ticks, in a grid. -->

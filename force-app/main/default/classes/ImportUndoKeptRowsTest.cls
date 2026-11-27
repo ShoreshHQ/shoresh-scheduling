@@ -1,6 +1,6 @@
 /**
  * Undo's rows that go with their item (ImportUndoKeptRows): of the rows an import made, a box of
- * When it runs, a coverage row and a week off are kept when their item is kept, and only then.
+ * When it runs, who leads an activity, a coverage row and a week off are kept when their item is kept, and only then.
  * Synthetic data only.
  */
 @IsTest
@@ -38,6 +38,16 @@ private class ImportUndoKeptRowsTest {
         Activity__c = ids.get('Soccer')
       );
       Database.insert(closed, AccessLevel.USER_MODE);
+      StaffMember__c dana = new StaffMember__c(
+        Season__c = season.Id,
+        Name = 'Dana'
+      );
+      Database.insert(dana, AccessLevel.USER_MODE);
+      ActivityLeader__c leads = new ActivityLeader__c(
+        Activity__c = ids.get('Swim'),
+        StaffMember__c = dana.Id
+      );
+      Database.insert(leads, AccessLevel.USER_MODE);
 
       Test.startTest();
       Set<Id> kept = new Set<Id>{ ids.get('Swim'), rest.Id, ids.get('Soccer') };
@@ -52,6 +62,15 @@ private class ImportUndoKeptRowsTest {
       Assert.areEqual(
         new Set<Id>{ who.Id },
         ImportUndoKeptRows.keptWith('Coverage', new Set<Id>{ who.Id }, kept)
+      );
+      // Who leads it goes with its activity, or with its staff member.
+      Assert.areEqual(
+        new Set<Id>{ leads.Id },
+        ImportUndoKeptRows.keptWith(
+          'ActivityLeader',
+          new Set<Id>{ leads.Id },
+          new Set<Id>{ dana.Id }
+        )
       );
       Assert.areEqual(
         new Set<Id>{ closed.Id },
@@ -73,6 +92,14 @@ private class ImportUndoKeptRowsTest {
       );
       Assert.isTrue(
         ImportUndoKeptRows.keptWith('Coverage', new Set<Id>{ who.Id }, none)
+          .isEmpty()
+      );
+      Assert.isTrue(
+        ImportUndoKeptRows.keptWith(
+            'ActivityLeader',
+            new Set<Id>{ leads.Id },
+            none
+          )
           .isEmpty()
       );
       Assert.isTrue(

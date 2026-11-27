@@ -30,6 +30,7 @@ public with sharing class ArchivedSeasons {
     SpecialDate__c.SObjectType => SpecialDate__c.Season__c,
     SpecialDay__c.SObjectType => SpecialDay__c.Season__c,
     SpecialEvent__c.SObjectType => SpecialEvent__c.Season__c,
+    StaffMember__c.SObjectType => StaffMember__c.Season__c,
     Week__c.SObjectType => Week__c.Season__c
   };
 
@@ -46,6 +47,7 @@ public with sharing class ArchivedSeasons {
     WeekException__c.SObjectType => WeekException__c.Week__c,
     ActivityEligibility__c.SObjectType => ActivityEligibility__c.Activity__c,
     ActivityOffTime__c.SObjectType => ActivityOffTime__c.Activity__c,
+    ActivityLeader__c.SObjectType => ActivityLeader__c.Activity__c,
     Offering__c.SObjectType => Offering__c.ElectiveSet__c,
     LinkedChoice__c.SObjectType => LinkedChoice__c.ElectiveSet__c,
     LinkedChoiceTime__c.SObjectType => LinkedChoiceTime__c.LinkedChoice__c,

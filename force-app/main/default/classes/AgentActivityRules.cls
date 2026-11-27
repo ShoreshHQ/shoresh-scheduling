@@ -1,15 +1,16 @@
 /**
  * An activity's details panel through a person's AI (docs/protocol/api.md API-1.51): who can do
- * it, when it runs (AgentActivityRuns), groups from the same division only, early in the week,
+ * it, when it runs (AgentActivityRuns), who leads it (AgentActivityLeaders, API-1.158), groups from the same division only, early in the week,
  * and notes, by plain names, said as
  * the panel shows them so the AI can send them back as seen (change_activity_details).
  */
 public with sharing class AgentActivityRules {
   public static final String WHO = 'who_can_do_it';
   public static final String RUNS = 'when_it_runs';
+  public static final String LEADS = 'who_leads_it';
   private static final String EARLY_DAY = 'early_week_by_day';
 
-  // The panel's rules, in its order (who can do it and when it runs come first).
+  // The panel's rules, in its order (who can do it, who leads it and when it runs come first).
   private static final Map<String, Schema.SObjectField> PANEL_RULES = new Map<String, Schema.SObjectField>{
     'same_division_only' => Activity__c.SameDivisionOnly__c,
     'early_week_count' => Activity__c.EarlyWeekCount__c,
@@ -19,12 +20,12 @@ public with sharing class AgentActivityRules {
 
   /** The panel's fields by plain name, in its order. */
   public static List<String> names() {
-    List<String> result = new List<String>{ WHO, RUNS };
+    List<String> result = new List<String>{ WHO, LEADS, RUNS };
     result.addAll(PANEL_RULES.keySet());
     return result;
   }
 
-  /** One of the panel's rules by plain name (null for who can do it, when it runs, or one it hasn't). */
+  /** One of the panel's rules by plain name (null for who, who leads it, when it runs, or one it hasn't). */
   public static Schema.SObjectField fieldOf(String key) {
     return PANEL_RULES.get(key);
   }
@@ -108,6 +109,9 @@ public with sharing class AgentActivityRules {
     DayWords.use(activity.Season__r);
     Map<String, String> result = new Map<String, String>{
       WHO => AgentActivityWho.said(AgentActivityWho.namesNow(activityId)),
+      LEADS => AgentActivityLeaders.said(
+        AgentActivityLeaders.namesNow(activityId)
+      ),
       RUNS => new AgentActivityRuns(activity.Season__r.Id)
         .said(ActivityOffTimes.now(activityId))
     };
@@ -137,6 +141,9 @@ public with sharing class AgentActivityRules {
   public static String asShown(String key, Object said) {
     if (key == WHO) {
       return AgentActivityWho.said(AgentActivityWho.namesIn(said));
+    }
+    if (key == LEADS) {
+      return AgentActivityLeaders.said(AgentActivityWho.namesIn(said));
     }
     String text = said == null ? '' : String.valueOf(said).normalizeSpace();
     if (text == '(blank)' || text == '') {

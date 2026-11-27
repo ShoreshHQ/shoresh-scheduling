@@ -25,6 +25,7 @@ public class CampSnapshot {
           child(Program__c.SObjectType, Program__c.Season__c),
           child(LocationType__c.SObjectType, LocationType__c.Season__c),
           child(Location__c.SObjectType, Location__c.Season__c),
+          child(StaffMember__c.SObjectType, StaffMember__c.Season__c),
           child(Activity__c.SObjectType, Activity__c.Season__c),
           child(Coverage__c.SObjectType, Coverage__c.Season__c),
           child(ElectiveSet__c.SObjectType, ElectiveSet__c.Season__c),
@@ -60,7 +61,8 @@ public class CampSnapshot {
             ActivityEligibility__c.SObjectType,
             ActivityEligibility__c.Activity__c
           ),
-          child(ActivityOffTime__c.SObjectType, ActivityOffTime__c.Activity__c)
+          child(ActivityOffTime__c.SObjectType, ActivityOffTime__c.Activity__c),
+          child(ActivityLeader__c.SObjectType, ActivityLeader__c.Activity__c)
         }
       ),
       read(

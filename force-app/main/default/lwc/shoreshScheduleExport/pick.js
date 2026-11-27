@@ -1,7 +1,8 @@
 /**
- * Print and Excel by what a director asks for (PUB-6.6 to PUB-6.11; Greg 2026-11-21: "print the
+ * Print and Excel by what a director asks for (PUB-6.6 to PUB-6.14; Greg 2026-11-21: "print the
  * whole day. by bunk. by activity. etc. go beyond the desktop"): the whole week, one day for the
- * whole camp, one bunk, one activity, one location or one division, or every one of a kind. The
+ * whole camp, one bunk, one activity, one location, one division or one staff member (ADR 0031
+ * piece B3), or every one of a kind. An activity's and a location's pages name who leads. The
  * same choices on the Schedules page, Generated Schedule and Manual Build (c/shoreshPrintMenu).
  * Pure: the same week and choice always give the same pages and sheets.
  *
@@ -10,11 +11,11 @@
  * than a page is split evenly. Each page says which bunks it holds.
  *
  * view: the week as the screen shows it (c/shoreshScheduleViews withSpecials). setup: the season
- * (SeasonSetupController.getSeasonSetup): its divisions and where each thing runs. A choice is
- * { kind, key }: kind "week", "day", "group", "activity", "location" or "division"; key the
- * one chosen, EVERY for every one of the kind (none for the week).
+ * (SeasonSetupController.getSeasonSetup): its divisions, where each thing runs and who leads it.
+ * A choice is { kind, key }: kind "week", "day", "group", "activity", "location", "division" or
+ * "staff"; key the one chosen, EVERY for every one of the kind (none for the week).
  */
-import { FIELD } from "c/shoreshSchema";
+import { CHILDREN, FIELD, childRows } from "c/shoreshSchema";
 import {
   activityCards,
   activityGrid,
@@ -34,8 +35,9 @@ export const PAGE_COLUMNS = 10;
 
 /**
  * The season's divisions and places, as printing needs them: each group's division (in the
- * season's order; a program's No division holder is none), and the location of each activity,
- * fixed and recurring activity and special event.
+ * season's order; a program's No division holder is none), the location of each activity,
+ * fixed and recurring activity and special event, and who leads each activity (ADR 0031 piece B:
+ * the staff, in the Staff list's order; leadersOf in the season's activity order).
  */
 export function campPlaces(setup) {
   const divisionOf = new Map();
@@ -71,7 +73,21 @@ export function campPlaces(setup) {
     id: place.Id,
     name: place.Name
   }));
-  return { divisionOf, divisions, locationOf, locations };
+  const staff = ((setup && setup.staff) || []).map((person) => ({
+    id: person.Id,
+    name: person.Name
+  }));
+  const order = new Map(staff.map((person, i) => [person.id, i]));
+  const leadersOf = new Map();
+  ((setup && setup.activities) || []).forEach((activity) => {
+    const led = childRows(activity, CHILDREN.Activity.Leaders)
+      .map((row) => row[FIELD.ActivityLeader.StaffMember])
+      .filter((id) => order.has(id))
+      .sort((a, b) => order.get(a) - order.get(b))
+      .map((id) => staff[order.get(id)]);
+    if (led.length) leadersOf.set(activity.Id, led);
+  });
+  return { divisionOf, divisions, locationOf, locations, staff, leadersOf };
 }
 
 /** The readable days of the week, as positions in it. */
@@ -113,6 +129,67 @@ function weekLocations(view, places) {
   return places.locations.filter((place) => used.has(place.id));
 }
 
+/**
+ * The activities placed on the week's regular days (a day a special day replaces counts nothing,
+ * as in Activity View): each one's name as placed, by record, in the order first met.
+ */
+function placedActivities(view) {
+  const placed = new Map();
+  readableDays(view).forEach(({ day }) => {
+    if (day.special) return;
+    day.groups.forEach((grp, g) =>
+      groupCells(day, g).forEach(({ item }) => {
+        if (item && item.kind === "A" && item.id && !placed.has(item.id)) {
+          placed.set(item.id, item.name);
+        }
+      })
+    );
+  });
+  return placed;
+}
+
+/** The staff who lead an activity placed this week, in the Staff list's order. */
+function weekStaff(view, places) {
+  const leading = new Set();
+  placedActivities(view).forEach((name, id) =>
+    (places.leadersOf.get(id) || []).forEach((person) => leading.add(person.id))
+  );
+  return places.staff.filter((person) => leading.has(person.id));
+}
+
+/** "Swim · Dana Levi, Eli Cohen": an activity and who leads it. */
+function leaderLine(name, people) {
+  return `${name} · ${people.map((person) => person.name).join(", ")}`;
+}
+
+/** Who leads each activity placed at a location this week, a line each, in the season's order. */
+function locationLeaders(view, places, locationId) {
+  const placed = placedActivities(view);
+  const lines = [];
+  places.leadersOf.forEach((people, id) => {
+    if (placed.has(id) && places.locationOf.get(id) === locationId) {
+      lines.push(leaderLine(placed.get(id), people));
+    }
+  });
+  return lines;
+}
+
+/**
+ * A staff member's week (PUB-6.14): the activities they lead, each named with its location,
+ * "Swim · Lake" (the groups follow, as on a location's page).
+ */
+function staffGrid(view, places, staffId, t) {
+  const placeName = new Map(places.locations.map((p) => [p.id, p.name]));
+  const leads = (item) =>
+    item.kind === "A" &&
+    (places.leadersOf.get(item.id) || []).some((p) => p.id === staffId);
+  const nameOf = (item) => {
+    const where = placeName.get(places.locationOf.get(item.id));
+    return where ? `${item.name} · ${where}` : item.name;
+  };
+  return locationGrid(view, leads, t, nameOf);
+}
+
 /** The activities placed this week (Activity View's cards that run). */
 function weekActivities(view, catalogue, t) {
   return activityCards(view, catalogue, t).filter((card) =>
@@ -125,7 +202,8 @@ function weekActivities(view, catalogue, t) {
 /**
  * What can be printed or downloaded from this week, for the menu: the whole week, then each kind
  * with its choices ("Every Bunk" first where there are several). A kind with nothing this week
- * (no location used, no divisions) is left out. [{ kind, label, options: [{ key, label }] }].
+ * (no location used, no divisions, no one leading what is placed) is left out.
+ * [{ kind, label, options: [{ key, label }] }].
  */
 export function printChoices(view, catalogue, setup, t) {
   if (!view || !(view.days || []).length) {
@@ -184,6 +262,17 @@ export function printChoices(view, catalogue, setup, t) {
         weekDivisions(view, places).map((division) => ({
           key: division.id,
           label: division.name
+        }))
+      )
+    },
+    {
+      kind: "staff",
+      label: t.s("StaffMember"),
+      options: every(
+        t.s("StaffMember"),
+        weekStaff(view, places).map((person) => ({
+          key: person.id,
+          label: person.name
         }))
       )
     }
@@ -369,9 +458,11 @@ function optionLabel(choices, kind, key) {
 /**
  * What a choice covers, in order, the same for its printout and its Excel file: days ({ day, the
  * day's position; keep, the groups a division keeps; head, the division's name }), or one thing's
- * week as a grid ({ key, title, grid }). The week and a day: the whole camp's days. A group: its
- * week. An activity or a location: where and when it runs. A division: each day with only its
- * groups. { places, parts }, or null when the week has nothing to choose.
+ * week as a grid ({ key, title, grid, lead, lines }). The week and a day: the whole camp's days. A
+ * group: its week. An activity or a location: where and when it runs, an activity with who leads
+ * it (lead, "Swim · Dana Levi") and a location with who leads each activity there (lines,
+ * PUB-6.12). A division: each day with only its groups. A staff member: where they lead
+ * (PUB-6.14). { places, parts }, or null when the week has nothing to choose.
  */
 export function chosenParts(view, choice, catalogue, setup, t) {
   const choices = printChoices(view, catalogue, setup, t);
@@ -393,11 +484,29 @@ export function chosenParts(view, choice, catalogue, setup, t) {
     case "group":
       return { places, parts: grids((key) => groupGrid(view, key, t)) };
     case "activity":
-      return { places, parts: grids((key) => activityGrid(view, key, t)) };
+      return {
+        places,
+        parts: grids((key) => activityGrid(view, key, t)).map((part, i) => {
+          const people = places.leadersOf.get(keys[i]);
+          return people
+            ? { ...part, lead: leaderLine(part.title, people) }
+            : part;
+        })
+      };
     case "location":
       return {
         places,
-        parts: grids((key) => locationGrid(view, atLocation(places, key), t))
+        parts: grids((key) =>
+          locationGrid(view, atLocation(places, key), t)
+        ).map((part, i) => ({
+          ...part,
+          lines: locationLeaders(view, places, keys[i])
+        }))
+      };
+    case "staff":
+      return {
+        places,
+        parts: grids((key) => staffGrid(view, places, key, t))
       };
     case "division":
       return {
@@ -418,7 +527,8 @@ export function chosenParts(view, choice, catalogue, setup, t) {
 
 /**
  * The printout for a choice: [{ key, title, table | null, notes, empty }], as c-shoresh-schedule-
- * print draws them: each day chosen a page at a time as dayPieces splits it, each grid a page;
+ * print draws them: each day chosen a page at a time as dayPieces splits it, each grid a page
+ * (an activity titled with who leads it, a location with who leads what there under its grid);
  * the whole week then each special event's own schedule.
  */
 export function pagesFor(view, choice, catalogue, setup, t) {
@@ -426,8 +536,14 @@ export function pagesFor(view, choice, catalogue, setup, t) {
   if (!chosen) return [];
   const pages = chosen.parts.flatMap((part) => {
     if (part.grid) {
+      const lines = part.lines || [];
       return [
-        { key: part.key, title: part.title, table: printTable(part.grid) }
+        {
+          key: part.key,
+          title: part.lead || part.title,
+          table: printTable(part.grid),
+          notes: lines.length ? lines.join("\n") : null
+        }
       ];
     }
     return dayPagesOf(view, part.day, t, chosen.places, part.keep, part.head);

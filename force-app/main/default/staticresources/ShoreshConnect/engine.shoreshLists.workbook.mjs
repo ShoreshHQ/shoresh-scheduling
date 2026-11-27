@@ -37,6 +37,7 @@ export const WORKBOOK_LISTS = [
   "timeBlocks",
   "locationTypes",
   "locations",
+  "staff",
   "activities",
   "fixedActivities",
   "recurringActivities"

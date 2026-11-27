@@ -12,6 +12,7 @@ public with sharing class ImportUndoCount {
     'Coverage',
     'ActivityEligibility',
     'ActivityOffTime',
+    'ActivityLeader',
     'LinkedChoiceTime'
   };
 

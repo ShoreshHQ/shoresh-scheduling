@@ -143,6 +143,13 @@ public with sharing class ManualBuildActivities {
         FROM ActivityOffTime__c
         WHERE Activity__c = :activityId
         WITH SYSTEM_MODE
+      ] +
+      // Who leads it set since (ADR 0031 piece B): the same.
+      [
+        SELECT COUNT()
+        FROM ActivityLeader__c
+        WHERE Activity__c = :activityId
+        WITH SYSTEM_MODE
       ] > 0;
   }
 

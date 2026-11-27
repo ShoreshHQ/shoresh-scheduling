@@ -15,6 +15,9 @@ import activityEligibilityObject from "@salesforce/schema/ActivityEligibility__c
 import activityEligibilityActivity from "@salesforce/schema/ActivityEligibility__c.Activity__c";
 import activityEligibilityDivision from "@salesforce/schema/ActivityEligibility__c.Division__c";
 import activityEligibilityGroup from "@salesforce/schema/ActivityEligibility__c.Group__c";
+import activityLeaderObject from "@salesforce/schema/ActivityLeader__c";
+import activityLeaderActivity from "@salesforce/schema/ActivityLeader__c.Activity__c";
+import activityLeaderStaffMember from "@salesforce/schema/ActivityLeader__c.StaffMember__c";
 import activityOffTimeObject from "@salesforce/schema/ActivityOffTime__c";
 import activityOffTimeActivity from "@salesforce/schema/ActivityOffTime__c.Activity__c";
 import activityOffTimeDay from "@salesforce/schema/ActivityOffTime__c.Day__c";
@@ -299,6 +302,14 @@ import specialEventLocation from "@salesforce/schema/SpecialEvent__c.Location__c
 import specialEventNotes from "@salesforce/schema/SpecialEvent__c.Notes__c";
 import specialEventSeason from "@salesforce/schema/SpecialEvent__c.Season__c";
 import specialEventSortOrder from "@salesforce/schema/SpecialEvent__c.SortOrder__c";
+import staffMemberObject from "@salesforce/schema/StaffMember__c";
+import staffMemberCopiedFrom from "@salesforce/schema/StaffMember__c.CopiedFrom__c";
+import staffMemberNotes from "@salesforce/schema/StaffMember__c.Notes__c";
+import staffMemberOutsideId from "@salesforce/schema/StaffMember__c.OutsideId__c";
+import staffMemberOutsideMatch from "@salesforce/schema/StaffMember__c.OutsideMatch__c";
+import staffMemberSeason from "@salesforce/schema/StaffMember__c.Season__c";
+import staffMemberSortOrder from "@salesforce/schema/StaffMember__c.SortOrder__c";
+import staffMemberSourceSystem from "@salesforce/schema/StaffMember__c.SourceSystem__c";
 import timeBlockObject from "@salesforce/schema/TimeBlock__c";
 import timeBlockCopiedFrom from "@salesforce/schema/TimeBlock__c.CopiedFrom__c";
 import timeBlockEndTime from "@salesforce/schema/TimeBlock__c.EndTime__c";
@@ -349,6 +360,7 @@ export function childRows(row, relationship) {
 /** Object names: OBJECT.Week. */
 export const OBJECT = Object.freeze({
   ActivityEligibility: activityEligibilityObject.objectApiName,
+  ActivityLeader: activityLeaderObject.objectApiName,
   ActivityOffTime: activityOffTimeObject.objectApiName,
   Activity: activityObject.objectApiName,
   Assignment: assignmentObject.objectApiName,
@@ -382,6 +394,7 @@ export const OBJECT = Object.freeze({
   SpecialDate: specialDateObject.objectApiName,
   SpecialDay: specialDayObject.objectApiName,
   SpecialEvent: specialEventObject.objectApiName,
+  StaffMember: staffMemberObject.objectApiName,
   TimeBlock: timeBlockObject.objectApiName,
   WeekException: weekExceptionObject.objectApiName,
   Week: weekObject.objectApiName
@@ -393,6 +406,10 @@ export const FIELD = Object.freeze({
     Activity: activityEligibilityActivity.fieldApiName,
     Division: activityEligibilityDivision.fieldApiName,
     Group: activityEligibilityGroup.fieldApiName
+  }),
+  ActivityLeader: Object.freeze({
+    Activity: activityLeaderActivity.fieldApiName,
+    StaffMember: activityLeaderStaffMember.fieldApiName
   }),
   ActivityOffTime: Object.freeze({
     Activity: activityOffTimeActivity.fieldApiName,
@@ -711,6 +728,15 @@ export const FIELD = Object.freeze({
     Season: specialEventSeason.fieldApiName,
     SortOrder: specialEventSortOrder.fieldApiName
   }),
+  StaffMember: Object.freeze({
+    CopiedFrom: staffMemberCopiedFrom.fieldApiName,
+    Notes: staffMemberNotes.fieldApiName,
+    OutsideId: staffMemberOutsideId.fieldApiName,
+    OutsideMatch: staffMemberOutsideMatch.fieldApiName,
+    Season: staffMemberSeason.fieldApiName,
+    SortOrder: staffMemberSortOrder.fieldApiName,
+    SourceSystem: staffMemberSourceSystem.fieldApiName
+  }),
   TimeBlock: Object.freeze({
     CopiedFrom: timeBlockCopiedFrom.fieldApiName,
     EndTime: timeBlockEndTime.fieldApiName,
@@ -742,6 +768,10 @@ export const PARENT = Object.freeze({
     Activity: FIELD.ActivityEligibility.Activity.replace(/__c$/, "__r"),
     Division: FIELD.ActivityEligibility.Division.replace(/__c$/, "__r"),
     Group: FIELD.ActivityEligibility.Group.replace(/__c$/, "__r")
+  }),
+  ActivityLeader: Object.freeze({
+    Activity: FIELD.ActivityLeader.Activity.replace(/__c$/, "__r"),
+    StaffMember: FIELD.ActivityLeader.StaffMember.replace(/__c$/, "__r")
   }),
   ActivityOffTime: Object.freeze({
     Activity: FIELD.ActivityOffTime.Activity.replace(/__c$/, "__r"),
@@ -891,6 +921,10 @@ export const PARENT = Object.freeze({
     Location: FIELD.SpecialEvent.Location.replace(/__c$/, "__r"),
     Season: FIELD.SpecialEvent.Season.replace(/__c$/, "__r")
   }),
+  StaffMember: Object.freeze({
+    CopiedFrom: FIELD.StaffMember.CopiedFrom.replace(/__c$/, "__r"),
+    Season: FIELD.StaffMember.Season.replace(/__c$/, "__r")
+  }),
   TimeBlock: Object.freeze({
     CopiedFrom: FIELD.TimeBlock.CopiedFrom.replace(/__c$/, "__r"),
     Program: FIELD.TimeBlock.Program.replace(/__c$/, "__r")
@@ -916,6 +950,7 @@ export const CHILDREN = Object.freeze({
   Activity: Object.freeze({
     Copies: `${NAMESPACE_PREFIX}Copies__r`,
     Eligibilities: `${NAMESPACE_PREFIX}Eligibilities__r`,
+    Leaders: `${NAMESPACE_PREFIX}Leaders__r`,
     OffTimes: `${NAMESPACE_PREFIX}OffTimes__r`,
     Offerings: `${NAMESPACE_PREFIX}Offerings__r`,
     RainPlanFor: `${NAMESPACE_PREFIX}RainPlanFor__r`,
@@ -1019,6 +1054,7 @@ export const CHILDREN = Object.freeze({
     SpecialDates: `${NAMESPACE_PREFIX}SpecialDates__r`,
     SpecialDays: `${NAMESPACE_PREFIX}SpecialDays__r`,
     SpecialEvents: `${NAMESPACE_PREFIX}SpecialEvents__r`,
+    StaffMembers: `${NAMESPACE_PREFIX}StaffMembers__r`,
     Weeks: `${NAMESPACE_PREFIX}Weeks__r`
   }),
   SpecialDay: Object.freeze({
@@ -1028,6 +1064,10 @@ export const CHILDREN = Object.freeze({
   SpecialEvent: Object.freeze({
     PlanParts: `${NAMESPACE_PREFIX}PlanParts__r`,
     SpecialDates: `${NAMESPACE_PREFIX}SpecialDates__r`
+  }),
+  StaffMember: Object.freeze({
+    ActivitiesLed: `${NAMESPACE_PREFIX}ActivitiesLed__r`,
+    Copies: `${NAMESPACE_PREFIX}Copies__r`
   }),
   TimeBlock: Object.freeze({
     ActivityOffTimes: `${NAMESPACE_PREFIX}ActivityOffTimes__r`,

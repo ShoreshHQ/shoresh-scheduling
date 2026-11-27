@@ -1071,9 +1071,7 @@ describe("When it runs", () => {
   it("shows the program's days by its time blocks, every box ticked but the ones unticked", async () => {
     const element = await render(RUNS);
     const table = q(element, "table.runs");
-    expect(q(element, ".runs-caption").textContent.trim()).toBe(
-      "When it runs"
-    );
+    expect(q(element, ".runs-caption").textContent.trim()).toBe("When it runs");
     expect(
       [...table.querySelectorAll(".runs-day")].map((th) =>
         th.textContent.trim()
@@ -1219,5 +1217,115 @@ describe("When it runs", () => {
     await element.open("a1");
     await flush();
     expect(boxes(element).every((box) => box.disabled)).toBe(true);
+  });
+});
+
+describe("Who leads it", () => {
+  afterEach(() => {
+    while (document.body.firstChild) {
+      document.body.removeChild(document.body.firstChild);
+    }
+  });
+
+  const LEADS = {
+    ...SETUP,
+    staff: [
+      { Id: "s1", Name: "Dana" },
+      { Id: "s2", Name: "Eli" }
+    ],
+    activities: [
+      {
+        ...SETUP.activities[0],
+        Leaders__r: [{ Id: "l1", Activity__c: "a1", StaffMember__c: "s2" }]
+      },
+      SETUP.activities[1]
+    ]
+  };
+  const group = (element) => q(element, '[data-id="who-leads-it"]');
+  const choose = (element, value) => {
+    group(element).dispatchEvent(
+      new CustomEvent("change", { detail: { value } })
+    );
+  };
+
+  it("ticks the season's staff, the activity's leaders ticked", async () => {
+    const element = await render(LEADS);
+    expect(group(element).label).toBe("Who leads it");
+    expect(group(element).options).toEqual([
+      { label: "Dana", value: "s1" },
+      { label: "Eli", value: "s2" }
+    ]);
+    expect(group(element).value).toEqual(["s2"]);
+    await expect(element).toBeAccessible();
+  });
+
+  it("a season with no staff has no Who leads it", async () => {
+    const element = await render(SETUP);
+    expect(group(element)).toBeNull();
+  });
+
+  // CORE-1.40
+  it("a leader ticked saves at once, the whole list, with what was seen", async () => {
+    const element = await render(LEADS);
+    const handler = jest.fn();
+    element.addEventListener("save", handler);
+    choose(element, ["s1", "s2"]);
+    await flush();
+    const save = sent(handler)[0];
+    expect(save.activityId).toBe("a1");
+    expect(save.leaders).toEqual(["s1", "s2"]);
+    expect(save.seen()).toEqual(["s2"]);
+    expect(save.offTimes).toBeUndefined();
+    expect(save.rules).toBeUndefined();
+    save.onSaved({ id: "a1", changed: [] });
+    await flush();
+    expect(savedMark(element)).not.toBeNull();
+  });
+
+  // CORE-1.40
+  it("someone else's change since is asked about by name, and Keep theirs shows theirs", async () => {
+    const element = await render(LEADS);
+    const handler = jest.fn();
+    element.addEventListener("save", handler);
+    choose(element, []);
+    await flush();
+    sent(handler)[0].onSaved({ id: null, changed: [], theirLeaders: ["s1"] });
+    await flush();
+    expect(q(element, ".conflict-where").textContent.trim()).toBe(
+      "Archery · Who leads it"
+    );
+    expect(q(element, '[data-id="theirs"]').textContent.trim()).toBe("Dana");
+    expect(q(element, '[data-id="yours"]').textContent.trim()).toBe("Nobody");
+    q(element, '[data-id="keep-theirs"]').click();
+    await flush();
+    expect(group(element).value).toEqual(["s1"]);
+    expect(handler).toHaveBeenCalledTimes(1);
+  });
+
+  it("a refusal shows under the ticks, and they stay as the director left them", async () => {
+    const element = await render(LEADS);
+    const handler = jest.fn();
+    element.addEventListener("save", handler);
+    choose(element, ["s1"]);
+    await flush();
+    sent(handler)[0].onFailure("Activity details not saved.");
+    await flush();
+    expect(q(element, '[data-error="leads"]').textContent.trim()).toBe(
+      "Activity details not saved."
+    );
+    expect(group(element).value).toEqual(["s1"]);
+  });
+
+  it("an archived season shows the leaders and takes no changes", async () => {
+    const element = createElement("c-shoresh-activity-details", {
+      is: ShoreshActivityDetails
+    });
+    element.terms = terms;
+    element.readOnly = true;
+    element.setup = nsRecord(LEADS);
+    document.body.appendChild(element);
+    await element.open("a1");
+    await flush();
+    expect(group(element).disabled).toBe(true);
   });
 });

@@ -680,9 +680,10 @@ export function activityGrid(view, activityId, t) {
  * A place's week (PUB-6.8), opened on one location: in each block of each day, what is there and
  * the groups doing it, "Swim (Cedar, Oak)". isHere(item): whether a placed item runs at the place.
  * A group there from a rainy-day switch puts its raindrop before its item. A day a special day
- * replaces is one cell named for it, as in Activity View.
+ * replaces is one cell named for it, as in Activity View. nameOf(item): what an item is called
+ * there (a staff member's week, PUB-6.14, adds its location: "Swim · Lake (Cedar, Oak)").
  */
-export function locationGrid(view, isHere, t) {
+export function locationGrid(view, isHere, t, nameOf = (item) => item.name) {
   const { blocks, rowOf } = weekRows(view);
   const cells = [];
   (view.days || []).forEach((day, dayIndex) => {
@@ -706,10 +707,11 @@ export function locationGrid(view, isHere, t) {
         for (let b = c.blockIndex; b < c.blockIndex + c.length; b++) {
           const row = rowOf(day, b);
           const items = byRow.get(row) || new Map();
-          const entry = items.get(c.item.name) || { groups: [], rain: false };
+          const name = nameOf(c.item);
+          const entry = items.get(name) || { groups: [], rain: false };
           entry.groups.push(grp.name);
           entry.rain = entry.rain || rain;
-          items.set(c.item.name, entry);
+          items.set(name, entry);
           byRow.set(row, items);
         }
       })

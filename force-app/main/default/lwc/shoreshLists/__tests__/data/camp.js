@@ -74,6 +74,10 @@ export function camp() {
       },
       { Id: "l2", Name: "Gym", GroupsThatFit__c: 1 }
     ],
+    staff: [
+      { Id: "s1", Name: "Dana", Notes__c: "Lifeguard" },
+      { Id: "s2", Name: "Eli, Jr." }
+    ],
     activities: [
       {
         Id: "a1",

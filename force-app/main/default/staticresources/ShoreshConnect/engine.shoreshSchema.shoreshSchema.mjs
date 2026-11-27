@@ -16,6 +16,9 @@ const activityEligibilityObject = schemaName("ActivityEligibility__c");
 const activityEligibilityActivity = schemaName("ActivityEligibility__c.Activity__c");
 const activityEligibilityDivision = schemaName("ActivityEligibility__c.Division__c");
 const activityEligibilityGroup = schemaName("ActivityEligibility__c.Group__c");
+const activityLeaderObject = schemaName("ActivityLeader__c");
+const activityLeaderActivity = schemaName("ActivityLeader__c.Activity__c");
+const activityLeaderStaffMember = schemaName("ActivityLeader__c.StaffMember__c");
 const activityOffTimeObject = schemaName("ActivityOffTime__c");
 const activityOffTimeActivity = schemaName("ActivityOffTime__c.Activity__c");
 const activityOffTimeDay = schemaName("ActivityOffTime__c.Day__c");
@@ -300,6 +303,14 @@ const specialEventLocation = schemaName("SpecialEvent__c.Location__c");
 const specialEventNotes = schemaName("SpecialEvent__c.Notes__c");
 const specialEventSeason = schemaName("SpecialEvent__c.Season__c");
 const specialEventSortOrder = schemaName("SpecialEvent__c.SortOrder__c");
+const staffMemberObject = schemaName("StaffMember__c");
+const staffMemberCopiedFrom = schemaName("StaffMember__c.CopiedFrom__c");
+const staffMemberNotes = schemaName("StaffMember__c.Notes__c");
+const staffMemberOutsideId = schemaName("StaffMember__c.OutsideId__c");
+const staffMemberOutsideMatch = schemaName("StaffMember__c.OutsideMatch__c");
+const staffMemberSeason = schemaName("StaffMember__c.Season__c");
+const staffMemberSortOrder = schemaName("StaffMember__c.SortOrder__c");
+const staffMemberSourceSystem = schemaName("StaffMember__c.SourceSystem__c");
 const timeBlockObject = schemaName("TimeBlock__c");
 const timeBlockCopiedFrom = schemaName("TimeBlock__c.CopiedFrom__c");
 const timeBlockEndTime = schemaName("TimeBlock__c.EndTime__c");
@@ -350,6 +361,7 @@ export function childRows(row, relationship) {
 /** Object names: OBJECT.Week. */
 export const OBJECT = Object.freeze({
   ActivityEligibility: activityEligibilityObject.objectApiName,
+  ActivityLeader: activityLeaderObject.objectApiName,
   ActivityOffTime: activityOffTimeObject.objectApiName,
   Activity: activityObject.objectApiName,
   Assignment: assignmentObject.objectApiName,
@@ -383,6 +395,7 @@ export const OBJECT = Object.freeze({
   SpecialDate: specialDateObject.objectApiName,
   SpecialDay: specialDayObject.objectApiName,
   SpecialEvent: specialEventObject.objectApiName,
+  StaffMember: staffMemberObject.objectApiName,
   TimeBlock: timeBlockObject.objectApiName,
   WeekException: weekExceptionObject.objectApiName,
   Week: weekObject.objectApiName
@@ -394,6 +407,10 @@ export const FIELD = Object.freeze({
     Activity: activityEligibilityActivity.fieldApiName,
     Division: activityEligibilityDivision.fieldApiName,
     Group: activityEligibilityGroup.fieldApiName
+  }),
+  ActivityLeader: Object.freeze({
+    Activity: activityLeaderActivity.fieldApiName,
+    StaffMember: activityLeaderStaffMember.fieldApiName
   }),
   ActivityOffTime: Object.freeze({
     Activity: activityOffTimeActivity.fieldApiName,
@@ -712,6 +729,15 @@ export const FIELD = Object.freeze({
     Season: specialEventSeason.fieldApiName,
     SortOrder: specialEventSortOrder.fieldApiName
   }),
+  StaffMember: Object.freeze({
+    CopiedFrom: staffMemberCopiedFrom.fieldApiName,
+    Notes: staffMemberNotes.fieldApiName,
+    OutsideId: staffMemberOutsideId.fieldApiName,
+    OutsideMatch: staffMemberOutsideMatch.fieldApiName,
+    Season: staffMemberSeason.fieldApiName,
+    SortOrder: staffMemberSortOrder.fieldApiName,
+    SourceSystem: staffMemberSourceSystem.fieldApiName
+  }),
   TimeBlock: Object.freeze({
     CopiedFrom: timeBlockCopiedFrom.fieldApiName,
     EndTime: timeBlockEndTime.fieldApiName,
@@ -743,6 +769,10 @@ export const PARENT = Object.freeze({
     Activity: FIELD.ActivityEligibility.Activity.replace(/__c$/, "__r"),
     Division: FIELD.ActivityEligibility.Division.replace(/__c$/, "__r"),
     Group: FIELD.ActivityEligibility.Group.replace(/__c$/, "__r")
+  }),
+  ActivityLeader: Object.freeze({
+    Activity: FIELD.ActivityLeader.Activity.replace(/__c$/, "__r"),
+    StaffMember: FIELD.ActivityLeader.StaffMember.replace(/__c$/, "__r")
   }),
   ActivityOffTime: Object.freeze({
     Activity: FIELD.ActivityOffTime.Activity.replace(/__c$/, "__r"),
@@ -892,6 +922,10 @@ export const PARENT = Object.freeze({
     Location: FIELD.SpecialEvent.Location.replace(/__c$/, "__r"),
     Season: FIELD.SpecialEvent.Season.replace(/__c$/, "__r")
   }),
+  StaffMember: Object.freeze({
+    CopiedFrom: FIELD.StaffMember.CopiedFrom.replace(/__c$/, "__r"),
+    Season: FIELD.StaffMember.Season.replace(/__c$/, "__r")
+  }),
   TimeBlock: Object.freeze({
     CopiedFrom: FIELD.TimeBlock.CopiedFrom.replace(/__c$/, "__r"),
     Program: FIELD.TimeBlock.Program.replace(/__c$/, "__r")
@@ -917,6 +951,7 @@ export const CHILDREN = Object.freeze({
   Activity: Object.freeze({
     Copies: `${NAMESPACE_PREFIX}Copies__r`,
     Eligibilities: `${NAMESPACE_PREFIX}Eligibilities__r`,
+    Leaders: `${NAMESPACE_PREFIX}Leaders__r`,
     OffTimes: `${NAMESPACE_PREFIX}OffTimes__r`,
     Offerings: `${NAMESPACE_PREFIX}Offerings__r`,
     RainPlanFor: `${NAMESPACE_PREFIX}RainPlanFor__r`,
@@ -1020,6 +1055,7 @@ export const CHILDREN = Object.freeze({
     SpecialDates: `${NAMESPACE_PREFIX}SpecialDates__r`,
     SpecialDays: `${NAMESPACE_PREFIX}SpecialDays__r`,
     SpecialEvents: `${NAMESPACE_PREFIX}SpecialEvents__r`,
+    StaffMembers: `${NAMESPACE_PREFIX}StaffMembers__r`,
     Weeks: `${NAMESPACE_PREFIX}Weeks__r`
   }),
   SpecialDay: Object.freeze({
@@ -1029,6 +1065,10 @@ export const CHILDREN = Object.freeze({
   SpecialEvent: Object.freeze({
     PlanParts: `${NAMESPACE_PREFIX}PlanParts__r`,
     SpecialDates: `${NAMESPACE_PREFIX}SpecialDates__r`
+  }),
+  StaffMember: Object.freeze({
+    ActivitiesLed: `${NAMESPACE_PREFIX}ActivitiesLed__r`,
+    Copies: `${NAMESPACE_PREFIX}Copies__r`
   }),
   TimeBlock: Object.freeze({
     ActivityOffTimes: `${NAMESPACE_PREFIX}ActivityOffTimes__r`,

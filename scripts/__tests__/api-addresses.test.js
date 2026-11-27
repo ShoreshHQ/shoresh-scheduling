@@ -14,7 +14,8 @@ const INCOMING = {
   IncomingActivity: "activity",
   IncomingCamper: "camper",
   IncomingCamperGroup: "camper_group",
-  IncomingCamperElectiveChoice: "camper_elective_choice"
+  IncomingCamperElectiveChoice: "camper_elective_choice",
+  IncomingStaff: "staff"
 };
 
 // API-1.2: what goes out, by its plain name (its Flow action is send_<name>).
@@ -116,6 +117,7 @@ describe("the API's addresses", () => {
       "IncomingSave",
       "IncomingDoors",
       "IncomingCampers",
+      "IncomingStaffPlan",
       "IncomingResult"
     ]) {
       const said = [...source(cls).matchAll(/'((?:[^'\\]|\\.)*)'/g)]

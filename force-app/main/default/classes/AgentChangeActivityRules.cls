@@ -1,11 +1,12 @@
 /**
- * change_activity_details: change an activity's details (who can do it, when it runs, same
+ * change_activity_details: change an activity's details (who can do it, who leads it, when it runs, same
  * division only, early in the week, notes), as the person, through an agent or the command line (docs/protocol/api.md
  * API-1.51). Web address /v1/change_activity_details, POST {season, name, fields, seen}. It is the
  * activity details panel's own save (ActivitiesController.saveActivityDetails), made only while
  * each field changed still holds what read_activity_details said (seen); someone else's change since
  * is refused (409) with nothing saved. Who can do it is left as it is unless it is changed; when
- * it runs goes through the panel's own save of it (ActivitiesController.saveWhenItRuns).
+ * it runs and who leads it go through the panel's own saves of them
+ * (ActivitiesController.saveWhenItRuns, saveWhoLeadsIt).
  */
 @RestResource(urlMapping='/v1/change_activity_details')
 global with sharing class AgentChangeActivityRules implements AgentRequest.Change {
@@ -22,6 +23,8 @@ global with sharing class AgentChangeActivityRules implements AgentRequest.Chang
   private List<Id> chosen;
   // When it runs, when asked: the season's boxes, and the ones it can't run.
   private AgentActivityRuns runs;
+  // Who leads it, when asked: the season's staff, and the ones named.
+  private AgentActivityLeaders leaders;
   private List<String> said = new List<String>();
 
   @HttpPost
@@ -62,13 +65,14 @@ global with sharing class AgentChangeActivityRules implements AgentRequest.Chang
   }
 
   /**
-   * The activity details panel's own saves (SeenSaves; ActivityOffTimes), held since the lock:
-   * the rules and who can do it when any is asked, and when it runs when it is.
+   * The activity details panel's own saves (SeenSaves; ActivityLeaders; ActivityOffTimes), held
+   * since the lock: the rules and who can do it when any is asked, and who leads it and when it
+   * runs each when it is.
    */
   private List<RowSaves.Result> saves() {
     List<RowSaves.Result> results = new List<RowSaves.Result>();
     try {
-      if (runs == null || given.size() > 1) {
+      if (AgentActivityAsked.asksRules(given)) {
         results.add(
           ActivitiesController.saveActivityDetails(
             rules,
@@ -76,6 +80,9 @@ global with sharing class AgentChangeActivityRules implements AgentRequest.Chang
             AgentActivityRules.ticketNow(found.id, chosen)
           )
         );
+      }
+      if (leaders != null) {
+        results.add(leaders.save(found.id));
       }
       if (runs != null) {
         results.add(runs.save(found.id));
@@ -114,7 +121,8 @@ global with sharing class AgentChangeActivityRules implements AgentRequest.Chang
     rules = new Activity__c(Id = found.id);
     // When it runs first: the season's boxes, read only when it is asked.
     runs = AgentActivityRuns.askedIn(given, found.seasonId);
-    said.addAll(AgentActivityAsked.saidOf(runs));
+    leaders = AgentActivityLeaders.askedIn(given, found);
+    said.addAll(AgentActivityAsked.saidOf(runs, leaders));
     for (String key : AgentActivityAsked.rulesAndWho()) {
       if (!given.containsKey(key)) {
         continue;

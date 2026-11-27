@@ -641,6 +641,53 @@ export function countedCells(ctx, days) {
   return out;
 }
 
+/**
+ * A staff member leading two different activities placed in the same time block of a day
+ * (CORE-6.20): one line per person, day and time block, by day and time block, the activities in the
+ * order the day's groups first have them. Shown, never fixed: the build never reads Who leads it. The same
+ * activity with several groups at once is no conflict.
+ */
+function leading(ctx, words) {
+  const lines = [];
+  [...ctx.occupancy.keys()]
+    .map((at) => at.split("|").map(Number))
+    .sort((a, b) => a[0] - b[0] || a[1] - b[1])
+    .forEach(([d, b]) => {
+      const byPerson = new Map();
+      const row = (p) =>
+        ctx.days[d].groups.findIndex((grp) => grp.id === p.groupId);
+      [...ctx.occupancy.get(`${d}|${b}`)]
+        .filter(isActivity)
+        .sort((x, y) => row(x) - row(y))
+        .forEach((p) => {
+          const act = ctx.activities.get(p.id);
+          ((act && act.leaders) || []).forEach((person) => {
+            const led = byPerson.get(person.id) || { person, acts: [] };
+            if (!led.acts.includes(act)) {
+              led.acts.push(act);
+            }
+            byPerson.set(person.id, led);
+          });
+        });
+      const day = ctx.days[d];
+      byPerson.forEach(({ person, acts }) => {
+        if (acts.length < 2) {
+          return;
+        }
+        const names = acts.map((a) => a.name);
+        const said = `${names.slice(0, -1).join(", ")} and ${names[names.length - 1]}`;
+        lines.push({
+          dateValue: day.dateValue,
+          blockId: day.blocks[b].id,
+          staffId: person.id,
+          activityIds: acts.map((a) => a.id),
+          text: `${person.name} leads ${said} · ${words.dayName(day.dateValue)} · ${day.blocks[b].name}`
+        });
+      });
+    });
+  return lines;
+}
+
 function filledCount(ctx) {
   const cells = countedCells(ctx, ctx.days);
   return {
@@ -801,6 +848,7 @@ export function checkWeek(days, model, words) {
     bends,
     placements,
     overlapping,
+    leading: leading(ctx, words),
     ...stillToPlace(ctx),
     cells: filledCount(ctx),
     hasCoverageTargets: activities.some((a) => a.min > 0),

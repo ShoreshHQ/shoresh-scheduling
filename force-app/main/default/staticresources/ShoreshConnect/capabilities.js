@@ -328,7 +328,7 @@ function setup(name, api, description, more = {}, required = []) {
         kind: {
           type: "string",
           description:
-            "What it is: week, program, division, group, time block, location type, location, activity, fixed activity, recurring activity, special day, special event or elective set (or the camp's own word for it, like bunk)."
+            "What it is: week, program, division, group, time block, location type, location, staff member, activity, fixed activity, recurring activity, special day, special event or elective set (or the camp's own word for it, like bunk)."
         },
         name: {
           type: "string",
@@ -357,7 +357,7 @@ const ACTIVITY_NAME = {
 const SETUP_FIELDS = {
   type: "object",
   description:
-    "The fields to set, by name, each value as text as a camp types it: dates like 2026-07-06, times like 9:00 AM, yes or no, numbers, and other things in setup by name (a location, location type, division, time block, or an activity for rain_plan; \"none\" leaves it blank, or for a group's division puts it in no division). Each kind's fields: week start_date, end_date; program monday to sunday (yes or no: the days it runs); group division (moves it to another division of its program), availability (All day, Morning only, Afternoon only); time block start_time, end_time, part_of_day (Morning, Afternoon); location location_type, groups_that_fit, notes; activity location, length (in time blocks), times_per_week_min, times_per_week_max, no_weekly_max, priority (High, Low), outdoor, rain_plan, groups_at_once, no_group_limit; fixed activity time_block, last_time_block, length, early_day (a day like Wednesday or Day 3), early_blocks, location; recurring activity time_block, last_time_block, length, location, monday to sunday; special day notes; special event location, notes. Divisions, location types and elective sets have only a name."
+    "The fields to set, by name, each value as text as a camp types it: dates like 2026-07-06, times like 9:00 AM, yes or no, numbers, and other things in setup by name (a location, location type, division, time block, or an activity for rain_plan; \"none\" leaves it blank, or for a group's division puts it in no division). Each kind's fields: week start_date, end_date; program monday to sunday (yes or no: the days it runs); group division (moves it to another division of its program), availability (All day, Morning only, Afternoon only); time block start_time, end_time, part_of_day (Morning, Afternoon); location location_type, groups_that_fit, notes; staff member notes (who leads what is who_leads_it in change_activity_details); activity location, length (in time blocks), times_per_week_min, times_per_week_max, no_weekly_max, priority (High, Low), outdoor, rain_plan, groups_at_once, no_group_limit; fixed activity time_block, last_time_block, length, early_day (a day like Wednesday or Day 3), early_blocks, location; recurring activity time_block, last_time_block, length, location, monday to sunday; special day notes; special event location, notes. Divisions, location types and elective sets have only a name."
 };
 
 /**
@@ -1408,7 +1408,7 @@ const CAPABILITIES = [
   setup(
     "rename_in_setup",
     "rename_in_setup",
-    "Rename one thing in a season's setup, as Camp Setup's tables do when a name is changed: a week, program, division, group, time block, location type, location, activity, fixed activity, recurring activity, special day, special event or elective set. It is done as you, with your own access. If someone else changed it since, nothing is saved and Shoresh says so.",
+    "Rename one thing in a season's setup, as Camp Setup's tables do when a name is changed: a week, program, division, group, time block, location type, location, staff member, activity, fixed activity, recurring activity, special day, special event or elective set. It is done as you, with your own access. If someone else changed it since, nothing is saved and Shoresh says so.",
     {
       new_name: {
         type: "string",
@@ -1438,7 +1438,7 @@ const CAPABILITIES = [
     ...setup(
       "read_from_setup",
       "read_from_setup",
-      "Read what one thing in a season's setup holds in the fields change_in_setup changes, as Camp Setup shows them. For an activity that is its location, length (in time blocks), times_per_week_min and times_per_week_max (how often a week), no_weekly_max, priority, outdoor, rain_plan, groups_at_once, no_group_limit and the weeks it runs in (who can do it and notes are read_activity_details). For a week: start_date, end_date; a program: the days it runs; a group: division, availability, runs_in; a time block: start_time, end_time, part_of_day; a location: location_type, groups_that_fit, notes; a fixed or recurring activity: its time blocks, length, location and days. Values are said as Camp Setup shows them (dates like 2026-07-06, times like 9:00 AM, yes or no, other things in setup by name, none or (blank) when empty; the weeks it runs in and who a recurring activity covers as lists of names). Read it right before changing it, and send those values back unchanged as seen."
+      "Read what one thing in a season's setup holds in the fields change_in_setup changes, as Camp Setup shows them. For an activity that is its location, length (in time blocks), times_per_week_min and times_per_week_max (how often a week), no_weekly_max, priority, outdoor, rain_plan, groups_at_once, no_group_limit and the weeks it runs in (who can do it and notes are read_activity_details). For a week: start_date, end_date; a program: the days it runs; a group: division, availability, runs_in; a time block: start_time, end_time, part_of_day; a location: location_type, groups_that_fit, notes; a staff member: notes; a fixed or recurring activity: its time blocks, length, location and days. Values are said as Camp Setup shows them (dates like 2026-07-06, times like 9:00 AM, yes or no, other things in setup by name, none or (blank) when empty; the weeks it runs in and who a recurring activity covers as lists of names). Read it right before changing it, and send those values back unchanged as seen."
     ),
     method: "GET",
     about:
@@ -1461,7 +1461,7 @@ const CAPABILITIES = [
   addedRecord(
     "add_to_setup",
     "add_to_setup",
-    "Add one thing to a season's setup, as Camp Setup's tables' Add does: a week, program, division, group, time block, location type, location, activity, fixed activity, recurring activity, special day, special event or elective set. It goes last in its table and starts from what that table's new row starts with (a new activity: once a week, one block long, low priority; a new location: one group fits; a new program: the days the other programs run); fields set more. A new week needs start_date and end_date, a time block start_time and end_time, a fixed or recurring activity its time_block, and a group its division (\"none\" for no division). What belongs to a program (divisions, groups, time blocks, fixed and recurring activities) go in the program named, or the season's only one. It is done as you, with your own access; what Camp Setup refuses is refused in its words. A fixed activity that would land on a recurring activity is asked about first with Camp Setup's own question (\"What is ... where ... is?\"); on the yes the recurring activity keeps its other time blocks, as on the screen. Anything else is done at once, with no confirm.",
+    "Add one thing to a season's setup, as Camp Setup's tables' Add does: a week, program, division, group, time block, location type, location, staff member, activity, fixed activity, recurring activity, special day, special event or elective set. It goes last in its table and starts from what that table's new row starts with (a new activity: once a week, one block long, low priority; a new location: one group fits; a new program: the days the other programs run); fields set more. A new week needs start_date and end_date, a time block start_time and end_time, a fixed or recurring activity its time_block, and a group its division (\"none\" for no division). What belongs to a program (divisions, groups, time blocks, fixed and recurring activities) go in the program named, or the season's only one. It is done as you, with your own access; what Camp Setup refuses is refused in its words. A fixed activity that would land on a recurring activity is asked about first with Camp Setup's own question (\"What is ... where ... is?\"); on the yes the recurring activity keeps its other time blocks, as on the screen. Anything else is done at once, with no confirm.",
     { fields: SETUP_FIELDS }
   ),
   {
@@ -1470,7 +1470,7 @@ const CAPABILITIES = [
     api: "read_activity_details",
     method: "GET",
     description:
-      "Read only the rules in an activity's details panel on Camp Setup: who_can_do_it (a list of division and group names, or everyone), when_it_runs (whenever, or a list of the times it can't run, each a time block and a day like Lunch, Monday, with the program in brackets when the season has several), same_division_only (yes or no: only groups from the same division at the same time), early_week_count and early_week_by_day (this many early in the week, by that day), and notes. Not its location, length, how often (times a week), priority, outdoor or rain plan: read those with read_from_setup (kind activity) and change them with change_in_setup. Read it right before changing them, and send those values back unchanged as seen.",
+      "Read only the rules in an activity's details panel on Camp Setup: who_can_do_it (a list of division and group names, or everyone), who_leads_it (a list of the staff who lead it, by name, or nobody), when_it_runs (whenever, or a list of the times it can't run, each a time block and a day like Lunch, Monday, with the program in brackets when the season has several), same_division_only (yes or no: only groups from the same division at the same time), early_week_count and early_week_by_day (this many early in the week, by that day), and notes. Not its location, length, how often (times a week), priority, outdoor or rain plan: read those with read_from_setup (kind activity) and change them with change_in_setup. Read it right before changing them, and send those values back unchanged as seen.",
     about:
       "What the activity's details hold now, as Camp Setup shows them. They hold no findings or problems.",
     inputSchema: {
@@ -1485,7 +1485,7 @@ const CAPABILITIES = [
     api: "change_activity_details",
     method: "POST",
     description:
-      "Change an activity's details, as its details panel on Camp Setup saves them: who can do it, when it runs (the times it can't run: Shoresh never builds it there, though a person may still put it there by hand), groups from the same division only, early in the week, and notes. Read them first with read_activity_details and send what it said as seen. It is done as you, with your own access. If someone else changed those details since, nothing is saved and Shoresh says so; what Camp Setup refuses is refused in its words.",
+      "Change an activity's details, as its details panel on Camp Setup saves them: who can do it, who leads it (the season's staff), when it runs (the times it can't run: Shoresh never builds it there, though a person may still put it there by hand), groups from the same division only, early in the week, and notes. Read them first with read_activity_details and send what it said as seen. It is done as you, with your own access. If someone else changed those details since, nothing is saved and Shoresh says so; what Camp Setup refuses is refused in its words.",
     inputSchema: {
       type: "object",
       properties: {
@@ -1494,7 +1494,7 @@ const CAPABILITIES = [
         fields: {
           type: "object",
           description:
-            'The details to set, by name, each as text except who_can_do_it and when_it_runs: who_can_do_it (a list of division and group names, like ["Juniors", "Bunk 4, boys"], or "everyone": that replaces who can do it), when_it_runs ("whenever", or a list of the times it can\'t run, like ["Lunch, Monday", "Period 2, Day 3"], as read_activity_details says them: that replaces the times it can\'t run), same_division_only (yes or no), early_week_count (a whole number, 1 or more) and early_week_by_day (a day like Wednesday or Day 3; set both or blank both with (blank)), notes.'
+            'The details to set, by name, each as text except who_can_do_it, who_leads_it and when_it_runs: who_can_do_it (a list of division and group names, like ["Juniors", "Bunk 4, boys"], or "everyone": that replaces who can do it), who_leads_it (a list of the season\'s staff by name, like ["Dana"], or "nobody": that replaces who leads it), when_it_runs ("whenever", or a list of the times it can\'t run, like ["Lunch, Monday", "Period 2, Day 3"], as read_activity_details says them: that replaces the times it can\'t run), same_division_only (yes or no), early_week_count (a whole number, 1 or more) and early_week_by_day (a day like Wednesday or Day 3; set both or blank both with (blank)), notes.'
         },
         seen: {
           type: "object",
@@ -2043,6 +2043,7 @@ const CAPABILITIES = [
           "groups",
           "time_blocks",
           "locations",
+          "staff",
           "activities",
           "fixed_activities",
           "recurring_activities",
@@ -2050,7 +2051,7 @@ const CAPABILITIES = [
           "special_events"
         ],
         description:
-          "Which screen's list: programs, divisions, groups, time blocks, locations, activities, fixed activities, recurring activities, electives (not camper choices), or special events (special days and events, by Type)."
+          "Which screen's list: programs, divisions, groups, time blocks, locations, staff, activities, fixed activities, recurring activities, electives (not camper choices), or special events (special days and events, by Type)."
       },
       sheet: {
         type: "string",
@@ -2064,7 +2065,7 @@ const CAPABILITIES = [
   importFile(
     "import_worksheet",
     "import_worksheet",
-    "Import the whole-camp worksheet, as Roots' Import worksheet does: every sheet it knows (programs, divisions, groups, time blocks, location types, locations, activities, fixed and recurring activities, weeks, the weeks things run in, camp words) reviewed together exactly as the screen reviews them, with the same code, then saved together and undone together. Send the file first without save: the answer is the review, its questions and its seen. Answer the questions (ask the person about anything the file doesn't make plain), send again until nothing is waiting, then send the same file and answers with save: true and the seen. It is done as you, with your own access, all or none. If someone changed the setup since the review, nothing is saved. undo_import undoes it."
+    "Import the whole-camp worksheet, as Roots' Import worksheet does: every sheet it knows (programs, divisions, groups, time blocks, location types, locations, staff, activities, fixed and recurring activities, weeks, the weeks things run in, camp words) reviewed together exactly as the screen reviews them, with the same code, then saved together and undone together. Send the file first without save: the answer is the review, its questions and its seen. Answer the questions (ask the person about anything the file doesn't make plain), send again until nothing is waiting, then send the same file and answers with save: true and the seen. It is done as you, with your own access, all or none. If someone changed the setup since the review, nothing is saved. undo_import undoes it."
   ),
   {
     name: "import_last_year",
@@ -2228,7 +2229,7 @@ const CAPABILITIES = [
     method: "GET",
     makesFile: "schedule",
     description:
-      "Make a week's schedule file exactly as the Schedules screen's Excel or Print menu makes it, with the same code, and save it in the Downloads folder on this computer (nothing is sent anywhere else). What it holds, as the menu offers: the whole week (Excel: a sheet per day, then every group's and every activity's week; Print: a page per day, a wide camp's day split by division), one day for the whole camp, one group's week, where one activity runs, what runs at one location, or one division's days; or every group, activity, location or division. Print is saved as a page that opens the browser's Print (Save as PDF there makes a PDF). It is the newest of the week's versions and its published schedule unless you name one (list_versions names the versions; the published schedule is called by its name). The answer is the file's name and where it was saved: tell the person.",
+      "Make a week's schedule file exactly as the Schedules screen's Excel or Print menu makes it, with the same code, and save it in the Downloads folder on this computer (nothing is sent anywhere else). What it holds, as the menu offers: the whole week (Excel: a sheet per day, then every group's and every activity's week; Print: a page per day, a wide camp's day split by division), one day for the whole camp, one group's week, where one activity runs (with who leads it), what runs at one location (with who leads each activity there), one division's days, or one staff member's week (where they lead at each time block); or every group, activity, location, division or staff member. Print is saved as a page that opens the browser's Print (Save as PDF there makes a PDF). It is the newest of the week's versions and its published schedule unless you name one (list_versions names the versions; the published schedule is called by its name). The answer is the file's name and where it was saved: tell the person.",
     about:
       "The file was made on this computer exactly as the Schedules screen makes it and saved in its Downloads folder; nothing else was changed or sent.",
     inputSchema: {
@@ -2247,14 +2248,22 @@ const CAPABILITIES = [
         },
         what: {
           type: "string",
-          enum: ["week", "day", "group", "activity", "location", "division"],
+          enum: [
+            "week",
+            "day",
+            "group",
+            "activity",
+            "location",
+            "division",
+            "staff"
+          ],
           description:
-            "What the file holds, as the screen's menu: the whole week (the default), a day, a group, an activity, a location or a division."
+            "What the file holds, as the screen's menu: the whole week (the default), a day, a group, an activity, a location, a division or a staff member (staff)."
         },
         which: {
           type: "string",
           description:
-            'Which one, as the menu names it ("Cedar", "Monday", "Swim", "Lake", "Juniors"). Leave it out, or say every, for every one of what.'
+            'Which one, as the menu names it ("Cedar", "Monday", "Swim", "Lake", "Juniors", "Dana Levi"). Leave it out, or say every, for every one of what.'
         }
       },
       required: ["week"],
@@ -2344,6 +2353,7 @@ const CAPABILITIES = [
             "groups",
             "time_blocks",
             "locations",
+            "staff",
             "activities",
             "fixed_activities",
             "recurring_activities",
@@ -2351,7 +2361,7 @@ const CAPABILITIES = [
             "special_events"
           ],
           description:
-            "worksheet (the default: the whole camp), or one screen's list: programs, divisions, groups, time blocks, locations, activities, fixed activities, recurring activities, electives, or special events (special days and events)."
+            "worksheet (the default: the whole camp), or one screen's list: programs, divisions, groups, time blocks, locations, staff, activities, fixed activities, recurring activities, electives, or special events (special days and events)."
         }
       },
       additionalProperties: false

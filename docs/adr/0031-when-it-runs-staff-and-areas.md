@@ -2,7 +2,8 @@
 
 Date: 2026-11-26. Status: proposed (Greg, 2026-11-26: "plan it all"). The plan for three pieces, each
 its own PR. Each PR fills in its own section's decisions as it is built and marks it accepted.
-Piece A: accepted (built 2026-11-26; "As built" below).
+Piece A: accepted (built 2026-11-26; "As built" below). Piece B: accepted (built 2026-11-26;
+"As built" below).
 
 ## Context
 
@@ -127,6 +128,52 @@ rather than the boxes ticked; the AI's word "whenever".
 6. **The AI and command line** can read and change the staff list and an activity's leaders, and read
    the By staff member view, through the screens' own saves.
 7. **Copy season** carries staff and leaders over.
+
+### Piece B as built
+
+- **Stored** as `StaffMember__c`, a child of the season like a location (name, notes, its place
+  in the list, and for a person from the camp's own system that system's name and ID, matched as
+  campers are: `OutsideMatch__c`, season + system + ID, unique), and `ActivityLeader__c`, one row
+  per leader: `Activity__c` (master-detail) and `StaffMember__c` (a lookup: a staff member
+  deleted leaves the row blank, which says nothing and is dropped at the activity's next save).
+  A trigger refuses a staff member of another season and any change in an archived season.
+  "Staff member" is a camp word (`StaffMember`), so a camp can call them counselors.
+- **Camp Setup** has a Staff screen after Locations: the list (name, the activities each leads,
+  notes in the row's details), Import a list and Download (names and notes), saved as every
+  setup table is. **The activity details panel** has "Who leads it": the season's staff as ticks,
+  shown only once the season has staff, saved the moment one changes, whole, only while it is as
+  the director saw it (`ActivitiesController.saveWhoLeadsIt`, CORE-1.40).
+- **Prints and Excel** (PUB-6.12 to 6.14): an Activity page's title names its leaders; a Location
+  page lists, under its grid, who leads each activity held there; and **By staff member** gives a
+  page and a sheet per person who leads something placed that week: days across, time blocks
+  down, each cell the activity, where and with which groups.
+- **The Why list** (CORE-6.20): "Dana leads Archery and Swim · Monday · Period 2", once per person,
+  day and time block, among the lines to look at, never fixed. Said by the time block's name, as
+  every other Why line names a time, rather than the clock time the plan's example used. It
+  checks one program's week, as the Why list does; a person leading in two programs at once is
+  not seen yet. The generator never reads Who leads it: the engine suite passes unchanged and 60
+  random camps build byte for byte the same with and without leaders.
+- **AI and command line:** staff are a setup kind (add, rename, notes, delete; the Staff list's
+  import and download), and `read_activity_details` / `change_activity_details` gain
+  `who_leads_it` (names A to Z, or "nobody"), saved through the panel's own save (API-1.158,
+  API-1.159). The By staff member view is the connector's `download_schedule` with `what: staff`.
+- **From the camp's own system:** `/v1/staff` (and the Flow action `staff`, permission set
+  `Send_Staff`) brings staff in matched on system + ID only, never on name, as campers come in
+  (API-2.7); Undo last import covers it. A staff member from outside keeps that system's name:
+  only its batches change it (API-4.11, as campers' names, API-4.2); one added by hand in Camp
+  Setup is renamed freely. Not an AI tool (API-1.6).
+- **Electives:** not covered. Who leads it names who leads an activity's regular placements; an
+  elective is placed by the director at its own set time (as for When it runs, A5), so the By
+  staff member page and the Why list's conflict line look at regular activities only.
+- **Copy season** copies the staff (with the camp system's ID, so that system finds the same
+  person next season) and who leads each copied activity.
+
+**Choices that are hard to undo after release:** the objects `StaffMember__c` and
+`ActivityLeader__c` and their fields; the camp word `StaffMember`; leaders stored per activity
+(not per cell); the AI's word "nobody"; the outside door's `global` surface (`IncomingStaff`, its
+`Record` with `season`, `source_system`, `staff_id`, `staff_name`, the address `/v1/staff` and
+the Flow action `staff`). The outside door's `global` surface staying in the package was
+approved by Greg on 2026-11-26.
 
 ## Piece C: areas of camp (walking distance)
 

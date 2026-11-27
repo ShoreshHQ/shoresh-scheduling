@@ -26,6 +26,7 @@ public with sharing class SetupDelete {
     TimeBlock__c.SObjectType,
     LocationType__c.SObjectType,
     Location__c.SObjectType,
+    StaffMember__c.SObjectType,
     Activity__c.SObjectType,
     FixedActivity__c.SObjectType,
     RecurringActivity__c.SObjectType,

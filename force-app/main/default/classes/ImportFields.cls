@@ -17,6 +17,9 @@ public with sharing class ImportFields {
     'TimeBlock' => TimeBlock__c.SObjectType,
     'LocationType' => LocationType__c.SObjectType,
     'Location' => Location__c.SObjectType,
+    // Staff and who leads each activity (ADR 0031 piece B).
+    'StaffMember' => StaffMember__c.SObjectType,
+    'ActivityLeader' => ActivityLeader__c.SObjectType,
     'Activity' => Activity__c.SObjectType,
     'ActivityEligibility' => ActivityEligibility__c.SObjectType,
     // When an activity can't run (ADR 0031 A2).
@@ -99,6 +102,19 @@ public with sharing class ImportFields {
       Location__c.Notes__c,
       Location__c.SortOrder__c,
       Location__c.CopiedFrom__c
+    },
+    StaffMember__c.SObjectType => new Set<Schema.SObjectField>{
+      StaffMember__c.Name,
+      StaffMember__c.Season__c,
+      StaffMember__c.Notes__c,
+      StaffMember__c.SortOrder__c,
+      StaffMember__c.CopiedFrom__c,
+      StaffMember__c.SourceSystem__c,
+      StaffMember__c.OutsideId__c
+    },
+    ActivityLeader__c.SObjectType => new Set<Schema.SObjectField>{
+      ActivityLeader__c.Activity__c,
+      ActivityLeader__c.StaffMember__c
     },
     Activity__c.SObjectType => new Set<Schema.SObjectField>{
       Activity__c.Name,

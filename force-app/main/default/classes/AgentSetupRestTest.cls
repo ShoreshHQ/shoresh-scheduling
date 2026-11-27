@@ -217,7 +217,7 @@ private class AgentSetupRestTest {
       Test.stopTest();
       Assert.areEqual(200, read[0], String.valueOf(read[1]));
       Assert.areEqual(
-        'The activity "Swim" details hold who_can_do_it: ["Group A"]; when_it_runs: whenever; same_division_only: no; early_week_count: (blank); early_week_by_day: (blank); notes: (blank). Send these back as seen when changing them.',
+        'The activity "Swim" details hold who_can_do_it: ["Group A"]; who_leads_it: nobody; when_it_runs: whenever; same_division_only: no; early_week_count: (blank); early_week_by_day: (blank); notes: (blank). Send these back as seen when changing them.',
         read[1]
       );
       Assert.areEqual(200, changed[0], String.valueOf(changed[1]));
@@ -382,6 +382,148 @@ private class AgentSetupRestTest {
           .contains('When it runs has no box "Lunch, Sunday"'),
         String.valueOf(noBox[1])
       );
+    }
+  }
+
+  // API-1.158 (ADR 0031 piece B): the Staff list, added, renamed and noted as Camp Setup does.
+  @IsTest
+  static void staffAreASetupListLikeLocations() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      GeneratedTestData.camp();
+      String season = seasonName();
+      Test.startTest();
+      List<Object> added = ask(
+        new AgentAddSetup(),
+        'POST',
+        new Map<String, Object>{
+          'season' => season,
+          'kind' => 'staff member',
+          'name' => 'Dana',
+          'fields' => new Map<String, Object>{ 'notes' => 'Archery certified' }
+        }
+      );
+      List<Object> renamed = ask(
+        new AgentRenameSetup(),
+        'POST',
+        new Map<String, Object>{
+          'season' => season,
+          'kind' => 'staff member',
+          'name' => 'Dana',
+          'new_name' => 'Dana Levi'
+        }
+      );
+      List<Object> read = ask(
+        new AgentReadSetup(),
+        'GET',
+        new Map<String, Object>{
+          'season' => season,
+          'kind' => 'staff member',
+          'name' => 'Dana Levi'
+        }
+      );
+      Test.stopTest();
+      Assert.areEqual(200, added[0], String.valueOf(added[1]));
+      Assert.areEqual(200, renamed[0], String.valueOf(renamed[1]));
+      Assert.areEqual(200, read[0], String.valueOf(read[1]));
+      Assert.isTrue(
+        String.valueOf(read[1]).contains('Archery certified'),
+        String.valueOf(read[1])
+      );
+      StaffMember__c dana = [
+        SELECT Name, Notes__c, Season__c
+        FROM StaffMember__c
+        WITH SYSTEM_MODE
+      ];
+      Assert.areEqual('Dana Levi', dana.Name);
+      Assert.areEqual(GeneratedTestData.ids.get('Season'), dana.Season__c);
+    }
+  }
+
+  // API-1.159 (ADR 0031 piece B): who leads it, read and changed as the panel's ticks have it.
+  @IsTest
+  static void whoLeadsItIsTheDetailsPanelsTicks() {
+    System.runAs(ShoreshTestData.scheduler()) {
+      GeneratedTestData.camp();
+      String season = seasonName();
+      Id seasonId = GeneratedTestData.ids.get('Season');
+      Database.insert(
+        new List<StaffMember__c>{
+          new StaffMember__c(
+            Season__c = seasonId,
+            Name = 'Eli',
+            SortOrder__c = 2
+          ),
+          new StaffMember__c(
+            Season__c = seasonId,
+            Name = 'Dana',
+            SortOrder__c = 1
+          )
+        },
+        AccessLevel.USER_MODE
+      );
+      Id swim = GeneratedTestData.ids.get('Swim');
+      Test.startTest();
+      List<Object> changed = ask(
+        new AgentChangeActivityRules(),
+        'POST',
+        new Map<String, Object>{
+          'season' => season,
+          'name' => 'Swim',
+          'fields' => new Map<String, Object>{
+            'who_leads_it' => new List<String>{ 'eli', 'Dana' }
+          },
+          'seen' => new Map<String, Object>{ 'who_leads_it' => 'nobody' }
+        }
+      );
+      List<Object> read = ask(
+        new AgentReadActivityRules(),
+        'GET',
+        new Map<String, Object>{ 'season' => season, 'name' => 'Swim' }
+      );
+      List<Object> stale = ask(
+        new AgentChangeActivityRules(),
+        'POST',
+        new Map<String, Object>{
+          'season' => season,
+          'name' => 'Swim',
+          'fields' => new Map<String, Object>{ 'who_leads_it' => 'nobody' },
+          'seen' => new Map<String, Object>{ 'who_leads_it' => '["Dana"]' }
+        }
+      );
+      List<Object> stranger = ask(
+        new AgentChangeActivityRules(),
+        'POST',
+        new Map<String, Object>{
+          'season' => season,
+          'name' => 'Swim',
+          'fields' => new Map<String, Object>{
+            'who_leads_it' => new List<String>{ 'Noa' }
+          },
+          'seen' => new Map<String, Object>{
+            'who_leads_it' => '["Eli", "Dana"]'
+          }
+        }
+      );
+      Test.stopTest();
+      Assert.areEqual(200, changed[0], String.valueOf(changed[1]));
+      Assert.areEqual(
+        'Changed the activity "Swim": who leads it Dana, Eli.',
+        changed[1]
+      );
+      Assert.isTrue(
+        String.valueOf(read[1]).contains('who_leads_it: ["Dana","Eli"];'),
+        String.valueOf(read[1])
+      );
+      Assert.areEqual(409, stale[0], String.valueOf(stale[1]));
+      Assert.areEqual(400, stranger[0], String.valueOf(stranger[1]));
+      Assert.isTrue(
+        String.valueOf(stranger[1])
+          .contains(
+            'There is no staff member called "Noa". The staff members: Dana, Eli.'
+          ),
+        String.valueOf(stranger[1])
+      );
+      Assert.areEqual(2, ActivityLeaders.now(swim).size());
     }
   }
 

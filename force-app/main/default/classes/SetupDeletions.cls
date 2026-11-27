@@ -90,46 +90,30 @@ public with sharing class SetupDeletions {
   /** The item's kind, program (for a program's own items), name, and camp; null for others. */
   private static Item itemOf(Id recordId) {
     Schema.SObjectType type = recordId.getSObjectType();
-    if (type == Activity__c.SObjectType) {
-      for (Activity__c row : [
-        SELECT Name, Season__r.Camp__c
-        FROM Activity__c
-        WHERE Id = :recordId
-        WITH USER_MODE
-      ]) {
-        return new Item('Activity', row.Name, row.Season__r.Camp__c);
-      }
-    } else if (type == Location__c.SObjectType) {
-      for (Location__c row : [
-        SELECT Name, Season__r.Camp__c
-        FROM Location__c
-        WHERE Id = :recordId
-        WITH USER_MODE
-      ]) {
-        return new Item('Location', row.Name, row.Season__r.Camp__c);
-      }
-    } else if (type == LocationType__c.SObjectType) {
-      for (LocationType__c row : [
-        SELECT Name, Season__r.Camp__c
-        FROM LocationType__c
-        WHERE Id = :recordId
-        WITH USER_MODE
-      ]) {
-        return new Item('LocationType', row.Name, row.Season__r.Camp__c);
-      }
-    } else if (type == Program__c.SObjectType) {
-      for (Program__c row : [
-        SELECT Name, Season__r.Camp__c
-        FROM Program__c
-        WHERE Id = :recordId
-        WITH USER_MODE
-      ]) {
-        Item program = new Item('Program', row.Name, row.Season__r.Camp__c);
-        program.program = row.Name;
-        return program;
-      }
-    } else {
-      return programItemOf(recordId, type);
+    if (SetupDeletionSeasonItems.handles(type)) {
+      SetupDeletionElectives.Found found = SetupDeletionSeasonItems.of(
+        recordId
+      );
+      return found.campId == null
+        ? null
+        : new Item(found.kind, found.name, found.campId);
+    }
+    if (type == Program__c.SObjectType) {
+      return programOf(recordId);
+    }
+    return programItemOf(recordId, type);
+  }
+
+  private static Item programOf(Id recordId) {
+    for (Program__c row : [
+      SELECT Name, Season__r.Camp__c
+      FROM Program__c
+      WHERE Id = :recordId
+      WITH USER_MODE
+    ]) {
+      Item program = new Item('Program', row.Name, row.Season__r.Camp__c);
+      program.program = row.Name;
+      return program;
     }
     return null;
   }

@@ -1,4 +1,4 @@
-import { CHILDREN, childRows, FIELD } from "c/shoreshSchema";
+import { CHILDREN, childRows, FIELD, PARENT } from "c/shoreshSchema";
 import { compareText } from "c/shoreshTerms";
 import { readRow } from "./grid";
 
@@ -15,6 +15,7 @@ const TIME_BLOCK = FIELD.TimeBlock;
 const LOCATION = FIELD.Location;
 const WEEK_EXCEPTION = FIELD.WeekException;
 const OFF_TIME = FIELD.ActivityOffTime;
+const LEADER = FIELD.ActivityLeader;
 
 const WEEKDAYS = {
   Monday: 1,
@@ -104,6 +105,19 @@ function offTimes(record) {
   return off;
 }
 
+/**
+ * Who leads an activity (ADR 0031 piece B): [{ id, name }] in the Staff list's order. The build
+ * never reads it; only the Why list does (checks.js leading).
+ */
+function leadersOf(record) {
+  return childRows(record, CHILDREN.Activity.Leaders)
+    .filter((row) => row[LEADER.StaffMember])
+    .map((row) => ({
+      id: row[LEADER.StaffMember],
+      name: (row[PARENT.ActivityLeader.StaffMember] || {}).Name || ""
+    }));
+}
+
 /** One box of When it runs: a time block Id and a weekday (1 Monday ... 7 Sunday). */
 export function offKey(blockId, weekday) {
   return `${blockId}|${weekday}`;
@@ -155,7 +169,8 @@ export function readActivities(records, weekExceptions, weekId) {
           : null,
       priority: r[ACTIVITY.Priority] === "High" ? "high" : "low",
       early: count && count > 0 && byDay ? { count, byDay } : null,
-      off: offTimes(r)
+      off: offTimes(r),
+      leaders: leadersOf(r)
     };
   });
   return {

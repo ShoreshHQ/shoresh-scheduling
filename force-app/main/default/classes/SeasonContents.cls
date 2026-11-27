@@ -27,6 +27,7 @@ public with sharing class SeasonContents {
     said.add('Group', counts.groups);
     said.add('TimeBlock', counts.timeBlocks);
     said.add('Location', sizeOf(setup.locations));
+    said.add('StaffMember', sizeOf(setup.staff));
     said.add('Activity', sizeOf(setup.activities));
     said.add('FixedActivity', counts.fixedActivities);
     said.add('RecurringActivity', counts.recurringActivities);

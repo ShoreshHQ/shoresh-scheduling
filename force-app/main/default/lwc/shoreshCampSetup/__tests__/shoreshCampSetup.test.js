@@ -20,6 +20,7 @@ import placedInWeeks from "@salesforce/apex/RunsInController.placedInWeeks";
 import undoImport from "@salesforce/apex/ImportController.undoImport";
 import saveActivityDetails from "@salesforce/apex/ActivitiesController.saveActivityDetails";
 import saveWhenItRuns from "@salesforce/apex/ActivitiesController.saveWhenItRuns";
+import saveWhoLeadsIt from "@salesforce/apex/ActivitiesController.saveWhoLeadsIt";
 import confirmGuess from "@salesforce/apex/SetupGuessesController.confirmGuess";
 import openPlan from "@salesforce/apex/SpecialScheduleController.openPlan";
 import followProgramDays from "@salesforce/apex/SeasonSetupController.followProgramDays";
@@ -168,6 +169,11 @@ jest.mock(
 );
 jest.mock(
   "@salesforce/apex/ActivitiesController.saveWhenItRuns",
+  () => apex(),
+  { virtual: true }
+);
+jest.mock(
+  "@salesforce/apex/ActivitiesController.saveWhoLeadsIt",
   () => apex(),
   { virtual: true }
 );
@@ -591,6 +597,38 @@ describe("c-shoresh-camp-setup", () => {
       );
       await flush();
       expect(said()).toBe("");
+    });
+
+    // ADR 0031 piece B: Staff is a list like Locations, after it in the menu, with what each leads.
+    it("Staff lists the season's staff with the activities each leads, and counts them", async () => {
+      const element = await renderWith({
+        staff: [
+          { Id: "s1", Name: "Dana" },
+          { Id: "s2", Name: "Eli" }
+        ],
+        activities: [
+          {
+            Id: "a1",
+            Name: "Archery",
+            Leaders__r: [{ Id: "l1", StaffMember__c: "s1" }]
+          },
+          {
+            Id: "a2",
+            Name: "Swim",
+            Leaders__r: [{ Id: "l2", StaffMember__c: "s1" }]
+          }
+        ]
+      });
+      await openScreen(element, "staff");
+      const table = q(element, 'c-shoresh-editable-table[data-id="staff"]');
+      expect(table.rows.map((r) => r.Name)).toEqual(["Dana", "Eli"]);
+      const leads = table.columns.find((c) => c.fieldName === "leads");
+      expect(leads.textFor({ Id: "s1" })).toBe("Archery, Swim");
+      expect(leads.textFor({ Id: "s2" })).toBe("");
+      expect(count(element, "staff")).toBe("2 staff members");
+      expect(
+        q(element, '[data-screen="staff"] c-shoresh-list-import').screenKey
+      ).toBe("staff");
     });
 
     it("locations sit in a section per type, then the places with none, each its own table", async () => {
@@ -1717,6 +1755,7 @@ describe("c-shoresh-camp-setup", () => {
         "groups",
         "timeBlocks",
         "locations",
+        "staff",
         "campWords"
       ]);
       expect(camp.items[1].disabled).toBe(false);
@@ -4280,6 +4319,34 @@ describe("c-shoresh-camp-setup", () => {
       saveWhenItRuns.mockReset();
     });
 
+    // ADR 0031 piece B: Who leads it goes to its own save, the whole list with what was seen.
+    it("a leader ticked goes to saveWhoLeadsIt, the whole list and what was seen", async () => {
+      saveWhoLeadsIt.mockResolvedValue({ id: "a1" });
+      const element = await renderWith(
+        setupWith({
+          staff: [{ Id: "s1", Name: "Dana" }],
+          activities: [{ Id: "a1", Name: "Archery" }]
+        })
+      );
+      await openScreen(element, "activities");
+      const details = q(element, "c-shoresh-activity-details");
+      await details.open("a1");
+      await flush();
+      details.shadowRoot
+        .querySelector('[data-id="who-leads-it"]')
+        .dispatchEvent(
+          new CustomEvent("change", { detail: { value: ["s1"] } })
+        );
+      await flush();
+      await flush();
+      expect(sentTo(saveWhoLeadsIt)).toEqual([
+        { activityId: "a1", leaders: ["s1"], seen: [] }
+      ]);
+      expect(saveActivityDetails).not.toHaveBeenCalled();
+      expect(saveWhenItRuns).not.toHaveBeenCalled();
+      saveWhoLeadsIt.mockReset();
+    });
+
     // Live bug: "Same division" on an activity for everyone was refused as "Who can do it wasn't
     // saved". Only the rule goes, with what was seen in it; who is null (Lightning hands Apex
     // that null as an empty list, and ActivitiesController reads it as who left out).
@@ -4494,6 +4561,7 @@ describe("c-shoresh-camp-setup", () => {
         "groups",
         "timeBlocks",
         "locations",
+        "staff",
         "campWords",
         "activities",
         "fixedActivities",
@@ -4510,7 +4578,8 @@ describe("c-shoresh-camp-setup", () => {
         ["divisions", "Bunks →"],
         ["groups", "Time blocks →"],
         ["timeBlocks", "Locations →"],
-        ["locations", "Camp words →"],
+        ["locations", "Staff members →"],
+        ["staff", "Camp words →"],
         ["campWords", "Activities →"],
         ["activities", "Fixed activities →"],
         ["fixedActivities", "Recurring activities →"],
@@ -4543,6 +4612,13 @@ describe("c-shoresh-camp-setup", () => {
       await openScreen(element, "locations");
       nextOn(element, "locations").click();
       await flush();
+      expect(shownScreens(element)).toEqual(["staff"]);
+      expect(element.shadowRoot.activeElement).toBe(
+        q(element, '[data-screen="staff"] [data-heading]')
+      );
+      // Staff's next is Camp words, whose heading is inside its own component.
+      nextOn(element, "staff").click();
+      await flush();
       expect(shownScreens(element)).toEqual(["campWords"]);
       const words = q(element, "c-shoresh-camp-labels");
       expect(words.shadowRoot.activeElement).toBe(
@@ -4573,6 +4649,7 @@ describe("c-shoresh-camp-setup", () => {
         "groups",
         "timeBlocks",
         "locations",
+        "staff",
         "campWords",
         "activities",
         "fixedActivities",
@@ -5826,6 +5903,7 @@ describe("an archived season", () => {
         "programs",
         "recurringActivities",
         "specialEvents",
+        "staff",
         "timeBlocks"
       ].map((key) => `${key}-list-import`)
     );
