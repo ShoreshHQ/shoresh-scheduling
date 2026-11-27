@@ -443,6 +443,33 @@ function withoutEmoji(value) {
     : { text, emoji: "" };
 }
 
+/**
+ * INGEST-2.25: a cell's name without the times it carries. A cell timed line by line ("9:30-9:40
+ * Change / 9:40-10:10 Swim Lessons / 10:10-10:40 Open Swim / 10:40-10:55 Change")
+ * is "Swim Lessons - Open Swim": "Change" standing alone between its times is the
+ * passing time between the parts, as the desktop reads it (extractEntities.js stripTimes, which
+ * drops it wherever the cell has a time). Here only a "Change" with nothing but times, dashes and
+ * spaces on either side goes, so "Change/Gear Up 10:00", "Change of Pace 2:00" and "Change Over
+ * 9:00" (passing time, NOT_A_NAME) keep their words.
+ */
+function withoutCellTimes(text) {
+  let marked = tidy(text);
+  const tokens = timeTokens(marked);
+  if (tokens.length === 0) {
+    return withoutTimes(text);
+  }
+  for (const token of tokens) {
+    marked = marked.replace(token[0], "\u2063");
+  }
+  const alone = /(^|\u2063)([\s\-–—]*)change(?=[\s\-–—]*(?:\u2063|$))/gi;
+  marked = marked.replace(alone, "$1$2 ");
+  return tidy(
+    marked.replace(/\(?\s*\u2063\s*(?:(?:-|–|—|to)\s*\u2063?)?\s*\)?/g, " ")
+  )
+    .replace(/(?:\s[-–—])+\s/g, " - ")
+    .replace(/^[\s\-–—:,]+|[\s\-–—:,]+$/g, "");
+}
+
 export function cellName(value) {
   const plain = withoutEmoji(value);
   let text = plain.text;
@@ -458,7 +485,7 @@ export function cellName(value) {
     place = tidy(inBrackets[2]);
     bracket = true;
   }
-  const name = withoutTimes(text).replace(/^[\s\-–—:*]+|[\s\-–—:*]+$/g, "");
+  const name = withoutCellTimes(text).replace(/^[\s\-–—:*]+|[\s\-–—:*]+$/g, "");
   if (name.length < 2 || NOT_A_NAME.some((pattern) => pattern.test(name))) {
     return null;
   }
