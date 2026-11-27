@@ -114,6 +114,17 @@ export function camp(spec) {
             Day__c: o.day
           }))
         }
+      : {}),
+    // Who leads it (ADR 0031 piece B): [{ id, name }] staff; none when not given.
+    ...(a.leaders
+      ? {
+          Leaders__r: a.leaders.map((l, i) => ({
+            Id: `${a.id}-lead${i}`,
+            Activity__c: a.id,
+            StaffMember__c: l.id,
+            StaffMember__r: { Id: l.id, Name: l.name }
+          }))
+        }
       : {})
   }));
   const eligibilityRecords = [];

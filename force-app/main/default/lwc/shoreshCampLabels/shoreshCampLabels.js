@@ -29,7 +29,8 @@ const SECTIONS = [
       "TimeBlock",
       "Location",
       "LocationType",
-      "Camper"
+      "Camper",
+      "StaffMember"
     ]
   },
   {

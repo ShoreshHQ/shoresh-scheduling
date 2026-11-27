@@ -19,6 +19,8 @@ public with sharing class ImportUndoDeletes {
     'WeekException',
     // Boxes of When it runs a list took off (ADR 0031 A7), before their activities.
     'ActivityOffTime',
+    // Who leads each activity Copy season copied (ADR 0031 piece B), before activities and staff.
+    'ActivityLeader',
     'Schedule',
     'Coverage',
     // Linked choices a double period made (their periods go with them), then the offerings
@@ -30,6 +32,7 @@ public with sharing class ImportUndoDeletes {
     'FixedActivity',
     'Activity',
     'Location',
+    'StaffMember',
     'LocationType',
     'Group',
     'Division',
@@ -45,7 +48,8 @@ public with sharing class ImportUndoDeletes {
   private static final Set<String> KEPT_WITH_ITEMS = new Set<String>{
     'Coverage',
     'WeekException',
-    'ActivityOffTime'
+    'ActivityOffTime',
+    'ActivityLeader'
   };
 
   private static final Set<String> ITEMS = new Set<String>{
@@ -55,6 +59,7 @@ public with sharing class ImportUndoDeletes {
     'FixedActivity',
     'Activity',
     'Location',
+    'StaffMember',
     'Group'
   };
   // Records inside each kind (master-detail children), or pointing at it through a link that
@@ -103,6 +108,7 @@ public with sharing class ImportUndoDeletes {
     'Activity' => new List<Schema.SObjectField>{
       ActivityEligibility__c.Activity__c,
       ActivityOffTime__c.Activity__c,
+      ActivityLeader__c.Activity__c,
       Activity__c.RainPlan__c,
       Offering__c.Activity__c
     },
@@ -110,6 +116,10 @@ public with sharing class ImportUndoDeletes {
     'RecurringActivity' => new List<Schema.SObjectField>{
       Coverage__c.RecurringActivity__c,
       WeekException__c.RecurringActivity__c
+    },
+    // A staff member someone named as a leader since keeps them.
+    'StaffMember' => new List<Schema.SObjectField>{
+      ActivityLeader__c.StaffMember__c
     },
     // A type's locations would quietly lose it: one the import didn't add keeps it.
     'LocationType' => new List<Schema.SObjectField>{
@@ -142,6 +152,7 @@ public with sharing class ImportUndoDeletes {
       Program__c.Season__c,
       LocationType__c.Season__c,
       Location__c.Season__c,
+      StaffMember__c.Season__c,
       Activity__c.Season__c,
       Coverage__c.Season__c,
       ElectiveSet__c.Season__c,

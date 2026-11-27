@@ -70,6 +70,7 @@ describe("the camp's own workbook", () => {
         timeBlocks: "Time blocks",
         locationTypes: "Location types",
         locations: "Locations",
+        staff: "Staff members",
         activities: "Activities",
         fixedActivities: "Fixed activities",
         recurringActivities: "Recurring activities"

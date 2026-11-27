@@ -4,10 +4,11 @@
  * AgentActivityRuns), and what was seen said as the panel shows it.
  */
 public with sharing class AgentActivityAsked {
-  /** The panel's fields but when it runs, in its order. */
+  /** The panel's fields but when it runs and who leads it (each saved on its own), in its order. */
   public static List<String> rulesAndWho() {
     List<String> result = AgentActivityRules.names();
     result.remove(result.indexOf(AgentActivityRules.RUNS));
+    result.remove(result.indexOf(AgentActivityRules.LEADS));
     return result;
   }
 
@@ -42,10 +43,28 @@ public with sharing class AgentActivityAsked {
       : AgentActivityRules.asShown(key, said);
   }
 
-  /** What the change says of when it runs: nothing when it wasn't asked. */
-  public static List<String> saidOf(AgentActivityRuns runs) {
-    return runs == null
-      ? new List<String>()
-      : new List<String>{ 'when it runs ' + runs.said(runs.asked) };
+  /** What the change says of when it runs and who leads it: nothing of one not asked. */
+  public static List<String> saidOf(
+    AgentActivityRuns runs,
+    AgentActivityLeaders leaders
+  ) {
+    List<String> result = new List<String>();
+    if (leaders != null) {
+      result.add(leaders.saidAsked());
+    }
+    if (runs != null) {
+      result.add('when it runs ' + runs.said(runs.asked));
+    }
+    return result;
+  }
+
+  /** Whether a change asks for any field the rules' save takes (who can do it and the rules). */
+  public static Boolean asksRules(Map<String, Object> given) {
+    for (String key : rulesAndWho()) {
+      if (given.containsKey(key)) {
+        return true;
+      }
+    }
+    return false;
   }
 }

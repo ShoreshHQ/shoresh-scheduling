@@ -1305,6 +1305,7 @@ describe("Import worksheet (Roots)", () => {
       "Time blocks",
       "Location types",
       "Locations",
+      "Staff members",
       "Activities",
       "Fixed activities",
       "Recurring activities",

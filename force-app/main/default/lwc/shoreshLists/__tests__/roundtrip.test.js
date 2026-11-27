@@ -68,6 +68,7 @@ describe("round trip", () => {
       "Bunks",
       "Time blocks",
       "Locations",
+      "Staff members",
       "Activities",
       "Fixed activities",
       "Recurring activities",
@@ -408,6 +409,7 @@ describe("adversarial downloads read back with nothing to do", () => {
         ...camp(),
         locationTypes: [],
         locations: [],
+        staff: [],
         activities: [],
         programs: []
       };
@@ -427,6 +429,7 @@ describe("adversarial downloads read back with nothing to do", () => {
         ...camp(),
         locationTypes: [],
         locations: [],
+        staff: [],
         activities: [],
         programs: []
       };
@@ -594,6 +597,11 @@ const DOWNLOADS = {
     ["Location", "Location type", "Bunks that fit", "Weeks", "Notes"],
     ["Pool", "Waterfront", 2, "Every week", "'=Shallow end"],
     ["Gym", "", 1, "Closed Week 2", ""]
+  ],
+  staff: [
+    ["Staff member", "Notes"],
+    ["Dana", "Lifeguard"],
+    ["Eli, Jr.", ""]
   ],
   activities: [
     [

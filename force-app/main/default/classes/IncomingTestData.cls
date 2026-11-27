@@ -13,7 +13,8 @@ public class IncomingTestData {
     'camper_elective_choice' => new ChoiceDoor(),
     'division' => new DivisionDoor(),
     'group' => new GroupDoor(),
-    'activity' => new ActivityDoor()
+    'activity' => new ActivityDoor(),
+    'staff' => new StaffDoor()
   };
   public Season__c season;
   public Map<String, Id> ids;
@@ -177,6 +178,11 @@ public class IncomingTestData {
   private class ActivityDoor implements Door {
     public void post() {
       IncomingActivity.post();
+    }
+  }
+  private class StaffDoor implements Door {
+    public void post() {
+      IncomingStaff.post();
     }
   }
 }

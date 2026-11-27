@@ -15,7 +15,7 @@ const {
   missingTests
 } = require("../protocol-index.js");
 
-const ENCODED_FLOOR = 631;
+const ENCODED_FLOOR = 646;
 
 // Built, not written, so this file names no ID itself.
 const ID = ["LOCK", "4.3"].join("-");

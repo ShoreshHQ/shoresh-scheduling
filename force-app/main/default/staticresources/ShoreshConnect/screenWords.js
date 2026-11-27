@@ -17,6 +17,7 @@ const LISTS = [
   "groups",
   "timeBlocks",
   "locations",
+  "staff",
   "activities",
   "fixedActivities",
   "recurringActivities",

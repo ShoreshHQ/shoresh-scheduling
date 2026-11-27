@@ -87,6 +87,13 @@ suppressions:
     - rule_selector: "pmd:TooManyFields"
       max_suppressed_violations: 1
       reason: "One answer carrying everything the engine and screen need for a week."
+  # The same for SeasonSetupReader.SeasonSetup: one answer carrying the season as every setup screen
+  # reads it (its staff too, ADR 0031 piece B); splitting it into nested parts would change the
+  # shape every setup screen, Manual Build, the AI tools and the connector read, for no change.
+  "main/default/classes/SeasonSetupReader.cls":
+    - rule_selector: "pmd:TooManyFields"
+      max_suppressed_violations: 1
+      reason: "One answer carrying the season as every setup screen reads it."
   # The same for ElectiveSeats.RunView: one answer carrying a run as the screen and the AI show it,
   # with a large camp's save progress (repo ADR 0018 choice 59).
   "main/default/classes/ElectiveSeats.cls":
@@ -188,6 +195,10 @@ suppressions:
   "main/default/classes/IncomingActivity.cls":
     - rule_selector: "pmd:FieldNamingConventions"
       max_suppressed_violations: 2
+      reason: "Record fields are the API's plain-English names (API-1.5)."
+  "main/default/classes/IncomingStaff.cls":
+    - rule_selector: "pmd:FieldNamingConventions"
+      max_suppressed_violations: 3
       reason: "Record fields are the API's plain-English names (API-1.5)."
   # What goes out (repo ADR 0024): a Flow's send fields are plain-English names too (to_system, as_csv).
   "main/default/classes/OutgoingGroupSchedule.cls":

@@ -533,3 +533,243 @@ describe("print and Excel by choice", () => {
     });
   });
 });
+
+// ADR 0031 piece B3: who leads each activity, where staff look.
+describe("who leads it, on paper and in Excel", () => {
+  const STAFF = [
+    { Id: "s1", Name: "Dana Levi" },
+    { Id: "s2", Name: "Eli Cohen" },
+    { Id: "s3", Name: "Noa Katz" },
+    { Id: "s4", Name: "Yael Gold" }
+  ];
+  const leaders = (...ids) =>
+    ids.map((id) => ({ Id: `${id}-lead`, StaffMember__c: id }));
+  const LED = nsRecord({
+    ...JSON.parse(JSON.stringify(SETUP)),
+    staff: STAFF,
+    activities: [
+      {
+        Id: "a1",
+        Name: "Swim",
+        Location__c: "l1",
+        Leaders__r: { totalSize: 2, done: true, records: leaders("s1", "s2") }
+      },
+      { Id: "a2", Name: "Canoe", Location__c: "l1", Leaders__r: leaders("s2") },
+      { Id: "a3", Name: "Archery", Leaders__r: leaders("s1") },
+      { Id: "a4", Name: "Drama", Leaders__r: leaders("s3") }
+    ]
+  });
+  const catalogue = LED.activities;
+
+  /**
+   * One Monday, three bunks: Period 1 Swim with Bunk 1 and Bunk 2, Archery with Bunk 3; Period 2
+   * Canoe with Bunk 1, Archery with Bunk 2.
+   */
+  function staffWeek() {
+    return {
+      days: [
+        {
+          dateValue: "2026-06-29",
+          problem: null,
+          blocks: [
+            {
+              id: "t1",
+              name: "Period 1",
+              startTime: "09:00",
+              endTime: "09:45"
+            },
+            { id: "t2", name: "Period 2", startTime: "10:00", endTime: "10:45" }
+          ],
+          groups: [
+            { id: "g1", name: "Bunk 1", gone: false },
+            { id: "g2", name: "Bunk 2", gone: false },
+            { id: "g3", name: "Bunk 3", gone: false }
+          ],
+          items: [
+            { kind: "A", id: "a1", name: "Swim", gone: false },
+            { kind: "A", id: "a2", name: "Canoe", gone: false },
+            { kind: "A", id: "a3", name: "Archery", gone: false }
+          ],
+          rows: ["1,2", "1,3", "3,"]
+        }
+      ]
+    };
+  }
+
+  // PUB-6.12
+  it("names an activity's leaders after its name, and nothing more for one with none", () => {
+    const [swim] = pagesFor(
+      opened(),
+      { kind: "activity", key: "a1" },
+      catalogue,
+      LED,
+      t
+    );
+    expect(swim.title).toBe("Swim · Dana Levi, Eli Cohen");
+    const [pottery] = pagesFor(
+      opened(),
+      { kind: "activity", key: "a9" },
+      catalogue,
+      LED,
+      t
+    );
+    expect(pottery.title).toBe("Pottery (removed)");
+    const [sheet] = sheetsFor(
+      opened(),
+      { kind: "activity", key: "a1" },
+      catalogue,
+      LED,
+      t,
+      offerings
+    );
+    expect(sheet.name).toBe("Swim");
+    expect(sheet.rows.slice(-2)).toEqual([[], ["Swim · Dana Levi, Eli Cohen"]]);
+    const [potterySheet] = sheetsFor(
+      opened(),
+      { kind: "activity", key: "a9" },
+      catalogue,
+      LED,
+      t,
+      offerings
+    );
+    expect(potterySheet.rows).toHaveLength(4);
+  });
+
+  // PUB-6.12
+  it("names, a line each under a location's grid, who leads each activity that runs there", () => {
+    const view = staffWeek();
+    const [lake] = pagesFor(
+      view,
+      { kind: "location", key: "l1" },
+      catalogue,
+      LED,
+      t
+    );
+    // In the season's order, only what runs there this week.
+    expect(lake.notes).toBe("Swim · Dana Levi, Eli Cohen\nCanoe · Eli Cohen");
+    const [sheet] = sheetsFor(
+      view,
+      { kind: "location", key: "l1" },
+      catalogue,
+      LED,
+      t,
+      offerings
+    );
+    expect(sheet.rows.slice(-3)).toEqual([
+      [],
+      ["Swim · Dana Levi, Eli Cohen"],
+      ["Canoe · Eli Cohen"]
+    ]);
+    // Gym holds only Lunch, which no one leads.
+    const [gym] = pagesFor(
+      opened(),
+      { kind: "location", key: "l2" },
+      catalogue,
+      LED,
+      t
+    );
+    expect(gym.notes).toBeNull();
+  });
+
+  // PUB-6.13
+  it("offers each staff member who leads an activity placed this week, in the Staff list's order", () => {
+    const choices = printChoices(staffWeek(), catalogue, LED, t);
+    const staff = choices.find((c) => c.kind === "staff");
+    expect(staff.label).toBe("Staff member");
+    // Noa leads only Drama, not placed; Yael leads nothing.
+    expect(staff.options.map((o) => o.label)).toEqual([
+      "Every Staff member",
+      "Dana Levi",
+      "Eli Cohen"
+    ]);
+    expect(choices.map((c) => c.kind).slice(-1)).toEqual(["staff"]);
+    // In the camp's own word.
+    const counselors = buildTerms([
+      ...LABELS,
+      {
+        term: "StaffMember",
+        singular: "Counselor",
+        plural: "Counselors",
+        isCustom: true
+      }
+    ]);
+    const own = printChoices(staffWeek(), catalogue, LED, counselors).find(
+      (c) => c.kind === "staff"
+    );
+    expect(own.label).toBe("Counselor");
+    expect(own.options[0].label).toBe("Every Counselor");
+    // No one leads anything placed: no such choice.
+    expect(
+      printChoices(opened(), CATALOGUE, SETUP, t).map((c) => c.kind)
+    ).not.toContain("staff");
+  });
+
+  // PUB-6.14
+  it("prints a staff member's week: at each time block, what they lead, where and with whom", () => {
+    const view = staffWeek();
+    const [dana] = pagesFor(
+      view,
+      { kind: "staff", key: "s1" },
+      catalogue,
+      LED,
+      t
+    );
+    expect(dana.title).toBe("Dana Levi");
+    expect(dana.table.columns.map((c) => c.label)).toEqual(["Monday"]);
+    // The same activity with two bunks at once is one entry; two activities at once both show.
+    expect(dana.table.rows.map((r) => r.cells[0].text)).toEqual([
+      "Swim · Lake (Bunk 1, Bunk 2), Archery (Bunk 3)",
+      "Archery (Bunk 2)"
+    ]);
+    const [eli] = pagesFor(
+      view,
+      { kind: "staff", key: "s2" },
+      catalogue,
+      LED,
+      t
+    );
+    expect(eli.table.rows.map((r) => r.cells[0].text)).toEqual([
+      "Swim · Lake (Bunk 1, Bunk 2)",
+      "Canoe · Lake (Bunk 1)"
+    ]);
+    expect(
+      pagesFor(view, { kind: "staff", key: EVERY }, catalogue, LED, t).map(
+        (p) => p.title
+      )
+    ).toEqual(["Dana Levi", "Eli Cohen"]);
+    // Noa's activity isn't placed: nothing to print for her.
+    expect(
+      pagesFor(view, { kind: "staff", key: "s3" }, catalogue, LED, t)
+    ).toEqual([]);
+  });
+
+  // PUB-6.14
+  it("gives a staff member's week a sheet each, named for them", () => {
+    const view = staffWeek();
+    const out = sheetsFor(
+      view,
+      { kind: "staff", key: EVERY },
+      catalogue,
+      LED,
+      t,
+      offerings
+    );
+    expect(out.map((s) => s.name)).toEqual(["Dana Levi", "Eli Cohen"]);
+    expect(out[0].rows).toEqual([
+      ["Time block", "Monday Jun 29"],
+      [
+        "Period 1 (9:00 AM – 9:45 AM)",
+        "Swim · Lake (Bunk 1, Bunk 2), Archery (Bunk 3)"
+      ],
+      ["Period 2 (10:00 AM – 10:45 AM)", "Archery (Bunk 2)"]
+    ]);
+    expect(
+      fileTitle(
+        printChoices(view, catalogue, LED, t),
+        { kind: "staff", key: "s2" },
+        "Week 1",
+        "Draft"
+      )
+    ).toBe("Week 1 - Draft - Eli Cohen");
+  });
+});

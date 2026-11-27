@@ -20,7 +20,15 @@ const { refused, asTheScreenReads } = require("./common");
 const words = require("./screenWords");
 
 /** What a file holds, as the screens' Excel and Print menus offer it (PUB-6.6). */
-const WHAT = ["week", "day", "group", "activity", "location", "division"];
+const WHAT = [
+  "week",
+  "day",
+  "group",
+  "activity",
+  "location",
+  "division",
+  "staff"
+];
 
 /** The Downloads folder, as a browser saves into it: in the Windows profile folder on Windows. */
 function downloadsFolder(env = process.env, platform = process.platform) {
@@ -66,14 +74,16 @@ function htmlName(m, title) {
 
 /**
  * The menu's choice a person asked for ({ kind, key }), or { problem }: what names the kind
- * (the whole week when left out); which names one of its choices as the menu says it ("Cedar",
- * "Monday, Jun 29", "Monday"), or every one (left out, or "every").
+ * (the whole week when left out; staff is By staff member, PUB-6.13); which names one of its
+ * choices as the menu says it ("Cedar", "Monday, Jun 29", "Monday", "Dana Levi"), or every one
+ * (left out, or "every").
  */
 function choiceOf(m, choices, input, t) {
   const kind = input.what || "week";
   if (!WHAT.includes(kind)) {
     return {
-      problem: "what is week, day, group, activity, location or division."
+      problem:
+        "what is week, day, group, activity, location, division or staff."
     };
   }
   if (kind === "week") return { kind };

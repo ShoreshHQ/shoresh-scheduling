@@ -25,12 +25,18 @@ public with sharing class RowSaves {
     /** When an activity can't run now, when someone else changed it (ActivityOffTimes keys). */
     @AuraEnabled
     public List<String> theirOffTimes;
+    /** Who leads an activity now, when someone else changed it (staff member Ids). */
+    @AuraEnabled
+    public List<Id> theirLeaders;
     /** A special day just added: what it started from (SpecialDaySeed). */
     @AuraEnabled
     public SpecialDaySeed.Seed seeded;
 
     public Boolean saved() {
-      return changed.isEmpty() && theirWho == null && theirOffTimes == null;
+      return changed.isEmpty() &&
+        theirWho == null &&
+        theirOffTimes == null &&
+        theirLeaders == null;
     }
   }
 

@@ -319,6 +319,65 @@ describe("the screens' files, made on this computer", () => {
     expect(refused.saved).toEqual([]);
   });
 
+  // PUB-6.13, PUB-6.14
+  it("aStaffMembersWeekIsTheScreensByStaffMember: what staff and which name, as the menu offers them, made with the screen's own code", async () => {
+    const setup = {
+      activities: [
+        {
+          Id: "a1",
+          Name: "Swim",
+          Leaders__r: {
+            totalSize: 1,
+            done: true,
+            records: [{ Id: "al1", StaffMember__c: "s1" }]
+          }
+        }
+      ],
+      staff: [{ Id: "s1", Name: "Dana Levi" }],
+      labels: LABELS,
+      electives: { sets: [], offerings: [], linkedChoices: [] }
+    };
+    const read = {
+      week: "Week 1",
+      program: "Main",
+      version: "Draft",
+      opened: opened(),
+      setup
+    };
+    const shown = views.withRaindrops(views.withSpecials(opened()));
+    const dana = await make(
+      "download_schedule",
+      { week: "Week 1", as: "print", what: "staff", which: "dana levi" },
+      read
+    );
+    expect(dana.saved).toEqual([
+      "Week 1 - Imported from sample-week.xlsx - Dana Levi.html"
+    ]);
+    const pages = printoutIn(path.join(dana.folder, dana.saved[0])).props.pages;
+    expect(pages).toEqual(
+      plain(
+        scheduleExport.pagesFor(
+          shown,
+          { kind: "staff", key: "s1" },
+          setup.activities,
+          setup,
+          t
+        )
+      )
+    );
+    expect(pages.map((p) => p.title)).toEqual(["Dana Levi"]);
+    // No one leads what is placed: nothing to choose, in words.
+    const none = await make(
+      "download_schedule",
+      { week: "Week 1", what: "staff" },
+      { ...read, setup: { ...setup, staff: [] } }
+    );
+    expect(none.done.text).toBe(
+      `This ${t.sIn("Week")} has no staff to choose.`
+    );
+    expect(none.saved).toEqual([]);
+  });
+
   // API-1.87
   it("aSpecialScheduleFileIsItsPagesDownload: the page's one sheet, named for the item", async () => {
     const day = opened().days[0];

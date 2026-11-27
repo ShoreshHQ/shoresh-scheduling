@@ -15,6 +15,7 @@ public with sharing class AgentSetupRecords {
     'TimeBlock',
     'LocationType',
     'Location',
+    'StaffMember',
     'Activity',
     'FixedActivity',
     'RecurringActivity',
@@ -195,6 +196,15 @@ public with sharing class AgentSetupRecords {
         return [
           SELECT Id, Name
           FROM Location__c
+          WHERE Season__c = :seasonId
+          WITH USER_MODE
+          ORDER BY SortOrder__c, Name
+        ];
+      }
+      when 'StaffMember' {
+        return [
+          SELECT Id, Name
+          FROM StaffMember__c
           WHERE Season__c = :seasonId
           WITH USER_MODE
           ORDER BY SortOrder__c, Name

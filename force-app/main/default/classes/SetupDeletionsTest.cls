@@ -38,6 +38,16 @@ private class SetupDeletionsTest {
         null
       );
       Database.insert(archery, AccessLevel.SYSTEM_MODE);
+      StaffMember__c dana = new StaffMember__c(
+        Season__c = season.Id,
+        Name = 'Dana'
+      );
+      Database.insert(dana, AccessLevel.SYSTEM_MODE);
+      LocationType__c water = new LocationType__c(
+        Season__c = season.Id,
+        Name = 'Water'
+      );
+      Database.insert(water, AccessLevel.SYSTEM_MODE);
 
       Test.startTest();
       SeasonSetupController.deleteRecord(archery.Id);
@@ -45,6 +55,8 @@ private class SetupDeletionsTest {
       SeasonSetupController.deleteRecord(bunk.Id);
       SeasonSetupController.deleteRecord(block.Id);
       SeasonSetupController.deleteRecord(pool.Id);
+      SeasonSetupController.deleteRecord(dana.Id);
+      SeasonSetupController.deleteRecord(water.Id);
       Assert.isTrue(
         queries < 30,
         'One delete stays well under 100 queries: ' + queries
@@ -57,7 +69,9 @@ private class SetupDeletionsTest {
           'deleted|Activity||Archery' => 'deleted',
           'deleted|Group|Juniors|Bunk 3' => 'deleted',
           'deleted|TimeBlock|Juniors|Period 2' => 'deleted',
-          'deleted|Location||Pool' => 'deleted'
+          'deleted|Location||Pool' => 'deleted',
+          'deleted|StaffMember||Dana' => 'deleted',
+          'deleted|LocationType||Water' => 'deleted'
         },
         answers
       );

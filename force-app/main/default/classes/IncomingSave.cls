@@ -11,6 +11,7 @@ public with sharing class IncomingSave {
     'Division',
     'Group',
     'Activity',
+    'StaffMember',
     'Camper',
     'Preference'
   };

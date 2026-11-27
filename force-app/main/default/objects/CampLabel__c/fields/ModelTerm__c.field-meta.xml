@@ -101,6 +101,11 @@
                 <label>Location type</label>
             </value>
             <value>
+                <fullName>StaffMember</fullName>
+                <default>false</default>
+                <label>Staff member</label>
+            </value>
+            <value>
                 <fullName>Placement</fullName>
                 <default>false</default>
                 <label>Placement</label>

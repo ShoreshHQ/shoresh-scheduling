@@ -39,6 +39,24 @@ public with sharing class ActivitiesController {
     }
   }
 
+  /**
+   * Saves Who leads it (ADR 0031 piece B): the staff members' Ids, all of them, only while they
+   * are as the director saw them (seen); otherwise nothing is saved and the answer says who
+   * someone else saved (theirLeaders), as When it runs does.
+   */
+  @AuraEnabled
+  public static RowSaves.Result saveWhoLeadsIt(
+    Id activityId,
+    List<Id> leaders,
+    List<Id> seen
+  ) {
+    try {
+      return ActivityLeaders.save(activityId, leaders, seen);
+    } catch (Exception e) {
+      throw ScreenErrors.of(e);
+    }
+  }
+
   /** Who can do it as sent: null (left as it is) when Lightning turned the screen's null into []. */
   private static List<Id> whoSent(
     List<Id> whoCanDoIt,

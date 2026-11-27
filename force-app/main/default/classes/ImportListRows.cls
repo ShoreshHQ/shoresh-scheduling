@@ -11,6 +11,7 @@ public with sharing class ImportListRows {
     'Program' => Program__c.Season__c,
     'LocationType' => LocationType__c.Season__c,
     'Location' => Location__c.Season__c,
+    'StaffMember' => StaffMember__c.Season__c,
     'Activity' => Activity__c.Season__c,
     'ElectiveSet' => ElectiveSet__c.Season__c,
     'SpecialDay' => SpecialDay__c.Season__c,
@@ -45,6 +46,11 @@ public with sharing class ImportListRows {
       Location__c.Name,
       Location__c.GroupsThatFit__c,
       Location__c.Notes__c
+    },
+    // Staff (ADR 0031 piece B): names and notes.
+    'StaffMember' => new Set<Schema.SObjectField>{
+      StaffMember__c.Name,
+      StaffMember__c.Notes__c
     },
     'TimeBlock' => new Set<Schema.SObjectField>{
       TimeBlock__c.Name,
@@ -164,6 +170,7 @@ public with sharing class ImportListRows {
     'Week',
     'Program',
     'Location',
+    'StaffMember',
     'Group',
     'TimeBlock',
     'Activity',

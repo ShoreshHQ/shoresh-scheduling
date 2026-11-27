@@ -84,6 +84,7 @@ describe("c-shoresh-menu", () => {
       "Bunks",
       "Time blocks",
       "Locations",
+      "Staff members",
       "Camp words",
       "Periods",
       "Anchors",
