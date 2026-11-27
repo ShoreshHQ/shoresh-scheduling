@@ -1,7 +1,10 @@
 /**
- * An elective set's time (repo ADR 0027; ELECT-7.1 to 7.3): a time block and its days, where a
- * fresh week (BlankWeek) places the set across the groups at camp then. Read with the program's
- * time blocks, in the same query, so building a week costs no query more than before.
+ * An elective set's time (repo ADR 0027; ELECT-7.1 to 7.5): a time block, a last block for a
+ * double period, its days, and who it is for, where a fresh week (BlankWeek) places the set across
+ * the groups at camp then (ElectiveSetPlacing). Read with the program's time blocks, in the same
+ * query; who each set is for (ElectiveSetWho) is one query more, only when the program has a set.
+ * Someone who can't read a set's last block or who it is for gets its time as before ADR 0027's
+ * amendment: its block alone, for every group.
  */
 public with sharing class ElectiveSetTimes {
   private static final List<Schema.SObjectField> FIELDS = new List<Schema.SObjectField>{
@@ -17,10 +20,19 @@ public with sharing class ElectiveSetTimes {
 
   /** Whether the user can read sets' times; someone who can't starts weeks without them. */
   public static Boolean readable() {
-    if (!Schema.sObjectType.ElectiveSet__c.isAccessible()) {
-      return false;
-    }
-    for (Schema.SObjectField field : FIELDS) {
+    return Schema.sObjectType.ElectiveSet__c.isAccessible() && canRead(FIELDS);
+  }
+
+  /** ELECT-7.5: whether the user can read a set's last block. */
+  public static Boolean lastReadable() {
+    return canRead(
+      new List<Schema.SObjectField>{ ElectiveSet__c.LastTimeBlock__c }
+    );
+  }
+
+  /** Whether the user can read every one of these fields. */
+  public static Boolean canRead(List<Schema.SObjectField> fields) {
+    for (Schema.SObjectField field : fields) {
       if (!field.getDescribe().isAccessible()) {
         return false;
       }
@@ -30,40 +42,63 @@ public with sharing class ElectiveSetTimes {
 
   /**
    * The program's time blocks (as ProgramReads.blocksOf), each with the elective sets at it in
-   * name order, so the same setup gives the same week. One query: the sets come as a subquery.
+   * name order, so the same setup gives the same week. One query: the sets come as a subquery,
+   * with their last block when the user can read it. Who the sets are for is read with them (one
+   * query more, only when there is a set and the user can read it).
    */
   public static List<TimeBlock__c> blocksOf(Id programId) {
     if (!readable()) {
       return ProgramReads.blocksOf(programId);
     }
-    return [
-      SELECT
-        Id,
-        Name,
-        StartTime__c,
-        EndTime__c,
-        PartOfDay__c,
-        SortOrder__c,
-        (
-          SELECT
-            Id,
-            Name,
-            TimeBlock__c,
-            Monday__c,
-            Tuesday__c,
-            Wednesday__c,
-            Thursday__c,
-            Friday__c,
-            Saturday__c,
-            Sunday__c
-          FROM ElectiveSets__r
-          ORDER BY Name, Id
-        )
-      FROM TimeBlock__c
-      WHERE Program__c = :programId
-      WITH USER_MODE
-      ORDER BY StartTime__c, SortOrder__c, Id
-    ];
+    List<String> setFields = new List<String>{ 'Id', 'Name' };
+    for (Schema.SObjectField field : FIELDS) {
+      setFields.add(ShoreshSchema.queryName(field));
+    }
+    if (lastReadable()) {
+      setFields.add(ShoreshSchema.queryName(ElectiveSet__c.LastTimeBlock__c));
+    }
+    String startTime = ShoreshSchema.queryName(TimeBlock__c.StartTime__c);
+    String sortOrder = ShoreshSchema.queryName(TimeBlock__c.SortOrder__c);
+    List<TimeBlock__c> blocks = Database.queryWithBinds(
+      'SELECT Id, Name, ' +
+        startTime +
+        ', ' +
+        ShoreshSchema.queryName(TimeBlock__c.EndTime__c) +
+        ', ' +
+        ShoreshSchema.queryName(TimeBlock__c.PartOfDay__c) +
+        ', ' +
+        sortOrder +
+        ', (SELECT ' +
+        String.join(setFields, ', ') +
+        ' FROM ' +
+        ShoreshSchema.childRelationship(
+          TimeBlock__c.SObjectType,
+          ElectiveSet__c.TimeBlock__c
+        ) +
+        ' ORDER BY Name, Id) FROM ' +
+        ShoreshSchema.queryName(TimeBlock__c.SObjectType) +
+        ' WHERE ' +
+        ShoreshSchema.queryName(TimeBlock__c.Program__c) +
+        ' = :programId ORDER BY ' +
+        startTime +
+        ', ' +
+        sortOrder +
+        ', Id',
+      new Map<String, Object>{ 'programId' => programId },
+      AccessLevel.USER_MODE
+    );
+    ElectiveSetWho.read(setIdsOf(blocks));
+    return blocks;
+  }
+
+  private static Set<Id> setIdsOf(List<TimeBlock__c> blocks) {
+    Set<Id> setIds = new Set<Id>();
+    for (TimeBlock__c block : blocks) {
+      for (ElectiveSet__c electiveSet : setsAt(block)) {
+        setIds.add(electiveSet.Id);
+      }
+    }
+    return setIds;
   }
 
   /** Each set with a time, on a day of the week ("Tuesday"), placed in the day at it. */
@@ -82,7 +117,11 @@ public with sharing class ElectiveSetTimes {
     for (TimeBlock__c block : blocks) {
       for (ElectiveSet__c electiveSet : setsAt(block)) {
         if (onDay != null && electiveSet.get(onDay) == true) {
-          placeSet(day, electiveSet, block);
+          ElectiveSetPlacing.place(
+            day,
+            electiveSet,
+            ElectiveSetPlacing.spanOf(blocks, block, electiveSet)
+          );
         }
       }
     }
@@ -109,28 +148,6 @@ public with sharing class ElectiveSetTimes {
     ElectiveSet__c electiveSet,
     TimeBlock__c block
   ) {
-    Integer b = block == null ? null : day.blockAt(block.Id);
-    if (b == null) {
-      return;
-    }
-    String position = null;
-    for (ScheduleGrid.GroupRef ref : day.grid.groups) {
-      Group__c grp = day.groupOf(ref.id);
-      if (grp == null || !SetTimePlan.atCamp(grp, block)) {
-        continue;
-      }
-      List<String> row = day.rowOf(grp.Id);
-      if (String.isNotBlank(row[b])) {
-        day.notPlaced.add(electiveSet.Name + ' · ' + grp.Name);
-        continue;
-      }
-      if (position == null) {
-        day.grid.items.add(
-          new ScheduleGrid.Item('E', electiveSet.Id, electiveSet.Name)
-        );
-        position = String.valueOf(day.grid.items.size());
-      }
-      row[b] = position;
-    }
+    ElectiveSetPlacing.place(day, electiveSet, new List<TimeBlock__c>{ block });
   }
 }

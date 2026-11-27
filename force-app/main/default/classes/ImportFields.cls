@@ -182,7 +182,9 @@ public with sharing class ImportFields {
       Coverage__c.RecurringActivity__c,
       Coverage__c.Division__c,
       Coverage__c.Group__c,
-      Coverage__c.LinkedChoice__c
+      Coverage__c.LinkedChoice__c,
+      // Who an elective set's time is for (ELECT-7.4).
+      Coverage__c.ElectiveSet__c
     },
     Schedule__c.SObjectType => new Set<Schema.SObjectField>{
       Schedule__c.Name,
@@ -219,6 +221,7 @@ public with sharing class ImportFields {
       ElectiveSet__c.CopiedFrom__c,
       // Its time (repo ADR 0027): Import last year and Copy season write it.
       ElectiveSet__c.TimeBlock__c,
+      ElectiveSet__c.LastTimeBlock__c,
       ElectiveSet__c.Monday__c,
       ElectiveSet__c.Tuesday__c,
       ElectiveSet__c.Wednesday__c,

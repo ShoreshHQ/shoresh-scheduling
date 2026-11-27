@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>LastTimeBlock__c</fullName>
+    <deleteConstraint>SetNull</deleteConstraint>
+    <description
+  >The last time block of the set's time, for a set over a double period (repo ADR 0027, ELECT-7.5): it is placed in every block from its time block to this one. Empty means its time block only. Deleting the time block leaves the set in its first block only.</description>
+    <label>Last Time Block</label>
+    <referenceTo>TimeBlock__c</referenceTo>
+    <relationshipLabel>Elective Sets Ending</relationshipLabel>
+    <relationshipName>ElectiveSetsEnding</relationshipName>
+    <required>false</required>
+    <trackTrending>false</trackTrending>
+    <type>Lookup</type>
+</CustomField>

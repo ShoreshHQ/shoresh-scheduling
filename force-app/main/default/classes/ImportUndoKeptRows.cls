@@ -1,5 +1,6 @@
 /**
- * Undo's rows that go with their item (ImportUndoDeletes): who a recurring activity covers, the
+ * Undo's rows that go with their item (ImportUndoDeletes): who a recurring activity covers (and
+ * who an elective set's time is for, ELECT-7.4), the
  * weeks an item is off, the boxes of When it runs an activity is off (ADR 0031 A7) and who leads
  * it (piece B). Of the
  * rows an import made, those whose item this Undo keeps are kept with it.
@@ -37,7 +38,10 @@ public with sharing class ImportUndoKeptRows {
           [
             SELECT Id
             FROM Coverage__c
-            WHERE Id IN :ids AND RecurringActivity__c IN :keptIds
+            WHERE
+              Id IN :ids
+              AND (RecurringActivity__c IN :keptIds
+              OR ElectiveSet__c IN :keptIds)
             WITH USER_MODE
           ]
         )

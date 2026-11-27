@@ -55,6 +55,11 @@ public with sharing class ImportUndoDeletes {
   private static final Set<String> ITEMS = new Set<String>{
     // Decided before its day goes: a special day kept keeps its day.
     'SpecialDay',
+    // A set kept keeps who its time is for (ELECT-7.4); its linked choices and offerings are
+    // decided first, as before, since one kept keeps the set.
+    'LinkedChoice',
+    'Offering',
+    'ElectiveSet',
     'RecurringActivity',
     'FixedActivity',
     'Activity',
@@ -97,7 +102,10 @@ public with sharing class ImportUndoDeletes {
     },
     'TimeBlock' => new List<Schema.SObjectField>{
       FixedActivity__c.LastTimeBlock__c,
-      RecurringActivity__c.LastTimeBlock__c
+      RecurringActivity__c.LastTimeBlock__c,
+      // A set's time (repo ADR 0027; ELECT-7.5) the import didn't make keeps its block.
+      ElectiveSet__c.TimeBlock__c,
+      ElectiveSet__c.LastTimeBlock__c
     },
     // A fixed or recurring activity or activity kept keeps its place.
     'Location' => new List<Schema.SObjectField>{
@@ -126,11 +134,12 @@ public with sharing class ImportUndoDeletes {
       Location__c.LocationType__c
     },
     // A set's offerings and linked choices go with it (master-detail): one the import didn't
-    // make keeps it, as does a run that uses it.
+    // make keeps it, as does a run that uses it, or who its time is for set by hand (ELECT-7.4).
     'ElectiveSet' => new List<Schema.SObjectField>{
       Offering__c.ElectiveSet__c,
       LinkedChoice__c.ElectiveSet__c,
-      ElectiveRun__c.ElectiveSet__c
+      ElectiveRun__c.ElectiveSet__c,
+      Coverage__c.ElectiveSet__c
     },
     // A linked choice's periods go with it (master-detail): a period added by hand keeps it, as
     // do who it is for and seats given in it.

@@ -33,11 +33,13 @@ public with sharing class ImportElectiveWrites {
       rows.add(electiveSet);
     }
     writer.write('ElectiveSet', entries, rows);
+    saveWho(entries, rows);
   }
 
   /**
-   * The set's time as the file shows it (repo ADR 0027; ELECT-7.2): its time block (one the import
-   * adds, by key, or one the camp has) and its days. No time when the file shows none.
+   * The set's time as the file shows it (repo ADR 0027; ELECT-7.2, 7.5): its time block (one the
+   * import adds, by key, or one the camp has), its last block for a run of blocks, and its days.
+   * No time when the file shows none.
    */
   private void withTime(ElectiveSet__c electiveSet, ImportPlan.Entry entry) {
     String blockKey = entry.text('blockKey');
@@ -45,6 +47,10 @@ public with sharing class ImportElectiveWrites {
       return;
     }
     electiveSet.TimeBlock__c = writer.keys.of(blockKey);
+    String lastBlockKey = entry.text('lastBlockKey');
+    if (String.isNotBlank(lastBlockKey)) {
+      electiveSet.LastTimeBlock__c = writer.keys.of(lastBlockKey);
+    }
     for (Object day : entry.objects('days')) {
       Schema.SObjectField field = SetTimePlan.dayField(
         ElectiveSet__c.SObjectType,
@@ -54,6 +60,24 @@ public with sharing class ImportElectiveWrites {
         electiveSet.put(field, true);
       }
     }
+  }
+
+  /**
+   * ELECT-7.4: who each new set's time is for, as the file shows it: a Coverage row per division
+   * or group; none means every group of its program. Undo removes them with the set.
+   */
+  private void saveWho(List<ImportPlan.Entry> entries, List<SObject> rows) {
+    ImportWhoKinds.Kind setWho = ImportWhoKinds.forOwner('ElectiveSet');
+    List<SObject> who = new List<SObject>();
+    for (Integer i = 0; i < entries.size(); i++) {
+      if (String.isBlank(entries[i].text('blockKey'))) {
+        continue;
+      }
+      for (String target : entries[i].texts('who')) {
+        who.add(setWho.row(rows[i].Id, writer.keys.of(target), plan.seasonId));
+      }
+    }
+    writer.saveTracked('Coverage', who);
   }
 
   private void saveOfferings() {

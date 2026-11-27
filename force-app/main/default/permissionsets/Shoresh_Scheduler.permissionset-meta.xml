@@ -1268,12 +1268,22 @@
     </fieldPermissions>
     <fieldPermissions>
         <editable>true</editable>
+        <field>Coverage__c.ElectiveSet__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>true</editable>
         <field>ElectiveSet__c.CopiedFrom__c</field>
         <readable>true</readable>
     </fieldPermissions>
     <fieldPermissions>
         <editable>true</editable>
         <field>ElectiveSet__c.Friday__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>true</editable>
+        <field>ElectiveSet__c.LastTimeBlock__c</field>
         <readable>true</readable>
     </fieldPermissions>
     <fieldPermissions>

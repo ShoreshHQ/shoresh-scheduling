@@ -1,13 +1,14 @@
 /**
  * The part of "copy last season" that copies elective sets, their offerings and linked choices
- * (with their periods and who each is for). New records link to their originals by CopiedFrom__c;
+ * (with their periods and who each is for), and who each set's time is for (ELECT-7.4). New
+ * records link to their originals by CopiedFrom__c;
  * the original season is only read. Campers and elective runs (choices and seats) belong to the
  * summer they happened in and are not copied (repo ADR 0018).
  */
 public with sharing class ElectiveCopier {
   private final Id sourceSeasonId;
   private final Id newSeasonId;
-  // Every original activity, time block and division => its copy.
+  // Every original activity, time block, division and group => its copy.
   private final Map<Id, Id> copies;
   // The copy's import log (SeasonCopier).
   private final ImportWriter log;
@@ -27,6 +28,7 @@ public with sharing class ElectiveCopier {
         Id,
         Name,
         TimeBlock__c,
+        LastTimeBlock__c,
         Monday__c,
         Tuesday__c,
         Wednesday__c,
@@ -48,6 +50,9 @@ public with sharing class ElectiveCopier {
           TimeBlock__c = item.TimeBlock__c == null
             ? null
             : copies.get(item.TimeBlock__c),
+          LastTimeBlock__c = item.LastTimeBlock__c == null
+            ? null
+            : copies.get(item.LastTimeBlock__c),
           Monday__c = item.Monday__c,
           Tuesday__c = item.Tuesday__c,
           Wednesday__c = item.Wednesday__c,
@@ -68,7 +73,7 @@ public with sharing class ElectiveCopier {
       offeringCopies
     );
     copyLinkedChoiceTimes(choiceCopies);
-    copyCoverage(choiceCopies);
+    copyCoverage(setCopies, choiceCopies);
   }
 
   private Map<Id, Offering__c> copyOfferings(
@@ -138,14 +143,34 @@ public with sharing class ElectiveCopier {
     log.saveTracked('LinkedChoiceTime', rows);
   }
 
-  private void copyCoverage(Map<Id, LinkedChoice__c> choiceCopies) {
+  /** Who each linked choice is for, and who each set's time is for (ELECT-7.4): one read. */
+  private void copyCoverage(
+    Map<Id, ElectiveSet__c> setCopies,
+    Map<Id, LinkedChoice__c> choiceCopies
+  ) {
     List<Coverage__c> rows = new List<Coverage__c>();
     for (Coverage__c row : [
-      SELECT LinkedChoice__c, Division__c
+      SELECT LinkedChoice__c, ElectiveSet__c, Division__c, Group__c
       FROM Coverage__c
-      WHERE LinkedChoice__c IN :choiceCopies.keySet()
+      WHERE
+        LinkedChoice__c IN :choiceCopies.keySet()
+        OR ElectiveSet__c IN :setCopies.keySet()
       WITH USER_MODE
     ]) {
+      if (row.ElectiveSet__c != null) {
+        // In the copy's own division or group.
+        rows.add(
+          new Coverage__c(
+            Season__c = newSeasonId,
+            ElectiveSet__c = setCopies.get(row.ElectiveSet__c).Id,
+            Division__c = row.Division__c == null
+              ? null
+              : copies.get(row.Division__c),
+            Group__c = row.Group__c == null ? null : copies.get(row.Group__c)
+          )
+        );
+        continue;
+      }
       rows.add(
         new Coverage__c(
           Season__c = newSeasonId,

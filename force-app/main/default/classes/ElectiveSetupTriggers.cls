@@ -22,13 +22,21 @@ public with sharing class ElectiveSetupTriggers {
     if (operation == System.TriggerOperation.BEFORE_DELETE) {
       setsDeleting(oldSets);
     } else {
-      setsSaving(sets);
+      setsSaving(sets, oldSets);
     }
   }
 
   // ---------------------------------------------------------------- elective sets
 
   public static void setsSaving(List<ElectiveSet__c> sets) {
+    setsSaving(sets, null);
+  }
+
+  /** The same; oldSets: the sets as they were (null on insert). */
+  public static void setsSaving(
+    List<ElectiveSet__c> sets,
+    Map<Id, ElectiveSet__c> oldSets
+  ) {
     Set<Id> seasonIds = new Set<Id>();
     Set<String> keys = new Set<String>();
     Set<Id> savingIds = new Set<Id>();
@@ -54,7 +62,7 @@ public with sharing class ElectiveSetupTriggers {
     SetupSeasons.LazyLabels labelsBySeason = SetupSeasons.labelsWhenNeeded(
       seasonIds
     );
-    ElectiveSetSeasonBlocks.refuse(sets, labelsBySeason);
+    ElectiveSetSeasonBlocks.refuse(sets, labelsBySeason, oldSets);
     for (ElectiveSet__c item : sets) {
       if (!taken.add(item.Key__c)) {
         CampLabels labels = labelsBySeason.get(item.Season__c);
@@ -71,65 +79,9 @@ public with sharing class ElectiveSetupTriggers {
     }
   }
 
-  /**
-   * A set with seats is refused, naming their weeks (as the desktop refuses a week with runs).
-   * Otherwise its linked choices and their Coverage rows are cleared first: they point at the
-   * set's offerings through restrict-delete lookups, which would block the set's own delete.
-   */
+  /** A set's delete (ElectiveSetDeletes): refused while it has seats, else its rows go first. */
   public static void setsDeleting(Map<Id, ElectiveSet__c> oldSets) {
-    Map<Id, List<ElectiveRun__c>> runsBySet = new Map<Id, List<ElectiveRun__c>>();
-    for (ElectiveRun__c run : [
-      SELECT Name, ElectiveSet__c, ElectiveSet__r.Name, Week__r.Name
-      FROM ElectiveRun__c
-      WHERE ElectiveSet__c IN :oldSets.keySet()
-      WITH SYSTEM_MODE
-      ORDER BY Week__r.StartDate__c, Name, Id
-    ]) {
-      if (!runsBySet.containsKey(run.ElectiveSet__c)) {
-        runsBySet.put(run.ElectiveSet__c, new List<ElectiveRun__c>());
-      }
-      runsBySet.get(run.ElectiveSet__c).add(run);
-    }
-    Set<Id> seasonIds = new Set<Id>();
-    for (ElectiveSet__c item : oldSets.values()) {
-      seasonIds.add(item.Season__c);
-    }
-    SetupSeasons.LazyLabels labelsBySeason = SetupSeasons.labelsWhenNeeded(
-      seasonIds
-    );
-    Set<Id> deletable = new Set<Id>();
-    for (ElectiveSet__c item : oldSets.values()) {
-      List<ElectiveRun__c> runs = runsBySet.get(item.Id);
-      if (runs == null) {
-        deletable.add(item.Id);
-        continue;
-      }
-      // Word walk W4: "Chugim has seats in Week 1 and Week 2. Clear them first."
-      item.addError(
-        SetupDeleteWords.setHasSeats(runs, labelsBySeason.get(item.Season__c))
-      );
-    }
-    if (deletable.isEmpty()) {
-      return;
-    }
-    // System mode on purpose: these rows go with the set anyway (master-detail), and someone
-    // allowed to delete the set must not be stopped by a row they cannot see.
-    clear(
-      [
-        SELECT Id
-        FROM Coverage__c
-        WHERE LinkedChoice__r.ElectiveSet__c IN :deletable
-        WITH SYSTEM_MODE
-      ]
-    );
-    clear(
-      [
-        SELECT Id
-        FROM LinkedChoice__c
-        WHERE ElectiveSet__c IN :deletable
-        WITH SYSTEM_MODE
-      ]
-    );
+    ElectiveSetDeletes.prepare(oldSets);
   }
 
   /** Season and name, ignoring spaces and capitals: "Chugim" and "chu gim" are one name. */

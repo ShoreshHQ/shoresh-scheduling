@@ -29,6 +29,7 @@ import { LEAVE_OUT } from "./reading";
 import { blocksOf } from "./reading-constants";
 import { WEEKDAYS, shortClock } from "./text";
 import { compareNames } from "./order";
+import { whoOf } from "./items";
 
 export const ELECTIVES = "elective";
 export const NOT_ELECTIVES = "not";
@@ -505,39 +506,66 @@ export function electiveRecords(electives, ctx) {
     .map(({ name, cells }) => choiceActivity(name, cells, ctx));
   for (const set of electives.sets) {
     deleted.push(...linkSet(set, ctx));
-    set.time = set.isNew ? setTime(set, ctx.timetables) : null;
+    set.time = set.isNew ? setTime(set, ctx) : null;
   }
   return { activities, deleted };
 }
 
 /**
- * A new set's time, as the file shows it (repo ADR 0027; ELECT-7.2): the days it is on, when every
- * cell of it is one time block, the same one, on days of the week ("Tuesday, Period 6"); else
- * none, and the set is placed by hand as before. { days: ["Tuesday"], blockKey } or null.
+ * A new set's time, as the file shows it (repo ADR 0027; ELECT-7.2, 7.4, 7.5): the days it is on,
+ * when its cells are one time block, or one run of back-to-back blocks (a span cell or adjacent
+ * cells), the same run on every day it has, on days of the week ("Tuesday, Period 6"); and who it
+ * is for, as a recurring activity's who (whole divisions, else the groups by name, none when it is
+ * everyone in the program). Else none, and the set is placed by hand as before.
+ * { days: ["Tuesday"], blockKey, lastBlockKey (a run only), who: [keys] } or null.
  */
-function setTime(set, timetables) {
-  const blocks = new Set();
-  const days = new Set();
+function setTime(set, ctx) {
+  const held = new Map();
+  let timetable = null;
   for (const cell of set.cells) {
-    const t = timetables[cell.timetable];
-    // A double period (a linked choice's) is more than one block: placed by hand, as before.
     if (
-      !t ||
+      !ctx.timetables[cell.timetable] ||
       cell.blockIndex === undefined ||
-      (cell.span || 1) !== 1 ||
-      !WEEKDAYS.includes(cell.day)
+      !WEEKDAYS.includes(cell.day) ||
+      (timetable !== null && cell.timetable !== timetable)
     ) {
       return null;
     }
-    blocks.add(blockKeyOf(t, cell.blockIndex));
-    days.add(cell.day);
+    timetable = cell.timetable;
+    const key = `${cell.week}|${cell.day}|${cell.group}`;
+    if (!held.has(key)) {
+      held.set(key, new Set());
+    }
+    blocksOf(cell).forEach((b) => held.get(key).add(b));
   }
-  if (blocks.size !== 1 || days.size === 0) {
+  const runs = new Set(
+    [...held.values()].map((b) => [...b].sort((x, y) => x - y).join(","))
+  );
+  if (runs.size !== 1) {
     return null;
   }
+  const t = ctx.timetables[timetable];
+  const run = [...runs][0].split(",").map(Number);
+  // ELECT-7.5: back to back, as a double period is read (doublePeriods).
+  if (run.some((b, i) => i > 0 && (b !== run[i - 1] + 1 || !continues(t, b)))) {
+    return null;
+  }
+  const days = new Set(set.cells.map((c) => c.day));
+  const groups = [...new Set(set.cells.map((c) => c.group))];
+  const facts = {
+    groups: ctx.groups
+      .filter((g) => !g.leftOut && g.timetable === timetable)
+      .map((g) => g.name),
+    divisionOf: ctx.divisionOf
+  };
   return {
     days: WEEKDAYS.filter((d) => days.has(d)),
-    blockKey: [...blocks][0]
+    blockKey: blockKeyOf(t, run[0]),
+    ...(run.length > 1
+      ? { lastBlockKey: blockKeyOf(t, run[run.length - 1]) }
+      : {}),
+    // ELECT-7.4: no who when every group of the program has it.
+    who: whoOf(groups, facts, ctx.keyOf, t.key).keys
   };
 }
 

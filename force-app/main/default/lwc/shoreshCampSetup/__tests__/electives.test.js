@@ -676,7 +676,7 @@ describe("c-shoresh-camp-setup: Electives", () => {
       element,
       'c-shoresh-editable-table[data-id="elective-sets"]'
     );
-    const [name, block, days] = sets.columns;
+    const [name, block, , days] = sets.columns;
     expect(name.fieldName).toBe("Name");
     expect(block).toMatchObject({
       fieldName: nsName("TimeBlock__c"),
@@ -691,6 +691,191 @@ describe("c-shoresh-camp-setup: Electives", () => {
     ]);
     expect(days).toMatchObject({ type: "days", every: "Every day" });
     expect(days.days[0].fieldName).toBe(nsName("Monday__c"));
+  });
+
+  // ELECT-7.5
+  it("a set's row has Until: none (its block only), or a later block of the same program", async () => {
+    const element = await render();
+    const sets = q(
+      element,
+      'c-shoresh-editable-table[data-id="elective-sets"]'
+    );
+    const until = sets.columns[2];
+    expect(until).toMatchObject({
+      fieldName: nsName("LastTimeBlock__c"),
+      type: "picklist",
+      label: "Until"
+    });
+    expect(until.required).toBeFalsy();
+    // Every block is named, so a saved one always reads.
+    expect(until.options.map((o) => o.label)).toEqual([
+      "None",
+      "Period 1",
+      "Period 3",
+      "Period 4"
+    ]);
+    // A set in Period 3 (as the row holds it now, edits included) runs until Period 4 or no
+    // later; with no block, no Until.
+    const TIME_BLOCK = nsName("TimeBlock__c");
+    const labels = (values) =>
+      until.optionsForValues(values).map((o) => o.label);
+    expect(labels({ Id: "es1", [TIME_BLOCK]: "t2" })).toEqual([
+      "None",
+      "Period 4"
+    ]);
+    expect(labels({ Id: "es1", [TIME_BLOCK]: "t3" })).toEqual(["None"]);
+    expect(labels({})).toEqual(["None"]);
+  });
+
+  // ELECT-7.4: with two programs, a row offers its time block's program's divisions and groups.
+  it("with two programs, a set's Who offers only its time block's program", async () => {
+    const base = setupWith().programs[0];
+    const element = await render(
+      { c__preview: "electives" },
+      setupWith({
+        programs: [
+          {
+            ...base,
+            divisions: [
+              {
+                division: { Id: "d1", Name: "Inters" },
+                groups: [{ Id: "g1", Name: "Bunk 1" }]
+              }
+            ]
+          },
+          {
+            program: { Id: "p2", Name: "Teens", Monday__c: true },
+            timeBlocks: [
+              { Id: "t9", Name: "Period 1", StartTime__c: at(9, 0) }
+            ],
+            divisions: [
+              {
+                division: { Id: "d9", Name: "Leaders" },
+                groups: [{ Id: "g9", Name: "Bunk 9" }]
+              }
+            ]
+          }
+        ]
+      })
+    );
+    const sets = q(
+      element,
+      'c-shoresh-editable-table[data-id="elective-sets"]'
+    );
+    const [, , until, , who] = sets.columns;
+    const TIME_BLOCK = nsName("TimeBlock__c");
+    // Every program's, named with it, so any saved who reads.
+    expect(who.options.map((o) => o.label)).toEqual([
+      "Main · Division: Inters",
+      "Teens · Division: Leaders",
+      "Main · Bunk 1 (Inters)",
+      "Teens · Bunk 9 (Leaders)"
+    ]);
+    expect(who.optionsForValues({ [TIME_BLOCK]: "t9" })).toEqual([
+      { label: "Division: Leaders", value: "d9" },
+      { label: "Bunk 9 (Leaders)", value: "g9" }
+    ]);
+    expect(
+      who.optionsForValues({ [TIME_BLOCK]: "t1" }).map((o) => o.value)
+    ).toEqual(["d1", "g1"]);
+    expect(who.optionsForValues({}).map((o) => o.value)).toEqual([
+      "d1",
+      "d9",
+      "g1",
+      "g9"
+    ]);
+    // Until stays in the program too: Teens' only block has none after it.
+    expect(until.optionsForValues({ [TIME_BLOCK]: "t9" })).toEqual([
+      { label: "None", value: "" }
+    ]);
+  });
+
+  // ELECT-7.4
+  it("a set's row has Who, as a recurring activity's: the divisions, then the groups, none for everyone", async () => {
+    const base = setupWith().programs[0];
+    const element = await render(
+      { c__preview: "electives" },
+      setupWith({
+        programs: [
+          {
+            ...base,
+            divisions: [
+              {
+                division: { Id: "d1", Name: "Inters" },
+                groups: [{ Id: "g1", Name: "Bunk 1" }]
+              },
+              {
+                division: { Id: "d2", Name: "Seniors" },
+                groups: [{ Id: "g2", Name: "Bunk 2" }]
+              }
+            ]
+          }
+        ]
+      })
+    );
+    const sets = q(
+      element,
+      'c-shoresh-editable-table[data-id="elective-sets"]'
+    );
+    const who = sets.columns[4];
+    expect(who).toMatchObject({
+      fieldName: nsName("Coverages__r"),
+      type: "who",
+      label: "Who",
+      everyone: "Everyone"
+    });
+    expect(who.options).toEqual([
+      { label: "Division: Inters", value: "d1" },
+      { label: "Division: Seniors", value: "d2" },
+      { label: "Bunk 1 (Inters)", value: "g1" },
+      { label: "Bunk 2 (Seniors)", value: "g2" }
+    ]);
+  });
+
+  // ELECT-7.4, ELECT-7.5
+  it("a set's Until and Who are saved with its row, as a recurring activity's who", async () => {
+    const element = await render();
+    saveRow.mockResolvedValue(nsRecord({ id: "es1", changed: [] }));
+    const sets = q(
+      element,
+      'c-shoresh-editable-table[data-id="elective-sets"]'
+    );
+    const onSaved = jest.fn();
+    sets.dispatchEvent(
+      new CustomEvent("save", {
+        detail: {
+          record: nsRecord({
+            sobjectType: "ElectiveSet__c",
+            Id: "es1",
+            LastTimeBlock__c: "t3"
+          }),
+          seen: nsRecord({ Id: "es1", LastTimeBlock__c: null }),
+          extras: {
+            weeksOff: [],
+            weeksBackOn: [],
+            who: [{ target: "es1", targets: ["d2"] }]
+          },
+          seenWho: [],
+          onSaved,
+          onFailure: jest.fn(),
+          onDone: jest.fn()
+        }
+      })
+    );
+    await flush();
+    const sent = saveRow.mock.calls[0][0];
+    expect(bareRecord(sent.record)).toEqual({
+      sobjectType: "ElectiveSet__c",
+      Id: "es1",
+      LastTimeBlock__c: "t3"
+    });
+    expect(sent.extras).toEqual({
+      weeksOff: [],
+      weeksBackOn: [],
+      who: [{ target: "es1", targets: ["d2"] }],
+      seenWho: []
+    });
+    expect(onSaved).toHaveBeenCalled();
   });
 
   it("a season with no elective sets yet shows the sets list, ready for the first", async () => {
