@@ -621,6 +621,95 @@ describe("the three layouts", () => {
     });
   });
 
+  describe("INGEST-2.32: a division gone after Lunch still calls a roll", () => {
+    const layoutOf = (rows) => read([csv("Monday.csv", rows)]).reading.pages[0];
+
+    it("INGEST-2.32: the afternoon blocks calling the same shorter roll is a by-activity page", () => {
+      const page = layoutOf([
+        ["Time", "Archery", "Canoeing", "Drama", "Gaga", "Lunch"],
+        ["9:00-9:45", "Otters", "Herons", "Wolves", "Foxes", ""],
+        ["10:00-10:45", "Foxes", "Otters", "Herons", "Wolves", ""],
+        ["11:00-11:45", "", "", "", "", "Otters; Wolves; Herons; Foxes"],
+        ["13:00-13:45", "Wolves", "", "Foxes", "", ""],
+        ["14:00-14:45", "", "Foxes", "", "Wolves", ""],
+        ["15:00-15:45", "Foxes", "Wolves", "", "", ""]
+      ]);
+      expect(page).toMatchObject({ layout: "byActivity", confident: true });
+    });
+
+    it("INGEST-2.32: counter-case: a rotation, two groups gone after Lunch, still reads both ways and is asked", () => {
+      const page = layoutOf([
+        ["Time", "Otters", "Wolves", "Herons", "Foxes"],
+        ["9:00-9:45", "Archery", "Canoe", "Drama", "Gaga"],
+        ["10:00-10:45", "Canoe", "Drama", "Gaga", "Archery"],
+        ["11:00-11:45", "Drama", "Gaga", "Archery", "Canoe"],
+        ["13:00-13:45", "", "", "Archery", "Canoe"],
+        ["14:00-14:45", "", "", "Canoe", "Archery"]
+      ]);
+      expect(page.confident).toBe(false);
+    });
+
+    it("INGEST-2.32: counter-case: groups across, one off each morning block, two gone after Lunch, is asked", () => {
+      const page = layoutOf([
+        ["Time", "Otters", "Herons", "Wolves", "Foxes", "Bears"],
+        ["9:00-9:45", "", "Archery", "Canoeing", "Drama", "Gaga"],
+        ["10:00-10:45", "Gaga", "", "Archery", "Canoeing", "Drama"],
+        ["11:00-11:45", "Drama", "Gaga", "", "Archery", "Canoeing"],
+        ["13:00-13:45", "", "", "", "Archery", "Canoeing"],
+        ["14:00-14:45", "", "", "", "Canoeing", "Archery"]
+      ]);
+      expect(page.confident).toBe(false);
+    });
+
+    it("INGEST-2.32: counter-case: an activity named with “&” is no list of groups", () => {
+      const page = layoutOf([
+        ["Time", "Otters", "Herons", "Wolves", "Foxes", "Bears"],
+        ["9:00-9:45", "", "Archery", "Canoeing", "Drama", "Arts & Crafts"],
+        ["10:00-10:45", "Arts & Crafts", "", "Archery", "Canoeing", "Drama"],
+        ["11:00-11:45", "Drama", "Arts & Crafts", "", "Archery", "Canoeing"],
+        ["13:00-13:45", "", "", "", "Archery", "Canoeing"],
+        ["14:00-14:45", "", "", "", "Canoeing", "Archery"]
+      ]);
+      expect(page.confident).toBe(false);
+    });
+
+    it("INGEST-2.32: counter-case: a period split in two is no list of groups", () => {
+      const page = layoutOf([
+        ["Time", "Otters", "Herons", "Wolves", "Foxes", "Bears"],
+        ["9:00-9:45", "", "Archery / Canoeing", "Drama", "Gaga", ""],
+        ["10:00-10:45", "Gaga", "", "Archery", "Canoeing", "Drama"],
+        ["11:00-11:45", "Drama", "Gaga", "", "Archery", "Canoeing"],
+        ["13:00-13:45", "", "", "", "Archery", "Canoeing"],
+        ["14:00-14:45", "", "", "", "Canoeing", "Archery"]
+      ]);
+      expect(page.confident).toBe(false);
+    });
+
+    it("INGEST-2.32: counter-case: a period split in two on a page of three activities is no list", () => {
+      const page = layoutOf([
+        ["Time", "Otters", "Herons", "Wolves"],
+        ["9:00-9:45", "Archery / Canoe", "Drama", ""],
+        ["10:00-10:45", "Drama", "Archery", "Canoe"],
+        ["11:00-11:45", "Canoe", "Drama", "Archery"],
+        ["13:00-13:45", "", "Archery", "Canoe"],
+        ["14:00-14:45", "", "Canoe", "Archery"]
+      ]);
+      expect(page.confident).toBe(false);
+    });
+
+    it("INGEST-2.32: counter-case: a shorter roll written once is not a roll", () => {
+      const page = layoutOf([
+        ["Time", "Archery", "Canoeing", "Drama", "Gaga"],
+        ["9:00-9:45", "Otters", "", "Wolves", "Herons"],
+        ["10:00-10:45", "", "Herons", "Otters", "Wolves"],
+        ["11:00-11:45", "Wolves", "", "", "Herons"],
+        ["13:00-13:45", "", "Otters", "", "Herons"],
+        ["14:00-14:45", "Otters", "", "Wolves", ""]
+      ]);
+      expect(page.confident).toBe(false);
+    });
+  });
+
   describe("INGEST-2.7: a note line written above every page names none of them", () => {
     const groupPage = (name, note) =>
       csv(`Camp - ${name}.csv`, [

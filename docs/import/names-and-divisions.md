@@ -479,6 +479,29 @@ Each rule is clue, meaning, example, test.
     `spellingAnswers`, `mergesFrom`; `reading.js`; `questions.js` `pairCards`, `spellingCard`;
     `plan.js` `answersToKeep`; `shoreshLearned/kinds.js` `spellings`.
 
+32. **A division gone after Lunch still calls a roll** (Greg, 2026-11-27: "Especially if we know
+    there is a mistake, why not fix it?").
+    Clue: a page rule 6 would leave unsure because some blocks do not name every group, where
+    those blocks name the same shorter set of groups, each once, in two blocks or more (a
+    half-day division gone home after Lunch), and a block that names every group lists them all
+    in one cell (everyone under Lunch), each also written alone somewhere on the page ("Arts &
+    Crafts" is one name, and "Archery / Canoeing" a period split in two, not a list).
+    Meaning: those blocks call a roll too, so the page is by-activity when four fifths of its
+    blocks call the full roll or a repeated shorter one, and the full ones are not simply one
+    per column (that page reads both ways and is asked, as before, even with a division gone
+    after Lunch). A page whose full blocks have one name in each cell (groups across, one of them
+    off each block) is asked, as before. A shorter set written in one block only (a blank cell),
+    or with a name twice, still counts against it.
+    Example: Archery, Canoeing, Drama, Gaga, Lunch across; Otters, Herons, Wolves and Foxes in
+    every morning block, only Wolves and Foxes in the three after Lunch: by-activity, its
+    half-day groups Morning only (rule 30). It was asked, and read all-camp unanswered (level-3
+    corpus L3-030 and two more; now 320 of 320 perfect).
+    Test: `reading.test.js` "INGEST-2.32: …" (counter-cases: a rotation one per column with a
+    division gone after Lunch is still asked; groups across with one off each block, one name a
+    cell, is asked; an activity named with "&", or a period split in two, is no list; a shorter set in one block only is not
+    a roll).
+    Code: `layouts.js` `blocksCallTheRoll`.
+
 ## With the classification rules
 
 - A division of one is a whole division for classification rule 7: an item only CIT has in one
@@ -500,9 +523,7 @@ Each rule is clue, meaning, example, test.
   today and must rename one on the activities screen.
 
 - Rule 7 needs two schedules or more: a single page with a note line under its title is still
-  named by the note (the last title line); its own title is listed as left out. Every page of a by-activity file whose afternoon
-  blocks miss a half-day division is unsure (rule 6) and its layout is asked (level-3 corpus,
-  three camps).
+  named by the note (the last title line); its own title is listed as left out.
 
 - Rule 9 needs every cell a group has to be on its side of noon; rule 30 reads a division that
   eats a Lunch at 12:15 and then goes home, when the afternoon after it is half the afternoon or
