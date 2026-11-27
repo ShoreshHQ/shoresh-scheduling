@@ -109,6 +109,68 @@ describe("fixed, then recurring, then activities", () => {
     expect(p.asks.filter((a) => a.type === "kind")).toEqual([]);
   });
 
+  describe("INGEST-3.12: a group's own slot holds when its item moves one day", () => {
+    // Four groups with no divisions; blocks 0-3, days 0-4.
+    const ALONE = ["Otters", "Wolves", "Herons", "Foxes"];
+    const ART = ["Art", "Soccer", "Drama", "Music", "Tennis", "Nature"];
+    const proposeAlone = (cell, answers = {}) =>
+      buildProposal({
+        files: byGroupFiles(ALONE, cell),
+        existing: null,
+        terms,
+        answers
+      });
+    // Lunch in pairs: Otters and Wolves in block 2, Herons and Foxes in block 3, every day;
+    // Wolves' Lunch moved to block 3 on Wednesday, Foxes' to block 2 on Thursday.
+    const lunch = (g, d, b) => {
+      let slot = g < 2 ? 2 : 3;
+      if (g === 1 && d === 2) slot = 3;
+      if (g === 3 && d === 3) slot = 2;
+      return b === slot ? "Lunch" : ART[(g * 2 + b + d) % ART.length];
+    };
+
+    it("INGEST-3.12: Lunch in pairs with one group's day moved is asked about, not read as an activity", () => {
+      const p = proposeAlone(lunch);
+      const ask = p.asks.find((a) => a.id === "kind|Lunch");
+      expect(ask).toBeDefined();
+      expect(ask.facts.reason).toBe("scattered");
+      const answered = proposeAlone(lunch, { "kind|Lunch": "recurring" });
+      expect(kindOf(answered, "Lunch")).toBe("recurring");
+      const at = (block) =>
+        answered.recurring
+          .filter((r) => r.name === "Lunch" && r.block === block)
+          .flatMap((r) => r.who.names)
+          .sort();
+      expect(at(2)).toEqual(["Otters", "Wolves"]);
+      expect(at(3)).toEqual(["Foxes", "Herons"]);
+    });
+
+    it("INGEST-3.12: one group's swim in its own slot four days of five is kept, the fifth day elsewhere", () => {
+      // Every group swims at its own block every day; Foxes' Friday swim is in block 0.
+      const swim = (g, d, b) => {
+        const slot = g === 3 && d === 4 ? 0 : g;
+        return b === slot ? "Swim" : ART[(g + b + d) % ART.length];
+      };
+      const p = proposeAlone(swim, { "kind|Swim": "recurring" });
+      expect(kindOf(p, "Swim")).toBe("recurring");
+      const foxes = p.recurring.filter(
+        (r) => r.name === "Swim" && r.who.names.includes("Foxes")
+      );
+      expect(foxes.map((r) => r.block)).toContain(3);
+    });
+
+    it("INGEST-3.12: counter-case: a group with the name in two slots half the days each has no own slot", () => {
+      // Wolves' Pottery: block 1 on Monday and Tuesday, block 2 on Wednesday and Thursday.
+      const cell = (g, d, b) => {
+        if (g === 1 && d < 4) return b === (d < 2 ? 1 : 2) ? "Pottery" : "Swim";
+        return b === 0 ? "Opening" : ART[(g + b + d) % ART.length];
+      };
+      const p = proposeAlone(cell);
+      expect(kindOf(p, "Pottery")).toBe("activity");
+      expect(p.asks.find((a) => a.id === "kind|Pottery")).toBeUndefined();
+    });
+  });
+
   // CORE-2.3
   it("a name at a set time and also scattered elsewhere is never decided silently", () => {
     const cell = (g, d, b) => {

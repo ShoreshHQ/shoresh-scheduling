@@ -262,15 +262,51 @@ function slotsByGroup(patterns) {
   return slots;
 }
 
+/** Each group's days in each slot for the name in one week: Map(group -> Map(slot -> Set(day))). */
+function daysBySlot(patterns) {
+  const days = new Map();
+  for (const p of patterns) {
+    for (const g of p.groups) {
+      const mine = days.get(g) || new Map();
+      days.set(g, mine);
+      const here = mine.get(p.slot) || new Set();
+      p.days.forEach((d) => here.add(d));
+      mine.set(p.slot, here);
+    }
+  }
+  return days;
+}
+
+/**
+ * INGEST-3.12: the group's own slot for the name: the one it has it in on two days or more, most
+ * of the week and more than half of its days with it. A group whose Lunch moved one day still has
+ * its Lunch slot; the moved day is a placement elsewhere. The desktop keeps an item per group at
+ * the same block on more than half of the group's days (fixedEvents.js); counting the program's
+ * days here is stricter for a group away on a trip, as rule 3 was.
+ */
+function ownSlot(group, slot, facts, week, who) {
+  const mine = who.days.get(group);
+  const here = mine && mine.get(slot);
+  if (!here) {
+    return false;
+  }
+  const all = new Set([...mine.values()].flatMap((d) => [...d]));
+  return (
+    here.size >= 2 &&
+    here.size * 2 > dayCount(facts, week) &&
+    here.size * 2 > all.size
+  );
+}
+
 /**
  * Held at a set time: whole divisions of the program or most of the groups share it at once; or
- * it repeats for groups that have it in that one slot only.
+ * it is in each of its groups' own slot (INGEST-3.12), which for a group with the name in one
+ * slot only is rule 3's repetition there.
  */
 function isHeld(pattern, facts, week, who) {
   return (
     divisionShaped(pattern, facts, week) ||
-    (repeats(pattern, facts, week) &&
-      pattern.groups.every((g) => who.slots.get(g).size === 1))
+    pattern.groups.every((g) => ownSlot(g, pattern.slot, facts, week, who))
   );
 }
 
@@ -299,7 +335,7 @@ function sortWeeks(byWeek, weeks, facts) {
   return weeks.map((week) => {
     const all = byWeek.get(week);
     const slots = slotsByGroup(all);
-    const who = { slots };
+    const who = { slots, days: daysBySlot(all) };
     return {
       week,
       all,
