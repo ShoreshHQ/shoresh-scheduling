@@ -584,6 +584,70 @@ function verdictOf(sorted, facts) {
 }
 
 /**
+ * INGEST-3.14: in a file of one week, a group's day with the name once, on a day its set time
+ * misses (its Lunch moved one day), or, for Lunch when other groups have a set time for it, a
+ * group's one day with it (away the rest of the week): that day is set up too, at that block. A
+ * second time the same day, a group with it on several days and no set time, any other name a
+ * group has on one day only (a weekly visit), and a move in a file of several weeks (the weeks
+ * may differ) stay strays. Returns { moved, rest }, as patterns.
+ */
+function movedDays(held, strays, name) {
+  const heldDays = new Map();
+  for (const p of held) {
+    for (const g of p.groups) {
+      const days = heldDays.get(g) || new Set();
+      p.days.forEach((d) => days.add(d));
+      heldDays.set(g, days);
+    }
+  }
+  const count = new Map();
+  for (const p of strays) {
+    for (const g of p.groups) {
+      p.days.forEach((d) =>
+        count.set(`${g}|${d}`, (count.get(`${g}|${d}`) || 0) + 1)
+      );
+    }
+  }
+  const strayDays = new Map();
+  for (const p of strays) {
+    for (const g of p.groups) {
+      strayDays.set(g, new Set([...(strayDays.get(g) || []), ...p.days]));
+    }
+  }
+  const once = (g, d) => count.get(`${g}|${d}`) === 1;
+  const isMoved = (g, d) => {
+    if (heldDays.has(g)) {
+      return !heldDays.get(g).has(d) && once(g, d);
+    }
+    return (
+      /\blunch\b/i.test(name) &&
+      held.length > 0 &&
+      strayDays.get(g).size === 1 &&
+      once(g, d)
+    );
+  };
+  const moved = new Map();
+  const rest = [];
+  for (const p of strays) {
+    for (const g of p.groups) {
+      const days = p.days.filter((d) => isMoved(g, d));
+      const others = p.days.filter((d) => !isMoved(g, d));
+      if (days.length > 0) {
+        // Groups moved to the same block on the same days are one pattern.
+        const key = `${p.slot}|${setKey(days)}`;
+        const into = moved.get(key) || { ...p, days, groups: [] };
+        into.groups.push(g);
+        moved.set(key, into);
+      }
+      if (others.length > 0) {
+        rest.push({ ...p, days: others, groups: [g] });
+      }
+    }
+  }
+  return { moved: [...moved.values()], rest };
+}
+
+/**
  * What one name is in one timetable, by the rules in docs/import/classification.md. timetable:
  * { groups: [names], groupsByWeek: Map(week -> groups), divisionOf: Map(group -> division),
  * daysByWeek: Map(week -> days it runs, special days left out), weeks: [..], busy:
@@ -602,12 +666,18 @@ export function classifyName(cells, timetable) {
   const first = sorted[0];
   const decided = verdictOf(sorted, facts);
   const fixed = decided.verdict === "fixed" || decided.reason === "nearFixed";
+  const { moved, rest } =
+    sorted.length === 1
+      ? movedDays(first.held, first.strays, facts.name)
+      : { moved: [], rest: first.strays };
   return {
     ...decided,
-    patterns: fixed ? fixedPatterns(sorted) : first.held,
-    strays: fixed ? [] : first.strays,
+    patterns: fixed ? fixedPatterns(sorted) : [...first.held, ...moved],
+    strays: fixed ? [] : rest,
     fixedShaped:
       fixed || first.held.some((p) => isEveryone(p, facts, first.week)),
-    week: first.week
+    week: first.week,
+    // Other weeks have the name elsewhere: the card says so (INGEST-3.14).
+    elsewhereLater: sorted.slice(1).some((w) => w.strays.length > 0)
   };
 }

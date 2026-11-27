@@ -7,6 +7,7 @@ import {
 } from "./data/engine";
 import { mergesFrom, similarity, similarPairs } from "../names";
 import {
+  BLOCKS,
   byGroupFiles,
   csv,
   DAYS,
@@ -136,13 +137,182 @@ describe("fixed, then recurring, then activities", () => {
       expect(ask.facts.reason).toBe("scattered");
       const answered = proposeAlone(lunch, { "kind|Lunch": "recurring" });
       expect(kindOf(answered, "Lunch")).toBe("recurring");
+      // The usual slots (a group's moved day is its own one-day record, INGEST-3.14).
       const at = (block) =>
         answered.recurring
-          .filter((r) => r.name === "Lunch" && r.block === block)
+          .filter(
+            (r) => r.name === "Lunch" && r.block === block && r.days.length > 1
+          )
           .flatMap((r) => r.who.names)
           .sort();
       expect(at(2)).toEqual(["Otters", "Wolves"]);
       expect(at(3)).toEqual(["Foxes", "Herons"]);
+    });
+
+    it("INGEST-3.14: the day a group's Lunch moved is set up too, so every group has Lunch every day", () => {
+      const p = proposeAlone(lunch, { "kind|Lunch": "recurring" });
+      const lunches = p.recurring.filter((r) => r.name === "Lunch");
+      const days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
+      for (const group of ALONE) {
+        const had = lunches
+          .filter((r) => r.who.names.includes(group))
+          .flatMap((r) => r.days)
+          .sort();
+        expect({ group, had }).toEqual({ group, had: [...days].sort() });
+      }
+      const moved = (group) =>
+        lunches
+          .filter((r) => r.days.length === 1 && r.who.names.includes(group))
+          .map((r) => [r.block, r.days[0]]);
+      expect(moved("Wolves")).toEqual([[3, "Wednesday"]]);
+      expect(moved("Foxes")).toEqual([[2, "Thursday"]]);
+      const ask = proposeAlone(lunch).asks.find((a) => a.id === "kind|Lunch");
+      expect(ask.facts.strays).toEqual([]);
+    });
+
+    it("INGEST-3.14: a group with the name only one day has it set up that day", () => {
+      // Otters, Wolves and Herons at Lunch in block 2 every day; Foxes, away the other days,
+      // at Lunch in block 1 on Friday only.
+      const cell = (g, d, b) => {
+        if (g === 3 && d < 4) return b === 0 ? "Field Trip" : "";
+        if (g < 3 && b === 2) return "Lunch";
+        if (g === 3 && b === 1) return "Lunch";
+        return ART[(g + b + d) % ART.length];
+      };
+      const p = proposeAlone(cell, { "kind|Lunch": "recurring" });
+      const foxes = p.recurring.filter(
+        (r) => r.name === "Lunch" && r.who.names.includes("Foxes")
+      );
+      expect(foxes.map((r) => [r.block, r.days])).toEqual([[1, ["Friday"]]]);
+    });
+
+    it("INGEST-3.14: counter-case: a group's Lunch a second time on a day it has its own is not set up", () => {
+      // Lunch in pairs (Otters and Wolves in block 2, Herons and Foxes in block 3) every day, and
+      // Wolves once more in block 0 on Wednesday (apart, so the reader does not join the two).
+      const cell = (g, d, b) => {
+        if (b === (g < 2 ? 2 : 3)) return "Lunch";
+        if (g === 1 && d === 2 && b === 0) return "Lunch";
+        return ART[(g * 2 + b + d) % ART.length];
+      };
+      const p = proposeAlone(cell, { "kind|Lunch": "recurring" });
+      const wolvesWednesday = p.recurring.filter(
+        (r) =>
+          r.name === "Lunch" &&
+          r.who.names.includes("Wolves") &&
+          r.days.includes("Wednesday")
+      );
+      expect(wolvesWednesday.map((r) => r.block)).toEqual([2]);
+    });
+
+    it("INGEST-3.14: counter-case: a group with Lunch on two days and no set time of its own is not set up", () => {
+      // Otters, Wolves and Herons at Lunch in block 2 every day; Foxes in block 1 on Monday and
+      // block 3 on Thursday only.
+      const cell = (g, d, b) => {
+        if (g < 3 && b === 2) return "Lunch";
+        if (g === 3 && ((d === 0 && b === 1) || (d === 3 && b === 3)))
+          return "Lunch";
+        return ART[(g + b + d) % ART.length];
+      };
+      const p = proposeAlone(cell, { "kind|Lunch": "recurring" });
+      expect(
+        p.recurring.filter(
+          (r) => r.name === "Lunch" && r.who.names.includes("Foxes")
+        )
+      ).toEqual([]);
+    });
+
+    it("INGEST-3.14: counter-case: Lunch with no set time for anyone sets up no day", () => {
+      // Each group's Lunch on one day only, each in another block.
+      const cell = (g, d, b) => {
+        if (d === g && b === g) return "Lunch";
+        return ART[(g + b + d) % ART.length];
+      };
+      const p = proposeAlone(cell, { "kind|Lunch": "recurring" });
+      expect(p.recurring.filter((r) => r.name === "Lunch")).toEqual([]);
+    });
+
+    it("INGEST-3.14: counter-case: a weekly visit to anything but Lunch keeps no set time", () => {
+      // Otters and Wolves swim in block 1 every day; Herons once on Tuesday, Foxes once on Thursday.
+      const cell = (g, d, b) => {
+        if (g < 2 && b === 1) return "Swim";
+        if ((g === 2 && d === 1 && b === 3) || (g === 3 && d === 3 && b === 2))
+          return "Swim";
+        return ART[(g + b + d) % ART.length];
+      };
+      const p = proposeAlone(cell, { "kind|Swim": "recurring" });
+      const who = p.recurring
+        .filter((r) => r.name === "Swim")
+        .flatMap((r) => r.who.names);
+      expect(who).not.toContain("Herons");
+      expect(who).not.toContain("Foxes");
+    });
+
+    it("INGEST-3.14: counter-case: in files of two weeks, a move in one week is not set up", () => {
+      // Week 1 has Wolves' Wednesday Lunch moved; week 2 does not.
+      const unmoved = (g, d, b) => lunch(g === 1 && d === 2 ? 0 : g, d, b);
+      const files = [1, 2].flatMap((w) =>
+        ALONE.map((name, g) =>
+          csv(`Camp - ${name} - Week ${w}.csv`, [
+            ["Time", ...DAYS],
+            ...BLOCKS.map((block, b) => [
+              block,
+              ...DAYS.map((_, d) => (w === 1 ? lunch : unmoved)(g, d, b))
+            ])
+          ])
+        )
+      );
+      const p = buildProposal({
+        files,
+        existing: null,
+        terms,
+        answers: { "kind|Lunch": "recurring" }
+      });
+      expect(p.groups.map((g) => g.name).sort()).toEqual([...ALONE].sort());
+      expect(
+        p.recurring.filter((r) => r.name === "Lunch" && r.days.length === 1)
+      ).toEqual([]);
+    });
+
+    it("INGEST-3.14: a move only in a later week is said on the card, and not set up", () => {
+      // Week 1 without the moves: Otters and Wolves in block 2, Herons and Foxes in block 3.
+      const unmoved = (g, d, b) => {
+        if (b === (g < 2 ? 2 : 3)) return "Lunch";
+        return ART[(g * 2 + b + d) % ART.length];
+      };
+      const files = [1, 2].flatMap((w) =>
+        ALONE.map((name, g) =>
+          csv(`Camp - ${name} - Week ${w}.csv`, [
+            ["Time", ...DAYS],
+            ...BLOCKS.map((block, b) => [
+              block,
+              ...DAYS.map((_, d) => (w === 1 ? unmoved : lunch)(g, d, b))
+            ])
+          ])
+        )
+      );
+      const p = buildProposal({ files, existing: null, terms, answers: {} });
+      const card = questionCards(p, terms, {}).find(
+        (c) => c.id === "kind|Lunch"
+      );
+      expect(card.subtitle).toMatch(/, and at other times in another week\.$/);
+      expect(
+        card.options.find((o) => o.value === "recurring").description
+      ).toMatch(/The other times are not set up\.$/);
+    });
+
+    it("INGEST-3.14: counter-case: a second time the same day is not set up", () => {
+      // Every group's Lunch in block 2 Monday to Thursday; on Friday Otters has Lunch twice
+      // (blocks 0 and 3).
+      const cell = (g, d, b) => {
+        if (d < 4 && b === 2) return "Lunch";
+        if (d === 4 && g === 0 && (b === 0 || b === 3)) return "Lunch";
+        return ART[(g + b + d) % ART.length];
+      };
+      const p = proposeAlone(cell, { "kind|Lunch": "recurring" });
+      const otters = p.recurring.filter(
+        (r) => r.name === "Lunch" && r.who.names.includes("Otters")
+      );
+      expect(otters.flatMap((r) => r.days)).not.toContain("Friday");
     });
 
     it("INGEST-3.12: one group's swim in its own slot four days of five is kept, the fifth day elsewhere", () => {
