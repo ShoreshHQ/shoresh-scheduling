@@ -607,6 +607,12 @@ export function importNotes(proposal, t) {
   (r.skipped || []).forEach((line) =>
     notes.push({ key: `skipped|${line}`, text: `“${line}” was left out.` })
   );
+  (r.oneName || []).forEach((x) =>
+    notes.push({
+      key: `oneName|${x.file}|${x.text}|${x.blocks}`,
+      text: `${x.file}: “${x.text}” is over ${x.blocks} ${t.pIn("TimeBlock")} without a line for each, so it is one ${t.sIn("Activity")} over ${x.blocks === 2 ? "both" : "them all"}.`
+    })
+  );
   r.pages
     .filter((p) => p.noDay)
     .forEach((p) =>

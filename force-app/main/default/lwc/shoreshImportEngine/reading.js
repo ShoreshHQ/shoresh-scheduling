@@ -489,6 +489,16 @@ export function readImport(input) {
     reading = settles ? again : readFrom(now);
   }
   const { unread, colours, skipped, read, roomFiles } = reading;
+  // INGEST-2.28: a cell over blocks whose lines don't match them, once per file and wording.
+  const oneName = [
+    ...new Map(
+      reading.pages
+        .flatMap((page) =>
+          (page.oneName || []).map((x) => ({ ...x, file: page.file }))
+        )
+        .map((x) => [`${x.file}|${x.text}|${x.blocks}`, x])
+    ).values()
+  ];
   const camp = campNames(input.existing);
   const pairs = [
     ...similarPairs(
@@ -584,6 +594,7 @@ export function readImport(input) {
     unread,
     skipped,
     roomFiles,
+    oneName,
     colours,
     pairs: asked,
     disagreements,

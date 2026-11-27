@@ -375,7 +375,7 @@ function blockSpans(section, merges, labelColumns) {
   return spans;
 }
 
-function sectionToPage(section, sheet, labelColumns, rooms) {
+function sectionToPage(section, sheet, labelColumns, rooms, linesOf) {
   const header = section.header.map(tidy);
   let width = header.length;
   while (width > labelColumns && !header[width - 1]) {
@@ -386,6 +386,14 @@ function sectionToPage(section, sheet, labelColumns, rooms) {
     ? carriedAcross(section.above.map(tidy), labelColumns, width)
     : columns.map(() => null);
   const spans = blockSpans(section, sheet.merges, labelColumns);
+  const rows = section.rows.map((row, i) => ({
+    label: row.label,
+    cells: columns.map((_, c) => {
+      const text = tidy(row.cells[c] || "");
+      return (rooms && rooms.get(text)) || text;
+    }),
+    spans: columns.map((_, c) => spans[i][c] || 1)
+  }));
   return {
     sheet: sheet.name,
     title: tidy(section.title || ""),
@@ -393,15 +401,37 @@ function sectionToPage(section, sheet, labelColumns, rooms) {
     corner: tidy(header.slice(0, labelColumns).join(" ")),
     columns,
     divisions,
-    rows: section.rows.map((row, i) => ({
-      label: row.label,
-      cells: columns.map((_, c) => {
-        const text = tidy(row.cells[c] || "");
-        return (rooms && rooms.get(text)) || text;
-      }),
-      spans: columns.map((_, c) => spans[i][c] || 1)
-    }))
+    rows,
+    oneName: linePerBlock(rows, linesOf)
   };
+}
+
+/**
+ * INGEST-2.28 (coordinator's call 2026-11-27, Greg can change): a cell over several blocks
+ * written one line per block ("Hiking / Tennis" over "Hiking / Kickball") gives each
+ * block its line, when each line is written alone elsewhere in the file (`cellLines`). With more
+ * or fewer lines than blocks it stays one name over them all, listed (`oneName`) so the review
+ * says so when its lines are activities. Changes `rows`.
+ */
+function linePerBlock(rows, linesOf) {
+  const oneName = [];
+  rows.forEach((row, i) => {
+    row.spans.forEach((span, c) => {
+      const cell = span >= 2 && linesOf ? linesOf.get(row.cells[c]) : null;
+      if (!cell) {
+        return;
+      }
+      if (cell.lines.length !== span && cell.known) {
+        oneName.push({ text: row.cells[c], blocks: span });
+      } else if (cell.known) {
+        cell.lines.forEach((line, j) => {
+          rows[i + j].cells[c] = line;
+          rows[i + j].spans[c] = 1;
+        });
+      }
+    });
+  });
+  return oneName;
 }
 
 // ---------- a week column (weeks.md, INGEST-4.1) ----------
@@ -831,8 +861,64 @@ function writesRooms(file) {
     : null;
 }
 
+/** A cell's lines, tidied, without blanks. */
+function linesIn(value) {
+  return String(value === null || value === undefined ? "" : value)
+    .split(/\r?\n/)
+    .map((line) => tidy(line))
+    .filter(Boolean);
+}
+
+/** The names the sheets write alone in a cell, as keys (INGEST-2.28). */
+function writtenAlone(sheets) {
+  const alone = new Set();
+  sheets.forEach((sheet) =>
+    (sheet.rows || []).flat().forEach((value) => {
+      const lines = linesIn(value);
+      if (lines.length === 1) {
+        alone.add(looseKey(lines[0]));
+      }
+    })
+  );
+  return alone;
+}
+
+/**
+ * Each cell of two lines or more with no times, by the text it is read as: { lines, known }.
+ * known: every line, or every part of one ("Hiking/ Tennis"), is written alone elsewhere, so the
+ * lines are activities and not one name wrapped ("Outdoor" over "Adventure"). Two cells read as
+ * the same text but broken differently, or once on one line, are neither.
+ */
+function cellLines(sheet, alone) {
+  const isKnown = (line) =>
+    line
+      .split(/[/,;]/)
+      .map((part) => tidy(part))
+      .filter(Boolean)
+      .every((part) => alone.has(looseKey(part)));
+  const linesOf = new Map();
+  (sheet.rows || []).flat().forEach((value) => {
+    const lines = linesIn(value);
+    if (lines.length < 2 || lines.some((line) => hasClockTime(line))) {
+      return;
+    }
+    const text = cellText(value);
+    const before = linesOf.get(text);
+    if (before === undefined) {
+      linesOf.set(text, { lines, known: lines.every(isKnown) });
+    } else if (before && before.lines.join("\n") !== lines.join("\n")) {
+      linesOf.set(text, null);
+    }
+  });
+  [...linesOf.keys()]
+    .filter((text) => alone.has(looseKey(text)))
+    .forEach((text) => linesOf.delete(text));
+  return linesOf;
+}
+
 /** sheetToPages, with the lines it read as no schedule's: { pages, skipped }. */
 function readSheet(sheet, options) {
+  const linesOf = cellLines(sheet, options.named || writtenAlone([sheet]));
   const table = (sheet.rows || []).map((row) => {
     return Array.isArray(row) ? row.map(cellText) : [];
   });
@@ -850,7 +936,13 @@ function readSheet(sheet, options) {
   const pages = sections.flatMap((section, index) => {
     const read = byWeek(
       {
-        ...sectionToPage(section, unmerged, labelColumns, options.rooms),
+        ...sectionToPage(
+          section,
+          unmerged,
+          labelColumns,
+          options.rooms,
+          linesOf
+        ),
         section: index
       },
       section.rawIndexes.map((i) => split.weekOf[i])
@@ -887,6 +979,7 @@ export function filesToPages(files, options = {}) {
   const perFile = (files || []).map((file) => {
     const read = [];
     const rooms = writesRooms(file);
+    const named = writtenAlone(file.sheets || []);
     if (rooms) {
       roomFiles.push(file.name);
     }
@@ -899,7 +992,8 @@ export function filesToPages(files, options = {}) {
       );
       const { pages: found, skipped: lines } = readSheet(sheet, {
         ...options,
-        rooms
+        rooms,
+        named
       });
       if (found.length === 0 && sheetHasContent(sheet)) {
         unread.push({ file: file.name, sheet: sheet.name });
