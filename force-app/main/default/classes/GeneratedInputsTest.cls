@@ -1,6 +1,8 @@
 /**
  * What Generate and Rebuild build from (GeneratedInputs): each activity with its When it runs, so
- * the engine never places it in a box unticked (ADR 0031 piece A). Synthetic data only.
+ * the engine never places it in a box unticked (ADR 0031 piece A), and who leads it, so Generated
+ * Schedule's Why list and its Print and Excel menus know each activity's leaders (piece B).
+ * Synthetic data only.
  */
 @IsTest
 private class GeneratedInputsTest {
@@ -39,6 +41,55 @@ private class GeneratedInputsTest {
       Assert.areEqual(1, soccer.OffTimes__r.size());
       Assert.areEqual(ids.get('Lunch'), soccer.OffTimes__r[0].TimeBlock__c);
       Assert.areEqual('Monday', soccer.OffTimes__r[0].Day__c);
+    }
+  }
+
+  // CORE-6.20, PUB-6.13: Generated Schedule checks and prints its week with these inputs, so they
+  // carry who leads each activity (live bugs: its Why list never showed a leader in two places at
+  // once, and its Print and Excel menus never offered a staff member's week).
+  @IsTest
+  static void theBuildsInputsCarryWhoLeadsIt() {
+    Map<String, Id> ids = KeptCamp.keptIds();
+    GeneratedTestData.ids = ids;
+    System.runAs(KeptCamp.scheduler(ids)) {
+      // Two leaders, in the Staff list's order (Eli first), whatever order they were ticked in.
+      StaffMember__c dana = new StaffMember__c(
+        Season__c = ids.get('Season'),
+        Name = 'Dana',
+        SortOrder__c = 2
+      );
+      StaffMember__c eli = new StaffMember__c(
+        Season__c = ids.get('Season'),
+        Name = 'Eli',
+        SortOrder__c = 1
+      );
+      Database.insert(
+        new List<StaffMember__c>{ dana, eli },
+        AccessLevel.USER_MODE
+      );
+      Database.insert(
+        new List<ActivityLeader__c>{
+          new ActivityLeader__c(
+            Activity__c = ids.get('Soccer'),
+            StaffMember__c = dana.Id
+          ),
+          new ActivityLeader__c(
+            Activity__c = ids.get('Soccer'),
+            StaffMember__c = eli.Id
+          )
+        },
+        AccessLevel.USER_MODE
+      );
+      Test.startTest();
+      GeneratedInputs.Inputs read = GeneratedTestData.inputs();
+      Test.stopTest();
+      Activity__c soccer = new Map<Id, Activity__c>(read.activities)
+        .get(ids.get('Soccer'));
+      Assert.areEqual(2, soccer.Leaders__r.size());
+      Assert.areEqual(eli.Id, soccer.Leaders__r[0].StaffMember__c);
+      Assert.areEqual('Eli', soccer.Leaders__r[0].StaffMember__r.Name);
+      Assert.areEqual(dana.Id, soccer.Leaders__r[1].StaffMember__c);
+      Assert.areEqual('Dana', soccer.Leaders__r[1].StaffMember__r.Name);
     }
   }
 }
