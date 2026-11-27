@@ -594,6 +594,9 @@ const KEPT = {
   remembered: "but an answer about them is remembered, so they stay as they are"
 };
 
+// INGEST-2.29: how many cells with their own times the note names.
+const TIMED_SHOWN = 3;
+
 export function importNotes(proposal, t) {
   const notes = [];
   const r = proposal.reading;
@@ -607,6 +610,16 @@ export function importNotes(proposal, t) {
   (r.skipped || []).forEach((line) =>
     notes.push({ key: `skipped|${line}`, text: `“${line}” was left out.` })
   );
+  // INGEST-2.29: the times written in cells, which are read in their rows' blocks.
+  const timed = r.timedCells || [];
+  if (timed.length > 0) {
+    const shown = timed.slice(0, TIMED_SHOWN).map((cell) => `“${cell}”`);
+    const more = timed.length - shown.length;
+    notes.push({
+      key: "timedCells",
+      text: `Times written in cells are not kept; each is in its row's ${t.sIn("TimeBlock")}: ${shown.join(", ")}${more > 0 ? ` and ${more} more` : ""}.`
+    });
+  }
   (r.oneName || []).forEach((x) =>
     notes.push({
       key: `oneName|${x.file}|${x.text}|${x.blocks}`,
