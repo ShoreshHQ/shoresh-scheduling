@@ -302,7 +302,8 @@ public with sharing class GeneratedInputs {
           WHERE TimeBlock__c != NULL
           ORDER BY TimeBlock__c, Day__c
         ),
-        // Who leads it (ADR 0031 piece B): never built from, only checked (CORE-6.20).
+        // Who leads it (ADR 0031 piece B): only checked and printed (CORE-6.20, PUB-6.13); the
+        // engine never builds from it (whoLeadsIt.test.js: the same week with or without).
         (
           SELECT Id, StaffMember__c, StaffMember__r.Name
           FROM Leaders__r
