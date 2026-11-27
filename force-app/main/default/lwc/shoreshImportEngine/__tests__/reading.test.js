@@ -508,6 +508,131 @@ describe("the three layouts", () => {
     });
   });
 
+  describe("INGEST-2.23: a note line under a grid is a note, even with a time in it", () => {
+    const leftOut = (proposal) =>
+      importNotes(proposal, terms)
+        .filter((n) => n.key.startsWith("skipped|"))
+        .map((n) => n.text);
+    const blocksOf = (proposal) =>
+      proposal.timetables.flatMap((t) => t.blocks.map((b) => b.name));
+    const day = (d, notes) => [
+      [d],
+      ["Time", "Bunk 1", "Bunk 2"],
+      ["9:00-9:45", "Archery", "Drama"],
+      ["10:00-10:45", "Drama", "Archery"],
+      ...notes
+    ];
+
+    it("INGEST-2.23: a note naming a time adds no time block and no page", () => {
+      const note = "• The printed sheet said 10:00-10:45 PM; it is the morning.";
+      const proposal = read([
+        csv("Camp.csv", [
+          ...day("Monday", []),
+          ...day("Tuesday", [[""], ["Notes"], [note]])
+        ])
+      ]);
+      expect(proposal.reading.pages.map((p) => p.day)).toEqual([
+        "Monday",
+        "Tuesday"
+      ]);
+      expect(blocksOf(proposal)).toEqual(["9:00-9:45", "10:00-10:45"]);
+      expect(JSON.stringify(leftOut(proposal))).toBe(
+        JSON.stringify([`“${note}” was left out.`, "“Notes” was left out."])
+      );
+    });
+
+    it("INGEST-2.23: a note heading under a page per group makes no group, division or program", () => {
+      const sheet = (name, notes) => ({
+        name,
+        merges: [],
+        rows: [
+          ["Time", "Monday", "Tuesday"],
+          ["9:00-9:45", "Archery", "Drama"],
+          ["10:00-10:45", "Drama", "Archery"],
+          ...notes
+        ]
+      });
+      const proposal = read([
+        {
+          name: "Camp.xlsx",
+          sheets: [
+            sheet("Otters", []),
+            sheet("Wolves", [
+              [""],
+              ["Notes"],
+              ["• Early pickup group: leaves at 12:30 PM; Friday at 12:00 PM."]
+            ])
+          ]
+        }
+      ]);
+      expect(proposal.groups.map((g) => g.name).sort()).toEqual([
+        "Otters",
+        "Wolves"
+      ]);
+      expect(proposal.timetables).toHaveLength(1);
+      expect(blocksOf(proposal)).toEqual(["9:00-9:45", "10:00-10:45"]);
+    });
+
+    it("INGEST-2.23: counter-case: a blank row named first stays a block, in one or two label columns", () => {
+      const one = read([
+        csv("Camp.csv", [
+          ["Monday"],
+          ["Time", "Bunk 1", "Bunk 2"],
+          ["9:00-9:45", "Archery", "Drama"],
+          ["Lunch 12:00-12:30", "", ""],
+          ["1:00-1:45", "Drama", "Archery"]
+        ])
+      ]);
+      expect(blocksOf(one)).toHaveLength(3);
+      const named = read([
+        csv("Camp.csv", [
+          ["Monday"],
+          ["Time", "Bunk 1", "Bunk 2"],
+          ["9:00-9:45", "Archery", "Drama"],
+          ["Lunch 12:00-12:30 p.m. Dining Hall", "", ""],
+          ["Free swim at the lake 1:00-1:45", "", ""],
+          ["2:00-2:45", "Drama", "Archery"]
+        ])
+      ]);
+      expect(blocksOf(named)).toHaveLength(4);
+      const two = read([
+        csv("Camp.csv", [
+          ["Monday"],
+          ["Period", "Time", "Bunk 1", "Bunk 2"],
+          ["Period 1", "9:00-9:45", "Archery", "Drama"],
+          ["Lunch", "12:00-12:30", "", ""],
+          ["Period 2", "1:00-1:45", "Drama", "Archery"],
+          ["Rest hour", "2:00-2:45", "", ""]
+        ])
+      ]);
+      expect(blocksOf(two)).toHaveLength(4);
+    });
+
+    it("INGEST-2.23: counter-case: a blank row whose time follows an invisible mark stays a block", () => {
+      const proposal = read([
+        csv("Camp.csv", [
+          ...day("Monday", [["\u200e11:00-11:45", "", ""]]),
+          ...day("Tuesday", [["11:00-11:45", "Swim", "Swim"]])
+        ])
+      ]);
+      expect(blocksOf(proposal)).toHaveLength(3);
+    });
+
+    it("INGEST-2.23: counter-case: a row that starts with its time stays a block, cells or not", () => {
+      const proposal = read([
+        csv("Camp.csv", [
+          ...day("Monday", [["11:00-11:45", "", ""]]),
+          ...day("Tuesday", [["11:00-11:45", "Swim", "Swim"]])
+        ])
+      ]);
+      expect(blocksOf(proposal)).toEqual([
+        "9:00-9:45",
+        "10:00-10:45",
+        "11:00-11:45"
+      ]);
+    });
+  });
+
   describe("INGEST-2.8: a page whose layout is unsure takes its file's sure layout", () => {
     const sure = (d) => [
       [`Camp - ${d}`],

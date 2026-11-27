@@ -358,6 +358,55 @@ export function looksLikeBlockLabel(text) {
   return !!label && (!!timeRange(label) || NAMED_BLOCK.test(label));
 }
 
+// Marks that may sit before a label's time: invisible direction marks (cells pasted from a
+// right-to-left sheet), "~", an opening bracket.
+const LEADING_MARKS = /^[\u200e\u200f\u202a-\u202e\u2066-\u2069\ufeff~([\s]+/;
+// What starts a note line: a bullet or a dash, or the word Note.
+const BULLET = /^[•·‣▪◦●○■□➢►>*\-–—]/;
+const NOTE_WORD = /^(notes?|nb|n\.b\.|please note)\b/i;
+// A sentence: ";", or a full stop after a word of two lowercase letters or more and before a
+// capital ("... in the gym. Bring water"), not an abbreviation ("p.m. Dining Hall", "Bldg. A").
+const SENTENCE = /;|[a-z]{2,}\.\s+[A-Z]/;
+
+/** Whether a label starts with its time block ("9:00-9:45", "(9:00-9:45)", "9-10", "Period 3"). */
+export function labelStartsWithBlock(text) {
+  const label = tidy(text).replace(LEADING_MARKS, "");
+  if (!label) {
+    return false;
+  }
+  if (NAMED_BLOCK.test(label)) {
+    return true;
+  }
+  const tokens = timeTokens(label);
+  if (tokens.length > 0) {
+    return tokens[0].index === 0;
+  }
+  const bare = label.match(BARE_RANGE);
+  return !!bare && bare.index === 0 && !!bareHourRange(label);
+}
+
+/**
+ * INGEST-2.23: whether a label with a time in it, alone in its row, reads as a note rather than a
+ * block's name: it does not start with its time, and it starts with a bullet, a dash or the word
+ * Note, holds a sentence (";", or a full stop after a word and before a capital, not an
+ * abbreviation such as "p.m."), or is more than five words once its times are taken out
+ * ("• Early pickup group: leaves at 12:30 PM", "Note: the printed sheet said 11:00 PM"). A block named
+ * first ("Lunch 12:00-12:30", "Lunch 12:00 p.m. Dining Hall") stays a block. The desktop never
+ * reads a line that does not start with a time as a block (extractEntities.js); a blank
+ * whole-camp row named first is kept here, as before.
+ */
+export function readsAsNote(text) {
+  const label = tidy(text).replace(LEADING_MARKS, "");
+  if (!label || labelStartsWithBlock(label)) {
+    return false;
+  }
+  const words = withoutTimes(label);
+  if (BULLET.test(label) || NOTE_WORD.test(words) || SENTENCE.test(words)) {
+    return true;
+  }
+  return words.split(/\s+/).filter(Boolean).length > 5;
+}
+
 // ---------- names in cells ----------
 
 // Not activities: a time on its own, "Block 2", a bare number, dashes, "Open".

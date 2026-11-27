@@ -15,6 +15,7 @@ import {
   hasClockTime,
   looseKey,
   looksLikeBlockLabel,
+  readsAsNote,
   tidy,
   timeRange,
   withoutDayNumber
@@ -287,6 +288,16 @@ class SectionReader {
     const day = dayHeading(row);
     if (day) {
       this.start(day);
+      return;
+    }
+    // INGEST-2.23: a line alone in its row that only mentions a time ("• Early pickup group:
+    // leaves at 12:30 PM") is a note, listed, not a block and not the next schedule's title.
+    if (
+      filled(rest) === 0 &&
+      looksLikeBlockLabel(label) &&
+      readsAsNote(this.labelColumns === 2 ? row[1] || label : label)
+    ) {
+      this.skipped.push(row.filter((c) => c !== "").join(" "));
       return;
     }
     if (looksLikeBlockLabel(label)) {

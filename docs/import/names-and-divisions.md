@@ -305,6 +305,26 @@ Each rule is clue, meaning, example, test.
     renamed in two divisions, or kept in another, is read as before. Code:
     `names.js` `formerNamesOf`, `similarPairs`; `FormerNames.cls`.
 
+23. **A note line under a grid that mentions a time** (import battle test, 2026-11-27).
+    Clue: a line alone in its row, in the time column, that has a time in it but does not start
+    with one, and reads as a note: it starts with a bullet, a dash or the word Note, holds a
+    sentence (";", or a full stop after a word and before a capital; "p.m." is no sentence), or is
+    more than five words once its times are taken out ("• Early pickup group: leaves at 12:30 PM",
+    "Note: the printed sheet said 11:00 PM"); often under a heading such as "Notes".
+    Meaning: a note, listed in the import's notes like any other left-out line (rule 7); it is no
+    time block, and neither it nor the heading above it starts a page, so it makes no group,
+    division or program. A row whose label starts with its time ("11:00-11:45", "(9:00-9:45)",
+    "Period 3", after an invisible direction mark) is a block as before, and so is a blank row
+    whose block is named first ("Lunch 12:00-12:30", "Lunch 12:00 p.m. Dining Hall", or "Lunch"
+    beside "12:00-12:30" where the times have a column of their own). The desktop never reads a
+    line that does not start with a clock time as a block (`src/ingest/extractEntities.js` time-block rule); it reads one label
+    column only, so the name-first block is Shoresh's own, kept as before.
+    Test: `reading.test.js` "INGEST-2.23: …" (a note naming a time adds no block and no page; a
+    note heading under a page per group makes no group, division or program). Counter-cases: a row
+    that starts with its time stays a block, cells or not; a blank row named first stays a block,
+    in one or two label columns, a long name or "p.m." in it; a blank row whose time follows an invisible mark stays a block.
+    Code: `text.js` `labelStartsWithBlock`, `readsAsNote`; `sheets.js` `SectionReader.readRow`.
+
 ## With the classification rules
 
 - A division of one is a whole division for classification rule 7: an item only CIT has in one
