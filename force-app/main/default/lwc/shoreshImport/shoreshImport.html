@@ -702,9 +702,16 @@
                     <b>{version.name}</b>
                     <span>{version.doneLine}</span>
                   </div>
-                  <span class="version-where">View it on Saved versions</span>
                 </div>
               </template>
+              <button
+                type="button"
+                class="shoresh-item version-where"
+                onclick={handleToVersions}
+                data-id="to-versions"
+              >
+                Saved versions<span aria-hidden="true"> →</span>
+              </button>
             </section>
           </template>
           <template lwc:if={hasUnplaced}>

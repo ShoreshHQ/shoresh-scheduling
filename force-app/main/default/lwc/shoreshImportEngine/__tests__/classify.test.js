@@ -171,6 +171,48 @@ describe("fixed, then recurring, then activities", () => {
     });
   });
 
+  describe("INGEST-5.14: a kind answer survives a program left out", () => {
+    // Swim mostly at a set time. With two programs its question was "kind|Swim|Main"; once the
+    // other program is left out it is "kind|Swim", and the answer given stays.
+    const cell = (g, d, b) => {
+      if (b === 2) return "Swim";
+      if (g === 1 && d === 3 && b === 0) return "Swim";
+      return ["Art", "Soccer", "Drama"][(g + b + d) % 3];
+    };
+
+    it("INGEST-5.14: an answer given with the program's name in its key still counts", () => {
+      const answers = { "kind|Swim|Main": "recurring" };
+      const p = propose(cell, answers);
+      expect(p.asks.map((a) => a.id)).toContain("kind|Swim");
+      expect(kindOf(p, "Swim")).toBe("recurring");
+      const card = questionCards(p, terms, answers).find(
+        (c) => c.id === "kind|Swim"
+      );
+      expect(card.answer).toBe("recurring");
+    });
+
+    it("INGEST-5.14: the answer kept is the one given for the program left, and remembered", () => {
+      const answers = {
+        "kind|Swim|Main": "recurring",
+        "kind|Swim|Evening": "activity"
+      };
+      const p = propose(cell, answers);
+      expect(kindOf(p, "Swim")).toBe("recurring");
+      expect(planFor(p, null, "s1", { answers }).remember).toContainEqual({
+        key: "kind|Swim",
+        answer: "recurring"
+      });
+    });
+
+    it("INGEST-5.14: counter-case: another program's answer is never taken", () => {
+      const p = propose(cell, { "kind|Swim|Evening": "recurring" });
+      const card = questionCards(p, terms, {}).find(
+        (c) => c.id === "kind|Swim"
+      );
+      expect(card.answer).toBeNull();
+    });
+  });
+
   // CORE-2.3
   it("a name at a set time and also scattered elsewhere is never decided silently", () => {
     const cell = (g, d, b) => {

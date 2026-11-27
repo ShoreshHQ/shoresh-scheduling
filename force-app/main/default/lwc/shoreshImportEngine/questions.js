@@ -249,6 +249,8 @@ function kindCard(ask, t) {
     subject: ask.name,
     subtitle: `${ask.several ? `${ask.program}: ` : ""}${kindWhy(ask, t)}`,
     options,
+    // INGEST-5.14: an answer given while the programs were otherwise stays chosen.
+    ...(ask.carried ? { preselected: ask.carried } : {}),
     learn: { shape: kindShape(f) }
   };
 }
