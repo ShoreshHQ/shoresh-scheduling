@@ -4481,6 +4481,7 @@ describe("Shoresh for AI tools and the command line", () => {
       CHECKS_ENTRIES,
       VERSIONS_ENTRY,
       flatName,
+      PDFJS_FILES,
       TO
     } = require("../../scripts/build-connect");
     const engine = engineFiles();
@@ -4488,9 +4489,17 @@ describe("Shoresh for AI tools and the command line", () => {
     expect(
       fs
         .readdirSync(TO)
-        .filter((f) => f.endsWith(".mjs"))
+        .filter((f) => f.endsWith(".mjs") && !PDFJS_FILES[f])
         .sort()
     ).toEqual(Object.keys(engine).sort());
+    // pdf.js, which a schedule PDF is read with (INGEST-1.11), ships unchanged.
+    for (const [f, built] of Object.entries(PDFJS_FILES)) {
+      const shipped = fs.readFileSync(path.join(TO, f));
+      const published = fs.readFileSync(
+        require.resolve(`pdfjs-dist/legacy/build/${built}`)
+      );
+      expect([f, shipped.equals(published)]).toEqual([f, true]);
+    }
     for (const [f, text] of Object.entries(engine)) {
       expect([f, fs.readFileSync(path.join(TO, f), "utf8")]).toEqual([f, text]);
     }

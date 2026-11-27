@@ -84,6 +84,7 @@ export const LEGAL = {
     "SheetJS Community Edition 0.20.3, by SheetJS (Apache 2.0)",
     "Lightning Web Components 8.28.2, by Salesforce (MIT), in Shoresh's connector",
     "tslib, by Microsoft (BSD Zero Clause), in Shoresh's connector",
+    "PDF.js 4.10.38, by Mozilla (Apache 2.0), in Shoresh's connector",
     "The Inter and JetBrains Mono typefaces (SIL Open Font License 1.1)"
   ]
 };
