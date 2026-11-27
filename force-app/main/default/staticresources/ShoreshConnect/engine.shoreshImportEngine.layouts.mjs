@@ -22,8 +22,11 @@ import {
   divisionInTitle,
   isNotAGroupColumn,
   listedNames,
+  hasClockTime,
   looseKey,
   tidy,
+  timeCount,
+  timeRange,
   titleDayNumber,
   withoutDayNumber
 } from "./engine.shoreshImportEngine.text.mjs";
@@ -257,19 +260,40 @@ class CellReader {
     ) {
       last.span += entry.span;
       last.endRow = rowIndex + entry.span - 1;
+      // INGEST-2.29: its times are held by the blocks it is over, joined.
+      if (entry.written) {
+        last.writtenCells.push(entry.written);
+      }
+      last.written = this.ownTimesOver(
+        last.writtenCells,
+        last.row,
+        last.endRow
+      );
       return;
     }
+    const endRow = rowIndex + entry.span - 1;
+    const writtenCells = entry.written ? [entry.written] : [];
     const placement = {
       page: this.pageIndex,
       file: this.page.file,
       week: this.week,
       row: rowIndex,
-      endRow: rowIndex + entry.span - 1,
+      endRow,
       block: this.page.rows[rowIndex].label,
-      ...entry
+      ...entry,
+      writtenCells,
+      written: this.ownTimesOver(writtenCells, rowIndex, endRow)
     };
     this.lastInColumn.set(key, placement);
     this.out.push(placement);
+  }
+
+  /** The first of a placement's cells with times its blocks (rows from to to) don't hold. */
+  ownTimesOver(cells, from, to) {
+    const rows = this.page.rows;
+    return cells.find((cell) =>
+      ownTimes(cell, rows[from].label, rows[to].label)
+    );
   }
 
   noteGroup(name, division, fromCell, weakDivision) {
@@ -282,6 +306,33 @@ class CellReader {
       fromCell: !!fromCell
     });
   }
+}
+
+/**
+ * INGEST-2.29: a cell's own times that its blocks (rows label to endLabel) do not hold ("Story
+ * Time 2:15-2:45" in the 2:00-2:40 row), as written, or undefined ("Lunch 12:00-12:45" in the
+ * 12:00-12:45 row).
+ */
+function ownTimes(cell, label, endLabel = label) {
+  if (!hasClockTime(cell)) {
+    return undefined;
+  }
+  // More than two times: a period with its own parts ("9:40 Change 9:50 Swim …").
+  if (timeCount(cell) > 2) {
+    return cell;
+  }
+  const own = timeRange(cell);
+  const row = timeRange(label || "");
+  const last = timeRange(endLabel || "");
+  const known = (x) => x && x.start !== null && x.start !== undefined;
+  if (!known(own) || !known(row) || !known(last)) {
+    return cell;
+  }
+  const rowEnd =
+    last.end === null || last.end === undefined ? last.start : last.end;
+  const ownEnd =
+    own.end === null || own.end === undefined ? own.start : own.end;
+  return own.start >= row.start && ownEnd <= rowEnd ? undefined : cell;
 }
 
 function readCampPage(reader, page, day) {
@@ -304,7 +355,8 @@ function readCampPage(reader, page, day) {
           place: named.place,
           bracket: named.bracket,
           emoji: named.emoji,
-          span: row.spans[c]
+          span: row.spans[c],
+          written: row.cells[c]
         });
       }
     });
@@ -336,7 +388,8 @@ function readGroupPage(reader, page) {
           place: named.place,
           bracket: named.bracket,
           emoji: named.emoji,
-          span: row.spans[c]
+          span: row.spans[c],
+          written: row.cells[c]
         });
       }
     });
@@ -369,7 +422,8 @@ function readActivityPage(reader, page, day, daysAcross) {
         place: named.place,
         bracket: named.bracket,
         emoji: named.emoji,
-        span: row.spans[c]
+        span: row.spans[c],
+        written: row.cells[c]
       });
     });
   });

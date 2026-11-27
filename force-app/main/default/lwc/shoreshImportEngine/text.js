@@ -202,6 +202,11 @@ function minutesOf(hourText, minuteText, meridiem, inheritPm) {
   return (afternoon ? hour + 12 : hour) * 60 + minute;
 }
 
+/** How many times a text writes ("9:30-9:40 Change 9:40 Swim": three). */
+export function timeCount(text) {
+  return timeTokens(text).length;
+}
+
 /** Whether the text holds a clock time ("9:00", "9am", "13:30"). */
 export function hasClockTime(text) {
   return CLOCK.test(tidy(text));

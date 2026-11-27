@@ -352,6 +352,74 @@ describe("INGEST-2.28: a cell over blocks, a line for each", () => {
   });
 });
 
+// INGEST-2.29: times written in cells. Made-up camp only.
+describe("INGEST-2.29: a cell with its own times", () => {
+  const day = (name, monday, notes = "") =>
+    csv(`${name}.csv`, [
+      ["Time", "Bunk 1", "Bunk 2", "Notes"],
+      ["9:00-9:45", monday, "Art", notes],
+      ["10:00-10:45", "Music", "Drama", ""],
+      ["11:00-11:45", "Swim", "Swim", ""]
+    ]);
+  const notesOf = (files) =>
+    importNotes(
+      buildProposal({ files, existing: null, terms, answers: {} }),
+      terms
+    ).map((n) => n.text);
+  const timed = (notes) =>
+    notes.filter((text) => text.startsWith("Times written in cells"));
+
+  it("INGEST-2.29: the review says which cells had times their block doesn't hold", () => {
+    const notes = notesOf([
+      day("Monday", "Story Time 9:30-10:15"),
+      day("Tuesday", "Hiking 8:45-9:30"),
+      day("Wednesday", "Pottery 9:10-10:00"),
+      day("Thursday", "Gaga 9:00-10:00")
+    ]);
+    expect(timed(notes)).toEqual([
+      "Times written in cells are not kept; each is in its row's time block: “Story Time 9:30-10:15”, “Gaga 9:00-10:00”, “Hiking 8:45-9:30” and 1 more."
+    ]);
+  });
+
+  it("INGEST-2.29: a cell with more than two times is named by what it is read as", () => {
+    const notes = notesOf([
+      day("Monday", "9.00-9.10 Change 9.10-9.50 Swim 9.50-10.00 Change"),
+      day("Tuesday", "Art")
+    ]);
+    expect(timed(notes)).toEqual([
+      "Times written in cells are not kept; each is in its row's time block: “Swim”."
+    ]);
+  });
+
+  it("INGEST-2.29: a name repeated into the next block is judged over both blocks", () => {
+    const twoRows = (name, first, second) =>
+      csv(`${name}.csv`, [
+        ["Time", "Bunk 1", "Bunk 2"],
+        ["9:00-9:45", first, "Art"],
+        ["10:00-10:45", second, "Drama"],
+        ["11:00-11:45", "Swim", "Swim"]
+      ]);
+    const notes = notesOf([
+      twoRows("Monday", "Hike", "Hike 10:15-11:30"),
+      twoRows("Tuesday", "Hike 9:00-10:45", "Hike 9:00-10:45")
+    ]);
+    expect(timed(notes)).toEqual([
+      "Times written in cells are not kept; each is in its row's time block: “Hike 10:15-11:30”."
+    ]);
+  });
+
+  it("INGEST-2.29: counter-case: times inside the row's block, in a column not read, or none, have no note", () => {
+    const notes = notesOf([
+      day("Monday", "Story Time 9:15-9:40", "Bus leaves 9:30"),
+      day("Tuesday", "Lunch 9:00-9:45")
+    ]);
+    expect(timed(notes)).toEqual([]);
+    expect(
+      timed(notesOf([day("Monday", "Puppet Show"), day("Tuesday", "Art")]))
+    ).toEqual([]);
+  });
+});
+
 describe("reading a file", () => {
   it("reads comma-separated files, quotes and all", () => {
     expect(parseCsv('a,"b, c","say ""hi"""\r\n1,2,3')).toEqual([

@@ -418,6 +418,24 @@ Each rule is clue, meaning, example, test.
     words on one line elsewhere, and a two-line cell in one block keep one name. Code: `sheets.js`
     `cellLines`, `linePerBlock`; `plan.js` `importNotes`.
 
+29. **Times written in cells are said on the review** (import battle test, 2026-11-27;
+    coordinator's call 2026-11-27, Greg can change).
+    Clue: a cell read as an activity (or a group, in a file by activity) with a time of its own
+    that the blocks it is over don't hold ("Puppet Show 2:15-2:45" in the 2:00-2:40 row; a name
+    repeated into the next block is over both), or with more than two times (a period with its own
+    parts, rule 25).
+    Meaning: the activity is read in its row's block, as before, and the review's notes say the
+    times were not kept, naming the first three such cells in the order the files are read and how
+    many more: "Times written in cells are not kept; each is in its row's time block: “Story Time
+    2:15-2:45”, … and 1 more." A cell with more than two times is named by what it is read as
+    ("Swim"). A time inside its row's block ("Lunch 12:00-12:45" in the 12:00-12:45 row), a cell
+    in a column that is read as no group's, and a cell that is only a time say nothing. It was
+    dropped without a word. The desktop drops the times too (`src/ingest/extractEntities.js`
+    `stripTimes`) and says nothing.
+    Test: `reading.test.js` "INGEST-2.29: …". Counter-cases: times inside the row's block, in a
+    column not read, or none, have no note. Code: `layouts.js` `ownTimes`; `reading.js`
+    (`timedCells`); `plan.js` `importNotes`.
+
 ## With the classification rules
 
 - A division of one is a whole division for classification rule 7: an item only CIT has in one
