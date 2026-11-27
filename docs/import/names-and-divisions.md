@@ -360,6 +360,22 @@ Each rule is clue, meaning, example, test.
     Test: `reading.test.js` "INGEST-2.25: …". Counter-case: Change joined to a word, with a time or
     not, is part of the name. Code: `text.js` `withoutCellTimes`, `cellName`.
 
+26. **A list needs two names of two letters or more** (import battle test, 2026-11-27).
+    Clue: a cell with "/", "," or ";" whose parts are not names: a group's number ("Baking
+    with 4/5C"), a code ("B/D"), week numbers ("Water Slide Weeks 2, 4, 6-8").
+    Meaning: one name, as written, with no question. A list (asked "one activity or a choice?")
+    needs two parts of two letters or more, counted over every mark ("Soccer/Basketball 1, 2" is
+    asked). A choice read without asking needs three different parts or more on one mark, each a
+    name of two letters or more with no other mark in it, no "&" or "and", four words at most, no
+    more digits than letters and no day's name, in a cell with no ":"; a list naming one of the
+    camp's own groups or divisions ("Otters, Wolves, Herons") is asked, never a choice. "Water
+    Slide Weeks 2, 4, 6-8" was read as electives "4", "6-8" and "Water Slide Weeks 2"; "4/5C"
+    as a choice of "Baking with 4" or "5C". The desktop splits and asks so
+    (`src/ingest/splitListCell.js` `strictSplit`, `looksListLike`; `buildPlan.js` for groups).
+    Test: `electives.test.js` "INGEST-2.26: …". Counter-cases: a list of days or with a colon is
+    asked, never read as a choice; a nested mark or a repeat is asked; a list of the camp's own
+    groups is asked. Code: `electives.js` `listShape`, `readingOf`; `proposal.js` (who).
+
 ## With the classification rules
 
 - A division of one is a whole division for classification rule 7: an item only CIT has in one
