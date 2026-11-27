@@ -633,6 +633,95 @@ describe("the three layouts", () => {
     });
   });
 
+  describe("INGEST-2.24: sheets named for their groups under one shared heading", () => {
+    const book = (titles) => ({
+      name: "Camp.xlsx",
+      sheets: Object.entries(titles).map(([name, title]) => ({
+        name,
+        merges: [],
+        rows: [
+          [title],
+          ["Time", "Monday", "Tuesday"],
+          ["9:00-9:45", "Archery", "Drama"],
+          ["10:00-10:45", "Drama", "Archery"]
+        ]
+      }))
+    });
+
+    it("INGEST-2.24: each group is named by its sheet, and the shared heading is no division", () => {
+      const proposal = read([
+        book({
+          Otters: "Camp Pine — 2025 — Otters",
+          Wolves: "Camp Pine — 2025 — Wolves",
+          "P1 (Pre-K)": "Camp Pine — 2025 — P1 (Pre-K)"
+        })
+      ]);
+      expect(proposal.groups.map((g) => g.name).sort()).toEqual([
+        "Otters",
+        "P1 (Pre-K)",
+        "Wolves"
+      ]);
+      expect(proposal.groups.every((g) => !g.division)).toBe(true);
+      expect(questionCards(proposal, terms, {}).map((c) => c.id)).not.toContain(
+        expect.stringMatching(/^similar\|group/)
+      );
+    });
+
+    it("INGEST-2.24: the shared heading is listed once as left out", () => {
+      const proposal = read([
+        book({ Otters: "Camp Pine — 2025 — Otters", Wolves: "Camp Pine — 2025 — Wolves" })
+      ]);
+      expect(
+        importNotes(proposal, terms)
+          .filter((n) => n.key.startsWith("skipped|"))
+          .map((n) => n.text)
+      ).toEqual(["“Camp Pine — 2025” was left out."]);
+    });
+
+    it("INGEST-2.24: counter-case: a heading naming a week keeps its week", () => {
+      const proposal = read([
+        book({ Otters: "Camp Pine — Week 3 — Otters", Wolves: "Camp Pine — Week 3 — Wolves" })
+      ]);
+      expect(proposal.reading.pages.map((p) => p.week)).toEqual([
+        "Week 3",
+        "Week 3"
+      ]);
+    });
+
+    it("INGEST-2.24: counter-case: a file per division keeps its divisions", () => {
+      const file = (division, bunks) => ({
+        ...book(Object.fromEntries(bunks.map((b) => [b, `${division} - ${b}`]))),
+        name: `${division}.xlsx`
+      });
+      const one = read([file("Juniors", ["Bunk 1", "Bunk 2"])]);
+      expect(one.groups.map((g) => `${g.division}/${g.name}`).sort()).toEqual([
+        "Juniors/Bunk 1",
+        "Juniors/Bunk 2"
+      ]);
+      const proposal = read([
+        file("Juniors", ["Bunk 1", "Bunk 2"]),
+        file("Seniors", ["Bunk 3", "Bunk 4"])
+      ]);
+      expect(
+        proposal.groups.map((g) => `${g.division}/${g.name}`).sort()
+      ).toEqual([
+        "Juniors/Bunk 1",
+        "Juniors/Bunk 2",
+        "Seniors/Bunk 3",
+        "Seniors/Bunk 4"
+      ]);
+    });
+
+    it("INGEST-2.24: counter-case: a heading that differs from sheet to sheet is still a division", () => {
+      const proposal = read([
+        book({ Otters: "Juniors - Otters", Wolves: "Seniors - Wolves" })
+      ]);
+      expect(
+        proposal.groups.map((g) => `${g.division}/${g.name}`).sort()
+      ).toEqual(["Juniors/Otters", "Seniors/Wolves"]);
+    });
+  });
+
   describe("INGEST-2.8: a page whose layout is unsure takes its file's sure layout", () => {
     const sure = (d) => [
       [`Camp - ${d}`],
