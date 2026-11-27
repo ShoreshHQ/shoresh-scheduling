@@ -807,12 +807,14 @@ function twoLines(value) {
 /**
  * INGEST-2.27 (coordinator's call 2026-11-27, Greg can change): a file whose cells are written
  * "Activity / Room" on two lines reads each such cell's second line as a place it may be at
- * ("Art" at "101"), asked on the review, never assumed (INGEST-2.33). A file does when its two-line cells are ten or more and a
- * fifth of its filled cells, and their second lines repeat (one under two different activities or
- * more). A second line the file also writes as another activity ("Art" over "Drama") is no room;
- * "Gym" over "Gym" is. Most activities have one room, or the second lines are no rooms. The
- * desktop reads a room printed under its activity so in a PDF (textGrid.js). Returns each room
- * cell's text read as "Art @ 101", or null when the file writes no rooms.
+ * ("Art" at "101"), asked on the review, never assumed (INGEST-2.33). A file does when its
+ * two-line cells are ten or more and a fifth of its filled cells, and their second lines repeat
+ * (one under two different activities or more). A second line the file also writes as another
+ * activity ("Art" over "Drama") is no room; "Gym" over "Gym" is, and does not make Gym another
+ * activity ("Drama" or a slip "Gyms" over "Gym" is a room). Most activities have one room, or the
+ * second lines are no rooms. The desktop reads a room printed under its activity so in a PDF
+ * (textGrid.js). Returns each room cell's text read as "Art @ 101", or null when the file writes
+ * no rooms.
  */
 function writesRooms(file) {
   let written = 0;
@@ -829,7 +831,10 @@ function writesRooms(file) {
         if (lines) {
           cells.push({ text: cellText(value), lines });
         }
-        activities.add(looseKey(lines ? lines[0] : value));
+        // "Gym" over "Gym" names the place: it does not make Gym another activity (INGEST-2.27).
+        if (!lines || looseKey(lines[0]) !== looseKey(lines[1])) {
+          activities.add(looseKey(lines ? lines[0] : value));
+        }
       }
     }
   }
