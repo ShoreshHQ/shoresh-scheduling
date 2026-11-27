@@ -800,6 +800,7 @@ describe("c-shoresh-week-checks: the counter", () => {
     expect(css).toMatch(/\.line > button:first-child\s*{\s*flex-wrap: wrap;\s*}/);
     const name = css.match(/\n\.name\s*{[^}]*}/)[0];
     expect(name).toMatch(/flex: 1 0 auto;/);
+    expect(name).toMatch(/max-width: 100%;/);
     expect(name).toMatch(/white-space: normal;/);
     expect(name).not.toMatch(/min-width: 0;/);
   });
