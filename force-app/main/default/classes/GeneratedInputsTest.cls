@@ -1,7 +1,8 @@
 /**
  * What Generate and Rebuild build from (GeneratedInputs): each activity with its When it runs, so
  * the engine never places it in a box unticked (ADR 0031 piece A), and who leads it, so Generated
- * Schedule's Why list shows a leader in two places at once (piece B). Synthetic data only.
+ * Schedule's Why list and its Print and Excel menus know each activity's leaders (piece B).
+ * Synthetic data only.
  */
 @IsTest
 private class GeneratedInputsTest {
@@ -43,8 +44,9 @@ private class GeneratedInputsTest {
     }
   }
 
-  // CORE-6.20: Generated Schedule checks its week with these inputs, so they carry who leads
-  // each activity (live bug: its Why list never showed a leader in two places at once).
+  // CORE-6.20, PUB-6.13: Generated Schedule checks and prints its week with these inputs, so they
+  // carry who leads each activity (live bugs: its Why list never showed a leader in two places at
+  // once, and its Print and Excel menus never offered a staff member's week).
   @IsTest
   static void theBuildsInputsCarryWhoLeadsIt() {
     Map<String, Id> ids = KeptCamp.keptIds();
