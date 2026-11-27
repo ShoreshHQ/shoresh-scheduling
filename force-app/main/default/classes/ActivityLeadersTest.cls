@@ -142,6 +142,52 @@ private class ActivityLeadersTest {
     }
   }
 
+  // CORE-1.40: a save that can't be compared or has nothing to save to is refused, saving nothing.
+  @IsTest
+  static void whoLeadsItIsNeverSavedBlind() {
+    Map<String, Id> ids = KeptCamp.keptIds();
+    System.runAs(KeptCamp.scheduler(ids)) {
+      Id swim = ids.get('Swim');
+      List<Id> dana = new List<Id>{ ids.get('Dana') };
+      Test.startTest();
+      // A new row not yet in the table has no activity to lead.
+      Assert.areEqual(
+        'Save the new row in the table first.',
+        refusalOf(null, dana, new List<Id>())
+      );
+      // Not saying what the person saw can't be compared, so it isn't saved.
+      Assert.areEqual(
+        'Who leads it wasn\'t saved: reload the page and change it again.',
+        refusalOf(swim, dana, null)
+      );
+      Assert.areEqual(new List<Id>(), ActivityLeaders.now(swim));
+      // An activity deleted meanwhile is not found, and nothing is made for it.
+      Database.delete(swim, AccessLevel.USER_MODE);
+      Assert.areEqual(
+        'That was not found, or you do not have access to it.',
+        refusalOf(swim, dana, new List<Id>())
+      );
+      Test.stopTest();
+      Assert.areEqual(
+        0,
+        [SELECT COUNT() FROM ActivityLeader__c WITH USER_MODE]
+      );
+    }
+  }
+
+  private static String refusalOf(
+    Id activityId,
+    List<Id> leaders,
+    List<Id> seen
+  ) {
+    try {
+      save(activityId, leaders, seen);
+    } catch (AuraHandledException e) {
+      return e.getMessage();
+    }
+    return null;
+  }
+
   // CORE-1.38
   @IsTest
   static void aStaffMemberFromTheCampsSystemIsInASeasonOnce() {
