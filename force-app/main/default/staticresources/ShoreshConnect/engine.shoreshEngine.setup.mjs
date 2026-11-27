@@ -238,12 +238,26 @@ export function readPartsOfDay(records) {
 }
 
 /**
- * How many groups fit in each location at once (at least 1), its name, and the locations whose
- * groups-that-fit is blank (taken as 1, and said: step 1), in order.
+ * A location's area of camp as it is compared (ADR 0031 piece C): capitals and spacing aside, so
+ * "Lakefront" and "lakefront " are one area. null when blank.
+ */
+export function areaKey(area) {
+  const key = String(area || "")
+    .trim()
+    .replace(/\s+/g, " ")
+    .toLowerCase();
+  return key || null;
+}
+
+/**
+ * How many groups fit in each location at once (at least 1), its name, the locations whose
+ * groups-that-fit is blank (taken as 1, and said: step 1), in order, and each location's area
+ * of camp (areaKey) when it has one: none set, the map is empty.
  */
 export function readLocations(records) {
   const fit = new Map();
   const names = new Map();
+  const areas = new Map();
   const blank = [];
   for (const r of inOrder(records, LOCATION.SortOrder)) {
     fit.set(r.Id, Math.max(1, wholeNumber(r[LOCATION.GroupsThatFit], 1)));
@@ -251,8 +265,12 @@ export function readLocations(records) {
     if (wholeNumber(r[LOCATION.GroupsThatFit], null) == null) {
       blank.push(r.Id);
     }
+    const area = areaKey(r[LOCATION.Area]);
+    if (area) {
+      areas.set(r.Id, area);
+    }
   }
-  return { fit, names, blank };
+  return { fit, names, blank, areas };
 }
 
 /**

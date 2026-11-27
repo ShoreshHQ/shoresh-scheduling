@@ -1063,6 +1063,11 @@
     </fieldPermissions>
     <fieldPermissions>
         <editable>true</editable>
+        <field>Location__c.Area__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>true</editable>
         <field>Location__c.CopiedFrom__c</field>
         <readable>true</readable>
     </fieldPermissions>

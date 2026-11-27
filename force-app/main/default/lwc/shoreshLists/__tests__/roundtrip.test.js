@@ -108,6 +108,7 @@ describe("round trip", () => {
       "Pool",
       "Waterfront",
       2,
+      "Lakefront",
       "Every week",
       "'=Shallow end"
     ]);
@@ -393,6 +394,18 @@ describe("adversarial downloads read back with nothing to do", () => {
     });
   });
 
+  // ADR 0031 piece C: a camp that calls its location types Area keeps two headings apart.
+  it("a camp whose location types are Areas has its area of camp under its own heading", () => {
+    const rows = listRows("locations", oddCamp(), oddTerms);
+    expect(rows[0].slice(0, 4)).toEqual([
+      "Spot",
+      "Area",
+      "Cabins that fit",
+      "Area of camp"
+    ]);
+    expect(rows[1].slice(1, 4)).toEqual(["Water, front", 2, "Lakefront"]);
+  });
+
   it("a quote inside a quoted list name is written twice and read back once", () => {
     expect(listName('@Bunk "3"')).toBe('"@Bunk ""3"""');
     expect(splitList('"@Bunk ""3""", Bunk 1')).toEqual(['@Bunk "3"', "Bunk 1"]);
@@ -594,9 +607,9 @@ const DOWNLOADS = {
     ["Teens", "Period 1", "10:00 AM", "10:50 AM", "Morning"]
   ],
   locations: [
-    ["Location", "Location type", "Bunks that fit", "Weeks", "Notes"],
-    ["Pool", "Waterfront", 2, "Every week", "'=Shallow end"],
-    ["Gym", "", 1, "Closed Week 2", ""]
+    ["Location", "Location type", "Bunks that fit", "Area", "Weeks", "Notes"],
+    ["Pool", "Waterfront", 2, "Lakefront", "Every week", "'=Shallow end"],
+    ["Gym", "", 1, "", "Closed Week 2", ""]
   ],
   staff: [
     ["Staff member", "Notes"],

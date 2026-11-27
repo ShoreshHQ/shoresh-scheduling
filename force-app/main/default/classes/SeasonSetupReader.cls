@@ -269,6 +269,7 @@ public with sharing class SeasonSetupReader {
         Name,
         GroupsThatFit__c,
         LocationType__c,
+        Area__c,
         Notes__c,
         SortOrder__c,
         CreatedDate

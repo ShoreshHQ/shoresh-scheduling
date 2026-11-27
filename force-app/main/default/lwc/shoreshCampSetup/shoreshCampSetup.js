@@ -38,7 +38,7 @@ import {
   realDivisionsOf
 } from "c/shoreshImportEngine";
 import { article, buildTerms } from "c/shoreshTerms";
-import { eventWords } from "c/shoreshLists";
+import { areaHeading, eventWords } from "c/shoreshLists";
 import { menuMarks, setupProblems, turnOffQuestion } from "c/shoreshSetupRules";
 import {
   closeRefusal,
@@ -1637,8 +1637,8 @@ export default class ShoreshCampSetup extends LightningElement {
     return { [FIELD.LocationType.Season]: this.seasonId };
   }
   /**
-   * A place's row: its name, how many groups fit, what is held there (worked out from the
-   * activities, never edited here), and its weeks. Its type (the section it sits in) and its
+   * A place's row: its name, how many groups fit, its area of camp, what is held there (worked
+   * out from the activities, never edited here), and its weeks. Its type (the section it sits in) and its
    * notes are its details, opened from the row.
    */
   get locationColumns() {
@@ -1659,6 +1659,8 @@ export default class ShoreshCampSetup extends LightningElement {
         required: true,
         width: 9
       },
+      // Areas of camp (ADR 0031 piece C): optional; most camps leave it blank.
+      { fieldName: LOCATION.Area, label: areaHeading(t), type: "text" },
       {
         fieldName: "heldHere",
         label: `${t.p("Activity")} held here`,

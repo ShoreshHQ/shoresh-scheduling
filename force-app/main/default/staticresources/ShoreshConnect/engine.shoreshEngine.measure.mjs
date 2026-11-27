@@ -182,6 +182,17 @@ export function measureWeek(checked, list, days) {
       dateValue: line.dateValue,
       blockId: line.blockId
     })),
+    // A group changing area of camp often in a day (ADR 0031 C3).
+    ...((checked && checked.walks) || []).map((line) => ({
+      key: `walks|${line.dateValue}|${line.groupId}|${line.changes}`,
+      // Accept compares a walks line by who and when, then how many changes.
+      same: `walks|${line.dateValue}|${line.groupId}`,
+      size: line.changes,
+      kind: "walks",
+      text: line.text,
+      groupId: line.groupId,
+      dateValue: line.dateValue
+    })),
     ...(checked && checked.hasSpreadTargets ? checked.spread || [] : []).map(
       (text, i) => {
         const e = (checked.spreadBy || [])[i] || {};
