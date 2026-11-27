@@ -48,13 +48,30 @@ function sharedPlaces(model) {
 }
 
 /**
+ * Each activity's area of camp (ADR 0031 piece C), by Id: only when the camp's places are in two
+ * or more areas, since with one area or none nothing is ever a walk. Empty otherwise.
+ */
+function areasOf(model) {
+  const areas = model.areas || new Map();
+  if (new Set(areas.values()).size < 2) {
+    return new Map();
+  }
+  return new Map(
+    model.acts
+      .filter((a) => areas.has(a.locationId))
+      .map((a) => [a.id, areas.get(a.locationId)])
+  );
+}
+
+/**
  * Map activity id -> its settings key: length, weekly minimum and maximum, groups at once (lowered
  * to the groups that fit at a place it has to itself), same division only, priority, early-week
- * goal, who it is for, a place it shares with others, and when it can't run.
+ * goal, who it is for, a place it shares with others, when it can't run, and its area of camp.
  */
 function settingsKeys(model) {
   const keys = new Map();
   const { users, outside } = sharedPlaces(model);
+  const areas = areasOf(model);
   for (const a of model.acts) {
     const loc = a.locationId;
     const fit =
@@ -81,7 +98,10 @@ function settingsKeys(model) {
         groups,
         // When it can't run (ADR 0031 A3): only said when it has some, so a camp that unticks
         // nothing keeps every key, and so every week, exactly as before.
-        ...(a.off && a.off.size ? [`off:${[...a.off].sort().join(",")}`] : [])
+        ...(a.off && a.off.size ? [`off:${[...a.off].sort().join(",")}`] : []),
+        // Its area of camp (ADR 0031 C2): only in a camp with two or more, so a camp with none
+        // keeps every key, and so every week, exactly as before.
+        ...(areas.has(a.id) ? [`area:${areas.get(a.id)}`] : [])
       ].join("/")
     );
   }
@@ -91,13 +111,17 @@ function settingsKeys(model) {
 /**
  * The activities as a build works with them: in settings-key order (the same key: by name, then
  * Id), and an activity alone at its place built as having no place, its groups at once lowered to
- * the groups that fit, so the place alone never changes what the build does. Returns
- * { acts }.
+ * the groups that fit, so the place alone never changes what the build does. Each activity keeps
+ * its area of camp (area) in a camp with two or more, its place or not. Returns { acts }.
  */
 export function actsAsBuilt(model) {
   const settingsKey = settingsKeys(model);
   const { users, outside } = sharedPlaces(model);
-  const acts = inSettingsOrder(model.acts, settingsKey).map((a) => {
+  const areas = areasOf(model);
+  const acts = inSettingsOrder(model.acts, settingsKey).map((built) => {
+    const a = areas.has(built.id)
+      ? { ...built, area: areas.get(built.id) }
+      : built;
     const loc = a.locationId;
     if (
       !loc ||

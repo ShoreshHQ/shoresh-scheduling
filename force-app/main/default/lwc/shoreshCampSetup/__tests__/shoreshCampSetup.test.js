@@ -2384,6 +2384,7 @@ describe("c-shoresh-camp-setup", () => {
       columns: [
         "Name",
         "GroupsThatFit__c",
+        "Area__c",
         "heldHere",
         "LocationType__c",
         "Notes__c"

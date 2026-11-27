@@ -59,7 +59,7 @@ export function activity(id, over = {}) {
 }
 
 /**
- * spec: { groups, days (count or dates), blocks, activities, locations: [{ id, name, fit }],
+ * spec: { groups, days (count or dates), blocks, activities, locations: [{ id, name, fit, area }],
  *   fixed and recurring: [{ id, name, block, length, location, groups? }], cells: [{ day, group, block, act }]
  *   (activities already in the grid), away: { groupId: [day indexes] } (not in that day's grid),
  *   locks, mode, option, programId, weekId, otherPrograms, weekExceptions }
@@ -143,7 +143,9 @@ export function camp(spec) {
     Id: l.id,
     Name: l.name || l.id,
     GroupsThatFit__c: l.fit,
-    SortOrder__c: 1
+    SortOrder__c: 1,
+    // Its area of camp (ADR 0031 piece C); none when not given.
+    ...(l.area !== undefined ? { Area__c: l.area } : {})
   }));
   const recurringRecords = (spec.recurring || []).map((f) => ({
     Id: f.id,

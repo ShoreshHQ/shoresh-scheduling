@@ -13,7 +13,8 @@
  * cell would give it).
  */
 import { CHILDREN, childRows, FIELD } from "./engine.shoreshSchema.shoreshSchema.mjs";
-import { buildTerms } from "./engine.shoreshTerms.shoreshTerms.mjs";
+import { areaWord, buildTerms, capital } from "./engine.shoreshTerms.shoreshTerms.mjs";
+import { foldName } from "./engine.shoreshImportEngine.shoreshImportEngine.mjs";
 import { spokenWeekday } from "./engine.shoreshDayNames.shoreshDayNames.mjs";
 import { newRow } from "./engine.shoreshNewRows.shoreshNewRows.mjs";
 import { NONE, listName } from "./engine.shoreshLists.cells.mjs";
@@ -97,6 +98,11 @@ function staffScreen(t) {
   };
 }
 
+/** A location's area of camp column (ADR 0031 piece C), never one heading with a location type. */
+export function areaHeading(t) {
+  return capital(areaWord(t));
+}
+
 function nameOf(list, id) {
   const found = (list || []).find((r) => r.Id === id);
   return found ? found.Name : null;
@@ -134,6 +140,17 @@ function locationsScreen(t) {
         newValue: NEW_LOCATION[LOCATION.GroupsThatFit],
         fromRecord: (r) => r[LOCATION.GroupsThatFit],
         write: (v) => ({ [LOCATION.GroupsThatFit]: v })
+      },
+      // Areas of camp (ADR 0031 piece C): optional, blank for none.
+      {
+        key: "area",
+        heading: areaHeading(t),
+        words: ["area", "area of camp", "zone", "part of camp"],
+        type: "text",
+        // Location__c.Area__c keeps 80 characters.
+        most: 80,
+        fromRecord: (r) => r[LOCATION.Area] || null,
+        write: (v) => ({ [LOCATION.Area]: v || null })
       },
       weeksColumn(t, "Location"),
       notesColumn(LOCATION)
@@ -381,13 +398,21 @@ export function listScreen(key, t) {
   // The heading itself always counts, in the camp's words and Shoresh's: a file headed in
   // Shoresh's words still reads after the camp renames one (word walk W6).
   const standard = new Map(build(SHOWN).columns.map((c) => [c.key, c.heading]));
+  // A word that is another column's heading in the camp's words is that column's alone ("Area",
+  // when a camp calls its location types that).
+  const headings = new Map(
+    screen.columns.map((c) => [foldName(c.heading), c.key])
+  );
   screen.columns.forEach((column) => {
     const shown = standard.get(column.key);
     column.words = [
       column.heading,
       ...(shown && shown !== column.heading ? [shown] : []),
       ...column.words
-    ];
+    ].filter((word) => {
+      const owner = headings.get(foldName(word));
+      return !owner || owner === column.key;
+    });
   });
   return screen;
 }
