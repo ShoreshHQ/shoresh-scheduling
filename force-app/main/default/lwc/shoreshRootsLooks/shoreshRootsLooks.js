@@ -21,9 +21,9 @@ import { WEEKDAYS } from "c/shoreshImportEngine";
  *   attention list and Greg's 2026-10-16 nudges), each kind gathered onto one card;
  * - what the table already draws as missing (ADR 0020 choice 2; decision 29, a dashed outline is
  *   what is missing): a week close at hand with no schedule (the Weeks card's outline bars),
- *   activities with no place in a camp that has places (the Activities card's dashed tiles; a camp
- *   with no places at all doesn't use them, desktop readiness.js OPTIONAL_AREAS), and a special
- *   day or event that is on the calendar with nothing planned in it (its dashed flag);
+ *   activities with no place (the Activities card's dashed tiles; also in a season with no places
+ *   at all, which opens Locations: ADR 0020 as amended 2026-11-27), and a special day or event
+ *   that is on the calendar with nothing planned in it (its dashed flag);
  * - the Elective seats counter's "kept below minimum" for the run the table shows (ADR 0018
  *   choice 36, the counter's needs-a-look corner).
  *
@@ -487,10 +487,12 @@ function weekCards(setup, table) {
     });
 }
 
+/**
+ * Activities with no place (ADR 0020 choice 2). Also in a season with no places at all (import
+ * battle test, 2026-11-27): an import that reads no places leaves every activity with none, and
+ * a director must be shown that, so the card is dealt there too.
+ */
 function placeCard(setup, t) {
-  if (!(setup.locations || []).length) {
-    return [];
-  }
   const names = (setup.activities || [])
     .filter((a) => !a[FIELD.Activity.Location])
     .map((a) => a.Name);
@@ -499,14 +501,20 @@ function placeCard(setup, t) {
   }
   const one = names.length === 1;
   const place = t.sIn("Location");
+  // A season with no places at all: the place comes first, so the card opens Locations.
+  const noPlaces = !(setup.locations || []).length;
+  const said =
+    names.length > 5
+      ? `${names.slice(0, 3).join(", ")} and ${names.length - 3} more`
+      : listed(names);
   return [
     {
       id: "noPlace|",
-      screen: "activities",
+      screen: noPlaces ? "locations" : "activities",
       name: one ? names[0] : screenLabels(t).activities,
       small: one ? screenLabels(t).activities.toUpperCase() : null,
       off: `no ${place}`,
-      label: `${listed(names)} ${one ? "has" : "have"} no ${place}.`,
+      label: `${said} ${one ? "has" : "have"} no ${place}.`,
       picture: toMissing(names)
     }
   ];

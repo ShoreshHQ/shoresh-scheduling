@@ -332,9 +332,25 @@ describe("c/shoreshRootsLooks: what needs a look", () => {
     expect(noSeats.some((c) => c.screen === "electiveSeats")).toBe(false);
   });
 
-  it("asks nothing of a camp that doesn't use places", () => {
+  it("shows activities with no place in a season with no places at all, opening Locations", () => {
     const cards = hand({ ...MESSY, locations: [] });
-    expect(byId(cards, "noPlace|")).toBeUndefined();
+    expect(byId(cards, "noPlace|")).toMatchObject({
+      screen: "locations",
+      off: "no Place"
+    });
+  });
+
+  it("names three activities with no place, then how many more", () => {
+    const activities = ["A1", "A2", "A3", "A4", "A5", "A6", "A7"].map(
+      (n, i) => ({
+        Id: `a0${i}`,
+        Name: n
+      })
+    );
+    const cards = hand({ ...MESSY, locations: [], activities });
+    expect(byId(cards, "noPlace|").label).toBe(
+      "A1, A2, A3 and 4 more have no Place."
+    );
   });
 
   it("is an empty hand for a calm camp", () => {
