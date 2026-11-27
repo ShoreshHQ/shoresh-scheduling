@@ -128,7 +128,10 @@ function scheduleFile(m, body, input, t) {
   if (!opened.days || !opened.days.length) {
     return { problem: `This ${t.sIn("Version")} has no days saved.` };
   }
-  const shown = m.withRaindrops(m.withSpecials(opened));
+  // DIV-1.4: two groups of one name with their divisions, as on the screen.
+  const shown = m.withRaindrops(
+    m.withDivisionNames(m.withSpecials(opened), setup)
+  );
   const catalogue = setup.activities || [];
   const choices = m.printChoices(shown, catalogue, setup, t);
   const choice = choiceOf(m, choices, input, t);

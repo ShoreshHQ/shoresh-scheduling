@@ -22,6 +22,7 @@
  */
 
 import { numberedDay } from "./engine.shoreshDayNames.shoreshDayNames.mjs";
+import { FIELD } from "./engine.shoreshSchema.shoreshSchema.mjs";
 import { readRow } from "./engine.shoreshSavedRow.shoreshSavedRow.mjs";
 const NOT_SET_UP = new Set(["E", "D", "S", "T"]);
 
@@ -238,20 +239,21 @@ export function eventsOn(day) {
  * Every group in the week, in order, for the group pills. A deleted one says so on its pill, as
  * its column does in Daily View, on every screen that shows the pills.
  */
-export function groups(view) {
+export function groups(view, divisionOf) {
   const seen = new Map();
-  readable(view).forEach((day) =>
+  const shown = shownNames(weekGroups(view), divisionOf);
+  readable(view).forEach((day) => {
     day.groups.forEach((grp) => {
       if (!seen.has(refKey(grp))) {
         seen.set(refKey(grp), {
           key: refKey(grp),
-          name: grp.name,
+          name: shown.get(refKey(grp)) || grp.name,
           gone: grp.gone,
           note: grp.gone ? "(removed)" : null
         });
       }
-    })
-  );
+    });
+  });
   return [...seen.values()];
 }
 
@@ -448,8 +450,85 @@ function column(key, label, sub, gone) {
   return { key, label, sub, note: gone ? "(removed)" : null };
 }
 
-/** Daily View: one day, a column per group. */
-export function dailyGrid(view, dayIndex, t) {
+/**
+ * DIV-1.4: the groups to show with their divisions, "Bunk 1 (Seniors)", where two of them share a
+ * name (each group counted once over the week, by its first name): Map(group key -> name shown).
+ * Any other group is shown by its own name that day. divisionOf: Map(group id -> division name);
+ * a group it does not know is not in the map.
+ */
+function shownNames(refs, divisionOf) {
+  const nameOf = new Map();
+  refs.forEach((grp) => {
+    if (!nameOf.has(refKey(grp))) {
+      nameOf.set(refKey(grp), grp.name);
+    }
+  });
+  const count = new Map();
+  nameOf.forEach((name) => count.set(name, (count.get(name) || 0) + 1));
+  const shown = new Map();
+  refs.forEach((grp) => {
+    const division = divisionOf && divisionOf.get(grp.id);
+    if (division && count.get(nameOf.get(refKey(grp))) > 1) {
+      shown.set(refKey(grp), `${nameOf.get(refKey(grp))} (${division})`);
+    }
+  });
+  return shown;
+}
+
+/**
+ * DIV-1.4: a copy of the week to show (never to save) with each day's groups named as shown
+ * beside the others: "Bunk 1 (Seniors)" where two share a name.
+ */
+export function withDivisionNames(view, setup) {
+  if (!view || !view.days) {
+    return view;
+  }
+  const divisionOf = divisionsOfGroups(setup);
+  const shown = shownNames(
+    view.days.flatMap((day) => (day && day.groups) || []),
+    divisionOf
+  );
+  return {
+    ...view,
+    days: view.days.map((day) => {
+      if (!day || !day.groups) {
+        return day;
+      }
+      return {
+        ...day,
+        groups: day.groups.map((grp) => ({
+          ...grp,
+          name: shown.get(refKey(grp)) || grp.name
+        }))
+      };
+    })
+  };
+}
+
+/** Every group of the week's readable days, and of one more day (a special day's plan). */
+function weekGroups(view, day) {
+  const all = [...readable(view || { days: [] }), ...(day ? [day] : [])];
+  return all.flatMap((d) => d.groups || []);
+}
+
+/**
+ * DIV-1.4: Map(group id -> division name) from the season's setup. A group in no division
+ * (DIV-1.1, its holding record) has none: it is shown by its name.
+ */
+export function divisionsOfGroups(setup) {
+  const out = new Map();
+  ((setup && setup.programs) || []).forEach((entry) =>
+    (entry.divisions || [])
+      .filter((d) => !d.division[FIELD.Division.NoDivision])
+      .forEach((d) =>
+        (d.groups || []).forEach((g) => out.set(g.Id, d.division.Name))
+      )
+  );
+  return out;
+}
+
+/** Daily View: one day, a column per group. divisionOf: see shownNames (DIV-1.4). */
+export function dailyGrid(view, dayIndex, t, divisionOf) {
   const day = view && view.days[dayIndex];
   if (!day || day.problem) {
     return null;
@@ -481,9 +560,10 @@ export function dailyGrid(view, dayIndex, t) {
       cells.push(drawn);
     });
   });
+  const shown = shownNames(weekGroups(view, day), divisionOf);
   return {
     columns: day.groups.map((grp) =>
-      column(refKey(grp), grp.name, null, grp.gone)
+      column(refKey(grp), shown.get(refKey(grp)) || grp.name, null, grp.gone)
     ),
     rows: blockRows(day.blocks),
     cells

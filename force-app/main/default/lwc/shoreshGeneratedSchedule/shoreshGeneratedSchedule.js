@@ -20,7 +20,12 @@ import {
   saveWeek,
   setLocks
 } from "c/shoreshGeneratedWeek";
-import { dayLabel, days as dayPillsOf, groups } from "c/shoreshScheduleViews";
+import {
+  dayLabel,
+  days as dayPillsOf,
+  divisionsOfGroups,
+  groups
+} from "c/shoreshScheduleViews";
 import { buildInPieces } from "./pieces";
 import { namesOf, progressLine } from "./progressWords";
 import { lockChoices, lockedKeys, lockedText, weekCells } from "./locks";
@@ -1388,7 +1393,8 @@ export default class ShoreshGeneratedSchedule extends BuildScreen(
     return dayPillsOf(this.schedule);
   }
   get groupPills() {
-    return groups(this.schedule);
+    // DIV-1.4: two groups of one name with their divisions, as in the grid.
+    return groups(this.schedule, divisionsOfGroups(this.setup));
   }
   // Edits wait while a build or a Lock is saved, or Reload reads the week (it is about to be
   // replaced), and while a publish is on its way (its answer is for the week as it was).

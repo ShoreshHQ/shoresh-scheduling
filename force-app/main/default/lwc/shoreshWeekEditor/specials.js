@@ -31,12 +31,14 @@ export function replacedDays(draft) {
  * placed-day.png), and a fixed or recurring activity keeps its padlock. Null when it can't be
  * shown (plan.problem) or has no time blocks yet.
  */
-export function planGrid(replaced, t) {
+export function planGrid(replaced, t, divisionOf, weekDays = []) {
   const plan = replaced && replaced.plan;
   if (!plan || plan.problem || !(plan.blocks || []).length) {
     return null;
   }
-  const grid = dailyGrid({ days: [plan] }, 0, t);
+  // DIV-1.4: two groups of one name with their divisions, counted over the week as on the week's
+  // own grid (the plan is the only day drawn).
+  const grid = dailyGrid({ days: [plan, ...weekDays] }, 0, t, divisionOf);
   if (!grid) {
     return null;
   }

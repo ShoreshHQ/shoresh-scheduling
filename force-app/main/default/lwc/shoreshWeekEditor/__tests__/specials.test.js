@@ -37,6 +37,21 @@ describe("specials.js", () => {
     expect(grid.cells.find((c) => c.text === "Flagpole").setTime).toBe(true);
   });
 
+  it("DIV-1.4: a special day's schedule names a group as the week does, counted over the week", () => {
+    const plan = day("2026-06-30", [FLAGPOLE, BOATING], ["1,2,^", "1,2,^"]);
+    const [first, second] = plan.groups;
+    const cedar = (grp) => ({ ...grp, name: "Cedar" });
+    // The special day has only the first Cedar; the week has both.
+    const special = { ...plan, groups: [cedar(first)], rows: [plan.rows[0]] };
+    const week = [{ ...plan, groups: [cedar(first), cedar(second)] }];
+    const divisionOf = new Map([
+      [first.id, "Juniors"],
+      [second.id, "Seniors"]
+    ]);
+    const grid = planGrid({ name: "V", plan: special }, t, divisionOf, week);
+    expect(grid.columns.map((c) => c.label)).toEqual(["Cedar (Juniors)"]);
+  });
+
   it("has no grid for a special day that can't be read or has no time blocks", () => {
     expect(planGrid({ plan: { problem: "x", blocks: [] } }, t)).toBeNull();
     expect(planGrid({ plan: { blocks: [] } }, t)).toBeNull();

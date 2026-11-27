@@ -5,16 +5,39 @@ import {
   dailyGrid,
   dayLabel,
   days,
+  divisionsOfGroups,
   groupCells,
   groupGrid,
   groups,
   kindLabel,
-  shortClock
+  shortClock,
+  withDivisionNames
 } from "c/shoreshScheduleViews";
+import { FIELD } from "c/shoreshSchema";
 import { buildTerms } from "c/shoreshTerms";
 import { LABELS, opened } from "./data/scheduleFixture";
 
 const t = buildTerms(LABELS);
+
+/** DIV-1.4 fixtures: the week opened with its first two groups both named "Cedar", every day. */
+function twoCedars() {
+  const view = opened();
+  const [first, second] = view.days[0].groups;
+  const ids = new Set([first.id, second.id]);
+  view.days.forEach((day) => {
+    day.groups = (day.groups || []).map((grp) => {
+      if (ids.has(grp.id)) {
+        return { ...grp, name: "Cedar" };
+      }
+      return grp;
+    });
+  });
+  return {
+    view,
+    first: { ...first, name: "Cedar" },
+    second: { ...second, name: "Cedar" }
+  };
+}
 
 describe("c/shoreshScheduleViews", () => {
   it("names days and times the way a camp reads them", () => {
@@ -50,6 +73,91 @@ describe("c/shoreshScheduleViews", () => {
       [1, 1, null],
       [2, 1, null]
     ]);
+  });
+
+  it("DIV-1.4: two groups of one name are headed with their divisions, the others by name", () => {
+    const { view, first, second } = twoCedars();
+    const rest = view.days[0].groups.slice(2);
+    const divisionOf = divisionsOfGroups({
+      programs: [
+        {
+          divisions: [
+            { division: { Name: "Juniors" }, groups: [{ Id: first.id }] },
+            { division: { Name: "Seniors" }, groups: [{ Id: second.id }] }
+          ]
+        }
+      ]
+    });
+    const heads = dailyGrid(view, 0, t, divisionOf).columns.map((c) => c.label);
+    expect(heads.slice(0, 2)).toEqual(["Cedar (Juniors)", "Cedar (Seniors)"]);
+    expect(heads.slice(2)).toEqual(rest.map((g) => g.name));
+    expect(groups(view, divisionOf)[0].name).toBe("Cedar (Juniors)");
+    // Counter-case: without the setup's divisions, the names as they are.
+    expect(dailyGrid(view, 0, t).columns[0].label).toBe("Cedar");
+  });
+
+  it("DIV-1.4: the week to print or export names them so too, the same ids, twice the same", () => {
+    const { view, first, second } = twoCedars();
+    const setup = {
+      programs: [
+        {
+          divisions: [
+            { division: { Name: "Juniors" }, groups: [{ Id: first.id }] },
+            { division: { Name: "Seniors" }, groups: [{ Id: second.id }] }
+          ]
+        }
+      ]
+    };
+    const shown = withDivisionNames(view, setup);
+    expect(shown.days[0].groups.slice(0, 2)).toEqual([
+      { ...first, name: "Cedar (Juniors)" },
+      { ...second, name: "Cedar (Seniors)" }
+    ]);
+    expect(withDivisionNames(shown, setup)).toEqual(shown);
+    // The week opened is not changed: it is what is saved.
+    expect(view.days[0].groups[0].name).toBe("Cedar");
+  });
+
+  it("DIV-1.4: a group in no division keeps its name, beside one of the same name in a division", () => {
+    const { view, first, second } = twoCedars();
+    const setup = {
+      programs: [
+        {
+          divisions: [
+            { division: { Name: "Juniors" }, groups: [{ Id: first.id }] },
+            {
+              // DIV-1.1: the holding record of a group in no division, named after it.
+              division: { Name: "Cedar", [FIELD.Division.NoDivision]: true },
+              groups: [{ Id: second.id }]
+            }
+          ]
+        }
+      ]
+    };
+    expect(
+      withDivisionNames(view, setup)
+        .days[0].groups.slice(0, 2)
+        .map((g) => g.name)
+    ).toEqual(["Cedar (Juniors)", "Cedar"]);
+  });
+
+  it("DIV-1.4: a group is named the same every day of the week", () => {
+    const { view, first, second } = twoCedars();
+    // Monday has both Cedars, Tuesday only the first.
+    view.days[1].groups = [first];
+    const divisionOf = divisionsOfGroups({
+      programs: [
+        {
+          divisions: [
+            { division: { Name: "Juniors" }, groups: [{ Id: first.id }] },
+            { division: { Name: "Seniors" }, groups: [{ Id: second.id }] }
+          ]
+        }
+      ]
+    });
+    expect(dailyGrid(view, 1, t, divisionOf).columns[0].label).toBe(
+      "Cedar (Juniors)"
+    );
   });
 
   it("a block named by its time range shows its times once (desktop blockLabelParts)", () => {
