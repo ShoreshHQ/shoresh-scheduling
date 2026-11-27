@@ -3,7 +3,7 @@
  * activities placed at the same time is a line in the Why list, once per day and time, and never
  * fixed: the build never reads Who leads it, so a camp's week is the same with or without it.
  */
-import { generateWeek, measureWeek } from "c/shoreshEngine";
+import { checkGeneratedWeek, generateWeek, measureWeek } from "c/shoreshEngine";
 import { activity, block, camp, dateAt, group } from "./data/camp";
 import { randomCamp, withHistory } from "./data/randomCamp";
 
@@ -110,6 +110,30 @@ describe("Who leads it", () => {
         blockId: "b0"
       })
     ]);
+  });
+
+  // CORE-6.20: Generated Schedule checks a week as it stands (checkGeneratedWeek), so a leader in
+  // two places at once is a line there too, from the activities' own Leaders__r rows.
+  it("Generated Schedule's own check of a week shows each conflict", () => {
+    const input = camp({
+      groups: [group("g1"), group("g2")],
+      blocks: [block(0), block(1)],
+      activities: [
+        activity("Art", { leaders: [DANA] }),
+        activity("Archery", {
+          leaders: [DANA],
+          off: [{ block: "b0", day: "Monday" }]
+        })
+      ],
+      cells: [
+        { day: 0, group: "g1", block: "b0", act: "Art" },
+        { day: 0, group: "g2", block: "b1", act: "Archery" },
+        { day: 0, group: "g1", block: "b1", act: "Art" }
+      ]
+    });
+    expect(
+      checkGeneratedWeek(input).checked.leading.map((l) => l.text)
+    ).toEqual(["Dana leads Art and Archery · Monday · Period 2"]);
   });
 
   // CORE-6.20: the build never reads Who leads it.
