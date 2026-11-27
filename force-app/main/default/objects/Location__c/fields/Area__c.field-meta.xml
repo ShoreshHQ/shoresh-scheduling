@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Area__c</fullName>
+    <description
+  >The part of camp the location is in (Lakefront, Upper fields). Optional. Locations with the same area, capitals and spacing aside, are close together; the generator prefers fewer walks between areas as its last tie-break.</description>
+    <label>Area</label>
+    <length>80</length>
+    <required>false</required>
+    <trackTrending>false</trackTrending>
+    <type>Text</type>
+    <unique>false</unique>
+</CustomField>

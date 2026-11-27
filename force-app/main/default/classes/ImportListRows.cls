@@ -45,6 +45,7 @@ public with sharing class ImportListRows {
     'Location' => new Set<Schema.SObjectField>{
       Location__c.Name,
       Location__c.GroupsThatFit__c,
+      Location__c.Area__c,
       Location__c.Notes__c
     },
     // Staff (ADR 0031 piece B): names and notes.

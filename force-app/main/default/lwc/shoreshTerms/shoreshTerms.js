@@ -244,3 +244,20 @@ export function electiveSeatsTitle(t) {
 export function countOf(t, n, term) {
   return `${n} ${n === 1 ? t.sIn(term) : t.pIn(term)}`;
 }
+
+/**
+ * A location's area of camp (ADR 0031 piece C) as the screens say it: "area", or "area of camp"
+ * in a camp whose word for a location or a location type is Area, so two ideas never share a
+ * word.
+ */
+export function areaWord(t) {
+  const taken = ["Location", "LocationType"].some((term) =>
+    ["area", "areas"].includes(
+      // Capitals, spaces and punctuation aside, as a list's headings are matched.
+      String(t.s(term) || "")
+        .toLowerCase()
+        .replace(/[^a-z]/g, "")
+    )
+  );
+  return taken ? "area of camp" : "area";
+}

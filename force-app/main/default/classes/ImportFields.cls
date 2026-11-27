@@ -99,6 +99,7 @@ public with sharing class ImportFields {
       Location__c.Season__c,
       Location__c.GroupsThatFit__c,
       Location__c.LocationType__c,
+      Location__c.Area__c,
       Location__c.Notes__c,
       Location__c.SortOrder__c,
       Location__c.CopiedFrom__c

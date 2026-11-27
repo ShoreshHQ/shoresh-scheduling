@@ -394,3 +394,46 @@ export function earlyScore(st, act, g, d) {
   }
   return days.has(d) ? -1 : 1;
 }
+
+/**
+ * The area of camp of what is in a group's cell, or null: an activity's own (sameness.js), a fixed
+ * or recurring activity's place's.
+ */
+function areaAt(st, g, d, blockId) {
+  const k = st.cellKey(g, d, blockId);
+  if (st.assigned.has(k)) {
+    const act = st.actById.get(st.assigned.get(k));
+    return (act && act.area) || null;
+  }
+  const kept = st.keptCells.get(k);
+  if (kept && (kept.item.kind === "F" || kept.item.kind === "R")) {
+    return st.areas.get(st.setTimeLocation.get(kept.item.id)) || null;
+  }
+  return null;
+}
+
+/**
+ * How many more times the group would change area of camp that day with act placed at block b
+ * (ADR 0031 piece C, protocol 4.6): 0, 1 or 2. Counted as the Why list counts walks: between the
+ * nearest placements before and after with an area, so an activity with no area, or a camp with
+ * fewer than two areas (sameness.js gives no activity one then), is always 0.
+ */
+export function walksAdded(st, act, g, d, b) {
+  const here = act.area;
+  if (!here) {
+    return 0;
+  }
+  const own = st.ownBlocks(act, g, d, b);
+  const blocks = st.blocksOf(d);
+  let before = null;
+  for (let i = st.blockIdx(d, own[0]) - 1; i >= 0 && !before; i--) {
+    before = areaAt(st, g, d, blocks[i].id);
+  }
+  let after = null;
+  const last = st.blockIdx(d, own[own.length - 1]);
+  for (let i = last + 1; i < blocks.length && !after; i++) {
+    after = areaAt(st, g, d, blocks[i].id);
+  }
+  const change = (x, y) => (x && y && x !== y ? 1 : 0);
+  return change(before, here) + change(here, after) - change(before, after);
+}

@@ -3,7 +3,7 @@
 Date: 2026-11-26. Status: proposed (Greg, 2026-11-26: "plan it all"). The plan for three pieces, each
 its own PR. Each PR fills in its own section's decisions as it is built and marks it accepted.
 Piece A: accepted (built 2026-11-26; "As built" below). Piece B: accepted (built 2026-11-26;
-"As built" below).
+"As built" below). Piece C: accepted (built 2026-11-27; "As built" below).
 
 ## Context
 
@@ -186,6 +186,44 @@ approved by Greg on 2026-11-26.
 3. **The Why list shows walks only when areas are set**: "Bunk 4 changes area 3 times on Monday".
    Shown, never refused.
 4. **The AI and command line** read and change a location's area like its other fields.
+
+### Piece C as built
+
+- **Stored** as `Location__c.Area__c`, plain text (80 characters), blank for none. Areas are
+  compared with capitals and spacing aside ("Lakefront" and "lakefront " are one area); there is
+  no list of areas to keep, so a typo makes a second area, which the Why list then shows.
+- **Camp Setup's Locations table** has an Area column after the groups that fit, and the
+  Locations list's import and download carry it (more than 80 characters can't be read, with
+  why, as a name). In a camp whose word for a location or a location type is "Area" (a camp
+  word), it is "Area of camp" there and in the Why list, so two ideas never share a word; a
+  heading another column has in the camp's words always goes to that column. Merging
+  same-named locations keeps the kept one's area, as it keeps its notes.
+- **The generator** (protocol GEN-4.6): in steps 4.3 (which day a multi-block session goes on)
+  and 4.5 (which activity a cell takes), after every preference it had, and before the stable
+  tie key, it takes the placement that adds the fewest changes of area for the group that day.
+  A change is counted between the nearest placements before and after with an area (activities
+  and fixed and recurring activities; a placement with no area is passed over). It only counts
+  in a camp whose places are in two or more areas, and only then is an activity's area part of
+  its settings (protocol 9.10), so a camp with no areas, or one, builds exactly as before: the
+  whole engine suite (golden, ported and desktop-differential weeks) passes unchanged, and 60
+  random camps build byte for byte the same with no areas and with every place in one area. The
+  repairs and the search (step 8) don't weigh areas: they run only to fill cells and meet
+  minimums, which come first.
+- **The Why list** (CORE-6.21): "Bunk 4 changes area 3 times on Monday", once per group and day
+  that changes area **two or more** times, among the lines to look at, never fixed. One change
+  (the lakefront in the morning, the fields in the afternoon) is a camp's usual plan, so it is
+  not said; saying it would put a line for nearly every group and day. The threshold of two is
+  the coordinator's call on 2026-11-27 (the desktop has no such rule; its facility-topology ADR
+  of 2026-08-20 only shapes the data for a travel cost later); Greg can change it. It shows on both
+  schedules and in the connector's week checks, as every Why line does, and Accept brings it back
+  only if that day gets more changes.
+- **AI and command line:** `read_from_setup` / `change_in_setup` read and change a location's
+  `area` like its other fields, through the table's own row save (API-1.49).
+- **Copy season** copies each location's area with it.
+
+**Choices that are hard to undo after release:** the field `Location__c.Area__c` as free text
+(not a list of areas); areas compared with capitals and spacing aside; the AI's field name
+`area`.
 
 ## How it is built
 

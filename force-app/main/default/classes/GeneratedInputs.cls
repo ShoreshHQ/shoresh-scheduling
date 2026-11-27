@@ -323,7 +323,7 @@ public with sharing class GeneratedInputs {
       ORDER BY Id
     ];
     inputs.locations = [
-      SELECT Id, Name, GroupsThatFit__c, SortOrder__c
+      SELECT Id, Name, GroupsThatFit__c, Area__c, SortOrder__c
       FROM Location__c
       WHERE Season__c = :seasonId
       WITH USER_MODE

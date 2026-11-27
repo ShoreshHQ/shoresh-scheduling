@@ -70,6 +70,7 @@ export function camp() {
         Name: "Pool",
         GroupsThatFit__c: 2,
         LocationType__c: "lt1",
+        Area__c: "Lakefront",
         Notes__c: "=Shallow end"
       },
       { Id: "l2", Name: "Gym", GroupsThatFit__c: 1 }

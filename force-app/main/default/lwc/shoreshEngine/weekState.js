@@ -42,6 +42,8 @@ export function createWeekState(model) {
     acts,
     eligibility: model.eligibility,
     fit: model.fit,
+    // Location -> its area of camp (setup.js areaKey); empty when the camp sets none.
+    areas: model.areas || new Map(),
     setTimeLocation: model.setTimeLocation,
     locks: model.locks,
     // Each elective set's places (readElectivePlaces), for the elective cells kept.

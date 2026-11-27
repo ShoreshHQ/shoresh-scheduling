@@ -4,7 +4,7 @@
  * screen's list back out in the same layout. Pure JavaScript, no server calls: the screens call
  * it, and the panel (c/shoreshListImport) sends the plan to ImportController.saveList.
  */
-export { LIST_SCREENS, listScreen, cellText } from "./screens";
+export { LIST_SCREENS, listScreen, cellText, areaHeading } from "./screens";
 export { eventWords } from "./specialScreen";
 export { seededLines } from "./seeded";
 export { listProposal, KEEP, CHANGE, changeKey, skipKey } from "./proposal";

@@ -227,7 +227,12 @@ export function* generateWeekSteps(input, watch = {}, runWork = RUN_WORK) {
   if (!option) {
     return { ok: false, error: "That option can't be built." };
   }
-  const { fit, names: placeNames, blank } = readLocations(input.locations);
+  const {
+    fit,
+    names: placeNames,
+    blank,
+    areas
+  } = readLocations(input.locations);
   // Blank groups at once or groups that fit: taken as 1 and said, never 0, never a stop.
   // Which settings those are (field and record), kept with the saved week (notes.js).
   const setupBlank = [
@@ -254,6 +259,8 @@ export function* generateWeekSteps(input, watch = {}, runWork = RUN_WORK) {
       groups
     ),
     fit,
+    // Each location's area of camp (ADR 0031 piece C): the last tie-break, fewer walks.
+    areas,
     setTimeLocation: readSetTimeLocations(
       input.fixedActivities,
       input.recurringActivities
@@ -447,6 +454,9 @@ export function* generateWeekSteps(input, watch = {}, runWork = RUN_WORK) {
     // Who leads it (CORE-6.20): only when a staff member leads two activities at once, so a week
     // without such a conflict reads exactly as before.
     ...(checked.leading.length ? { leading: checked.leading } : {}),
+    // Walks between areas of camp (ADR 0031 C3): only when a group changes area often, so a camp
+    // with no areas reads exactly as before.
+    ...(checked.walks.length ? { walks: checked.walks } : {}),
     cells: checked.cells,
     ruleChecks,
     openCells: state.openCells.map(({ key, why, cost }) => {

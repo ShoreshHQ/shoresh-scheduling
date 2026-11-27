@@ -1,5 +1,5 @@
 import { streamFor } from "./random";
-import { canPlace, earlyScore } from "./weekOptions";
+import { canPlace, earlyScore, walksAdded } from "./weekOptions";
 import { lexLess } from "./weekRules";
 import { NOW, tell } from "./progress";
 
@@ -15,7 +15,8 @@ import { NOW, tell } from "./progress";
 // Multi-block activities go first in their round: once single-block activities have taken
 // cells there is rarely a run of free blocks left. Round-robin over groups, one session per
 // group per sweep, up to the weekly minimum; the head is the free fit that best keeps the early
-// goal, then whose day holds fewest of this activity so far, then the stable key.
+// goal, then whose day holds fewest of this activity so far, then the fewest walks between areas
+// of camp (4.6), then the stable key.
 function placeSpansFirst(st, slotsToFill, priority) {
   const spanActs = st.acts
     .filter((a) => a.priority === priority && a.span > 1)
@@ -40,6 +41,7 @@ function placeSpansFirst(st, slotsToFill, priority) {
             const rank = [
               earlyScore(st, act, s.groupId, s.dayIndex),
               actDayLoad.get(`${act.id}|${s.dayIndex}`) || 0,
+              walksAdded(st, act, s.groupId, s.dayIndex, s.blockId),
               st.tieOf(s, act)
             ];
             if (!bestRank || lexLess(rank, bestRank)) {
@@ -273,7 +275,8 @@ function candidatesFor(st, s, priority) {
 }
 
 // Greedy: the cells with the fewest choices first; in each, the activity that best keeps the
-// early goal, then the one the group has had least, then the stable key.
+// early goal, then the one the group has had least, then the fewest walks between areas of camp
+// (4.6), then the stable key.
 export function* runRound(st, slots, priority, from) {
   const slotsToFill = new Set(slots.map(st.keyOf));
   placeSpansFirst(st, slotsToFill, priority);
@@ -306,6 +309,8 @@ export function* runRound(st, slots, priority, from) {
         earlyScore(st, a, slot.groupId, slot.dayIndex) -
           earlyScore(st, b, slot.groupId, slot.dayIndex) ||
         st.getCount(slot.groupId, a.id) - st.getCount(slot.groupId, b.id) ||
+        walksAdded(st, a, slot.groupId, slot.dayIndex, slot.blockId) -
+          walksAdded(st, b, slot.groupId, slot.dayIndex, slot.blockId) ||
         st.tieOf(slot, a) - st.tieOf(slot, b)
     );
     st.place(candidates[0], slot.groupId, slot.dayIndex, slot.blockId);

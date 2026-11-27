@@ -257,7 +257,7 @@ private class AgentSetupChangeTest {
       );
       Assert.areEqual(400, noField[0]);
       Assert.areEqual(
-        'A location has no field "capacity". Its fields: location_type, groups_that_fit, notes.',
+        'A location has no field "capacity". Its fields: location_type, groups_that_fit, area, notes.',
         noField[1]
       );
       Assert.areEqual('An activity', AgentSetupFields.aOrAn('activity'));

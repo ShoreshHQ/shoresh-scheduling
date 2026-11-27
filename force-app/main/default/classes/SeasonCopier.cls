@@ -44,6 +44,7 @@ public with sharing class SeasonCopier implements SetupWrite.Steps {
               Name,
               GroupsThatFit__c,
               LocationType__c,
+              Area__c,
               Notes__c,
               SortOrder__c
             FROM Locations__r
