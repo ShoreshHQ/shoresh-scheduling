@@ -121,7 +121,8 @@ Undo last import, and remembered answers (`ImportAnswer__c`).
     varies), times a week (fewest and most per group, counting none for a group that could have
     and did not), groups at once (most at the same time), who can do it (whole divisions, only
     when every group in them did it and no other group did), and the place when the file names
-    one place for it. **Outdoors, rain plans, and priority are not asked** (Greg, 2026-10-16:
+    one place for it that the camp has or the director ticks (Greg, 2026-11-27, INGEST-2.33: a
+    place in the cells is asked, never assumed; written at two, its usual one is asked). **Outdoors, rain plans, and priority are not asked** (Greg, 2026-10-16:
     "do not ask during import"): new activities start without them (priority keeps its default,
     Low), and the summary says where to set them. Places named in cells ("Swim (Pool)",
     "Art @ Art room") are offered with a tick, unticked, as on the desktop; a ticked one fits as

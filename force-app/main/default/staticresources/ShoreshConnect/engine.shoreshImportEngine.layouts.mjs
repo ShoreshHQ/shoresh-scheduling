@@ -72,14 +72,19 @@ function cellSignals(page) {
  * activities nobody had), while an all-camp page fills one cell per group column with whatever
  * each did. True when no block names anything twice, at least four fifths of the blocks with
  * names name every one of the page's cell names, and those blocks do not simply fill one cell
- * per column (then the page reads both ways and is left unsure).
+ * per column (then the page reads both ways and is left unsure). INGEST-2.32: blocks naming the
+ * same shorter roll count too, when some full block names two or more in one cell.
  */
 function blocksCallTheRoll(page) {
   const rows = page.rows
-    .map((row) => ({
-      names: row.cells.flatMap((cell) => listedNames(cell)).map(looseKey),
-      filled: row.cells.filter(Boolean).length
-    }))
+    .map((row) => {
+      const cells = row.cells.map((cell) => listedNames(cell).map(looseKey));
+      return {
+        cells,
+        names: cells.flat(),
+        filled: row.cells.filter(Boolean).length
+      };
+    })
     .filter((row) => row.names.length > 0);
   const all = new Set(rows.flatMap((row) => row.names));
   // INGEST-2.17: one group alone, under a different activity block to block, calls a roll of
@@ -103,7 +108,39 @@ function blocksCallTheRoll(page) {
   const oneCellPerColumn = full.every(
     (row) => row.filled === page.columns.filter(Boolean).length
   );
-  return share(full.length, rows.length) >= 0.8 && !oneCellPerColumn;
+  if (share(full.length, rows.length) >= 0.8) {
+    return !oneCellPerColumn;
+  }
+  // INGEST-2.32: a division gone home after Lunch leaves the afternoon blocks calling the same
+  // shorter roll, each name once; those blocks call a roll too, when a full block also lists
+  // every name in one cell (everyone under Lunch), each written alone somewhere too ("Arts &
+  // Crafts" is one name; "Archery / Canoeing" is a period split in two). With no such cell,
+  // the page reads both ways (groups across, one off each block) and is left unsure, as before.
+  const alone = new Set(
+    rows.flatMap((row) => row.cells.filter((c) => c.length === 1).flat())
+  );
+  const listsTogether = full.some((row) =>
+    row.cells.some(
+      (c) =>
+        c.length > 1 && c.length === all.size && c.every((n) => alone.has(n))
+    )
+  );
+  const once = rows.filter(
+    (row) => new Set(row.names).size === row.names.length
+  );
+  const rollOf = (row) => [...row.names].sort().join("|");
+  const rolls = new Map();
+  once.forEach((row) =>
+    rolls.set(rollOf(row), (rolls.get(rollOf(row)) || 0) + 1)
+  );
+  const calling = once.filter(
+    (row) => full.includes(row) || rolls.get(rollOf(row)) > 1
+  );
+  return (
+    listsTogether &&
+    share(calling.length, rows.length) >= 0.8 &&
+    !oneCellPerColumn
+  );
 }
 
 function knownShare(names, known) {

@@ -1,4 +1,9 @@
-import { buildProposal, importNotes, questionCards } from "./data/engine";
+import {
+  buildProposal,
+  foundLists,
+  importNotes,
+  questionCards
+} from "./data/engine";
 import {
   cellName,
   dayOf,
@@ -187,13 +192,33 @@ describe("INGEST-2.27: a file that writes each cell's room on its second line", 
   const propose = (file, answers = {}) =>
     buildProposal({ files: [file], existing: null, terms, answers });
 
-  it("INGEST-2.27: the second line comes in as the activity's place, ticked, and the name stays the activity", () => {
+  const ADD_ALL = Object.fromEntries(ROOMS.map((r) => [`place|${r}`, "add"]));
+
+  it("INGEST-2.27 INGEST-2.33: the second line is asked about as a place, unticked, and the name stays the activity", () => {
     const p = propose(sheetFile(roomed));
     expect(p.activities.map((a) => a.name).sort()).toEqual(ACTS);
     expect(p.offeredPlaces.map((x) => [x.name, x.ticked])).toEqual(
-      ROOMS.map((r) => [r, true])
+      ROOMS.map((r) => [r, false])
     );
+    expect(p.locations).toEqual([]);
+    expect(p.activities.every((a) => a.locationKey === null)).toBe(true);
+  });
+
+  it("INGEST-2.33: the review names an activity's room only once it comes in", () => {
+    const detail = (p) =>
+      foundLists(p, terms)
+        .find((l) => l.key === "activities")
+        .items.find((i) => i.name === "Drama").detail;
+    expect(detail(propose(sheetFile(roomed)))).not.toContain("Gym");
+    expect(detail(propose(sheetFile(roomed), ADD_ALL))).toContain("Gym");
+  });
+
+  it("INGEST-2.33: ticked, the rooms come in and each activity is at its room", () => {
+    const p = propose(sheetFile(roomed), ADD_ALL);
     expect(p.locations.map((l) => l.name)).toEqual(ROOMS);
+    expect(p.activities.find((a) => a.name === "Drama").locationKey).toBe(
+      "L|Gym"
+    );
   });
 
   it("INGEST-2.27: empty cells and a sheet with nothing on it change nothing", () => {
@@ -201,13 +226,18 @@ describe("INGEST-2.27: a file that writes each cell's room on its second line", 
     file.sheets[0].rows[1].push(null, undefined);
     file.sheets.push({ name: "Notes" });
     const p = propose(file);
-    expect(p.locations.map((l) => l.name)).toEqual(ROOMS);
+    expect(p.offeredPlaces.map((x) => x.name)).toEqual(ROOMS);
   });
 
-  it("INGEST-2.27: a place unticked stays out", () => {
-    const p = propose(sheetFile(roomed), { "place|Gym": "leave" });
+  it("INGEST-2.33: a room not ticked stays out", () => {
+    const p = propose(sheetFile(roomed), {
+      "place|101": "add",
+      "place|Studio": "add",
+      "place|Gym": "leave"
+    });
     expect(p.offeredPlaces.find((x) => x.name === "Gym").ticked).toBe(false);
     expect(p.locations.map((l) => l.name)).toEqual(["101", "Studio"]);
+    expect(p.activities.find((a) => a.name === "Drama").locationKey).toBe(null);
   });
 
   it("INGEST-2.27: counter-case: two activities in a cell are no activity and room", () => {
@@ -230,7 +260,7 @@ describe("INGEST-2.27: a file that writes each cell's room on its second line", 
     const groups = GROUPS.map((g) => `${g}\nJuniors`);
     const p = propose(sheetFile(roomed, { groups }));
     expect(p.groups.map((g) => g.name).join(" ")).not.toContain("@");
-    expect(p.locations.map((l) => l.name)).toEqual(ROOMS);
+    expect(p.offeredPlaces.map((x) => x.name)).toEqual(ROOMS);
   });
 
   it("INGEST-2.27: counter-case: rooms that each hold one activity, or under a fifth of the cells, are no rooms", () => {
@@ -259,6 +289,165 @@ describe("INGEST-2.27: a file that writes each cell's room on its second line", 
     expect(p.activities.map((a) => a.name)).toEqual(
       expect.arrayContaining(["Art 101"])
     );
+  });
+});
+
+// INGEST-2.33: an activity written at two places. Made-up camp only.
+describe("INGEST-2.33: an activity written at two places is asked its usual one", () => {
+  const ROOMS = { Art: "101", Drama: "Gym", Music: "Hall", Science: "Studio" };
+  const ACTS = Object.keys(ROOMS);
+  // Drama in the Studio on Monday, the Gym after; every other activity in its own room.
+  const file = {
+    name: "Rooms camp.xlsx",
+    sheets: ["Monday", "Tuesday", "Wednesday"].map((day, d) => ({
+      name: day,
+      rows: [
+        ["Time", "Bunk 1", "Bunk 2", "Bunk 3", "Bunk 4"],
+        ...["9:00-9:45", "10:00-10:45", "11:00-11:45", "1:00-1:45"].map(
+          (time, b) => [
+            time,
+            ...[0, 1, 2, 3].map((g) => {
+              const act = ACTS[(g + b + d) % 4];
+              const room = act === "Drama" && d === 0 ? "Studio" : ROOMS[act];
+              return `${act}\n${room}`;
+            })
+          ]
+        )
+      ]
+    }))
+  };
+  const ADD = { "place|Gym": "add", "place|Studio": "add" };
+  const propose = (answers) =>
+    buildProposal({ files: [file], existing: null, terms, answers });
+  const drama = (p) => p.activities.find((a) => a.name === "Drama");
+  const card = (p, answers) =>
+    questionCards(p, terms, answers).find((c) => c.id === "usualPlace|Drama");
+
+  it("INGEST-2.33: both rooms ticked, it is asked which is usual, none until picked", () => {
+    const p = propose(ADD);
+    expect(card(p, ADD)).toMatchObject({
+      title: "Where is “Drama” usually?",
+      answer: "none"
+    });
+    expect(
+      card(p, ADD)
+        .options.map((o) => o.value)
+        .sort()
+    ).toEqual(["Gym", "Studio", "none"]);
+    expect(drama(p).locationKey).toBe(null);
+  });
+
+  it("INGEST-2.33: the room picked is its place", () => {
+    const answers = { ...ADD, "usualPlace|Drama": "Gym" };
+    const p = propose(answers);
+    expect(drama(p)).toMatchObject({ place: "Gym", locationKey: "L|Gym" });
+    expect(card(p, answers).answer).toBe("Gym");
+  });
+
+  it("INGEST-2.33: counter-case: no room ticked asks nothing, and the name keeps no room", () => {
+    const p = propose({});
+    expect(card(p, {})).toBeUndefined();
+    expect(drama(p).locationKey).toBe(null);
+    expect(p.activities.map((a) => a.name).sort()).toEqual(ACTS.sort());
+  });
+
+  it("INGEST-2.33: one room ticked is still asked, none until picked", () => {
+    const answers = { "place|Gym": "add" };
+    const p = propose(answers);
+    expect(card(p, answers).options.map((o) => o.value)).toEqual([
+      "Gym",
+      "none"
+    ]);
+    expect(drama(p).locationKey).toBe(null);
+  });
+
+  it("INGEST-2.33: a room picked, then unticked, is none again and blocks nothing", () => {
+    const answers = { "place|Studio": "add", "usualPlace|Drama": "Gym" };
+    const p = propose(answers);
+    expect(card(p, answers).answer).toBe("none");
+    expect(drama(p).locationKey).toBe(null);
+  });
+
+  it("INGEST-2.33: “@” places are asked the same way", () => {
+    const atPlaces = csv("Week.csv", [
+      ["Time", "Monday", "Tuesday", "Wednesday"],
+      ["9:00-9:45", "Archery @ Field", "Archery @ Barn", "Archery @ Field"],
+      ["10:00-10:45", "Canoe @ Lake", "Canoe @ Lake", "Canoe @ Lake"]
+    ]);
+    const answers = { "place|Field": "add", "place|Barn": "add" };
+    const p = buildProposal({
+      files: [atPlaces],
+      existing: null,
+      terms,
+      answers
+    });
+    const cards = questionCards(p, terms, answers);
+    expect(cards.find((c) => c.id === "usualPlace|Archery")).toMatchObject({
+      answer: "none"
+    });
+    expect(p.offeredPlaces.find((x) => x.name === "Lake").ticked).toBe(false);
+  });
+});
+
+describe("INGEST-2.33: the same set time in two programs is asked in each", () => {
+  const DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday"];
+  const program = (name, groups, times, lunchAt) => ({
+    name,
+    sheets: DAYS.map((day, d) => ({
+      name: day,
+      rows: [
+        ["Time", ...groups],
+        [times[0], ...groups.map((_, i) => ["Swim", "Art"][(i + d) % 2])],
+        [times[1], ...groups.map(() => `Lunch @ ${lunchAt[d % 2]}`)],
+        [times[2], ...groups.map((_, i) => ["Art", "Swim"][(i + d) % 2])]
+      ]
+    }))
+  });
+  const files = [
+    program(
+      "Juniors.xlsx",
+      ["Bunk 1", "Bunk 2"],
+      ["9:00-9:45", "12:00-12:45", "1:00-1:45"],
+      ["Dining", "Pavilion"]
+    ),
+    program(
+      "Seniors.xlsx",
+      ["Senior 1", "Senior 2"],
+      ["8:15-9:05", "11:20-12:10", "2:30-3:20"],
+      ["Lodge", "Field"]
+    )
+  ];
+  const ADD = Object.fromEntries(
+    ["Dining", "Pavilion", "Lodge", "Field"].map((x) => [`place|${x}`, "add"])
+  );
+  const lunches = (p) =>
+    [...p.fixed, ...p.recurring].filter((r) => r.name === "Lunch");
+
+  it("INGEST-2.33: each program's Lunch has its own question and its own answer", () => {
+    const asks = buildProposal({
+      files,
+      existing: null,
+      terms,
+      answers: ADD
+    }).asks.filter((a) => a.type === "usualPlace");
+    expect(asks.map((a) => a.options.slice().sort())).toEqual(
+      expect.arrayContaining([
+        ["Dining", "Pavilion"],
+        ["Field", "Lodge"]
+      ])
+    );
+    expect(new Set(asks.map((a) => a.id)).size).toBe(2);
+    const juniors = asks.find((a) => a.options.includes("Dining"));
+    const answers = { ...ADD, [juniors.id]: "Dining" };
+    const p = buildProposal({ files, existing: null, terms, answers });
+    expect(
+      lunches(p)
+        .map((r) => r.place)
+        .sort()
+    ).toEqual(["Dining", null]);
+    expect(
+      questionCards(p, terms, answers).find((c) => c.id === juniors.id).answer
+    ).toBe("Dining");
   });
 });
 
@@ -616,6 +805,95 @@ describe("the three layouts", () => {
         ["9:00-9:45", "Archery", "Drama", "Gaga"],
         ["10:00-10:45", "Gaga", "Archery", "Drama"],
         ["11:00-11:45", "Drama", "Gaga", "Archery"]
+      ]);
+      expect(page.confident).toBe(false);
+    });
+  });
+
+  describe("INGEST-2.32: a division gone after Lunch still calls a roll", () => {
+    const layoutOf = (rows) => read([csv("Monday.csv", rows)]).reading.pages[0];
+
+    it("INGEST-2.32: the afternoon blocks calling the same shorter roll is a by-activity page", () => {
+      const page = layoutOf([
+        ["Time", "Archery", "Canoeing", "Drama", "Gaga", "Lunch"],
+        ["9:00-9:45", "Otters", "Herons", "Wolves", "Foxes", ""],
+        ["10:00-10:45", "Foxes", "Otters", "Herons", "Wolves", ""],
+        ["11:00-11:45", "", "", "", "", "Otters; Wolves; Herons; Foxes"],
+        ["13:00-13:45", "Wolves", "", "Foxes", "", ""],
+        ["14:00-14:45", "", "Foxes", "", "Wolves", ""],
+        ["15:00-15:45", "Foxes", "Wolves", "", "", ""]
+      ]);
+      expect(page).toMatchObject({ layout: "byActivity", confident: true });
+    });
+
+    it("INGEST-2.32: counter-case: a rotation, two groups gone after Lunch, still reads both ways and is asked", () => {
+      const page = layoutOf([
+        ["Time", "Otters", "Wolves", "Herons", "Foxes"],
+        ["9:00-9:45", "Archery", "Canoe", "Drama", "Gaga"],
+        ["10:00-10:45", "Canoe", "Drama", "Gaga", "Archery"],
+        ["11:00-11:45", "Drama", "Gaga", "Archery", "Canoe"],
+        ["13:00-13:45", "", "", "Archery", "Canoe"],
+        ["14:00-14:45", "", "", "Canoe", "Archery"]
+      ]);
+      expect(page.confident).toBe(false);
+    });
+
+    it("INGEST-2.32: counter-case: groups across, one off each morning block, two gone after Lunch, is asked", () => {
+      const page = layoutOf([
+        ["Time", "Otters", "Herons", "Wolves", "Foxes", "Bears"],
+        ["9:00-9:45", "", "Archery", "Canoeing", "Drama", "Gaga"],
+        ["10:00-10:45", "Gaga", "", "Archery", "Canoeing", "Drama"],
+        ["11:00-11:45", "Drama", "Gaga", "", "Archery", "Canoeing"],
+        ["13:00-13:45", "", "", "", "Archery", "Canoeing"],
+        ["14:00-14:45", "", "", "", "Canoeing", "Archery"]
+      ]);
+      expect(page.confident).toBe(false);
+    });
+
+    it("INGEST-2.32: counter-case: an activity named with “&” is no list of groups", () => {
+      const page = layoutOf([
+        ["Time", "Otters", "Herons", "Wolves", "Foxes", "Bears"],
+        ["9:00-9:45", "", "Archery", "Canoeing", "Drama", "Arts & Crafts"],
+        ["10:00-10:45", "Arts & Crafts", "", "Archery", "Canoeing", "Drama"],
+        ["11:00-11:45", "Drama", "Arts & Crafts", "", "Archery", "Canoeing"],
+        ["13:00-13:45", "", "", "", "Archery", "Canoeing"],
+        ["14:00-14:45", "", "", "", "Canoeing", "Archery"]
+      ]);
+      expect(page.confident).toBe(false);
+    });
+
+    it("INGEST-2.32: counter-case: a period split in two is no list of groups", () => {
+      const page = layoutOf([
+        ["Time", "Otters", "Herons", "Wolves", "Foxes", "Bears"],
+        ["9:00-9:45", "", "Archery / Canoeing", "Drama", "Gaga", ""],
+        ["10:00-10:45", "Gaga", "", "Archery", "Canoeing", "Drama"],
+        ["11:00-11:45", "Drama", "Gaga", "", "Archery", "Canoeing"],
+        ["13:00-13:45", "", "", "", "Archery", "Canoeing"],
+        ["14:00-14:45", "", "", "", "Canoeing", "Archery"]
+      ]);
+      expect(page.confident).toBe(false);
+    });
+
+    it("INGEST-2.32: counter-case: a period split in two on a page of three activities is no list", () => {
+      const page = layoutOf([
+        ["Time", "Otters", "Herons", "Wolves"],
+        ["9:00-9:45", "Archery / Canoe", "Drama", ""],
+        ["10:00-10:45", "Drama", "Archery", "Canoe"],
+        ["11:00-11:45", "Canoe", "Drama", "Archery"],
+        ["13:00-13:45", "", "Archery", "Canoe"],
+        ["14:00-14:45", "", "Canoe", "Archery"]
+      ]);
+      expect(page.confident).toBe(false);
+    });
+
+    it("INGEST-2.32: counter-case: a shorter roll written once is not a roll", () => {
+      const page = layoutOf([
+        ["Time", "Archery", "Canoeing", "Drama", "Gaga"],
+        ["9:00-9:45", "Otters", "", "Wolves", "Herons"],
+        ["10:00-10:45", "", "Herons", "Otters", "Wolves"],
+        ["11:00-11:45", "Wolves", "", "", "Herons"],
+        ["13:00-13:45", "", "Otters", "", "Herons"],
+        ["14:00-14:45", "Otters", "", "Wolves", ""]
       ]);
       expect(page.confident).toBe(false);
     });

@@ -326,6 +326,30 @@ function programCard(ask, t) {
   };
 }
 
+// INGEST-2.33: no usual place, until the director picks one.
+const NO_USUAL_PLACE = "none";
+
+/**
+ * INGEST-2.33: an item written at two places, one or more of which come in: which is its usual
+ * one. An answer no longer among them (its place unticked) is none again.
+ */
+function usualPlaceCard(ask, t) {
+  return {
+    id: ask.id,
+    stage: "review",
+    lane: "standard",
+    title: `Where is ${quoted(ask.name)} usually?`,
+    subject: ask.name,
+    ...(ask.program ? { subtitle: ask.program } : {}),
+    preselected: NO_USUAL_PLACE,
+    onlyItsOptions: true,
+    options: [
+      ...ask.options.map((name) => ({ value: name, label: name })),
+      { value: NO_USUAL_PLACE, label: `No usual ${t.sIn("Location")}` }
+    ]
+  };
+}
+
 function blockCard(ask, t) {
   const current = `${ask.current.name}, ${times(ask.current)}`;
   return {
@@ -929,7 +953,8 @@ const CARDS = {
   recurring: setTimeChangeCard,
   activity: activityChangeCard,
   elective: electiveCard,
-  list: listCard
+  list: listCard,
+  usualPlace: usualPlaceCard
 };
 
 /** Every card, preview cards first, then hold, then the rest, each with its answer. */
@@ -951,7 +976,12 @@ export function questionCards(proposal, t, answers) {
     .filter((c) => !seen.has(c.id) && seen.add(c.id))
     .map((c, i) => ({
       ...c,
-      answer: answers[c.id] || c.preselected || null,
+      answer:
+        (c.onlyItsOptions && !c.options.some((o) => o.value === answers[c.id])
+          ? null
+          : answers[c.id]) ||
+        c.preselected ||
+        null,
       position: i,
       ...(onlyOneDays && c.id.startsWith("oneDay|") ? { mustAnswer: true } : {})
     }))

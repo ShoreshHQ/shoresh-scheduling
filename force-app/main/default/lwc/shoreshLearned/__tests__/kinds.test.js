@@ -166,6 +166,19 @@ describe("each remembered question in camp words", () => {
     expect(kindOf("place|Gym", "add", t).answer).toBe("Added");
   });
 
+  it("INGEST-2.33: an activity's usual place reads as the place, or none", () => {
+    expect(kindOf("usualPlace|Drama", "Gym", t)).toMatchObject({
+      name: "Drama",
+      answer: "Gym"
+    });
+    expect(kindOf("usualPlace|Drama", "none", t).answer).toBe(
+      "No usual location"
+    );
+    expect(kindOf("usualPlace|Lunch|Seniors", "Lodge", t).name).toBe(
+      "Lunch (Seniors)"
+    );
+  });
+
   it("INGEST-2.31: three spellings answered with one name, in camp words, only to forget", () => {
     const remembered = kindOf(
       "spellings|activity|Free Swim|Free swim!|Freeswim",

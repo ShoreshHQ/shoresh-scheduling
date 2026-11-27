@@ -353,7 +353,12 @@ function groupsAtOncePer(usable) {
   return most;
 }
 
-function placesFor(records, existing, answers, usable, roomFiles) {
+/** The places an item's cells name: its one place, or each one written (INGEST-2.33). */
+function placesNamed(record) {
+  return record.placesWritten || (record.place ? [record.place] : []);
+}
+
+function placesFor(records, existing, answers, usable) {
   const fits = groupsAtOncePer(usable);
   const deletions = deletionsIn(answers);
   const deleted = [];
@@ -362,15 +367,7 @@ function placesFor(records, existing, answers, usable, roomFiles) {
   );
   const offered = [];
   const locations = [];
-  // INGEST-2.27: a place a file writes as its cells' second line comes in unless unticked.
-  const rooms = new Set(
-    usable
-      .filter((p) => p.place && (roomFiles || []).includes(p.file))
-      .map((p) => p.place)
-  );
-  for (const name of [
-    ...new Set(records.map((r) => r.place).filter(Boolean))
-  ].sort()) {
+  for (const name of [...new Set(records.flatMap(placesNamed))].sort()) {
     if (camp.has(name)) {
       locations.push({
         name,
@@ -387,13 +384,15 @@ function placesFor(records, existing, answers, usable, roomFiles) {
       deleted.push({ key: gone, kind: "Location", name, program: "" });
       continue;
     }
-    const ticked =
-      answers[id] === "add" || (rooms.has(name) && answers[id] !== "leave");
+    // INGEST-2.33: a place comes in only when the director ticks it, a room as any other.
+    const ticked = answers[id] === "add";
     offered.push({
       id,
       name,
       ticked,
-      usedBy: records.filter((r) => r.place === name).map((r) => r.name)
+      usedBy: records
+        .filter((r) => placesNamed(r).includes(name))
+        .map((r) => r.name)
     });
     if (ticked) {
       locations.push({
@@ -406,10 +405,32 @@ function placesFor(records, existing, answers, usable, roomFiles) {
     }
   }
   const keyOfPlace = new Map(locations.map((l) => [l.name, l.key]));
+  // INGEST-2.33: an item written at two places, one or more of which come in, is asked which is
+  // its usual one, in its program (a set time is one per program); none until the director
+  // picks one of them.
+  const programs = new Set(
+    records.filter((r) => r.timetable).map((r) => r.timetable.name)
+  );
+  const asks = new Map();
   records.forEach((r) => {
+    if (r.placesWritten) {
+      const program = r.timetable && programs.size > 1 ? r.timetable.name : "";
+      const id = `usualPlace|${r.name}${program ? `|${program}` : ""}`;
+      const options = r.placesWritten.filter((p) => keyOfPlace.has(p));
+      r.place = options.includes(answers[id]) ? answers[id] : null;
+      if (options.length > 0) {
+        asks.set(id, {
+          type: "usualPlace",
+          id,
+          name: r.name,
+          program,
+          options
+        });
+      }
+    }
     r.locationKey = keyOfPlace.get(r.place) || null;
   });
-  return { offered, locations, deleted };
+  return { offered, locations, deleted, asks: [...asks.values()] };
 }
 
 function leftOutNames(decisions) {
@@ -650,8 +671,7 @@ export function buildProposal(input) {
     [...setTime, ...activities],
     input.existing,
     answers,
-    usable,
-    reading.roomFiles
+    usable
   );
   const proposal = {
     reading,
@@ -678,7 +698,13 @@ export function buildProposal(input) {
     ]),
     leftOutCells: leftOut,
     notes: ctx.notes,
-    asks: [...programs.asks, ...people.asks, ...electives.asks, ...ctx.asks],
+    asks: [
+      ...programs.asks,
+      ...people.asks,
+      ...electives.asks,
+      ...ctx.asks,
+      ...places.asks
+    ],
     decisions,
     ...dayNumbersFor(reading, input.existing)
   };
