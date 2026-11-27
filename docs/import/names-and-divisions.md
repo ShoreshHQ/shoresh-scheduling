@@ -325,6 +325,27 @@ Each rule is clue, meaning, example, test.
     in one or two label columns, a long name or "p.m." in it; a blank row whose time follows an invisible mark stays a block.
     Code: `text.js` `labelStartsWithBlock`, `readsAsNote`; `sheets.js` `SectionReader.readRow`.
 
+24. **Sheets named for their groups under one shared heading** (import battle test,
+    2026-11-27).
+    Clue: files of several sheets that name their pages (rule 7), each with a title line that is
+    one and the same heading then the sheet's name ("Camp Pine — 2025 — Otters" on sheet
+    "Otters", "Camp Pine — 2025 — Wolves" on sheet "Wolves"), the heading the same in every such
+    file, of parts of its own or with a year, and not a file's own name.
+    Meaning: each page is named by its sheet ("Otters"), and the heading is the camp's, not a
+    division; it is listed once in the import's notes as left out, and nothing is asked about
+    it. The title was read as division "Camp Pine" and group "2025 — Otters", and "2025 — PA"
+    and "2025 — PB" were asked as the same group. The desktop names such pages by their sheets
+    and never reads the line (`src/ingest/sheetGrid.js`). Kept as before: a heading that differs
+    from sheet to sheet or from file to file ("Juniors - Bunk 1" in one file, "Seniors - Bunk 3"
+    in the next: each page's division), one name alone, which may be a division ("Juniors - Bunk
+    1" in Juniors.xlsx, or alone in its file), and a heading that names a week, a day or a date
+    ("Camp Pine — Week 3 — Otters" keeps its week).
+    Test: `reading.test.js` "INGEST-2.24: …" (each group named by its sheet, the heading no
+    division and no group asked as similar; the heading listed once as left out). Counter-cases: a
+    heading naming a week keeps its week; a file per division keeps its divisions, alone or with others; a heading that
+    differs from sheet to sheet is still a division. Code: `sheets.js` `sheetNamesOverHeading`,
+    `filesToPages`.
+
 ## With the classification rules
 
 - A division of one is a whole division for classification rule 7: an item only CIT has in one

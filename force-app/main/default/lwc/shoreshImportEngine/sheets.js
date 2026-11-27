@@ -10,6 +10,7 @@
  */
 import {
   cellText,
+  dayInTitle,
   dayNumberIn,
   dayOf,
   hasClockTime,
@@ -23,6 +24,7 @@ import {
 import {
   isWeekHeading,
   weekInFileName,
+  weekInTitle,
   weekValue,
   withoutWeek
 } from "./weekLabels";
@@ -825,10 +827,20 @@ export function filesToPages(files, options = {}) {
     return { file, read };
   });
   const notes = notesAboveEveryPage(perFile);
-  for (const { file, read: found } of perFile) {
+  const sheetNamed = sheetNamesOverHeading(
+    perFile.map(({ file, read: found }) => {
+      const named = sheetsNameTheirPages(found, options.maxWeek);
+      return {
+        file,
+        named,
+        read: found.map((page) => withoutNotes(page, notes, named))
+      };
+    }),
+    options.maxWeek
+  );
+  sheetNamed.dropped.forEach((line) => skipped.add(line));
+  for (const { file, read } of sheetNamed.files) {
     const fileTitle = baseName(file.name);
-    const named = sheetsNameTheirPages(found, options.maxWeek);
-    const read = found.map((page) => withoutNotes(page, notes, named));
     read.forEach((page) =>
       page.titles
         .filter((line) => line !== page.title)
@@ -904,6 +916,68 @@ function sheetsNameTheirPages(read, maxWeek) {
     names.length > 1 &&
     names.every((n) => !isGenericTitle(n) && !onlyDayOrWeek(n))
   );
+}
+
+// The separator before a sheet's name at the end of its title: "Camp — 2025 — Otters".
+const TITLE_SEPARATOR = /\s+[-–—:|]\s+$/;
+
+/**
+ * INGEST-2.24: sheets that name their pages, each titled the same heading then its sheet's name
+ * ("Camp — 2025 — Otters" on sheet "Otters", "Camp — 2025 — Wolves" on sheet "Wolves"), the
+ * heading one and the same over every such file: each page is named by its sheet, and the
+ * heading is the camp's, not a division (listed once as left out). The desktop names such pages
+ * by their sheets (sheetGrid.js) and never reads the line. Kept as before: a heading that differs
+ * from sheet to sheet or from file to file ("Juniors - Bunk 1" in one file, "Seniors - Bunk 3" in
+ * the next: a division), and one that names a week, a day or a date. Returns { files, dropped }.
+ */
+function sheetNamesOverHeading(files, maxWeek) {
+  const lead = (page) => {
+    const title = tidy(page.title);
+    const sheet = tidy(page.sheet);
+    if (
+      !sheet ||
+      title.length <= sheet.length ||
+      looseKey(title.slice(-sheet.length)) !== looseKey(sheet)
+    ) {
+      return null;
+    }
+    const before = title.slice(0, -sheet.length);
+    return TITLE_SEPARATOR.test(before)
+      ? tidy(before.replace(TITLE_SEPARATOR, ""))
+      : null;
+  };
+  const candidates = files.filter((f) => f.named && f.read.length > 0);
+  const leads = candidates.flatMap((f) => f.read.map(lead));
+  const heading = leads[0];
+  if (
+    leads.length < 2 ||
+    !heading ||
+    leads.some((l) => l === null || looseKey(l) !== looseKey(heading)) ||
+    // One name alone ("Juniors" over "Juniors - Bunk 1") may be a division: only a heading of
+    // its own parts or with a year ("Camp Pine — 2025") is the camp's.
+    !(/\s[-–—:|]\s/.test(heading) || /\b(19|20)\d{2}\b/.test(heading)) ||
+    candidates.some((f) => looseKey(baseName(f.file.name)) === looseKey(heading)) ||
+    weekInTitle(heading, { bareDates: true, maxWeek }) ||
+    dayInTitle(heading) ||
+    /\d{1,2}[/.]\d{1,2}|\b(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\.?\s+\d/i.test(
+      heading
+    )
+  ) {
+    return { files, dropped: [] };
+  }
+  const bySheet = (page) => ({
+    ...page,
+    title: page.sheet,
+    titles: page.titles.map((line) => {
+      return line === page.title ? page.sheet : line;
+    })
+  });
+  return {
+    files: files.map((f) => {
+      return candidates.includes(f) ? { ...f, read: f.read.map(bySheet) } : f;
+    }),
+    dropped: [heading]
+  };
 }
 
 /**
