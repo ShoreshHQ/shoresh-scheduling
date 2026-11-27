@@ -8,7 +8,7 @@ import { spokenWeekday } from "./engine.shoreshDayNames.shoreshDayNames.mjs";
 import { FIELD } from "./engine.shoreshSchema.shoreshSchema.mjs";
 import { availabilityKey } from "./engine.shoreshImportEngine.availability.mjs";
 import { broughtBack } from "./engine.shoreshImportEngine.deleted.mjs";
-import { clock, shortClock } from "./engine.shoreshImportEngine.text.mjs";
+import { clock, hasClockTime, shortClock } from "./engine.shoreshImportEngine.text.mjs";
 import { programDays } from "./engine.shoreshImportEngine.weeks.mjs";
 import { dayList, nameList } from "./engine.shoreshImportEngine.questions.mjs";
 import { compareNames, compareText } from "./engine.shoreshImportEngine.order.mjs";
@@ -58,7 +58,8 @@ function blockRecords(proposal) {
           name: b.name,
           start: clock(b.start),
           end: clock(b.end),
-          partOfDay: partOfDay(b.start),
+          // INGEST-2.30: a new block a morning group is still here for is a morning block.
+          partOfDay: b.partOfDay || partOfDay(b.start),
           sortOrder: existingMax + ++n
         });
       } else if (b.change) {
@@ -199,6 +200,8 @@ function readAsIds(proposal) {
 function answersToKeep(proposal, answers) {
   const ids = new Set([
     ...proposal.reading.pairs.map((x) => x.id),
+    // INGEST-2.31: one answer for three spellings or more.
+    ...(proposal.reading.spellings || []).map((x) => x.id),
     ...proposal.reading.disagreements.map((x) => x.id),
     ...proposal.reading.groupAsks.map((x) => x.id),
     ...(proposal.reading.splitAsks || []).map((x) => x.id),
@@ -210,11 +213,16 @@ function answersToKeep(proposal, answers) {
   ]);
   const remember = [];
   const forget = [];
+  // INGEST-5.14: an answer carried from another program key is remembered under today's.
+  const carried = new Map(
+    proposal.asks.filter((a) => a.carried).map((a) => [a.id, a.carried])
+  );
   for (const id of [...ids].sort()) {
-    if (answers[id] === "leaveOut") {
+    const answer = answers[id] || carried.get(id);
+    if (answer === "leaveOut") {
       forget.push(id);
-    } else if (answers[id]) {
-      remember.push({ key: id, answer: String(answers[id]) });
+    } else if (answer) {
+      remember.push({ key: id, answer: String(answer) });
     }
   }
   // Brought back: the camp no longer remembers it as deleted.
@@ -589,6 +597,9 @@ const KEPT = {
   remembered: "but an answer about them is remembered, so they stay as they are"
 };
 
+// INGEST-2.29: how many cells with their own times the note names.
+const TIMED_SHOWN = 3;
+
 export function importNotes(proposal, t) {
   const notes = [];
   const r = proposal.reading;
@@ -601,6 +612,22 @@ export function importNotes(proposal, t) {
   // INGEST-2.7: a line read as no page's name or schedule ("DRAFT v3"), once.
   (r.skipped || []).forEach((line) =>
     notes.push({ key: `skipped|${line}`, text: `“${line}” was left out.` })
+  );
+  // INGEST-2.29: the times written in cells, which are read in their rows' blocks.
+  const timed = r.timedCells || [];
+  if (timed.length > 0) {
+    const shown = timed.slice(0, TIMED_SHOWN).map((cell) => `“${cell}”`);
+    const more = timed.length - shown.length;
+    notes.push({
+      key: "timedCells",
+      text: `Times written in cells are not kept; each is in its row's ${t.sIn("TimeBlock")}: ${shown.join(", ")}${more > 0 ? ` and ${more} more` : ""}.`
+    });
+  }
+  (r.oneName || []).forEach((x) =>
+    notes.push({
+      key: `oneName|${x.file}|${x.text}|${x.blocks}`,
+      text: `${x.file}: “${x.text}” is over ${x.blocks} ${t.pIn("TimeBlock")} without a line for each, so it is one ${t.sIn("Activity")} over ${x.blocks === 2 ? "both" : "them all"}.`
+    })
   );
   r.pages
     .filter((p) => p.noDay)
@@ -635,6 +662,40 @@ export function importNotes(proposal, t) {
           text: `${b.name}: the file gives no end time, so it ends at ${shortClock(b.end)}, as long as the other ${t.pIn("TimeBlock")}. Change it on the ${t.p("TimeBlock")} screen if that is wrong.`
         })
       );
+  }
+  // INGEST-2.30: an afternoon block read as morning, as the groups here mornings are here for it.
+  const lateFor = new Map();
+  for (const [group, a] of proposal.availability || []) {
+    if (a.availability === "MorningOnly") {
+      (a.late || []).forEach((x) =>
+        lateFor.set(x.block, [...(lateFor.get(x.block) || []), group])
+      );
+    }
+  }
+  for (const [block, groups] of lateFor) {
+    const who = [...new Set(groups)].sort(compareText);
+    // A block named by its times says them once.
+    const named = hasClockTime(block.name)
+      ? block.name
+      : `${block.name} (${shortClock(block.start)}\u2013${shortClock(block.end)})`;
+    notes.push({
+      key: `lateMorning|${block.fileKey}|${block.name}`,
+      text: `${named} is read as morning: ${who.join(", ")} ${who.length === 1 ? "is" : "are"} here for it and then go${who.length === 1 ? "es" : ""} home.`
+    });
+  }
+  // INGEST-3.13: a group with no Lunch in the file on a day has its division's, or its own.
+  const lunchFor = new Map();
+  proposal.recurring.forEach((item) =>
+    (item.lunchFor || []).forEach((g) =>
+      lunchFor.set(item.name, new Set([...(lunchFor.get(item.name) || []), g]))
+    )
+  );
+  for (const [name, groups] of lunchFor) {
+    const who = [...groups].sort(compareText);
+    notes.push({
+      key: `lunchFor|${name}`,
+      text: `${who.join(", ")} ${who.length === 1 ? "has" : "have"} no ${name} in the file, so ${who.length === 1 ? "it has" : "they have"} ${who.length === 1 ? "its" : "their"} ${t.sIn("Division")}'s ${name} then, or ${who.length === 1 ? "its" : "their"} own of another day.`
+    });
   }
   proposal.activities
     .filter((a) => a.lengthsVary)

@@ -10,7 +10,7 @@ import getImported from "@salesforce/apex/ImportController.getImported";
 import getOpenFiles from "@salesforce/apex/ImportController.getOpenFiles";
 import { answerAsk } from "shoresh-jest/ask";
 import { buildTerms } from "c/shoreshTerms";
-import { comingIn } from "../summary";
+import { comingIn, withoutHolders } from "../summary";
 import { nsRecord } from "shoresh-jest/namespace";
 import { flush } from "shoresh-jest/flush";
 
@@ -1470,6 +1470,33 @@ describe("c-shoresh-import", () => {
       expect(places.querySelector("p")).toBeNull();
     });
 
+    it("INGEST-2.27: a place unticked is remembered as left out", async () => {
+      getAnswers.mockResolvedValue([{ key: "place|Pool", answer: "add" }]);
+      const element = await renderWith(WITH_WEEK);
+      const rows = [
+        "Time,Bunk 1,Bunk 2",
+        "9:00-9:45,Swim @ Pool,Art",
+        "12:00-12:45,Lunch,Lunch"
+      ].join("\n");
+      await choose(element, ["Monday.csv", "Tuesday.csv"], {
+        "Monday.csv": rows,
+        "Tuesday.csv": rows
+      });
+      const box = $(element, '[data-place="place|Pool"] lightning-input');
+      expect(box.checked).toBe(true);
+      box.checked = false;
+      box.dispatchEvent(new CustomEvent("change"));
+      await flush();
+      add(element).click();
+      await flush();
+      await flush();
+      const plan = JSON.parse(saveSetup.mock.calls[0][0].plan);
+      expect(plan.remember).toContainEqual({
+        key: "place|Pool",
+        answer: "leave"
+      });
+    });
+
     it("a place deleted before is not brought back silently: it is listed with Bring back", async () => {
       // Deleted on the Locations screen after an earlier import that ticked it.
       getAnswers.mockResolvedValue([
@@ -1641,7 +1668,9 @@ describe("c-shoresh-import", () => {
         "Imported from maple-grove-2026-all-camp.xlsx"
       );
       expect(version.textContent).toContain("Week 1 (Main)");
-      expect(version.textContent).toContain("View it on Saved versions");
+      // INGEST-5.15: a link that opens Saved versions.
+      const toVersions = $(element, 'button[data-id="to-versions"]');
+      expect(toVersions.textContent).toContain("Saved versions");
       // Last year's schedule drawn small beside its words, hidden from screen readers.
       const mini = version.querySelector(".mini");
       expect(mini.getAttribute("aria-hidden")).toBe("true");
@@ -1667,6 +1696,22 @@ describe("c-shoresh-import", () => {
       // Word walk W4: what it had added is gone from the page too.
       expect($(element, '[data-id="added"]')).toBeNull();
       expect($(element, '[data-id="version"]')).toBeNull();
+    });
+    describe("INGEST-5.15: Saved versions from the done page", () => {
+      it("INGEST-5.15: opens Saved versions and leaves the import ready for the next files", async () => {
+        const element = await renderWith(WITH_WEEK);
+        await choose(element, ["maple-grove-2026-all-camp.xlsx"]);
+        add(element).click();
+        await flush();
+        const navigated = jest.fn();
+        element.addEventListener("navigate", navigated);
+        $(element, 'button[data-id="to-versions"]').click();
+        await flush();
+        expect(navigated.mock.calls[0][0].detail).toEqual({
+          screen: "schedules"
+        });
+        expect($(element, '[data-id="drop"]')).not.toBeNull();
+      });
     });
   });
 });
@@ -1719,6 +1764,112 @@ describe("the tiles in a camp's words", () => {
     expect(tiles.map((x) => [x.label, x.spoken])).toEqual([
       ["Chug set", "1 Chug set"],
       ["Chugim", "2 Chugim"]
+    ]);
+  });
+});
+
+describe("INGEST-5.13: records that hold a group in no division are no division to count", () => {
+  const t = {
+    s: (x) => x,
+    p: (x) => `${x}s`,
+    sIn: (x) => x,
+    pIn: (x) => `${x}s`
+  };
+  const plan = {
+    groups: [{ name: "Otters" }, { name: "Wolves" }],
+    divisions: [
+      { name: "Otters", noDivision: true },
+      { name: "Wolves", noDivision: true },
+      { name: "Juniors" }
+    ]
+  };
+
+  it("INGEST-5.13: Comes in counts only the divisions the director will see", () => {
+    const tiles = comingIn(plan, t);
+    expect(tiles.find((x) => x.key === "Division")).toMatchObject({
+      count: 1,
+      names: ["Juniors"]
+    });
+  });
+
+  it("INGEST-5.13: Added counts only the divisions the director will see", () => {
+    expect(withoutHolders({ Group: 2, Division: 3 }, plan)).toEqual({
+      Group: 2,
+      Division: 1
+    });
+    expect(
+      withoutHolders(
+        { Group: 2, Division: 2 },
+        { divisions: plan.divisions.slice(0, 2) }
+      )
+    ).toEqual({ Group: 2 });
+  });
+});
+
+describe("INGEST-5.16: a name added more than once says when and for whom", () => {
+  const t = {
+    s: (x) => x,
+    p: (x) => `${x}s`,
+    sIn: (x) => x,
+    pIn: (x) => `${x}s`
+  };
+  it("INGEST-5.16: three Free Swims are told apart by time and group", () => {
+    const plan = {
+      timeBlocks: [
+        { key: "b1", name: "1:15 – 1:55 PM" },
+        { key: "b2", name: "2:00 – 2:40 PM" }
+      ],
+      groups: [
+        { key: "g1", name: "Otters" },
+        { key: "g2", name: "Wolves" }
+      ],
+      recurringActivities: [
+        { name: "Free Swim", blockKey: "b1", who: ["g1"] },
+        { name: "Free Swim", blockKey: "b2", who: ["g2"] },
+        { name: "Lunch", blockKey: "b1", who: ["g1", "g2"] }
+      ]
+    };
+    const tile = comingIn(plan, t).find((x) => x.key === "RecurringActivity");
+    expect(tile.names).toEqual([
+      "Free Swim · 1:15 – 1:55 PM · Otters",
+      "Free Swim · 2:00 – 2:40 PM · Wolves",
+      "Lunch"
+    ]);
+  });
+});
+
+describe("INGEST-5.16: names told apart by the camp's own blocks and groups", () => {
+  const t = {
+    s: (x) => x,
+    p: (x) => `${x}s`,
+    sIn: (x) => x,
+    pIn: (x) => `${x}s`
+  };
+  it("INGEST-5.16: a block and a group the camp has name a repeated item", () => {
+    const setup = {
+      programs: [
+        {
+          timeBlocks: [{ Id: "b1", Name: "Period 5" }],
+          divisions: [
+            {
+              division: { Id: "d1", Name: "Juniors" },
+              groups: [{ Id: "g1", Name: "Otters" }]
+            }
+          ]
+        }
+      ]
+    };
+    const plan = {
+      recurringActivities: [
+        { name: "Free Swim", blockKey: "b1", who: ["g1"] },
+        { name: "Free Swim", blockKey: "b1", who: ["d1"] }
+      ]
+    };
+    expect(
+      comingIn(plan, t, setup).find((x) => x.key === "RecurringActivity").names
+    ).toEqual([
+      "Free Swim · Period 5 · Otters",
+      "Free Swim · Period 5 · Juniors"
     ]);
   });
 });

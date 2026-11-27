@@ -124,6 +124,302 @@ describe("reading a cell", () => {
   });
 });
 
+describe("INGEST-2.25: a cell timed line by line", () => {
+  it("INGEST-2.25: a swim period's lines read as its activities, without the change and the times", () => {
+    expect(
+      cellName(
+        "9:30-9:40 Change\n9:40-10:10- Swim Lessons\n10:10-10:40- Open Swim\n10:40- 10:55 Change"
+      ).name
+    ).toBe("Swim Lessons - Open Swim");
+    expect(
+      cellName("11:40-12:00 Change\n12:00-12:30 Open Swim\n12:30-12:55 Change")
+        .name
+    ).toBe("Open Swim");
+    expect(
+      cellName("1:00-1:20- Change\n1:20-1:50 Open Swim\n1:50-2:15- Change").name
+    ).toBe("Open Swim");
+  });
+
+  it("INGEST-2.25: counter-case: Change joined to a word, with a time or not, is part of the name", () => {
+    expect(cellName("Change/Gear Up").name).toBe("Change/Gear Up");
+    expect(cellName("Change Time/Water Break").name).toBe(
+      "Change Time/Water Break"
+    );
+    expect(cellName("Puppet Show 2:15-2:45").name).toBe("Puppet Show");
+    expect(cellName("Change/Gear Up 10:00").name).toBe("Change/Gear Up");
+    expect(cellName("Change Time/Water Break 2:00-2:15").name).toBe(
+      "Change Time/Water Break"
+    );
+    expect(cellName("Change of Pace 2:00").name).toBe("Change of Pace");
+    expect(cellName("Arts - Crafts 9:00").name).toBe("Arts - Crafts");
+    expect(cellName("Change Over 9:00")).toBeNull();
+  });
+});
+
+// INGEST-2.27: cells written "Activity" over "Room". Made-up camp only.
+describe("INGEST-2.27: a file that writes each cell's room on its second line", () => {
+  const GROUPS = ["Bunk 1", "Bunk 2", "Bunk 3", "Bunk 4"];
+  const TIMES = ["9:00-9:45", "10:00-10:45", "11:00-11:45", "1:00-1:45"];
+  const ACTS = ["Art", "Drama", "Music", "Science"];
+  // Each activity's own room; Art and Music share 101.
+  const ROOM_OF = {
+    Art: "101",
+    Drama: "Gym",
+    Music: "101",
+    Science: "Studio"
+  };
+  const ROOMS = ["101", "Gym", "Studio"];
+  const DAYS = ["Monday", "Tuesday", "Wednesday"];
+  const sheetFile = (cell, { groups = GROUPS, days = DAYS } = {}) => ({
+    name: "Rooms camp.xlsx",
+    sheets: days.map((day, d) => ({
+      name: day,
+      rows: [
+        ["Time", ...groups],
+        ...TIMES.map((t, b) => [t, ...GROUPS.map((_, g) => cell(g, b, d))])
+      ]
+    }))
+  });
+  const roomed = (g, b, d) => {
+    const act = ACTS[(g + b + d) % 4];
+    return `${act}\n${ROOM_OF[act]}`;
+  };
+  const propose = (file, answers = {}) =>
+    buildProposal({ files: [file], existing: null, terms, answers });
+
+  it("INGEST-2.27: the second line comes in as the activity's place, ticked, and the name stays the activity", () => {
+    const p = propose(sheetFile(roomed));
+    expect(p.activities.map((a) => a.name).sort()).toEqual(ACTS);
+    expect(p.offeredPlaces.map((x) => [x.name, x.ticked])).toEqual(
+      ROOMS.map((r) => [r, true])
+    );
+    expect(p.locations.map((l) => l.name)).toEqual(ROOMS);
+  });
+
+  it("INGEST-2.27: empty cells and a sheet with nothing on it change nothing", () => {
+    const file = sheetFile(roomed);
+    file.sheets[0].rows[1].push(null, undefined);
+    file.sheets.push({ name: "Notes" });
+    const p = propose(file);
+    expect(p.locations.map((l) => l.name)).toEqual(ROOMS);
+  });
+
+  it("INGEST-2.27: a place unticked stays out", () => {
+    const p = propose(sheetFile(roomed), { "place|Gym": "leave" });
+    expect(p.offeredPlaces.find((x) => x.name === "Gym").ticked).toBe(false);
+    expect(p.locations.map((l) => l.name)).toEqual(["101", "Studio"]);
+  });
+
+  it("INGEST-2.27: counter-case: two activities in a cell are no activity and room", () => {
+    const pair = (g, b, d) =>
+      `${ACTS[(g + b + d) % 4]}\n${ACTS[(g + b + d + 1) % 4]}`;
+    const p = propose(sheetFile(pair));
+    expect(p.offeredPlaces).toEqual([]);
+    expect(p.activities.map((a) => a.name)).toContain("Art Drama");
+  });
+
+  it("INGEST-2.27: counter-case: a second line under every activity is no room", () => {
+    const under = (g, b, d) =>
+      `${ACTS[(g + b + d) % 4]}\n${["Rest", "Snack"][(g + d) % 2]}`;
+    const p = propose(sheetFile(under));
+    expect(p.offeredPlaces).toEqual([]);
+    expect(p.activities.map((a) => a.name)).toContain("Art Rest");
+  });
+
+  it("INGEST-2.27: counter-case: a heading on two lines stays the group's name", () => {
+    const groups = GROUPS.map((g) => `${g}\nJuniors`);
+    const p = propose(sheetFile(roomed, { groups }));
+    expect(p.groups.map((g) => g.name).join(" ")).not.toContain("@");
+    expect(p.locations.map((l) => l.name)).toEqual(ROOMS);
+  });
+
+  it("INGEST-2.27: counter-case: rooms that each hold one activity, or under a fifth of the cells, are no rooms", () => {
+    const own = (g, b, d) => {
+      const act = ACTS[(g + b + d) % 4];
+      return `${act}\nRoom ${act}`;
+    };
+    expect(propose(sheetFile(own)).offeredPlaces).toEqual([]);
+    // Five days of 16 cells: 15 two-line cells are under a fifth, 20 are not.
+    const days = [...DAYS, "Thursday", "Friday"];
+    const some = (rows) => (g, b, d) => {
+      return g === 0 && b < rows ? roomed(g, b, d) : ACTS[(g + b + d) % 4];
+    };
+    expect(propose(sheetFile(some(3), { days })).offeredPlaces).toEqual([]);
+    expect(
+      propose(sheetFile(some(4), { days })).offeredPlaces.length
+    ).toBeGreaterThan(0);
+  });
+
+  it("INGEST-2.27: counter-case: a few two-line cells keep both lines in the name, with no place", () => {
+    const few = (g, b, d) => {
+      return g === 0 && b === 0 ? `Art\n${ROOMS[d]}` : ACTS[(g + b + d) % 4];
+    };
+    const p = propose(sheetFile(few));
+    expect(p.offeredPlaces).toEqual([]);
+    expect(p.activities.map((a) => a.name)).toEqual(
+      expect.arrayContaining(["Art 101"])
+    );
+  });
+});
+
+// INGEST-2.28: a cell over two blocks written one line per block. Made-up camp only.
+describe("INGEST-2.28: a cell over blocks, a line for each", () => {
+  const sheet = (cell, other = "Swim") => ({
+    name: "Monday",
+    rows: [
+      ["Time", "Bunk 1", "Bunk 2"],
+      ["9:00-9:45", cell, "Art"],
+      ["10:00-10:45", "", "Music"],
+      ["11:00-11:45", "Swim", other]
+    ],
+    merges: [{ s: { r: 1, c: 1 }, e: { r: 2, c: 1 } }]
+  });
+  const bunk1 = (page) => page.rows.map((row) => [row.cells[0], row.spans[0]]);
+
+  it("INGEST-2.28: each block gets its own line when each is an activity of the file", () => {
+    const [page] = sheetToPages(sheet("Art / Swim\nMusic"));
+    expect(bunk1(page)).toEqual([
+      ["Art / Swim", 1],
+      ["Music", 1],
+      ["Swim", 1]
+    ]);
+    expect(page.oneName).toEqual([]);
+  });
+
+  it("INGEST-2.28: more lines than blocks stay one name over both, and the review says so once", () => {
+    const [page] = sheetToPages(sheet("Art\nMusic\nSwim"));
+    expect(bunk1(page)[0]).toEqual(["Art Music Swim", 2]);
+    expect(page.oneName).toEqual([{ text: "Art Music Swim", blocks: 2 }]);
+    const days = ["Monday", "Tuesday"].map((name) => ({
+      ...sheet("Art\nMusic\nSwim"),
+      name
+    }));
+    const p = buildProposal({
+      files: [{ name: "Week.xlsx", sheets: days }],
+      existing: null,
+      terms,
+      answers: {}
+    });
+    const said = importNotes(p, terms)
+      .map((n) => n.text)
+      .filter((text) => text.includes("without a line for each"));
+    expect(said).toEqual([
+      "Week.xlsx: “Art Music Swim” is over 2 time blocks without a line for each, so it is one activity over both."
+    ]);
+  });
+
+  it("INGEST-2.28: counter-case: a name wrapped over two lines stays one name, with no note", () => {
+    const [page] = sheetToPages(sheet("Outdoor\nAdventure"));
+    expect(bunk1(page)[0]).toEqual(["Outdoor Adventure", 2]);
+    expect(page.oneName).toEqual([]);
+  });
+
+  it("INGEST-2.28: counter-case: the same words on one line elsewhere keep the cell one name", () => {
+    const [page] = sheetToPages(sheet("Art\nMusic", "Art Music"));
+    expect(bunk1(page)[0]).toEqual(["Art Music", 2]);
+  });
+
+  it("INGEST-2.28: counter-case: on another sheet of the file too, and a wrapped name over three blocks has no note", () => {
+    const monday = sheet("Art\nMusic");
+    const tuesday = { ...sheet("Swim", "Art Music"), name: "Tuesday" };
+    const p = buildProposal({
+      files: [{ name: "Week.xlsx", sheets: [monday, tuesday] }],
+      existing: null,
+      terms,
+      answers: {}
+    });
+    expect(p.activities.map((a) => a.name)).toContain("Art Music");
+    const [page] = sheetToPages({
+      ...sheet("Outdoor\nAdventure"),
+      merges: [{ s: { r: 1, c: 1 }, e: { r: 3, c: 1 } }]
+    });
+    expect(page.oneName).toEqual([]);
+  });
+
+  it("INGEST-2.28: counter-case: the same words broken two ways are not split", () => {
+    const twice = sheet("Art\nMusic Swim");
+    twice.rows[3][2] = "Art Music\nSwim";
+    const [page] = sheetToPages(twice);
+    expect(bunk1(page)[0]).toEqual(["Art Music Swim", 2]);
+  });
+
+  it("INGEST-2.28: counter-case: a two-line cell in one block keeps both lines in its name", () => {
+    const [page] = sheetToPages({
+      ...sheet("Art\nMusic"),
+      merges: []
+    });
+    expect(bunk1(page)[0]).toEqual(["Art Music", 1]);
+  });
+});
+
+// INGEST-2.29: times written in cells. Made-up camp only.
+describe("INGEST-2.29: a cell with its own times", () => {
+  const day = (name, monday, notes = "") =>
+    csv(`${name}.csv`, [
+      ["Time", "Bunk 1", "Bunk 2", "Notes"],
+      ["9:00-9:45", monday, "Art", notes],
+      ["10:00-10:45", "Music", "Drama", ""],
+      ["11:00-11:45", "Swim", "Swim", ""]
+    ]);
+  const notesOf = (files) =>
+    importNotes(
+      buildProposal({ files, existing: null, terms, answers: {} }),
+      terms
+    ).map((n) => n.text);
+  const timed = (notes) =>
+    notes.filter((text) => text.startsWith("Times written in cells"));
+
+  it("INGEST-2.29: the review says which cells had times their block doesn't hold", () => {
+    const notes = notesOf([
+      day("Monday", "Story Time 9:30-10:15"),
+      day("Tuesday", "Hiking 8:45-9:30"),
+      day("Wednesday", "Pottery 9:10-10:00"),
+      day("Thursday", "Gaga 9:00-10:00")
+    ]);
+    expect(timed(notes)).toEqual([
+      "Times written in cells are not kept; each is in its row's time block: “Story Time 9:30-10:15”, “Gaga 9:00-10:00”, “Hiking 8:45-9:30” and 1 more."
+    ]);
+  });
+
+  it("INGEST-2.29: a cell with more than two times is named by what it is read as", () => {
+    const notes = notesOf([
+      day("Monday", "9.00-9.10 Change 9.10-9.50 Swim 9.50-10.00 Change"),
+      day("Tuesday", "Art")
+    ]);
+    expect(timed(notes)).toEqual([
+      "Times written in cells are not kept; each is in its row's time block: “Swim”."
+    ]);
+  });
+
+  it("INGEST-2.29: a name repeated into the next block is judged over both blocks", () => {
+    const twoRows = (name, first, second) =>
+      csv(`${name}.csv`, [
+        ["Time", "Bunk 1", "Bunk 2"],
+        ["9:00-9:45", first, "Art"],
+        ["10:00-10:45", second, "Drama"],
+        ["11:00-11:45", "Swim", "Swim"]
+      ]);
+    const notes = notesOf([
+      twoRows("Monday", "Hike", "Hike 10:15-11:30"),
+      twoRows("Tuesday", "Hike 9:00-10:45", "Hike 9:00-10:45")
+    ]);
+    expect(timed(notes)).toEqual([
+      "Times written in cells are not kept; each is in its row's time block: “Hike 10:15-11:30”."
+    ]);
+  });
+
+  it("INGEST-2.29: counter-case: times inside the row's block, in a column not read, or none, have no note", () => {
+    const notes = notesOf([
+      day("Monday", "Story Time 9:15-9:40", "Bus leaves 9:30"),
+      day("Tuesday", "Lunch 9:00-9:45")
+    ]);
+    expect(timed(notes)).toEqual([]);
+    expect(
+      timed(notesOf([day("Monday", "Puppet Show"), day("Tuesday", "Art")]))
+    ).toEqual([]);
+  });
+});
+
 describe("reading a file", () => {
   it("reads comma-separated files, quotes and all", () => {
     expect(parseCsv('a,"b, c","say ""hi"""\r\n1,2,3')).toEqual([
@@ -505,6 +801,229 @@ describe("the three layouts", () => {
         }
       ]);
       expect(leftOut(proposal)).toEqual([]);
+    });
+  });
+
+  describe("INGEST-2.23: a note line under a grid is a note, even with a time in it", () => {
+    const leftOut = (proposal) =>
+      importNotes(proposal, terms)
+        .filter((n) => n.key.startsWith("skipped|"))
+        .map((n) => n.text);
+    const blocksOf = (proposal) =>
+      proposal.timetables.flatMap((t) => t.blocks.map((b) => b.name));
+    const day = (d, notes) => [
+      [d],
+      ["Time", "Bunk 1", "Bunk 2"],
+      ["9:00-9:45", "Archery", "Drama"],
+      ["10:00-10:45", "Drama", "Archery"],
+      ...notes
+    ];
+
+    it("INGEST-2.23: a note naming a time adds no time block and no page", () => {
+      const note =
+        "• The printed sheet said 10:00-10:45 PM; it is the morning.";
+      const proposal = read([
+        csv("Camp.csv", [
+          ...day("Monday", []),
+          ...day("Tuesday", [[""], ["Notes"], [note]])
+        ])
+      ]);
+      expect(proposal.reading.pages.map((p) => p.day)).toEqual([
+        "Monday",
+        "Tuesday"
+      ]);
+      expect(blocksOf(proposal)).toEqual(["9:00-9:45", "10:00-10:45"]);
+      expect(JSON.stringify(leftOut(proposal))).toBe(
+        JSON.stringify([`“${note}” was left out.`, "“Notes” was left out."])
+      );
+    });
+
+    it("INGEST-2.23: a note heading under a page per group makes no group, division or program", () => {
+      const sheet = (name, notes) => ({
+        name,
+        merges: [],
+        rows: [
+          ["Time", "Monday", "Tuesday"],
+          ["9:00-9:45", "Archery", "Drama"],
+          ["10:00-10:45", "Drama", "Archery"],
+          ...notes
+        ]
+      });
+      const proposal = read([
+        {
+          name: "Camp.xlsx",
+          sheets: [
+            sheet("Otters", []),
+            sheet("Wolves", [
+              [""],
+              ["Notes"],
+              ["• Early pickup group: leaves at 12:30 PM; Friday at 12:00 PM."]
+            ])
+          ]
+        }
+      ]);
+      expect(proposal.groups.map((g) => g.name).sort()).toEqual([
+        "Otters",
+        "Wolves"
+      ]);
+      expect(proposal.timetables).toHaveLength(1);
+      expect(blocksOf(proposal)).toEqual(["9:00-9:45", "10:00-10:45"]);
+    });
+
+    it("INGEST-2.23: counter-case: a blank row named first stays a block, in one or two label columns", () => {
+      const one = read([
+        csv("Camp.csv", [
+          ["Monday"],
+          ["Time", "Bunk 1", "Bunk 2"],
+          ["9:00-9:45", "Archery", "Drama"],
+          ["Lunch 12:00-12:30", "", ""],
+          ["1:00-1:45", "Drama", "Archery"]
+        ])
+      ]);
+      expect(blocksOf(one)).toHaveLength(3);
+      const named = read([
+        csv("Camp.csv", [
+          ["Monday"],
+          ["Time", "Bunk 1", "Bunk 2"],
+          ["9:00-9:45", "Archery", "Drama"],
+          ["Lunch 12:00-12:30 p.m. Dining Hall", "", ""],
+          ["Free swim at the lake 1:00-1:45", "", ""],
+          ["2:00-2:45", "Drama", "Archery"]
+        ])
+      ]);
+      expect(blocksOf(named)).toHaveLength(4);
+      const two = read([
+        csv("Camp.csv", [
+          ["Monday"],
+          ["Period", "Time", "Bunk 1", "Bunk 2"],
+          ["Period 1", "9:00-9:45", "Archery", "Drama"],
+          ["Lunch", "12:00-12:30", "", ""],
+          ["Period 2", "1:00-1:45", "Drama", "Archery"],
+          ["Rest hour", "2:00-2:45", "", ""]
+        ])
+      ]);
+      expect(blocksOf(two)).toHaveLength(4);
+    });
+
+    it("INGEST-2.23: counter-case: a blank row whose time follows an invisible mark stays a block", () => {
+      const proposal = read([
+        csv("Camp.csv", [
+          ...day("Monday", [["\u200e11:00-11:45", "", ""]]),
+          ...day("Tuesday", [["11:00-11:45", "Swim", "Swim"]])
+        ])
+      ]);
+      expect(blocksOf(proposal)).toHaveLength(3);
+    });
+
+    it("INGEST-2.23: counter-case: a row that starts with its time stays a block, cells or not", () => {
+      const proposal = read([
+        csv("Camp.csv", [
+          ...day("Monday", [["11:00-11:45", "", ""]]),
+          ...day("Tuesday", [["11:00-11:45", "Swim", "Swim"]])
+        ])
+      ]);
+      expect(blocksOf(proposal)).toEqual([
+        "9:00-9:45",
+        "10:00-10:45",
+        "11:00-11:45"
+      ]);
+    });
+  });
+
+  describe("INGEST-2.24: sheets named for their groups under one shared heading", () => {
+    const book = (titles) => ({
+      name: "Camp.xlsx",
+      sheets: Object.entries(titles).map(([name, title]) => ({
+        name,
+        merges: [],
+        rows: [
+          [title],
+          ["Time", "Monday", "Tuesday"],
+          ["9:00-9:45", "Archery", "Drama"],
+          ["10:00-10:45", "Drama", "Archery"]
+        ]
+      }))
+    });
+
+    it("INGEST-2.24: each group is named by its sheet, and the shared heading is no division", () => {
+      const proposal = read([
+        book({
+          Otters: "Camp Pine — 2025 — Otters",
+          Wolves: "Camp Pine — 2025 — Wolves",
+          "P1 (Pre-K)": "Camp Pine — 2025 — P1 (Pre-K)"
+        })
+      ]);
+      expect(proposal.groups.map((g) => g.name).sort()).toEqual([
+        "Otters",
+        "P1 (Pre-K)",
+        "Wolves"
+      ]);
+      expect(proposal.groups.every((g) => !g.division)).toBe(true);
+      expect(questionCards(proposal, terms, {}).map((c) => c.id)).not.toContain(
+        expect.stringMatching(/^similar\|group/)
+      );
+    });
+
+    it("INGEST-2.24: the shared heading is listed once as left out", () => {
+      const proposal = read([
+        book({
+          Otters: "Camp Pine — 2025 — Otters",
+          Wolves: "Camp Pine — 2025 — Wolves"
+        })
+      ]);
+      expect(
+        importNotes(proposal, terms)
+          .filter((n) => n.key.startsWith("skipped|"))
+          .map((n) => n.text)
+      ).toEqual(["“Camp Pine — 2025” was left out."]);
+    });
+
+    it("INGEST-2.24: counter-case: a heading naming a week keeps its week", () => {
+      const proposal = read([
+        book({
+          Otters: "Camp Pine — Week 3 — Otters",
+          Wolves: "Camp Pine — Week 3 — Wolves"
+        })
+      ]);
+      expect(proposal.reading.pages.map((p) => p.week)).toEqual([
+        "Week 3",
+        "Week 3"
+      ]);
+    });
+
+    it("INGEST-2.24: counter-case: a file per division keeps its divisions", () => {
+      const file = (division, bunks) => ({
+        ...book(
+          Object.fromEntries(bunks.map((b) => [b, `${division} - ${b}`]))
+        ),
+        name: `${division}.xlsx`
+      });
+      const one = read([file("Juniors", ["Bunk 1", "Bunk 2"])]);
+      expect(one.groups.map((g) => `${g.division}/${g.name}`).sort()).toEqual([
+        "Juniors/Bunk 1",
+        "Juniors/Bunk 2"
+      ]);
+      const proposal = read([
+        file("Juniors", ["Bunk 1", "Bunk 2"]),
+        file("Seniors", ["Bunk 3", "Bunk 4"])
+      ]);
+      expect(
+        proposal.groups.map((g) => `${g.division}/${g.name}`).sort()
+      ).toEqual([
+        "Juniors/Bunk 1",
+        "Juniors/Bunk 2",
+        "Seniors/Bunk 3",
+        "Seniors/Bunk 4"
+      ]);
+    });
+
+    it("INGEST-2.24: counter-case: a heading that differs from sheet to sheet is still a division", () => {
+      const proposal = read([
+        book({ Otters: "Juniors - Otters", Wolves: "Seniors - Wolves" })
+      ]);
+      expect(
+        proposal.groups.map((g) => `${g.division}/${g.name}`).sort()
+      ).toEqual(["Juniors/Otters", "Seniors/Wolves"]);
     });
   });
 

@@ -206,14 +206,19 @@ function truthOf(camp) {
   };
 }
 
-/** INGEST-2.9: "group|MorningOnly" for each half-day group, when all it has is before noon. */
+/**
+ * INGEST-2.9 and 2.30: "group|MorningOnly" for each half-day group, when the afternoon blocks it
+ * is blank for (those after Lunch) are half of the afternoon's or more.
+ */
 function halfDayAvailability(camp) {
   if (!camp.halfDay) return [];
   const lunch = camp.blocks.findIndex((b) => b.fixed === "Lunch");
   const noon = 12 * 60;
-  const lined =
-    camp.blocks.every((b, i) => i > lunch || b.start < noon) &&
-    camp.blocks.some((b) => b.start >= noon);
+  const afternoon = camp.blocks.filter((b) => b.start >= noon).length;
+  const blank = camp.blocks.filter(
+    (b, i) => i > lunch && b.start >= noon
+  ).length;
+  const lined = blank >= 1 && blank * 2 >= afternoon;
   return lined
     ? camp.groups
         .filter((g) => g.division === camp.halfDay)

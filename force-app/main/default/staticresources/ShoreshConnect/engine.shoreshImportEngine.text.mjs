@@ -202,6 +202,11 @@ function minutesOf(hourText, minuteText, meridiem, inheritPm) {
   return (afternoon ? hour + 12 : hour) * 60 + minute;
 }
 
+/** How many times a text writes ("9:30-9:40 Change 9:40 Swim": three). */
+export function timeCount(text) {
+  return timeTokens(text).length;
+}
+
 /** Whether the text holds a clock time ("9:00", "9am", "13:30"). */
 export function hasClockTime(text) {
   return CLOCK.test(tidy(text));
@@ -358,6 +363,55 @@ export function looksLikeBlockLabel(text) {
   return !!label && (!!timeRange(label) || NAMED_BLOCK.test(label));
 }
 
+// Marks that may sit before a label's time: invisible direction marks (cells pasted from a
+// right-to-left sheet), "~", an opening bracket.
+const LEADING_MARKS = /^[\u200e\u200f\u202a-\u202e\u2066-\u2069\ufeff~([\s]+/;
+// What starts a note line: a bullet or a dash, or the word Note.
+const BULLET = /^[•·‣▪◦●○■□➢►>*\-–—]/;
+const NOTE_WORD = /^(notes?|nb|n\.b\.|please note)\b/i;
+// A sentence: ";", or a full stop after a word of two lowercase letters or more and before a
+// capital ("... in the gym. Bring water"), not an abbreviation ("p.m. Dining Hall", "Bldg. A").
+const SENTENCE = /;|[a-z]{2,}\.\s+[A-Z]/;
+
+/** Whether a label starts with its time block ("9:00-9:45", "(9:00-9:45)", "9-10", "Period 3"). */
+export function labelStartsWithBlock(text) {
+  const label = tidy(text).replace(LEADING_MARKS, "");
+  if (!label) {
+    return false;
+  }
+  if (NAMED_BLOCK.test(label)) {
+    return true;
+  }
+  const tokens = timeTokens(label);
+  if (tokens.length > 0) {
+    return tokens[0].index === 0;
+  }
+  const bare = label.match(BARE_RANGE);
+  return !!bare && bare.index === 0 && !!bareHourRange(label);
+}
+
+/**
+ * INGEST-2.23: whether a label with a time in it, alone in its row, reads as a note rather than a
+ * block's name: it does not start with its time, and it starts with a bullet, a dash or the word
+ * Note, holds a sentence (";", or a full stop after a word and before a capital, not an
+ * abbreviation such as "p.m."), or is more than five words once its times are taken out
+ * ("• Early pickup group: leaves at 12:30 PM", "Note: the printed sheet said 11:00 PM"). A block named
+ * first ("Lunch 12:00-12:30", "Lunch 12:00 p.m. Dining Hall") stays a block. The desktop never
+ * reads a line that does not start with a time as a block (extractEntities.js); a blank
+ * whole-camp row named first is kept here, as before.
+ */
+export function readsAsNote(text) {
+  const label = tidy(text).replace(LEADING_MARKS, "");
+  if (!label || labelStartsWithBlock(label)) {
+    return false;
+  }
+  const words = withoutTimes(label);
+  if (BULLET.test(label) || NOTE_WORD.test(words) || SENTENCE.test(words)) {
+    return true;
+  }
+  return words.split(/\s+/).filter(Boolean).length > 5;
+}
+
 // ---------- names in cells ----------
 
 // Not activities: a time on its own, "Block 2", a bare number, dashes, "Open".
@@ -394,6 +448,33 @@ function withoutEmoji(value) {
     : { text, emoji: "" };
 }
 
+/**
+ * INGEST-2.25: a cell's name without the times it carries. A cell timed line by line ("9:30-9:40
+ * Change / 9:40-10:10 Swim Lessons / 10:10-10:40 Open Swim / 10:40-10:55 Change")
+ * is "Swim Lessons - Open Swim": "Change" standing alone between its times is the
+ * passing time between the parts, as the desktop reads it (extractEntities.js stripTimes, which
+ * drops it wherever the cell has a time). Here only a "Change" with nothing but times, dashes and
+ * spaces on either side goes, so "Change/Gear Up 10:00", "Change of Pace 2:00" and "Change Over
+ * 9:00" (passing time, NOT_A_NAME) keep their words.
+ */
+function withoutCellTimes(text) {
+  let marked = tidy(text);
+  const tokens = timeTokens(marked);
+  if (tokens.length === 0) {
+    return withoutTimes(text);
+  }
+  for (const token of tokens) {
+    marked = marked.replace(token[0], "\u2063");
+  }
+  const alone = /(^|\u2063)([\s\-–—]*)change(?=[\s\-–—]*(?:\u2063|$))/gi;
+  marked = marked.replace(alone, "$1$2 ");
+  return tidy(
+    marked.replace(/\(?\s*\u2063\s*(?:(?:-|–|—|to)\s*\u2063?)?\s*\)?/g, " ")
+  )
+    .replace(/(?:\s[-–—])+\s/g, " - ")
+    .replace(/^[\s\-–—:,]+|[\s\-–—:,]+$/g, "");
+}
+
 export function cellName(value) {
   const plain = withoutEmoji(value);
   let text = plain.text;
@@ -409,7 +490,7 @@ export function cellName(value) {
     place = tidy(inBrackets[2]);
     bracket = true;
   }
-  const name = withoutTimes(text).replace(/^[\s\-–—:*]+|[\s\-–—:*]+$/g, "");
+  const name = withoutCellTimes(text).replace(/^[\s\-–—:*]+|[\s\-–—:*]+$/g, "");
   if (name.length < 2 || NOT_A_NAME.some((pattern) => pattern.test(name))) {
     return null;
   }

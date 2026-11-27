@@ -17,7 +17,9 @@ import {
   formerNamesOf,
   mergesFrom,
   readWithoutAsking,
-  similarPairs
+  similarPairs,
+  spellingAnswers,
+  spellingGroups
 } from "./engine.shoreshImportEngine.names.mjs";
 import { baseName, distinctName, filesToPages, sharedPrefix } from "./engine.shoreshImportEngine.sheets.mjs";
 import {
@@ -26,7 +28,7 @@ import {
   collectGroups,
   crossCheck
 } from "./engine.shoreshImportEngine.structure.mjs";
-import { WEEKDAYS, looseKey } from "./engine.shoreshImportEngine.text.mjs";
+import { WEEKDAYS, looseKey, timeCount } from "./engine.shoreshImportEngine.text.mjs";
 import { withoutWeek } from "./engine.shoreshImportEngine.weekLabels.mjs";
 import { identifyGroups } from "./engine.shoreshImportEngine.identity.mjs";
 import { countDaysFrom } from "./engine.shoreshDayNames.shoreshDayNames.mjs";
@@ -488,7 +490,26 @@ export function readImport(input) {
       firstDayOnceSaved(input.existing, saved, again.read.dayNumbers) === saved;
     reading = settles ? again : readFrom(now);
   }
-  const { unread, colours, skipped, read } = reading;
+  const { unread, colours, skipped, read, roomFiles } = reading;
+  // INGEST-2.28: a cell over blocks whose lines don't match them, once per file and wording.
+  const oneName = [
+    ...new Map(
+      reading.pages
+        .flatMap((page) =>
+          (page.oneName || []).map((x) => ({ ...x, file: page.file }))
+        )
+        .map((x) => [`${x.file}|${x.text}|${x.blocks}`, x])
+    ).values()
+  ];
+  // INGEST-2.29: a cell read with times of its own its row's block doesn't hold, as written; one
+  // with more than two ("9:40 Change 9:50 Swim …"), by its name.
+  const timedCells = [
+    ...new Set(
+      read.placements
+        .filter((p) => p.written)
+        .map((p) => (timeCount(p.written) <= 2 ? p.written : p.text))
+    )
+  ];
   const camp = campNames(input.existing);
   const pairs = [
     ...similarPairs(
@@ -511,26 +532,33 @@ export function readImport(input) {
     pairs,
     read.placements
   );
-  const settled = { ...answersFor(readAsNames), ...answers };
+  // INGEST-2.31: three spellings or more asked as one question.
+  const spellings = spellingGroups(asked, answers);
+  const { pairAnswers, chosen } = spellingAnswers(spellings, answers);
+  const given = { ...pairAnswers, ...answers };
+  const settled = { ...answersFor(readAsNames), ...given };
   const merges = {
     activity: mergesFrom(
       pairs.filter((p) => p.kind === "activity"),
-      settled
+      settled,
+      chosen.activity
     ),
     group: mergesFrom(
       pairs.filter((p) => p.kind === "group"),
-      settled
+      settled,
+      chosen.group
     ),
     division: mergesFrom(
       pairs.filter((p) => p.kind === "division"),
-      settled
+      settled,
+      chosen.division
     )
   };
   const named = applyNames(
     read.placements,
     read.noted,
     merges,
-    leftOutByPairs(pairs, answers)
+    leftOutByPairs(pairs, given)
   );
   // A group is its division and its name (Bunk 1 in Juniors is not Bunk 1 in Seniors).
   // Timetables first (they do not depend on which group is which), then each group's
@@ -583,8 +611,13 @@ export function readImport(input) {
     pages: read.info,
     unread,
     skipped,
+    roomFiles,
+    oneName,
+    timedCells,
     colours,
     pairs: asked,
+    spellings,
+    pairAnswers,
     disagreements,
     timetables,
     placements: together.placements,

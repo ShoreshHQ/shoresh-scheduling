@@ -14,7 +14,8 @@ import {
   notedKind,
   notedNames,
   setTimeRecords,
-  usablePlacements
+  usablePlacements,
+  withLunchFilled
 } from "./items";
 import { readAvailability } from "./availability";
 import { deletedAs, deletionsIn } from "./deleted";
@@ -163,7 +164,9 @@ function sameDays(record, days) {
 
 function compareRecurring(decision, record, ctx) {
   const t = decision.timetable;
-  if (decision.patterns.length !== 1 || decision.strays.length > 0) {
+  // INGEST-3.13: the file's Lunch as the import sets it up, its trip days filled.
+  const patterns = withLunchFilled(decision);
+  if (patterns.length !== 1 || decision.strays.length > 0) {
     ctx.notes.push({
       type: "kindDiffers",
       name: decision.name,
@@ -172,7 +175,7 @@ function compareRecurring(decision, record, ctx) {
     });
     return;
   }
-  const p = decision.patterns[0];
+  const p = patterns[0];
   const blockId = t.blocks[p.block].id;
   if (
     blockId === record[FIELD.RecurringActivity.TimeBlock] &&
@@ -350,7 +353,7 @@ function groupsAtOncePer(usable) {
   return most;
 }
 
-function placesFor(records, existing, answers, usable) {
+function placesFor(records, existing, answers, usable, roomFiles) {
   const fits = groupsAtOncePer(usable);
   const deletions = deletionsIn(answers);
   const deleted = [];
@@ -359,6 +362,12 @@ function placesFor(records, existing, answers, usable) {
   );
   const offered = [];
   const locations = [];
+  // INGEST-2.27: a place a file writes as its cells' second line comes in unless unticked.
+  const rooms = new Set(
+    usable
+      .filter((p) => p.place && (roomFiles || []).includes(p.file))
+      .map((p) => p.place)
+  );
   for (const name of [
     ...new Set(records.map((r) => r.place).filter(Boolean))
   ].sort()) {
@@ -378,7 +387,8 @@ function placesFor(records, existing, answers, usable) {
       deleted.push({ key: gone, kind: "Location", name, program: "" });
       continue;
     }
-    const ticked = answers[id] === "add";
+    const ticked =
+      answers[id] === "add" || (rooms.has(name) && answers[id] !== "leave");
     offered.push({
       id,
       name,
@@ -568,6 +578,7 @@ export function buildProposal(input) {
   const deletions = deletionsIn(answers);
   // Electives first (slice E9): an elective set is not a fixed, recurring or activity name.
   const electives = readElectives(usable, {
+    who: people.groups.flatMap((g) => [g.name, g.division].filter(Boolean)),
     timetables: programs.timetables,
     terms: input.terms,
     answers,
@@ -600,7 +611,10 @@ export function buildProposal(input) {
     availability,
     baseOf: new Map(people.groups.map((g) => [g.name, g.base || g.name])),
     noted,
-    similar: unansweredSimilar(reading.pairs, answers)
+    similar: unansweredSimilar(reading.pairs, {
+      ...reading.pairAnswers,
+      ...answers
+    })
   };
   const decisions = decideKinds(usable, ctx);
   const keyOf = keysFor(people.groups, input.existing, reading.identities);
@@ -636,7 +650,8 @@ export function buildProposal(input) {
     [...setTime, ...activities],
     input.existing,
     answers,
-    usable
+    usable,
+    reading.roomFiles
   );
   const proposal = {
     reading,

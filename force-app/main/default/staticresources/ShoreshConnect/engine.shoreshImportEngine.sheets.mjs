@@ -10,11 +10,13 @@
  */
 import {
   cellText,
+  dayInTitle,
   dayNumberIn,
   dayOf,
   hasClockTime,
   looseKey,
   looksLikeBlockLabel,
+  readsAsNote,
   tidy,
   timeRange,
   withoutDayNumber
@@ -22,6 +24,7 @@ import {
 import {
   isWeekHeading,
   weekInFileName,
+  weekInTitle,
   weekValue,
   withoutWeek
 } from "./engine.shoreshImportEngine.weekLabels.mjs";
@@ -289,6 +292,16 @@ class SectionReader {
       this.start(day);
       return;
     }
+    // INGEST-2.23: a line alone in its row that only mentions a time ("• Early pickup group:
+    // leaves at 12:30 PM") is a note, listed, not a block and not the next schedule's title.
+    if (
+      filled(rest) === 0 &&
+      looksLikeBlockLabel(label) &&
+      readsAsNote(this.labelColumns === 2 ? row[1] || label : label)
+    ) {
+      this.skipped.push(row.filter((c) => c !== "").join(" "));
+      return;
+    }
     if (looksLikeBlockLabel(label)) {
       this.readBlockRow(row, index, label, rest);
       return;
@@ -362,7 +375,7 @@ function blockSpans(section, merges, labelColumns) {
   return spans;
 }
 
-function sectionToPage(section, sheet, labelColumns) {
+function sectionToPage(section, sheet, labelColumns, rooms, linesOf) {
   const header = section.header.map(tidy);
   let width = header.length;
   while (width > labelColumns && !header[width - 1]) {
@@ -373,6 +386,14 @@ function sectionToPage(section, sheet, labelColumns) {
     ? carriedAcross(section.above.map(tidy), labelColumns, width)
     : columns.map(() => null);
   const spans = blockSpans(section, sheet.merges, labelColumns);
+  const rows = section.rows.map((row, i) => ({
+    label: row.label,
+    cells: columns.map((_, c) => {
+      const text = tidy(row.cells[c] || "");
+      return (rooms && rooms.get(text)) || text;
+    }),
+    spans: columns.map((_, c) => spans[i][c] || 1)
+  }));
   return {
     sheet: sheet.name,
     title: tidy(section.title || ""),
@@ -380,12 +401,37 @@ function sectionToPage(section, sheet, labelColumns) {
     corner: tidy(header.slice(0, labelColumns).join(" ")),
     columns,
     divisions,
-    rows: section.rows.map((row, i) => ({
-      label: row.label,
-      cells: columns.map((_, c) => tidy(row.cells[c] || "")),
-      spans: columns.map((_, c) => spans[i][c] || 1)
-    }))
+    rows,
+    oneName: linePerBlock(rows, linesOf)
   };
+}
+
+/**
+ * INGEST-2.28 (coordinator's call 2026-11-27, Greg can change): a cell over several blocks
+ * written one line per block ("Hiking / Tennis" over "Hiking / Kickball") gives each
+ * block its line, when each line is written alone elsewhere in the file (`cellLines`). With more
+ * or fewer lines than blocks it stays one name over them all, listed (`oneName`) so the review
+ * says so when its lines are activities. Changes `rows`.
+ */
+function linePerBlock(rows, linesOf) {
+  const oneName = [];
+  rows.forEach((row, i) => {
+    row.spans.forEach((span, c) => {
+      const cell = span >= 2 && linesOf ? linesOf.get(row.cells[c]) : null;
+      if (!cell) {
+        return;
+      }
+      if (cell.lines.length !== span && cell.known) {
+        oneName.push({ text: row.cells[c], blocks: span });
+      } else if (cell.known) {
+        cell.lines.forEach((line, j) => {
+          rows[i + j].cells[c] = line;
+          rows[i + j].spans[c] = 1;
+        });
+      }
+    });
+  });
+  return oneName;
 }
 
 // ---------- a week column (weeks.md, INGEST-4.1) ----------
@@ -745,8 +791,134 @@ export function sheetToPages(sheet, options = {}) {
   return readSheet(sheet, options).pages;
 }
 
+// A two-line cell's second line, read as its place in a file that writes "Activity / Room".
+const TWO_LINES = /^([^\n]+)\n([^\n]+)$/;
+
+function twoLines(value) {
+  const text = String(value === null || value === undefined ? "" : value)
+    .split(/\r?\n/)
+    .map((line) => tidy(line))
+    .filter(Boolean)
+    .join("\n");
+  const m = text.match(TWO_LINES);
+  return m && !hasClockTime(m[1]) && !hasClockTime(m[2]) ? [m[1], m[2]] : null;
+}
+
+/**
+ * INGEST-2.27 (coordinator's call 2026-11-27, Greg can change): a file whose cells are written
+ * "Activity / Room" on two lines reads each such cell's second line as its place ("Art" at
+ * "101"), offered ticked on the review. A file does when its two-line cells are ten or more and a
+ * fifth of its filled cells, and their second lines repeat (one under two different activities or
+ * more). A second line the file also writes as another activity ("Art" over "Drama") is no room;
+ * "Gym" over "Gym" is. Most activities have one room, or the second lines are no rooms. The
+ * desktop reads a room printed under its activity so in a PDF (textGrid.js). Returns each room
+ * cell's text read as "Art @ 101", or null when the file writes no rooms.
+ */
+function writesRooms(file) {
+  let written = 0;
+  const cells = [];
+  const activities = new Set();
+  for (const sheet of file.sheets || []) {
+    for (const row of sheet.rows || []) {
+      for (const value of Array.isArray(row) ? row.slice(1) : []) {
+        if (tidy(value) === "") {
+          continue;
+        }
+        written++;
+        const lines = twoLines(value);
+        if (lines) {
+          cells.push({ text: cellText(value), lines });
+        }
+        activities.add(looseKey(lines ? lines[0] : value));
+      }
+    }
+  }
+  // "Gym" over "Gym" is the activity named for its place.
+  const rooms = cells.filter(({ lines }) => {
+    const [name, place] = lines.map(looseKey);
+    return (
+      !lines[0].includes("@") && (name === place || !activities.has(place))
+    );
+  });
+  const under = new Map();
+  const placesOf = new Map();
+  rooms.forEach(({ lines }) => {
+    const [name, place] = lines.map(looseKey);
+    under.set(place, (under.get(place) || new Set()).add(name));
+    placesOf.set(name, (placesOf.get(name) || new Set()).add(place));
+  });
+  // Most activities have one room: under "Art / Rest", "Drama / Rest" each has several.
+  const oneRoom = [...placesOf.values()].filter((p) => p.size === 1).length;
+  const writes =
+    rooms.length >= 10 &&
+    rooms.length * 5 >= written &&
+    oneRoom * 2 > placesOf.size &&
+    [...under.values()].some((names) => names.size >= 2);
+  return writes
+    ? new Map(
+        rooms.map(({ text, lines }) => [text, `${lines[0]} @ ${lines[1]}`])
+      )
+    : null;
+}
+
+/** A cell's lines, tidied, without blanks. */
+function linesIn(value) {
+  return String(value === null || value === undefined ? "" : value)
+    .split(/\r?\n/)
+    .map((line) => tidy(line))
+    .filter(Boolean);
+}
+
+/** The names the sheets write alone in a cell, as keys (INGEST-2.28). */
+function writtenAlone(sheets) {
+  const alone = new Set();
+  sheets.forEach((sheet) =>
+    (sheet.rows || []).flat().forEach((value) => {
+      const lines = linesIn(value);
+      if (lines.length === 1) {
+        alone.add(looseKey(lines[0]));
+      }
+    })
+  );
+  return alone;
+}
+
+/**
+ * Each cell of two lines or more with no times, by the text it is read as: { lines, known }.
+ * known: every line, or every part of one ("Hiking/ Tennis"), is written alone elsewhere, so the
+ * lines are activities and not one name wrapped ("Outdoor" over "Adventure"). Two cells read as
+ * the same text but broken differently, or once on one line, are neither.
+ */
+function cellLines(sheet, alone) {
+  const isKnown = (line) =>
+    line
+      .split(/[/,;]/)
+      .map((part) => tidy(part))
+      .filter(Boolean)
+      .every((part) => alone.has(looseKey(part)));
+  const linesOf = new Map();
+  (sheet.rows || []).flat().forEach((value) => {
+    const lines = linesIn(value);
+    if (lines.length < 2 || lines.some((line) => hasClockTime(line))) {
+      return;
+    }
+    const text = cellText(value);
+    const before = linesOf.get(text);
+    if (before === undefined) {
+      linesOf.set(text, { lines, known: lines.every(isKnown) });
+    } else if (before && before.lines.join("\n") !== lines.join("\n")) {
+      linesOf.set(text, null);
+    }
+  });
+  [...linesOf.keys()]
+    .filter((text) => alone.has(looseKey(text)))
+    .forEach((text) => linesOf.delete(text));
+  return linesOf;
+}
+
 /** sheetToPages, with the lines it read as no schedule's: { pages, skipped }. */
 function readSheet(sheet, options) {
+  const linesOf = cellLines(sheet, options.named || writtenAlone([sheet]));
   const table = (sheet.rows || []).map((row) => {
     return Array.isArray(row) ? row.map(cellText) : [];
   });
@@ -763,7 +935,16 @@ function readSheet(sheet, options) {
   const unmerged = { ...sheet, merges: split.merges };
   const pages = sections.flatMap((section, index) => {
     const read = byWeek(
-      { ...sectionToPage(section, unmerged, labelColumns), section: index },
+      {
+        ...sectionToPage(
+          section,
+          unmerged,
+          labelColumns,
+          options.rooms,
+          linesOf
+        ),
+        section: index
+      },
       section.rawIndexes.map((i) => split.weekOf[i])
     ).filter((page) => page.columns.some(Boolean) && page.rows.length > 0);
     // A grid with no column names is no page: its title lines are left out too.
@@ -794,8 +975,14 @@ export function filesToPages(files, options = {}) {
   const unread = [];
   const colours = [];
   const skipped = new Set();
+  const roomFiles = [];
   const perFile = (files || []).map((file) => {
     const read = [];
+    const rooms = writesRooms(file);
+    const named = writtenAlone(file.sheets || []);
+    if (rooms) {
+      roomFiles.push(file.name);
+    }
     for (const sheet of file.sheets || []) {
       const rows = (sheet.rows || []).map((row) => {
         return Array.isArray(row) ? row.map(cellText) : [];
@@ -803,7 +990,11 @@ export function filesToPages(files, options = {}) {
       readColourKey(rows).colours.forEach((c) =>
         colours.push({ ...c, file: file.name })
       );
-      const { pages: found, skipped: lines } = readSheet(sheet, options);
+      const { pages: found, skipped: lines } = readSheet(sheet, {
+        ...options,
+        rooms,
+        named
+      });
       if (found.length === 0 && sheetHasContent(sheet)) {
         unread.push({ file: file.name, sheet: sheet.name });
       } else {
@@ -814,10 +1005,20 @@ export function filesToPages(files, options = {}) {
     return { file, read };
   });
   const notes = notesAboveEveryPage(perFile);
-  for (const { file, read: found } of perFile) {
+  const sheetNamed = sheetNamesOverHeading(
+    perFile.map(({ file, read: found }) => {
+      const named = sheetsNameTheirPages(found, options.maxWeek);
+      return {
+        file,
+        named,
+        read: found.map((page) => withoutNotes(page, notes, named))
+      };
+    }),
+    options.maxWeek
+  );
+  sheetNamed.dropped.forEach((line) => skipped.add(line));
+  for (const { file, read } of sheetNamed.files) {
     const fileTitle = baseName(file.name);
-    const named = sheetsNameTheirPages(found, options.maxWeek);
-    const read = found.map((page) => withoutNotes(page, notes, named));
     read.forEach((page) =>
       page.titles
         .filter((line) => line !== page.title)
@@ -848,7 +1049,13 @@ export function filesToPages(files, options = {}) {
       });
     });
   }
-  return { pages, unread, colours, skipped: [...skipped].filter(Boolean) };
+  return {
+    pages,
+    unread,
+    colours,
+    skipped: [...skipped].filter(Boolean),
+    roomFiles
+  };
 }
 
 // ---------- a note written above every page (INGEST-2.7) ----------
@@ -893,6 +1100,70 @@ function sheetsNameTheirPages(read, maxWeek) {
     names.length > 1 &&
     names.every((n) => !isGenericTitle(n) && !onlyDayOrWeek(n))
   );
+}
+
+// The separator before a sheet's name at the end of its title: "Camp — 2025 — Otters".
+const TITLE_SEPARATOR = /\s+[-–—:|]\s+$/;
+
+/**
+ * INGEST-2.24: sheets that name their pages, each titled the same heading then its sheet's name
+ * ("Camp — 2025 — Otters" on sheet "Otters", "Camp — 2025 — Wolves" on sheet "Wolves"), the
+ * heading one and the same over every such file: each page is named by its sheet, and the
+ * heading is the camp's, not a division (listed once as left out). The desktop names such pages
+ * by their sheets (sheetGrid.js) and never reads the line. Kept as before: a heading that differs
+ * from sheet to sheet or from file to file ("Juniors - Bunk 1" in one file, "Seniors - Bunk 3" in
+ * the next: a division), and one that names a week, a day or a date. Returns { files, dropped }.
+ */
+function sheetNamesOverHeading(files, maxWeek) {
+  const lead = (page) => {
+    const title = tidy(page.title);
+    const sheet = tidy(page.sheet);
+    if (
+      !sheet ||
+      title.length <= sheet.length ||
+      looseKey(title.slice(-sheet.length)) !== looseKey(sheet)
+    ) {
+      return null;
+    }
+    const before = title.slice(0, -sheet.length);
+    return TITLE_SEPARATOR.test(before)
+      ? tidy(before.replace(TITLE_SEPARATOR, ""))
+      : null;
+  };
+  const candidates = files.filter((f) => f.named && f.read.length > 0);
+  const leads = candidates.flatMap((f) => f.read.map(lead));
+  const heading = leads[0];
+  if (
+    leads.length < 2 ||
+    !heading ||
+    leads.some((l) => l === null || looseKey(l) !== looseKey(heading)) ||
+    // One name alone ("Juniors" over "Juniors - Bunk 1") may be a division: only a heading of
+    // its own parts or with a year ("Camp Pine — 2025") is the camp's.
+    !(/\s[-–—:|]\s/.test(heading) || /\b(19|20)\d{2}\b/.test(heading)) ||
+    candidates.some(
+      (f) => looseKey(baseName(f.file.name)) === looseKey(heading)
+    ) ||
+    weekInTitle(heading, { bareDates: true, maxWeek }) ||
+    dayInTitle(heading) ||
+    /\d{1,2}[/.]\d{1,2}|\b(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\.?\s+\d/i.test(
+      heading
+    )
+  ) {
+    return { files, dropped: [] };
+  }
+  const bySheet = (page) => ({
+    ...page,
+    title: page.sheet,
+    titles: page.titles.map((line) => {
+      return line === page.title ? page.sheet : line;
+    })
+  });
+  return {
+    files: files.map((f) => {
+      return candidates.includes(f) ? { ...f, read: f.read.map(bySheet) } : f;
+    }),
+    dropped: [heading]
+  };
 }
 
 /**

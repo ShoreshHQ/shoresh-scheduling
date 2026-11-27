@@ -305,6 +305,180 @@ Each rule is clue, meaning, example, test.
     renamed in two divisions, or kept in another, is read as before. Code:
     `names.js` `formerNamesOf`, `similarPairs`; `FormerNames.cls`.
 
+23. **A note line under a grid that mentions a time** (import battle test, 2026-11-27).
+    Clue: a line alone in its row, in the time column, that has a time in it but does not start
+    with one, and reads as a note: it starts with a bullet, a dash or the word Note, holds a
+    sentence (";", or a full stop after a word and before a capital; "p.m." is no sentence), or is
+    more than five words once its times are taken out ("• Early pickup group: leaves at 12:30 PM",
+    "Note: the printed sheet said 11:00 PM"); often under a heading such as "Notes".
+    Meaning: a note, listed in the import's notes like any other left-out line (rule 7); it is no
+    time block, and neither it nor the heading above it starts a page, so it makes no group,
+    division or program. A row whose label starts with its time ("11:00-11:45", "(9:00-9:45)",
+    "Period 3", after an invisible direction mark) is a block as before, and so is a blank row
+    whose block is named first ("Lunch 12:00-12:30", "Lunch 12:00 p.m. Dining Hall", or "Lunch"
+    beside "12:00-12:30" where the times have a column of their own). The desktop never reads a
+    line that does not start with a clock time as a block (`src/ingest/extractEntities.js` time-block rule); it reads one label
+    column only, so the name-first block is Shoresh's own, kept as before.
+    Test: `reading.test.js` "INGEST-2.23: …" (a note naming a time adds no block and no page; a
+    note heading under a page per group makes no group, division or program). Counter-cases: a row
+    that starts with its time stays a block, cells or not; a blank row named first stays a block,
+    in one or two label columns, a long name or "p.m." in it; a blank row whose time follows an invisible mark stays a block.
+    Code: `text.js` `labelStartsWithBlock`, `readsAsNote`; `sheets.js` `SectionReader.readRow`.
+
+24. **Sheets named for their groups under one shared heading** (import battle test,
+    2026-11-27).
+    Clue: files of several sheets that name their pages (rule 7), each with a title line that is
+    one and the same heading then the sheet's name ("Camp Pine — 2025 — Otters" on sheet
+    "Otters", "Camp Pine — 2025 — Wolves" on sheet "Wolves"), the heading the same in every such
+    file, of parts of its own or with a year, and not a file's own name.
+    Meaning: each page is named by its sheet ("Otters"), and the heading is the camp's, not a
+    division; it is listed once in the import's notes as left out, and nothing is asked about
+    it. The title was read as division "Camp Pine" and group "2025 — Otters", and "2025 — PA"
+    and "2025 — PB" were asked as the same group. The desktop names such pages by their sheets
+    and never reads the line (`src/ingest/sheetGrid.js`). Kept as before: a heading that differs
+    from sheet to sheet or from file to file ("Juniors - Bunk 1" in one file, "Seniors - Bunk 3"
+    in the next: each page's division), one name alone, which may be a division ("Juniors - Bunk
+    1" in Juniors.xlsx, or alone in its file), and a heading that names a week, a day or a date
+    ("Camp Pine — Week 3 — Otters" keeps its week).
+    Test: `reading.test.js` "INGEST-2.24: …" (each group named by its sheet, the heading no
+    division and no group asked as similar; the heading listed once as left out). Counter-cases: a
+    heading naming a week keeps its week; a file per division keeps its divisions, alone or with others; a heading that
+    differs from sheet to sheet is still a division. Code: `sheets.js` `sheetNamesOverHeading`,
+    `filesToPages`.
+
+25. **A cell timed line by line** (import battle test, 2026-11-27).
+    Clue: a cell that carries its own times, often over two blocks and one line per part
+    ("9:30-9:40 Change / 9:40-10:10 Swim Lessons / 10:10-10:40 Open Swim /
+    10:40-10:55 Change").
+    Meaning: its name is the parts without their times and without a "Change" that stands alone
+    between them (the passing time): "Swim Lessons - Open Swim"; "11:40-12:00 Change
+    / 12:00-12:30 Open Swim / 12:30-12:55 Change" is "Open Swim". It was "Change -
+    Swim Lessons - Open Swim Change", a six-line name on the schedule. The desktop
+    reads it so (`src/ingest/extractEntities.js` `stripTimes`), though it drops "Change" anywhere
+    in a timed cell; here a "Change" joined to a word keeps it: "Change/Gear Up 10:00", "Change of
+    Pace 2:00", and "Change Over 9:00", which is passing time and no name.
+    Test: `reading.test.js` "INGEST-2.25: …". Counter-case: Change joined to a word, with a time or
+    not, is part of the name. Code: `text.js` `withoutCellTimes`, `cellName`.
+
+26. **A list needs two names of two letters or more** (import battle test, 2026-11-27).
+    Clue: a cell with "/", "," or ";" whose parts are not names: a group's number ("Baking
+    with 4/5C"), a code ("B/D"), week numbers ("Water Slide Weeks 2, 4, 6-8").
+    Meaning: one name, as written, with no question. A list (asked "one activity or a choice?")
+    needs two parts of two letters or more, counted over every mark ("Soccer/Basketball 1, 2" is
+    asked). A choice read without asking needs three different parts or more on one mark, each a
+    name of two letters or more with no other mark in it, no "&" or "and", four words at most, no
+    more digits than letters and no day's name, in a cell with no ":"; a list naming one of the
+    camp's own groups or divisions ("Otters, Wolves, Herons") is asked, never a choice. "Water
+    Slide Weeks 2, 4, 6-8" was read as electives "4", "6-8" and "Water Slide Weeks 2"; "4/5C"
+    as a choice of "Baking with 4" or "5C". The desktop splits and asks so
+    (`src/ingest/splitListCell.js` `strictSplit`, `looksListLike`; `buildPlan.js` for groups).
+    Test: `electives.test.js` "INGEST-2.26: …". Counter-cases: a list of days or with a colon is
+    asked, never read as a choice; a nested mark or a repeat is asked; a list of the camp's own
+    groups is asked. Code: `electives.js` `listShape`, `readingOf`; `proposal.js` (who).
+
+27. **A room written on a cell's second line is its place** (import battle test, 2026-11-27;
+    coordinator's call 2026-11-27, Greg can change).
+    Clue: a file whose cells are written as two lines, an activity over a room ("Art" over "101"):
+    ten such cells or more, a fifth of its filled cells or more, and one second line under two
+    different activities or more. A second line the file also writes as another activity ("Art"
+    over "Drama") is no room ("Gym" over "Gym" is), and only the grid's cells are read so: a
+    heading on two lines stays the group's name. Most of the activities have one room each, or
+    the second lines are no rooms ("Art / Rest", "Drama / Rest", "Art / Snack").
+    Meaning: the first line is the activity and the second its place, offered under the places that
+    come in on the review and ticked, so the director sees them and unticks one that is not a
+    place; unticked, it stays out on the next import. As with "Art @ Art room", an activity written
+    in two rooms or more gets no place. It was "Art 101", one activity per room and activity, and
+    no places. The desktop reads a room printed under its activity so in a PDF
+    (`src/ingest/textGrid.js`) and proposes places for the director to confirm
+    (`src/ingest/locationsFromActivities.js`).
+    Test: `reading.test.js` "INGEST-2.27: …"; `kinds.test.js` (an unticked place reads "Left out"
+    under remembered answers). Counter-cases: a few two-line cells, rooms that each hold one
+    activity, or under a fifth of the cells keep both lines in the name, with no place; two
+    activities in a cell are no activity and room; a second line under every activity is no room; a
+    heading on two lines stays the group's name.
+    Code: `sheets.js` `writesRooms`, `sectionToPage`; `proposal.js` `placesFor`; `shoreshImport.js`
+    `handlePlace`.
+
+28. **A cell over blocks written a line for each gives each block its line** (import battle test,
+    2026-11-27; coordinator's call 2026-11-27, Greg can change).
+    Clue: a cell merged over two blocks or more, written on as many lines, none with a time, each
+    line (or each part of one, split at "/", "," or ";") written alone in another cell of the file
+    ("Art / Swim" over "Music" across two blocks, with Art, Swim and Music elsewhere).
+    Meaning: the first block has the first line and the second the second, each its own activity
+    for one block. A name wrapped over two lines ("Outdoor" over "Adventure"), or the same words
+    written on one line anywhere in the file, stays one name over the blocks, as before. With more or fewer
+    lines than blocks it stays one name over them all, and when its lines are activities the
+    review's notes say so once ("… is
+    over 2 time blocks without a line for each, so it is one activity over both"). In a file that
+    writes rooms (rule 27) a two-line cell is an activity and its room, not two activities. It was
+    one activity, the lines joined, over both blocks. The desktop reads a merged cell as one entry
+    over its blocks (`src/ingest/sheetGrid.js`, `docs/adr/2026-08-24-merged-cell-multiblock-ingest.md`);
+    a file that says block 1 is the first line means two activities.
+    Test: `reading.test.js` "INGEST-2.28: …". Counter-cases: a name wrapped over two lines, the same
+    words on one line elsewhere, and a two-line cell in one block keep one name. Code: `sheets.js`
+    `cellLines`, `linePerBlock`; `plan.js` `importNotes`.
+
+29. **Times written in cells are said on the review** (import battle test, 2026-11-27;
+    coordinator's call 2026-11-27, Greg can change).
+    Clue: a cell read as an activity (or a group, in a file by activity) with a time of its own
+    that the blocks it is over don't hold ("Puppet Show 2:15-2:45" in the 2:00-2:40 row; a name
+    repeated into the next block is over both), or with more than two times (a period with its own
+    parts, rule 25).
+    Meaning: the activity is read in its row's block, as before, and the review's notes say the
+    times were not kept, naming the first three such cells in the order the files are read and how
+    many more: "Times written in cells are not kept; each is in its row's time block: “Story Time
+    2:15-2:45”, … and 1 more." A cell with more than two times is named by what it is read as
+    ("Swim"). A time inside its row's block ("Lunch 12:00-12:45" in the 12:00-12:45 row), a cell
+    in a column that is read as no group's, and a cell that is only a time say nothing. It was
+    dropped without a word. The desktop drops the times too (`src/ingest/extractEntities.js`
+    `stripTimes`) and says nothing.
+    Test: `reading.test.js` "INGEST-2.29: …". Counter-cases: times inside the row's block, in a
+    column not read, or none, have no note. Code: `layouts.js` `ownTimes`; `reading.js`
+    (`timedCells`); `plan.js` `importNotes`.
+
+30. **A group empty every afternoon is here mornings, whenever it leaves** (import battle test,
+    2026-11-27; coordinator's call 2026-11-27, Greg can change).
+    Clue: a new group that, on each of its days (two or more), is blank in the afternoon blocks the
+    other groups have from one block on to the end of the day, those being half of that day's
+    afternoon blocks or more, though it leaves at another time on another day (after a 12:00 Lunch
+    on Monday, before it on Friday).
+    Meaning: it comes in Morning only, listed under "Shoresh read these as" with All day, as rule 9
+    does (review.md INGEST-5.9). A new afternoon block it still has cells in (its Lunch at noon) is
+    read as a morning block, so Morning only keeps it, and the review's notes say so ("Lunch
+    (12:00–12:45) is read as morning: Bunk 1, Bunk 2 are here for it and then go home"). Where such a block
+    is the camp's own, a group read as here mornings is not here for it (gone home at noon, rule
+    9), or a group read as here afternoons has it, the group stays all day: the block would
+    otherwise be scheduled for a group gone home, or taken from one that is there. It was all
+    day, scheduled until the end of the afternoon. The desktop has no such rule.
+    Test: `availability.test.js` "INGEST-2.30: …". Counter-cases: leaving for the last block only,
+    or an afternoon there on one day, stays all day; a morning group gone home by noon keeps the
+    noon block an afternoon one; answered All day, the block is an afternoon one again. Code: `availability.js` `emptyEveryAfternoon`, `lateMorning`, `readAvailability`;
+    `plan.js` `blockRecords`, `importNotes`. The level-3 corpus truth follows it
+    (`scripts/import-corpus/level3.js`).
+
+31. **Three spellings or more are one question** (import battle test, 2026-11-27; coordinator's
+    call 2026-11-27, Greg can change).
+    Clue: three names or more of one kind joined by similar pairs that are asked, none of them
+    answered on its own (or remembered) and none of the names paired with a name the camp has:
+    "Music" most days, "Musik" once, "Muzic" once. With such a pair or answer, the pairs keep
+    their own questions, so the camp's name still wins and "keep them all" is never offered for
+    names already the same.
+    Meaning: one card, "Are these the same activity?", that lists every spelling with how often
+    the file has it and offers "Same: call them all …" for each, "Different: keep them all", or
+    leave them out. The name chosen is the one kept for all of them; the answer is remembered
+    under the card's key (`spellings|activity|Music|Musik|Muzic`) and reads in camp words under
+    remembered answers, to forget only (it is a name). It was one question per pair: five for four
+    spellings, whose answers could disagree. Two spellings are still one pair's question. The
+    answer is remembered for those very spellings: a later file with a spelling more or fewer asks
+    again. The
+    desktop proposes one merge per pair (`src/ingest/nearDuplicateNames.js`
+    `findNameVariantCandidates`).
+    Test: `names.test.js` "INGEST-2.31: …"; `kinds.test.js` (in camp words). Counter-cases: kept
+    apart, all three stay; two spellings are still one pair; a spelling paired with a name the
+    camp has, or a pair answered alone, keeps the pairs' questions. Code: `names.js` `spellingGroups`,
+    `spellingAnswers`, `mergesFrom`; `reading.js`; `questions.js` `pairCards`, `spellingCard`;
+    `plan.js` `answersToKeep`; `shoreshLearned/kinds.js` `spellings`.
+
 ## With the classification rules
 
 - A division of one is a whole division for classification rule 7: an item only CIT has in one
@@ -330,10 +504,11 @@ Each rule is clue, meaning, example, test.
   blocks miss a half-day division is unsure (rule 6) and its layout is asked (level-3 corpus,
   three camps).
 
-- Rule 9 needs every cell a group has to be on its side of noon: a division that eats a Lunch at
-  12:15 and then goes home stays all day (its afternoon cells are blank, not a gap question), so
-  the director sets it on the Groups screen (level-3 corpus: 26 of 114 half-day camps). Rule 9
-  reads only new groups: a group the camp has keeps its own choice.
+- Rule 9 needs every cell a group has to be on its side of noon; rule 30 reads a division that
+  eats a Lunch at 12:15 and then goes home, when the afternoon after it is half the afternoon or
+  more. Rules 9 and 30 read only new groups: a group the camp has keeps its own choice. Under
+  rule 30 the block it is still here for is a morning block for every group, so a half-day group
+  that leaves before it on one day is scheduled in it that day.
 
 ## What stays the same
 

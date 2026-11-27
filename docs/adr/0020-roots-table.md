@@ -194,10 +194,14 @@ it. Its building blocks are the menu's own sections, laid on a calm table as can
       or with seats not filled in.
     - **What the table already draws as missing** (choice 2; decision 29, a dashed outline is
       what is missing): a week close at hand (under way today, or starting in the next seven
-      days) with no schedule (the Weeks card's outline bars); activities with no place, in a
-      camp that has places (a camp with none doesn't use them: desktop `readiness.js`
-      `OPTIONAL_AREAS`); a special day or event put on a day with nothing planned in it (its
-      dashed flag).
+      days) with no schedule (the Weeks card's outline bars); activities with no place, also
+      in a season with no places at all (the desktop treats places as optional, `readiness.js`
+      `OPTIONAL_AREAS`, and this card first did too; changed 2026-11-27 after the import battle
+      test: an import that reads no places left every activity with none and Roots said "Nothing
+      needs a look", so the director never learned it; with no places at all the card opens
+      Locations, where the places are made, and names three activities, then how many more); a
+      special day or event put on a day with
+      nothing planned in it (its dashed flag).
     - **The Elective seats counter's "kept below minimum"** (ADR 0018 choice 36) for the run the
       table shows, read in the same one request.
       Each card says exactly what is off at a glance: its name (the one thing it is about, or the

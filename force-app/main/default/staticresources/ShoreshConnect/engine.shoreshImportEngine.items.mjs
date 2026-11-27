@@ -162,6 +162,14 @@ function timetableFacts(t, usable, ctx) {
     ])
   );
   const busy = busyMap(here, ctx.noted);
+  // INGEST-3.13: where a trip or event written in the file has a group away.
+  const away = new Set(
+    here
+      .filter((p) => notedKind(ctx.noted, p.timetable, p.text))
+      .flatMap((p) =>
+        blocksOf(p).map((b) => `${p.week}|${p.group}|${p.day}|${b}`)
+      )
+  );
   const present = new Set(
     [...busy.keys()].map((k) => k.split("|").slice(0, 3).join("|"))
   );
@@ -172,6 +180,7 @@ function timetableFacts(t, usable, ctx) {
     daysByWeek,
     weeks,
     busy,
+    away,
     present,
     // INGEST-2.9: a group here for part of the day is away the other part, not a gap.
     atCamp: (group, block) => atCampIn(ctx.availability, t, group, block),
@@ -259,10 +268,17 @@ function verdictFor(name, t, facts, decided, ctx) {
   decided = { ...decided, patterns: regular };
   const several = ctx.timetables.filter((x) => !x.leftOut).length > 1;
   const id = `kind|${name}${several ? `|${t.name}` : ""}`;
+  const given = kindAnswer(
+    ctx.answers,
+    id,
+    name,
+    several ? t.name : null,
+    t.name
+  );
   if (decided.verdict !== "ask") {
     // review.md INGEST-5.1: read without asking, and listed under "Read as" with a one-click
     // change; a change that fits the name's pattern is the director's.
-    const changed = ctx.answers[id];
+    const changed = given;
     const kind =
       changed && kindsThatFit(decided).includes(changed)
         ? changed
@@ -277,15 +293,30 @@ function verdictFor(name, t, facts, decided, ctx) {
     several,
     facts: decided,
     timetable: t,
-    timetableFacts: facts
+    timetableFacts: facts,
+    ...(given && !ctx.answers[id] ? { carried: given } : {})
   });
-  const answer = ctx.answers[id];
+  const answer = given;
   return {
     ...decided,
     kind: answer || "activity",
     asked: id,
     leftOut: answer === LEAVE_OUT
   };
+}
+
+/**
+ * INGEST-5.14: a kind answer given before the programs changed. The key names the program only
+ * when there are several ("kind|Lunch|Main"); leaving one program out made it "kind|Lunch" and the
+ * answer was dropped without a word. With one program left, the answer given for that same
+ * program is kept; with several, a one-program answer can't tell which program it was for and is
+ * asked again. The desktop keeps every other answer when one changes (ImportScreen.jsx).
+ */
+function kindAnswer(answers, id, name, program, only) {
+  if (answers[id]) {
+    return answers[id];
+  }
+  return program ? undefined : answers[`kind|${name}|${only}`];
 }
 
 /** The cells of each name in one timetable, names in order: [[name, cells]]. */
@@ -450,7 +481,98 @@ export function setTimeRecords(decision, keyOf) {
       place
     }));
   }
-  return decision.patterns.map((p) => ({
+  return withLunchFilled(decision).map((p) =>
+    recurringRecord(decision, keyOf, t, place, p)
+  );
+}
+
+/**
+ * INGEST-3.13 (coordinator's call 2026-11-27, Greg can change): groups at camp on a day the
+ * file shows no Lunch for them, a trip or event written over their Lunch's time block, have Lunch
+ * that day there: in their division's Lunch there, or with their own Lunch's days widened. Only when
+ * each is at camp in that block with nothing else there that day; no record is added. The
+ * patterns, the one now having Lunch for them with lunchFor, said on the review. As they are for
+ * anything not named Lunch.
+ */
+export function withLunchFilled(decision) {
+  const facts = decision.facts;
+  if (!/\blunch\b/i.test(decision.name) || !facts.present) {
+    return decision.patterns;
+  }
+  const patterns = decision.patterns.map((p) => ({
+    ...p,
+    days: [...p.days],
+    groups: [...p.groups]
+  }));
+  const week = decision.week;
+  // Only a day some group has Lunch: a short Friday or a cookout day has none to fill.
+  const days = [
+    ...new Set([
+      ...patterns.flatMap((p) => p.days),
+      ...decision.cells.filter((c) => c.week === week).map((c) => c.day)
+    ])
+  ];
+  const hasLunch = (g, d) =>
+    patterns.some((p) => p.groups.includes(g) && p.days.includes(d));
+  // The Lunch a group has most days first: its usual time, not a Friday's own.
+  const byDays = [...patterns].sort((a, b) => b.days.length - a.days.length);
+  for (const mine of byDays) {
+    const blocks = Array.from(
+      { length: mine.length },
+      (_, k) => mine.block + k
+    );
+    // Each of its groups is at camp that day with no Lunch read or written, and at camp in its
+    // block with nothing else there.
+    const free = (d) =>
+      mine.groups.every(
+        (g) =>
+          !hasLunch(g, d) &&
+          facts.present.has(`${week}|${g}|${d}`) &&
+          !decision.cells.some(
+            (c) => c.group === g && c.day === d && c.week === week
+          ) &&
+          blocks.every(
+            (b) =>
+              facts.atCamp(g, b) &&
+              !facts.busy.has(`${week}|${g}|${d}|${b}`) &&
+              // A trip or event written over it: a blank block is a group gone home.
+              !!facts.away &&
+              facts.away.has(`${week}|${g}|${d}|${b}`)
+          )
+      );
+    const missing = days.filter(free);
+    if (missing.length === 0) {
+      continue;
+    }
+    const widened = [...mine.days, ...missing].sort();
+    const divisions = new Set(mine.groups.map((g) => facts.divisionOf.get(g)));
+    const same = (p) =>
+      p !== mine && p.block === mine.block && p.length === mine.length;
+    // Its division's Lunch at the same time block on those days, else its own widened; one
+    // record, never two alike.
+    // Only a Lunch on exactly those days: one on more would give its groups a second Lunch
+    // on a day they have one elsewhere.
+    const alike = patterns.filter(
+      (p) => same(p) && p.days.join() === widened.join()
+    );
+    const into =
+      alike.find((p) =>
+        p.groups.some((x) => divisions.has(facts.divisionOf.get(x)))
+      ) || alike[0];
+    if (into) {
+      into.groups.push(...mine.groups);
+      patterns.splice(patterns.indexOf(mine), 1);
+    } else {
+      mine.days = widened;
+    }
+    const target = into || mine;
+    target.lunchFor = [...(target.lunchFor || []), ...mine.groups];
+  }
+  return patterns;
+}
+
+function recurringRecord(decision, keyOf, t, place, p) {
+  return {
     kind: "recurring",
     key: `R|${t.key}|${decision.name}|${p.block}|${p.length}|${p.days.join(",")}`,
     groups: p.groups,
@@ -462,8 +584,9 @@ export function setTimeRecords(decision, keyOf) {
     length: p.length,
     days: WEEKDAYS.filter((d) => p.days.includes(d)),
     who: whoOf(p.groups, decision.facts, keyOf, t.key),
-    place
-  }));
+    place,
+    lunchFor: p.lunchFor
+  };
 }
 
 /**

@@ -272,7 +272,7 @@ function keptSpelling(members, votes, campNames) {
  * them is already set up, otherwise the one chosen most often (then alphabetical), so answers
  * never swap names around. Returns a Map(name -> name kept), for the names that change.
  */
-export function mergesFrom(pairs, answers) {
+export function mergesFrom(pairs, answers, chosen = new Map()) {
   const parent = new Map();
   const votes = new Map();
   const campNames = new Set();
@@ -299,10 +299,77 @@ export function mergesFrom(pairs, answers) {
   }
   const resolved = new Map();
   for (const members of sets.values()) {
-    const kept = keptSpelling(members, votes, campNames);
+    // INGEST-2.31: the name chosen for a group of spellings is the one kept.
+    const picked = members.find((m) => chosen.has(m));
+    const kept = picked
+      ? chosen.get(picked)
+      : keptSpelling(members, votes, campNames);
     members.filter((m) => m !== kept).forEach((m) => resolved.set(m, kept));
   }
   return resolved;
+}
+
+/**
+ * INGEST-2.31 (coordinator's call 2026-11-27, Greg can change): three spellings or more of one
+ * kind joined by asked pairs, none answered alone and none paired with a name the camp has ("Free
+ * Swim", "Free swim!", "Freeswim"): one question, one name chosen for them all. Returns [{ id, kind, names,
+ * counts, pairs }], id "spellings|kind|name|…" (names sorted).
+ */
+export function spellingGroups(pairs, answers) {
+  // A name paired with one the camp has keeps that question: the camp's name wins it.
+  const campPaired = new Set(
+    pairs.filter((p) => p.existing).map((p) => `${p.kind}|${p.a}`)
+  );
+  const open = pairs.filter((p) => !p.existing);
+  const parent = new Map();
+  const join = (x, y) => {
+    [x, y].forEach((n) => parent.has(n) || parent.set(n, n));
+    parent.set(rootOf(parent, x), rootOf(parent, y));
+  };
+  open.forEach((p) => join(`${p.kind}|${p.a}`, `${p.kind}|${p.b}`));
+  const groups = new Map();
+  for (const p of open) {
+    const root = rootOf(parent, `${p.kind}|${p.a}`);
+    const group = groups.get(root) || { kind: p.kind, pairs: [], counts: {} };
+    group.pairs.push(p);
+    group.counts[p.a] = p.aCount;
+    group.counts[p.b] = p.bCount;
+    groups.set(root, group);
+  }
+  // Any pair already answered on its own (or remembered) keeps the pairs' questions: one card
+  // would offer "keep them all" for names already the same.
+  return [...groups.values()]
+    .map((g) => ({ ...g, names: Object.keys(g.counts).sort(compareText) }))
+    .filter(
+      (g) =>
+        g.names.length >= 3 &&
+        g.pairs.every((p) => !answers[p.id]) &&
+        g.names.every((n) => !campPaired.has(`${g.kind}|${n}`))
+    )
+    .map((g) => ({ ...g, id: ["spellings", g.kind, ...g.names].join("|") }));
+}
+
+/**
+ * INGEST-2.31: what each group's answer means for its pairs ({ pair id: "a" | "b" | the answer })
+ * and the name kept for each spelling (Map name -> chosen), by kind.
+ */
+export function spellingAnswers(groups, answers) {
+  const pairAnswers = {};
+  const chosen = { activity: new Map(), group: new Map(), division: new Map() };
+  for (const g of groups) {
+    const answer = answers[g.id];
+    if (!answer) {
+      continue;
+    }
+    const named = g.names.includes(answer);
+    g.pairs.forEach((p) => {
+      pairAnswers[p.id] = named ? (p.b === answer ? "b" : "a") : answer;
+    });
+    if (named) {
+      g.names.forEach((n) => chosen[g.kind].set(n, answer));
+    }
+  }
+  return { pairAnswers, chosen };
 }
 
 // ---------- read, not asked (docs/import/names-and-divisions.md, rules 2 and 3) ----------

@@ -31,7 +31,13 @@ import {
 } from "c/shoreshErrors";
 import { rememberedFor } from "c/shoreshRemembered";
 import { suggestionsFor } from "c/shoreshPatterns";
-import { comingIn, countTiles, miniCells, total } from "./summary";
+import {
+  comingIn,
+  countTiles,
+  miniCells,
+  total,
+  withoutHolders
+} from "./summary";
 import {
   appliedOnItsOwn,
   foundNothing,
@@ -121,6 +127,8 @@ export default class ShoreshImport extends LightningElement {
   versionUses = {};
   // The questions left open when Add was pressed, for the page after it (INGEST-5.5).
   savedOpen = [];
+  // The plan last saved: its records that hold a group in no division are not counted as added.
+  savedPlan = null;
   // Why the plan Add would save couldn't be worked out, shown in the review while Add is off.
   planError = null;
   // Where the cursor goes at the next render: { key } (that choice, if it is still there, else
@@ -764,7 +772,7 @@ export default class ShoreshImport extends LightningElement {
 
   get comingInTiles() {
     const autoNames = this.autoNames;
-    return comingIn(this.plan, this.terms).map((tile) => {
+    return comingIn(this.plan, this.terms, this.setup).map((tile) => {
       const auto = tile.names.filter((name) => autoNames.has(name)).length;
       return {
         ...tile,
@@ -880,7 +888,8 @@ export default class ShoreshImport extends LightningElement {
     if (event.target.checked) {
       answers[event.target.dataset.id] = "add";
     } else {
-      delete answers[event.target.dataset.id];
+      // INGEST-2.27: a place that comes in ticked stays out once unticked.
+      answers[event.target.dataset.id] = "leave";
     }
     this.answers = answers;
     this.recompute();
@@ -1029,6 +1038,7 @@ export default class ShoreshImport extends LightningElement {
     this.inUse = {};
     this.versionUses = {};
     this.savedOpen = [];
+    this.savedPlan = null;
     this.answers = {};
     this.autoApplied = {};
     this.autoUndone = [];
@@ -1061,6 +1071,7 @@ export default class ShoreshImport extends LightningElement {
       }
       sent = true;
       this.result = await saveSetup({ plan: JSON.stringify(plan) });
+      this.savedPlan = plan;
       this.savedOpen = plan.open;
       this.stage = "done";
       this.focusNext = { selector: '[data-id="done"]' };
@@ -1078,8 +1089,20 @@ export default class ShoreshImport extends LightningElement {
 
   // ---------- after saving ----------
 
+  /** INGEST-5.15: last year's schedule, kept as a version, opens on Saved versions. */
+  handleToVersions() {
+    // Leaving the done page: the next visit starts from the files, as Close does.
+    this.handleStartAgain();
+    this.dispatchEvent(
+      new CustomEvent("navigate", { detail: { screen: "schedules" } })
+    );
+  }
+
   get addedTiles() {
-    return countTiles(this.result && this.result.added, this.terms);
+    return countTiles(
+      withoutHolders(this.result && this.result.added, this.savedPlan),
+      this.terms
+    );
   }
   get changedTiles() {
     return countTiles(this.result && this.result.changed, this.terms);

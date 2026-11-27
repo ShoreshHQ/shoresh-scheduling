@@ -263,3 +263,36 @@ Each rule is clue, meaning, example, test.
     plan, and finds the camp's set again" (`shoreshImportEngine/__tests__/electives.test.js`).
     Code: `shoreshImportEngine/order.js` (`compareNames`, `compareNumbered`), `compareText` in
     `c/shoreshTerms`.
+
+13. **Divisions counted are the ones the director sees** (import battle test, 2026-11-27).
+    Clue: groups in no division; each is held by a record that is no division (DIV-1.1), which the
+    Divisions screen never shows.
+    Meaning: those records are counted neither under "Comes in" nor under "Added": "4 Divisions"
+    added in a camp with none to see read as a mistake. The desktop shows every division it adds
+    (each group alone its own visible division); here they are hidden, so they are not counted.
+    Test: `shoreshImport.test.js` "INGEST-5.13: …". Code: `summary.js` `comingIn`,
+    `withoutHolders`; `shoreshImport.js` `addedTiles`.
+
+14. **An answer survives a program left out** (import battle test, 2026-11-27).
+    Clue: "Is Lunch at a set time, or an activity?" answered while the files make two programs
+    (its key names the program, "kind|Lunch|Main"); then one program is left out, and the key
+    is "kind|Lunch".
+    Meaning: the answer stays, shown chosen on the card, as the desktop keeps every other answer
+    when one changes (`ImportScreen.jsx`). Two programs' own answers for one name are not guessed
+    between: the card is asked again.
+    Test: `classify.test.js` "INGEST-5.14: …". Code: `items.js` `kindAnswer`; `questions.js`
+    `kindCard` (`preselected`).
+
+15. **Last year's schedule opens on Saved versions** (import battle test, 2026-11-27).
+    Clue: after Add, the kept version's line under Last year's schedule.
+    Meaning: "Saved versions →" opens that screen; it was the words "View it on Saved versions",
+    which read as a link and did nothing.
+    Test: `shoreshImport.test.js` (the version kept, "INGEST-5.15: a link that opens Saved
+    versions"). Code: `shoreshImport` `handleToVersions`; `shoreshCampSetup.html` (navigate).
+
+16. **A name added more than once says when and for whom** (import battle test, 2026-11-27).
+    Clue: a tile opened into its names, one name several times ("Free Swim" for three groups at
+    three times).
+    Meaning: each such name says its time block and its groups: "Free Swim · 1:15 – 1:55 PM ·
+    Otters" (two groups named, then "and 3 more"). A name added once stays as it is.
+    Test: `shoreshImport.test.js` "INGEST-5.16: …". Code: `summary.js` `namesOf`.
