@@ -381,7 +381,9 @@ Each rule is clue, meaning, example, test.
     Clue: a file whose cells are written as two lines, an activity over a room ("Art" over "101"):
     ten such cells or more, a fifth of its filled cells or more, and one second line under two
     different activities or more. A second line the file also writes as another activity ("Art"
-    over "Drama") is no room ("Gym" over "Gym" is), and only the grid's cells are read so: a
+    over "Drama") is no room ("Gym" over "Gym" is, and does not make Gym another activity: "Drama"
+    over "Gym", or a slip "Gyms" over "Gym", is a room, the slip's spelling asked as any other;
+    it was glued into one name, "Gyms Gym"), and only the grid's cells are read so: a
     heading on two lines stays the group's name. Most of the activities have one room each, or
     the second lines are no rooms ("Art / Rest", "Drama / Rest", "Art / Snack").
     Meaning: the first line is the activity and the second a place it may be at, asked on the
@@ -425,8 +427,9 @@ Each rule is clue, meaning, example, test.
     Meaning: the activity is read in its row's block, as before, and the review's notes say the
     times were not kept, naming the first three such cells in the order the files are read and how
     many more: "Times written in cells are not kept; each is in its row's time block: “Story Time
-    2:15-2:45”, … and 1 more." A cell with more than two times is named by what it is read as
-    ("Swim"). A time inside its row's block ("Lunch 12:00-12:45" in the 12:00-12:45 row), a cell
+    2:15-2:45”, … and 1 more." A cell with more than two times is named by what it is read as,
+    with the times it writes, each once ("Swim (9:40, 9:50, 10:10)"; it was "Swim" alone, which
+    showed no times). A time inside its row's block ("Lunch 12:00-12:45" in the 12:00-12:45 row), a cell
     in a column that is read as no group's, and a cell that is only a time say nothing. It was
     dropped without a word. The desktop drops the times too (`src/ingest/extractEntities.js`
     `stripTimes`) and says nothing.

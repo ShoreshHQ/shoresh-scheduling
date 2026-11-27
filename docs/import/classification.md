@@ -228,7 +228,8 @@ example, test.
     as an activity without a question.
     Meaning: that slot is the group's own and its placements there are held; the moved day is a
     placement elsewhere, so the name is asked as ask A ("mostly at a set time"), its set times
-    listed, and answering "a recurring activity" sets them up group by group. The desktop keeps an
+    listed, and answering "a recurring activity" sets them up group by group (the moved day too,
+    rule 14). The desktop keeps an
     item per group when it is at the same block on more than half of that group's days
     (`src/ingest/fixedEvents.js`, per-group pass), so pairs of groups at their own Lunch each come
     out recurring; Shoresh counts the program's days, stricter for a group away on a trip, and
@@ -265,6 +266,33 @@ example, test.
     added; the same file imported again finds its Lunch unchanged. Code:
     `items.js` `withLunchFilled`, `setTimeRecords`; `proposal.js` `compareRecurring`; `plan.js`
     `importNotes`.
+
+14. **A group's moved day is set up with its set times** (import battle test re-run,
+    2026-11-27; coordinator's call 2026-11-27, Greg can change).
+    Clue: a file of one week and a name at a set time, where a group has it once on a day its set
+    time misses (Lunch in the third period four days and in the fourth on Wednesday), or, for
+    Lunch when other groups have a set time for it, a group has it on one day only (away on a
+    trip the rest of the week).
+    Meaning: that day is one of the group's set times too, at the block it is written in, that
+    day only. Answering "a recurring activity" sets it up beside the usual ones, so every group
+    has its Lunch every day the file shows it. The card lists it among the set times and no
+    longer counts it as "at other times". It was dropped: the group had no Lunch that day and the
+    generator put an activity there. Still at other times and not set up: a second time the same
+    day (a second Swim on Thursday, ask A's example), a group with Lunch on several days and no
+    set time of its own, a once-a-week visit to anything but Lunch (it is not a set time the camp
+    chose), and any move in files of several weeks (a move in one week may not be in the others;
+    the card says "and at other times in another week" when only a later week has one).
+    Example: Otters and Wolves at Lunch in block 2, Herons and Foxes in block 3, every day; on
+    Wednesday Wolves in block 3, on Thursday Foxes in block 2: those two Lunches come in at those
+    blocks, those days.
+    Test: `__tests__/classify.test.js` "INGEST-3.14: …" (the moved days set up, every group at
+    Lunch every day; a group with Lunch one day only; a move only in a later week is said on the
+    card and not set up). Counter-cases: a second time the same day,
+    or beside the group's own Lunch that day; Lunch on two days with no set time, or with no set
+    time for anyone; a weekly visit to Swim; a move in one of two weeks; a rotation is still only an activity (`review.test.js`
+    "INGEST-5.1 counter-case: a rotation …"); `lunch.test.js` (a moved Lunch stands, none added
+    beside it). Code: `classify.js` `movedDays`, `classifyName`; `questions.js` `kindWhy`,
+    `kindCard`.
 
 ## Asked, because the grid supports both readings
 

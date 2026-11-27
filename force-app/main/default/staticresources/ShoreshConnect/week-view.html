@@ -7383,7 +7383,7 @@ const __lwc_component_class_internal$2 = registerComponent(ShoreshLock, {
   sel: "c-shoresh-lock",
   apiVersion: 66
 });const $fragment1$1 = parseFragment`<div role="columnheader" aria-colindex="1" class="head corner${0}" style="grid-row: 1 / span 1; grid-column: 1 / span 1;"${2}><span class="slds-assistive-text${0}"${2}>${"t2"}</span></div>`;
-const $fragment2$1 = parseFragment`<span${"c0"}${"a0:aria-hidden"}${2}>${"t1"}</span>`;
+const $fragment2$1 = parseFragment`<span${"c0"}${"a0:aria-hidden"}${"a0:title"}${2}>${"t1"}</span>`;
 const $fragment3$1 = parseFragment`<span class="slds-assistive-text${0}"${2}>${"t1"}</span>`;
 const $fragment4$1 = parseFragment`<div role="rowheader" aria-colindex="1"${"c0"}${"s0"}${2}><span class="block-time${0}" aria-hidden="true"${2}>${"t2"}</span><span class="slds-assistive-text${0}"${2}>${"t4"}</span></div>`;
 const $fragment5 = parseFragment`<span class="event-name${0}"${2}><svg class="flag${0}" viewBox="0 0 12 12" aria-hidden="true" focusable="false" data-id="rain-drop"${2}><path d="M6 1.5c-1.6 2.3-2.75 3.6-2.75 5.1a2.75 2.75 0 0 0 5.5 0C8.75 5.1 7.6 3.8 6 1.5Z"${3}/></svg>${"t3"}</span>`;
@@ -7510,7 +7510,8 @@ function tmpl$1($api, $cmp, $slotset, $ctx) {
     }, [api_static_fragment($fragment2$1, 8, [api_static_part(0, {
       className: api_normalize_class_name(column.labelClass),
       attrs: {
-        "aria-hidden": column.labelHidden
+        "aria-hidden": column.labelHidden,
+        "title": column.label
       }
     }, null), api_static_part(1, null, api_dynamic_text(column.label))]), column.labelHidden ? api_fragment(9, [api_static_fragment($fragment3$1, 11, [api_static_part(1, null, api_dynamic_text(column.spoken))])], 0) : null]);
   })]))]), api_element("div", {
@@ -7626,7 +7627,566 @@ function weekdayIndex(dateValue) {
 function numberedDay(dateValue) {
   const index = weekdayIndex(dateValue);
   return firstDay === null || Number.isNaN(index) ? null : numbered(index + 1);
-}/**
+}var activityEligibilityActivity = {"fieldApiName":"Activity__c"};var activityEligibilityDivision = {"fieldApiName":"Division__c"};var activityEligibilityGroup = {"fieldApiName":"Group__c"};var activityLeaderActivity = {"fieldApiName":"Activity__c"};var activityLeaderStaffMember = {"fieldApiName":"StaffMember__c"};var activityOffTimeActivity = {"fieldApiName":"Activity__c"};var activityOffTimeDay = {"fieldApiName":"Day__c"};var activityOffTimeTimeBlock = {"fieldApiName":"TimeBlock__c"};var activityCopiedFrom = {"fieldApiName":"CopiedFrom__c"};var activityEarlyWeekByDay = {"fieldApiName":"EarlyWeekByDay__c"};var activityEarlyWeekCount = {"fieldApiName":"EarlyWeekCount__c"};var activityFormerNames = {"fieldApiName":"FormerNames__c"};var activityGroupsAtOnce = {"fieldApiName":"GroupsAtOnce__c"};var activityLength = {"fieldApiName":"Length__c"};var activityLocation = {"fieldApiName":"Location__c"};var activityNoGroupLimit = {"fieldApiName":"NoGroupLimit__c"};var activityNoWeeklyMax = {"fieldApiName":"NoWeeklyMax__c"};var activityNotes = {"fieldApiName":"Notes__c"};var activityOutdoor = {"fieldApiName":"Outdoor__c"};var activityPriority = {"fieldApiName":"Priority__c"};var activityRainPlan = {"fieldApiName":"RainPlan__c"};var activitySameDivisionOnly = {"fieldApiName":"SameDivisionOnly__c"};var activitySeason = {"fieldApiName":"Season__c"};var activitySortOrder = {"fieldApiName":"SortOrder__c"};var activityTimesPerWeekMax = {"fieldApiName":"TimesPerWeekMax__c"};var activityTimesPerWeekMin = {"fieldApiName":"TimesPerWeekMin__c"};var assignmentActivityName = {"fieldApiName":"ActivityName__c"};var assignmentByHand = {"fieldApiName":"ByHand__c"};var assignmentCamper = {"fieldApiName":"Camper__c"};var assignmentDate = {"fieldApiName":"Date__c"};var assignmentElectiveRun = {"fieldApiName":"ElectiveRun__c"};var assignmentGroupName = {"fieldApiName":"GroupName__c"};var assignmentGroup = {"fieldApiName":"Group__c"};var assignmentKey = {"fieldApiName":"Key__c"};var assignmentLinkedChoice = {"fieldApiName":"LinkedChoice__c"};var assignmentLocationName = {"fieldApiName":"LocationName__c"};var assignmentLocked = {"fieldApiName":"Locked__c"};var assignmentOffering = {"fieldApiName":"Offering__c"};var assignmentSpecialBlock = {"fieldApiName":"SpecialBlock__c"};var assignmentTimeBlock = {"fieldApiName":"TimeBlock__c"};var assignmentTimeName = {"fieldApiName":"TimeName__c"};var campLabelCamp = {"fieldApiName":"Camp__c"};var campLabelKey = {"fieldApiName":"Key__c"};var campLabelModelTerm = {"fieldApiName":"ModelTerm__c"};var campLabelPlural = {"fieldApiName":"Plural__c"};var campLabelSingular = {"fieldApiName":"Singular__c"};var campTimeZone = {"fieldApiName":"TimeZone__c"};var camperCamperNumber = {"fieldApiName":"CamperNumber__c"};var camperKey = {"fieldApiName":"Key__c"};var camperNameKey = {"fieldApiName":"NameKey__c"};var camperOutsideChangedAt = {"fieldApiName":"OutsideChangedAt__c"};var camperOutsideId = {"fieldApiName":"OutsideId__c"};var camperOutsideMatch = {"fieldApiName":"OutsideMatch__c"};var camperParentComments = {"fieldApiName":"ParentComments__c"};var camperSeason = {"fieldApiName":"Season__c"};var camperSourceSystem = {"fieldApiName":"SourceSystem__c"};var camperWithdrawn = {"fieldApiName":"Withdrawn__c"};var coverageDivision = {"fieldApiName":"Division__c"};var coverageElectiveSet = {"fieldApiName":"ElectiveSet__c"};var coverageGroup = {"fieldApiName":"Group__c"};var coverageLinkedChoice = {"fieldApiName":"LinkedChoice__c"};var coverageRecurringActivity = {"fieldApiName":"RecurringActivity__c"};var coverageSeason = {"fieldApiName":"Season__c"};var divisionCopiedFrom = {"fieldApiName":"CopiedFrom__c"};var divisionFormerNames = {"fieldApiName":"FormerNames__c"};var divisionNoDivision = {"fieldApiName":"NoDivision__c"};var divisionProgram = {"fieldApiName":"Program__c"};var divisionSortOrder = {"fieldApiName":"SortOrder__c"};var electiveRunDropped = {"fieldApiName":"Dropped__c"};var electiveRunElectiveSet = {"fieldApiName":"ElectiveSet__c"};var electiveRunEngineVersion = {"fieldApiName":"EngineVersion__c"};var electiveRunFinalSchedule = {"fieldApiName":"FinalSchedule__c"};var electiveRunFinalizedAt = {"fieldApiName":"FinalizedAt__c"};var electiveRunFinalizedBy = {"fieldApiName":"FinalizedBy__c"};var electiveRunNewVersionOf = {"fieldApiName":"NewVersionOf__c"};var electiveRunRevision = {"fieldApiName":"Revision__c"};var electiveRunSaveDone = {"fieldApiName":"SaveDone__c"};var electiveRunSaveJob = {"fieldApiName":"SaveJob__c"};var electiveRunSaveProblem = {"fieldApiName":"SaveProblem__c"};var electiveRunSaveTotal = {"fieldApiName":"SaveTotal__c"};var electiveRunSchedule = {"fieldApiName":"Schedule__c"};var electiveRunSeason = {"fieldApiName":"Season__c"};var electiveRunSeatCount = {"fieldApiName":"SeatCount__c"};var electiveRunSourceFile = {"fieldApiName":"SourceFile__c"};var electiveRunSourceFingerprint = {"fieldApiName":"SourceFingerprint__c"};var electiveRunStatus = {"fieldApiName":"Status__c"};var electiveRunTimesFingerprint = {"fieldApiName":"TimesFingerprint__c"};var electiveRunWeek = {"fieldApiName":"Week__c"};var electiveSetCopiedFrom = {"fieldApiName":"CopiedFrom__c"};var electiveSetFriday = {"fieldApiName":"Friday__c"};var electiveSetKey = {"fieldApiName":"Key__c"};var electiveSetLastTimeBlock = {"fieldApiName":"LastTimeBlock__c"};var electiveSetMonday = {"fieldApiName":"Monday__c"};var electiveSetSaturday = {"fieldApiName":"Saturday__c"};var electiveSetSeason = {"fieldApiName":"Season__c"};var electiveSetSunday = {"fieldApiName":"Sunday__c"};var electiveSetThursday = {"fieldApiName":"Thursday__c"};var electiveSetTimeBlock = {"fieldApiName":"TimeBlock__c"};var electiveSetTuesday = {"fieldApiName":"Tuesday__c"};var electiveSetWednesday = {"fieldApiName":"Wednesday__c"};var errorLogDetail = {"fieldApiName":"Detail__c"};var errorLogPerson = {"fieldApiName":"Person__c"};var fixedActivityCopiedFrom = {"fieldApiName":"CopiedFrom__c"};var fixedActivityEarlyBlocks = {"fieldApiName":"EarlyBlocks__c"};var fixedActivityEarlyDay = {"fieldApiName":"EarlyDay__c"};var fixedActivityLastTimeBlock = {"fieldApiName":"LastTimeBlock__c"};var fixedActivityLength = {"fieldApiName":"Length__c"};var fixedActivityLocation = {"fieldApiName":"Location__c"};var fixedActivityProgram = {"fieldApiName":"Program__c"};var fixedActivitySortOrder = {"fieldApiName":"SortOrder__c"};var fixedActivityTimeBlock = {"fieldApiName":"TimeBlock__c"};var groupAvailability = {"fieldApiName":"Availability__c"};var groupCopiedFrom = {"fieldApiName":"CopiedFrom__c"};var groupDivision = {"fieldApiName":"Division__c"};var groupFormerNames = {"fieldApiName":"FormerNames__c"};var groupSortOrder = {"fieldApiName":"SortOrder__c"};var importAnswerAnswer = {"fieldApiName":"Answer__c"};var importAnswerCamp = {"fieldApiName":"Camp__c"};var importAnswerFromLearned = {"fieldApiName":"FromLearned__c"};var importAnswerFromSuggestion = {"fieldApiName":"FromSuggestion__c"};var importAnswerKey = {"fieldApiName":"Key__c"};var importAnswerQuestionKey = {"fieldApiName":"QuestionKey__c"};var importAnswerShape = {"fieldApiName":"Shape__c"};var importChanged = {"fieldApiName":"Changed__c"};var importCreated = {"fieldApiName":"Created__c"};var importFiles = {"fieldApiName":"Files__c"};var importOpen = {"fieldApiName":"Open__c"};var importSeason = {"fieldApiName":"Season__c"};var importSource = {"fieldApiName":"Source__c"};var importUndoneAt = {"fieldApiName":"UndoneAt__c"};var learnedEventAnswerId = {"fieldApiName":"AnswerId__c"};var learnedEventAnswer = {"fieldApiName":"Answer__c"};var learnedEventCamp = {"fieldApiName":"Camp__c"};var learnedEventFromSuggestion = {"fieldApiName":"FromSuggestion__c"};var learnedEventQuestionKey = {"fieldApiName":"QuestionKey__c"};var learnedEventShape = {"fieldApiName":"Shape__c"};var learnedEventWhat = {"fieldApiName":"What__c"};var linkedChoiceTimeLinkedChoice = {"fieldApiName":"LinkedChoice__c"};var linkedChoiceTimeTimeBlock = {"fieldApiName":"TimeBlock__c"};var linkedChoiceTimeWeekday = {"fieldApiName":"Weekday__c"};var linkedChoiceAppliesTo = {"fieldApiName":"AppliesTo__c"};var linkedChoiceCopiedFrom = {"fieldApiName":"CopiedFrom__c"};var linkedChoiceElectiveSet = {"fieldApiName":"ElectiveSet__c"};var linkedChoiceOffering = {"fieldApiName":"Offering__c"};var linkedChoiceSortOrder = {"fieldApiName":"SortOrder__c"};var locationTypeCopiedFrom = {"fieldApiName":"CopiedFrom__c"};var locationTypeKey = {"fieldApiName":"Key__c"};var locationTypeSeason = {"fieldApiName":"Season__c"};var locationTypeSortOrder = {"fieldApiName":"SortOrder__c"};var locationArea = {"fieldApiName":"Area__c"};var locationCopiedFrom = {"fieldApiName":"CopiedFrom__c"};var locationGroupsThatFit = {"fieldApiName":"GroupsThatFit__c"};var locationLocationType = {"fieldApiName":"LocationType__c"};var locationNotes = {"fieldApiName":"Notes__c"};var locationSeason = {"fieldApiName":"Season__c"};var locationSortOrder = {"fieldApiName":"SortOrder__c"};var offeringActivity = {"fieldApiName":"Activity__c"};var offeringCopiedFrom = {"fieldApiName":"CopiedFrom__c"};var offeringElectiveSet = {"fieldApiName":"ElectiveSet__c"};var offeringKey = {"fieldApiName":"Key__c"};var offeringMinimumToRun = {"fieldApiName":"MinimumToRun__c"};var offeringNoSeatLimit = {"fieldApiName":"NoSeatLimit__c"};var offeringProposed = {"fieldApiName":"Proposed__c"};var offeringSeats = {"fieldApiName":"Seats__c"};var planPartGridFormatVersion = {"fieldApiName":"GridFormatVersion__c"};var planPartKey = {"fieldApiName":"Key__c"};var planPartPart = {"fieldApiName":"Part__c"};var planPartPlan = {"fieldApiName":"Plan__c"};var planPartRevision = {"fieldApiName":"Revision__c"};var planPartSeason = {"fieldApiName":"Season__c"};var planPartSpecialDay = {"fieldApiName":"SpecialDay__c"};var planPartSpecialEvent = {"fieldApiName":"SpecialEvent__c"};var preferenceCamper = {"fieldApiName":"Camper__c"};var preferenceChoicesChangedAt = {"fieldApiName":"ChoicesChangedAt__c"};var preferenceChoices = {"fieldApiName":"Choices__c"};var preferenceElectiveRun = {"fieldApiName":"ElectiveRun__c"};var preferenceGroup = {"fieldApiName":"Group__c"};var preferenceImportedChoices = {"fieldApiName":"ImportedChoices__c"};var preferenceKey = {"fieldApiName":"Key__c"};var preferenceManualChange = {"fieldApiName":"ManualChange__c"};var programCopiedFrom = {"fieldApiName":"CopiedFrom__c"};var programFriday = {"fieldApiName":"Friday__c"};var programMonday = {"fieldApiName":"Monday__c"};var programSaturday = {"fieldApiName":"Saturday__c"};var programSeason = {"fieldApiName":"Season__c"};var programSortOrder = {"fieldApiName":"SortOrder__c"};var programSunday = {"fieldApiName":"Sunday__c"};var programThursday = {"fieldApiName":"Thursday__c"};var programTuesday = {"fieldApiName":"Tuesday__c"};var programWednesday = {"fieldApiName":"Wednesday__c"};var publishedPlanDate = {"fieldApiName":"Date__c"};var publishedPlanGridFormatVersion = {"fieldApiName":"GridFormatVersion__c"};var publishedPlanItem = {"fieldApiName":"Item__c"};var publishedPlanKind = {"fieldApiName":"Kind__c"};var publishedPlanNotes = {"fieldApiName":"Notes__c"};var publishedPlanPart = {"fieldApiName":"Part__c"};var publishedPlanPlan = {"fieldApiName":"Plan__c"};var publishedPlanRevision = {"fieldApiName":"Revision__c"};var publishedPlanSchedule = {"fieldApiName":"Schedule__c"};var recurringActivityCopiedFrom = {"fieldApiName":"CopiedFrom__c"};var recurringActivityFriday = {"fieldApiName":"Friday__c"};var recurringActivityLastTimeBlock = {"fieldApiName":"LastTimeBlock__c"};var recurringActivityLength = {"fieldApiName":"Length__c"};var recurringActivityLocation = {"fieldApiName":"Location__c"};var recurringActivityMonday = {"fieldApiName":"Monday__c"};var recurringActivityProgram = {"fieldApiName":"Program__c"};var recurringActivitySaturday = {"fieldApiName":"Saturday__c"};var recurringActivitySortOrder = {"fieldApiName":"SortOrder__c"};var recurringActivitySunday = {"fieldApiName":"Sunday__c"};var recurringActivityThursday = {"fieldApiName":"Thursday__c"};var recurringActivityTimeBlock = {"fieldApiName":"TimeBlock__c"};var recurringActivityTuesday = {"fieldApiName":"Tuesday__c"};var recurringActivityWednesday = {"fieldApiName":"Wednesday__c"};var scheduleDayDate = {"fieldApiName":"Date__c"};var scheduleDayGridFormatVersion = {"fieldApiName":"GridFormatVersion__c"};var scheduleDayGrid = {"fieldApiName":"Grid__c"};var scheduleDayPart = {"fieldApiName":"Part__c"};var scheduleDayRainyDay = {"fieldApiName":"RainyDay__c"};var scheduleDayRevision = {"fieldApiName":"Revision__c"};var scheduleDaySchedule = {"fieldApiName":"Schedule__c"};var scheduleAcceptedLines = {"fieldApiName":"AcceptedLines__c"};var scheduleEngineNotes = {"fieldApiName":"EngineNotes__c"};var scheduleEngineOption = {"fieldApiName":"EngineOption__c"};var scheduleOrigin = {"fieldApiName":"Origin__c"};var scheduleProgram = {"fieldApiName":"Program__c"};var schedulePublishKey = {"fieldApiName":"PublishKey__c"};var schedulePublishedAt = {"fieldApiName":"PublishedAt__c"};var schedulePublishedBy = {"fieldApiName":"PublishedBy__c"};var scheduleSourceSchedule = {"fieldApiName":"SourceSchedule__c"};var scheduleStatus = {"fieldApiName":"Status__c"};var scheduleVersionReason = {"fieldApiName":"VersionReason__c"};var scheduleWeek = {"fieldApiName":"Week__c"};var seasonArchived = {"fieldApiName":"Archived__c"};var seasonCamp = {"fieldApiName":"Camp__c"};var seasonCopiedFrom = {"fieldApiName":"CopiedFrom__c"};var seasonEndDate = {"fieldApiName":"EndDate__c"};var seasonNumberedDays = {"fieldApiName":"NumberedDays__c"};var seasonShrinkShortWeek = {"fieldApiName":"ShrinkShortWeek__c"};var seasonStartDate = {"fieldApiName":"StartDate__c"};var seasonStatus = {"fieldApiName":"Status__c"};var sendProblem = {"fieldApiName":"Problem__c"};var sendSeason = {"fieldApiName":"Season__c"};var sendSystem = {"fieldApiName":"System__c"};var sendWhat = {"fieldApiName":"What__c"};var specialDateDay = {"fieldApiName":"Day__c"};var specialDateKey = {"fieldApiName":"Key__c"};var specialDateSeason = {"fieldApiName":"Season__c"};var specialDateSpecialDay = {"fieldApiName":"SpecialDay__c"};var specialDateSpecialEvent = {"fieldApiName":"SpecialEvent__c"};var specialDateWeek = {"fieldApiName":"Week__c"};var specialDayKey = {"fieldApiName":"Key__c"};var specialDayNotes = {"fieldApiName":"Notes__c"};var specialDaySeason = {"fieldApiName":"Season__c"};var specialDaySortOrder = {"fieldApiName":"SortOrder__c"};var specialEventKey = {"fieldApiName":"Key__c"};var specialEventLocation = {"fieldApiName":"Location__c"};var specialEventNotes = {"fieldApiName":"Notes__c"};var specialEventSeason = {"fieldApiName":"Season__c"};var specialEventSortOrder = {"fieldApiName":"SortOrder__c"};var staffMemberCopiedFrom = {"fieldApiName":"CopiedFrom__c"};var staffMemberNotes = {"fieldApiName":"Notes__c"};var staffMemberOutsideId = {"fieldApiName":"OutsideId__c"};var staffMemberOutsideMatch = {"fieldApiName":"OutsideMatch__c"};var staffMemberSeason = {"fieldApiName":"Season__c"};var staffMemberSortOrder = {"fieldApiName":"SortOrder__c"};var staffMemberSourceSystem = {"fieldApiName":"SourceSystem__c"};var timeBlockCopiedFrom = {"fieldApiName":"CopiedFrom__c"};var timeBlockEndTime = {"fieldApiName":"EndTime__c"};var timeBlockPartOfDay = {"fieldApiName":"PartOfDay__c"};var timeBlockProgram = {"fieldApiName":"Program__c"};var timeBlockSortOrder = {"fieldApiName":"SortOrder__c"};var timeBlockStartTime = {"fieldApiName":"StartTime__c"};var weekExceptionActivity = {"fieldApiName":"Activity__c"};var weekExceptionFixedActivity = {"fieldApiName":"FixedActivity__c"};var weekExceptionGroup = {"fieldApiName":"Group__c"};var weekExceptionLocation = {"fieldApiName":"Location__c"};var weekExceptionRecurringActivity = {"fieldApiName":"RecurringActivity__c"};var weekExceptionWeek = {"fieldApiName":"Week__c"};var weekEndDate = {"fieldApiName":"EndDate__c"};var weekKey = {"fieldApiName":"Key__c"};var weekSeason = {"fieldApiName":"Season__c"};var weekSortOrder = {"fieldApiName":"SortOrder__c"};var weekStartDate = {"fieldApiName":"StartDate__c"};/**
+ * GENERATED by scripts/generate-shoresh-schema.js from the object metadata. Do not edit by hand:
+ * run `node scripts/generate-shoresh-schema.js` after adding or removing an object or field.
+ *
+ * The one place screens get object, field and relationship names. Salesforce adds the package
+ * namespace to these imports (`Shoresh__StartDate__c` in the namespaced package), so records read and
+ * saved with them keep working when the namespace arrives. Elsewhere, never spell a name as
+ * text: scripts/namespace-safety.js fails CI on any one (docs/adr/0009-namespace-safe-names.md).
+ *
+ *   import { FIELD, OBJECT } from "c/shoreshSchema";
+ *   week[FIELD.Week.StartDate]          // not week.StartDate__c
+ *   { sobjectType: OBJECT.Week, ... }   // not "Week__c"
+ */
+
+/** Field names by object: FIELD.Week.StartDate. */
+const FIELD = Object.freeze({
+  ActivityEligibility: Object.freeze({
+    Activity: activityEligibilityActivity.fieldApiName,
+    Division: activityEligibilityDivision.fieldApiName,
+    Group: activityEligibilityGroup.fieldApiName
+  }),
+  ActivityLeader: Object.freeze({
+    Activity: activityLeaderActivity.fieldApiName,
+    StaffMember: activityLeaderStaffMember.fieldApiName
+  }),
+  ActivityOffTime: Object.freeze({
+    Activity: activityOffTimeActivity.fieldApiName,
+    Day: activityOffTimeDay.fieldApiName,
+    TimeBlock: activityOffTimeTimeBlock.fieldApiName
+  }),
+  Activity: Object.freeze({
+    CopiedFrom: activityCopiedFrom.fieldApiName,
+    EarlyWeekByDay: activityEarlyWeekByDay.fieldApiName,
+    EarlyWeekCount: activityEarlyWeekCount.fieldApiName,
+    FormerNames: activityFormerNames.fieldApiName,
+    GroupsAtOnce: activityGroupsAtOnce.fieldApiName,
+    Length: activityLength.fieldApiName,
+    Location: activityLocation.fieldApiName,
+    NoGroupLimit: activityNoGroupLimit.fieldApiName,
+    NoWeeklyMax: activityNoWeeklyMax.fieldApiName,
+    Notes: activityNotes.fieldApiName,
+    Outdoor: activityOutdoor.fieldApiName,
+    Priority: activityPriority.fieldApiName,
+    RainPlan: activityRainPlan.fieldApiName,
+    SameDivisionOnly: activitySameDivisionOnly.fieldApiName,
+    Season: activitySeason.fieldApiName,
+    SortOrder: activitySortOrder.fieldApiName,
+    TimesPerWeekMax: activityTimesPerWeekMax.fieldApiName,
+    TimesPerWeekMin: activityTimesPerWeekMin.fieldApiName
+  }),
+  Assignment: Object.freeze({
+    ActivityName: assignmentActivityName.fieldApiName,
+    ByHand: assignmentByHand.fieldApiName,
+    Camper: assignmentCamper.fieldApiName,
+    Date: assignmentDate.fieldApiName,
+    ElectiveRun: assignmentElectiveRun.fieldApiName,
+    GroupName: assignmentGroupName.fieldApiName,
+    Group: assignmentGroup.fieldApiName,
+    Key: assignmentKey.fieldApiName,
+    LinkedChoice: assignmentLinkedChoice.fieldApiName,
+    LocationName: assignmentLocationName.fieldApiName,
+    Locked: assignmentLocked.fieldApiName,
+    Offering: assignmentOffering.fieldApiName,
+    SpecialBlock: assignmentSpecialBlock.fieldApiName,
+    TimeBlock: assignmentTimeBlock.fieldApiName,
+    TimeName: assignmentTimeName.fieldApiName
+  }),
+  CampLabel: Object.freeze({
+    Camp: campLabelCamp.fieldApiName,
+    Key: campLabelKey.fieldApiName,
+    ModelTerm: campLabelModelTerm.fieldApiName,
+    Plural: campLabelPlural.fieldApiName,
+    Singular: campLabelSingular.fieldApiName
+  }),
+  Camp: Object.freeze({
+    TimeZone: campTimeZone.fieldApiName
+  }),
+  Camper: Object.freeze({
+    CamperNumber: camperCamperNumber.fieldApiName,
+    Key: camperKey.fieldApiName,
+    NameKey: camperNameKey.fieldApiName,
+    OutsideChangedAt: camperOutsideChangedAt.fieldApiName,
+    OutsideId: camperOutsideId.fieldApiName,
+    OutsideMatch: camperOutsideMatch.fieldApiName,
+    ParentComments: camperParentComments.fieldApiName,
+    Season: camperSeason.fieldApiName,
+    SourceSystem: camperSourceSystem.fieldApiName,
+    Withdrawn: camperWithdrawn.fieldApiName
+  }),
+  Coverage: Object.freeze({
+    Division: coverageDivision.fieldApiName,
+    ElectiveSet: coverageElectiveSet.fieldApiName,
+    Group: coverageGroup.fieldApiName,
+    LinkedChoice: coverageLinkedChoice.fieldApiName,
+    RecurringActivity: coverageRecurringActivity.fieldApiName,
+    Season: coverageSeason.fieldApiName
+  }),
+  Division: Object.freeze({
+    CopiedFrom: divisionCopiedFrom.fieldApiName,
+    FormerNames: divisionFormerNames.fieldApiName,
+    NoDivision: divisionNoDivision.fieldApiName,
+    Program: divisionProgram.fieldApiName,
+    SortOrder: divisionSortOrder.fieldApiName
+  }),
+  ElectiveRun: Object.freeze({
+    Dropped: electiveRunDropped.fieldApiName,
+    ElectiveSet: electiveRunElectiveSet.fieldApiName,
+    EngineVersion: electiveRunEngineVersion.fieldApiName,
+    FinalSchedule: electiveRunFinalSchedule.fieldApiName,
+    FinalizedAt: electiveRunFinalizedAt.fieldApiName,
+    FinalizedBy: electiveRunFinalizedBy.fieldApiName,
+    NewVersionOf: electiveRunNewVersionOf.fieldApiName,
+    Revision: electiveRunRevision.fieldApiName,
+    SaveDone: electiveRunSaveDone.fieldApiName,
+    SaveJob: electiveRunSaveJob.fieldApiName,
+    SaveProblem: electiveRunSaveProblem.fieldApiName,
+    SaveTotal: electiveRunSaveTotal.fieldApiName,
+    Schedule: electiveRunSchedule.fieldApiName,
+    Season: electiveRunSeason.fieldApiName,
+    SeatCount: electiveRunSeatCount.fieldApiName,
+    SourceFile: electiveRunSourceFile.fieldApiName,
+    SourceFingerprint: electiveRunSourceFingerprint.fieldApiName,
+    Status: electiveRunStatus.fieldApiName,
+    TimesFingerprint: electiveRunTimesFingerprint.fieldApiName,
+    Week: electiveRunWeek.fieldApiName
+  }),
+  ElectiveSet: Object.freeze({
+    CopiedFrom: electiveSetCopiedFrom.fieldApiName,
+    Friday: electiveSetFriday.fieldApiName,
+    Key: electiveSetKey.fieldApiName,
+    LastTimeBlock: electiveSetLastTimeBlock.fieldApiName,
+    Monday: electiveSetMonday.fieldApiName,
+    Saturday: electiveSetSaturday.fieldApiName,
+    Season: electiveSetSeason.fieldApiName,
+    Sunday: electiveSetSunday.fieldApiName,
+    Thursday: electiveSetThursday.fieldApiName,
+    TimeBlock: electiveSetTimeBlock.fieldApiName,
+    Tuesday: electiveSetTuesday.fieldApiName,
+    Wednesday: electiveSetWednesday.fieldApiName
+  }),
+  ErrorLog: Object.freeze({
+    Detail: errorLogDetail.fieldApiName,
+    Person: errorLogPerson.fieldApiName
+  }),
+  FixedActivity: Object.freeze({
+    CopiedFrom: fixedActivityCopiedFrom.fieldApiName,
+    EarlyBlocks: fixedActivityEarlyBlocks.fieldApiName,
+    EarlyDay: fixedActivityEarlyDay.fieldApiName,
+    LastTimeBlock: fixedActivityLastTimeBlock.fieldApiName,
+    Length: fixedActivityLength.fieldApiName,
+    Location: fixedActivityLocation.fieldApiName,
+    Program: fixedActivityProgram.fieldApiName,
+    SortOrder: fixedActivitySortOrder.fieldApiName,
+    TimeBlock: fixedActivityTimeBlock.fieldApiName
+  }),
+  Group: Object.freeze({
+    Availability: groupAvailability.fieldApiName,
+    CopiedFrom: groupCopiedFrom.fieldApiName,
+    Division: groupDivision.fieldApiName,
+    FormerNames: groupFormerNames.fieldApiName,
+    SortOrder: groupSortOrder.fieldApiName
+  }),
+  ImportAnswer: Object.freeze({
+    Answer: importAnswerAnswer.fieldApiName,
+    Camp: importAnswerCamp.fieldApiName,
+    FromLearned: importAnswerFromLearned.fieldApiName,
+    FromSuggestion: importAnswerFromSuggestion.fieldApiName,
+    Key: importAnswerKey.fieldApiName,
+    QuestionKey: importAnswerQuestionKey.fieldApiName,
+    Shape: importAnswerShape.fieldApiName
+  }),
+  Import: Object.freeze({
+    Changed: importChanged.fieldApiName,
+    Created: importCreated.fieldApiName,
+    Files: importFiles.fieldApiName,
+    Open: importOpen.fieldApiName,
+    Season: importSeason.fieldApiName,
+    Source: importSource.fieldApiName,
+    UndoneAt: importUndoneAt.fieldApiName
+  }),
+  LearnedEvent: Object.freeze({
+    AnswerId: learnedEventAnswerId.fieldApiName,
+    Answer: learnedEventAnswer.fieldApiName,
+    Camp: learnedEventCamp.fieldApiName,
+    FromSuggestion: learnedEventFromSuggestion.fieldApiName,
+    QuestionKey: learnedEventQuestionKey.fieldApiName,
+    Shape: learnedEventShape.fieldApiName,
+    What: learnedEventWhat.fieldApiName
+  }),
+  LinkedChoiceTime: Object.freeze({
+    LinkedChoice: linkedChoiceTimeLinkedChoice.fieldApiName,
+    TimeBlock: linkedChoiceTimeTimeBlock.fieldApiName,
+    Weekday: linkedChoiceTimeWeekday.fieldApiName
+  }),
+  LinkedChoice: Object.freeze({
+    AppliesTo: linkedChoiceAppliesTo.fieldApiName,
+    CopiedFrom: linkedChoiceCopiedFrom.fieldApiName,
+    ElectiveSet: linkedChoiceElectiveSet.fieldApiName,
+    Offering: linkedChoiceOffering.fieldApiName,
+    SortOrder: linkedChoiceSortOrder.fieldApiName
+  }),
+  LocationType: Object.freeze({
+    CopiedFrom: locationTypeCopiedFrom.fieldApiName,
+    Key: locationTypeKey.fieldApiName,
+    Season: locationTypeSeason.fieldApiName,
+    SortOrder: locationTypeSortOrder.fieldApiName
+  }),
+  Location: Object.freeze({
+    Area: locationArea.fieldApiName,
+    CopiedFrom: locationCopiedFrom.fieldApiName,
+    GroupsThatFit: locationGroupsThatFit.fieldApiName,
+    LocationType: locationLocationType.fieldApiName,
+    Notes: locationNotes.fieldApiName,
+    Season: locationSeason.fieldApiName,
+    SortOrder: locationSortOrder.fieldApiName
+  }),
+  Offering: Object.freeze({
+    Activity: offeringActivity.fieldApiName,
+    CopiedFrom: offeringCopiedFrom.fieldApiName,
+    ElectiveSet: offeringElectiveSet.fieldApiName,
+    Key: offeringKey.fieldApiName,
+    MinimumToRun: offeringMinimumToRun.fieldApiName,
+    NoSeatLimit: offeringNoSeatLimit.fieldApiName,
+    Proposed: offeringProposed.fieldApiName,
+    Seats: offeringSeats.fieldApiName
+  }),
+  PlanPart: Object.freeze({
+    GridFormatVersion: planPartGridFormatVersion.fieldApiName,
+    Key: planPartKey.fieldApiName,
+    Part: planPartPart.fieldApiName,
+    Plan: planPartPlan.fieldApiName,
+    Revision: planPartRevision.fieldApiName,
+    Season: planPartSeason.fieldApiName,
+    SpecialDay: planPartSpecialDay.fieldApiName,
+    SpecialEvent: planPartSpecialEvent.fieldApiName
+  }),
+  Preference: Object.freeze({
+    Camper: preferenceCamper.fieldApiName,
+    ChoicesChangedAt: preferenceChoicesChangedAt.fieldApiName,
+    Choices: preferenceChoices.fieldApiName,
+    ElectiveRun: preferenceElectiveRun.fieldApiName,
+    Group: preferenceGroup.fieldApiName,
+    ImportedChoices: preferenceImportedChoices.fieldApiName,
+    Key: preferenceKey.fieldApiName,
+    ManualChange: preferenceManualChange.fieldApiName
+  }),
+  Program: Object.freeze({
+    CopiedFrom: programCopiedFrom.fieldApiName,
+    Friday: programFriday.fieldApiName,
+    Monday: programMonday.fieldApiName,
+    Saturday: programSaturday.fieldApiName,
+    Season: programSeason.fieldApiName,
+    SortOrder: programSortOrder.fieldApiName,
+    Sunday: programSunday.fieldApiName,
+    Thursday: programThursday.fieldApiName,
+    Tuesday: programTuesday.fieldApiName,
+    Wednesday: programWednesday.fieldApiName
+  }),
+  PublishedPlan: Object.freeze({
+    Date: publishedPlanDate.fieldApiName,
+    GridFormatVersion: publishedPlanGridFormatVersion.fieldApiName,
+    Item: publishedPlanItem.fieldApiName,
+    Kind: publishedPlanKind.fieldApiName,
+    Notes: publishedPlanNotes.fieldApiName,
+    Part: publishedPlanPart.fieldApiName,
+    Plan: publishedPlanPlan.fieldApiName,
+    Revision: publishedPlanRevision.fieldApiName,
+    Schedule: publishedPlanSchedule.fieldApiName
+  }),
+  RecurringActivity: Object.freeze({
+    CopiedFrom: recurringActivityCopiedFrom.fieldApiName,
+    Friday: recurringActivityFriday.fieldApiName,
+    LastTimeBlock: recurringActivityLastTimeBlock.fieldApiName,
+    Length: recurringActivityLength.fieldApiName,
+    Location: recurringActivityLocation.fieldApiName,
+    Monday: recurringActivityMonday.fieldApiName,
+    Program: recurringActivityProgram.fieldApiName,
+    Saturday: recurringActivitySaturday.fieldApiName,
+    SortOrder: recurringActivitySortOrder.fieldApiName,
+    Sunday: recurringActivitySunday.fieldApiName,
+    Thursday: recurringActivityThursday.fieldApiName,
+    TimeBlock: recurringActivityTimeBlock.fieldApiName,
+    Tuesday: recurringActivityTuesday.fieldApiName,
+    Wednesday: recurringActivityWednesday.fieldApiName
+  }),
+  ScheduleDay: Object.freeze({
+    Date: scheduleDayDate.fieldApiName,
+    GridFormatVersion: scheduleDayGridFormatVersion.fieldApiName,
+    Grid: scheduleDayGrid.fieldApiName,
+    Part: scheduleDayPart.fieldApiName,
+    RainyDay: scheduleDayRainyDay.fieldApiName,
+    Revision: scheduleDayRevision.fieldApiName,
+    Schedule: scheduleDaySchedule.fieldApiName
+  }),
+  Schedule: Object.freeze({
+    AcceptedLines: scheduleAcceptedLines.fieldApiName,
+    EngineNotes: scheduleEngineNotes.fieldApiName,
+    EngineOption: scheduleEngineOption.fieldApiName,
+    Origin: scheduleOrigin.fieldApiName,
+    Program: scheduleProgram.fieldApiName,
+    PublishKey: schedulePublishKey.fieldApiName,
+    PublishedAt: schedulePublishedAt.fieldApiName,
+    PublishedBy: schedulePublishedBy.fieldApiName,
+    SourceSchedule: scheduleSourceSchedule.fieldApiName,
+    Status: scheduleStatus.fieldApiName,
+    VersionReason: scheduleVersionReason.fieldApiName,
+    Week: scheduleWeek.fieldApiName
+  }),
+  Season: Object.freeze({
+    Archived: seasonArchived.fieldApiName,
+    Camp: seasonCamp.fieldApiName,
+    CopiedFrom: seasonCopiedFrom.fieldApiName,
+    EndDate: seasonEndDate.fieldApiName,
+    NumberedDays: seasonNumberedDays.fieldApiName,
+    ShrinkShortWeek: seasonShrinkShortWeek.fieldApiName,
+    StartDate: seasonStartDate.fieldApiName,
+    Status: seasonStatus.fieldApiName
+  }),
+  Send: Object.freeze({
+    Problem: sendProblem.fieldApiName,
+    Season: sendSeason.fieldApiName,
+    System: sendSystem.fieldApiName,
+    What: sendWhat.fieldApiName
+  }),
+  SpecialDate: Object.freeze({
+    Day: specialDateDay.fieldApiName,
+    Key: specialDateKey.fieldApiName,
+    Season: specialDateSeason.fieldApiName,
+    SpecialDay: specialDateSpecialDay.fieldApiName,
+    SpecialEvent: specialDateSpecialEvent.fieldApiName,
+    Week: specialDateWeek.fieldApiName
+  }),
+  SpecialDay: Object.freeze({
+    Key: specialDayKey.fieldApiName,
+    Notes: specialDayNotes.fieldApiName,
+    Season: specialDaySeason.fieldApiName,
+    SortOrder: specialDaySortOrder.fieldApiName
+  }),
+  SpecialEvent: Object.freeze({
+    Key: specialEventKey.fieldApiName,
+    Location: specialEventLocation.fieldApiName,
+    Notes: specialEventNotes.fieldApiName,
+    Season: specialEventSeason.fieldApiName,
+    SortOrder: specialEventSortOrder.fieldApiName
+  }),
+  StaffMember: Object.freeze({
+    CopiedFrom: staffMemberCopiedFrom.fieldApiName,
+    Notes: staffMemberNotes.fieldApiName,
+    OutsideId: staffMemberOutsideId.fieldApiName,
+    OutsideMatch: staffMemberOutsideMatch.fieldApiName,
+    Season: staffMemberSeason.fieldApiName,
+    SortOrder: staffMemberSortOrder.fieldApiName,
+    SourceSystem: staffMemberSourceSystem.fieldApiName
+  }),
+  TimeBlock: Object.freeze({
+    CopiedFrom: timeBlockCopiedFrom.fieldApiName,
+    EndTime: timeBlockEndTime.fieldApiName,
+    PartOfDay: timeBlockPartOfDay.fieldApiName,
+    Program: timeBlockProgram.fieldApiName,
+    SortOrder: timeBlockSortOrder.fieldApiName,
+    StartTime: timeBlockStartTime.fieldApiName
+  }),
+  WeekException: Object.freeze({
+    Activity: weekExceptionActivity.fieldApiName,
+    FixedActivity: weekExceptionFixedActivity.fieldApiName,
+    Group: weekExceptionGroup.fieldApiName,
+    Location: weekExceptionLocation.fieldApiName,
+    RecurringActivity: weekExceptionRecurringActivity.fieldApiName,
+    Week: weekExceptionWeek.fieldApiName
+  }),
+  Week: Object.freeze({
+    EndDate: weekEndDate.fieldApiName,
+    Key: weekKey.fieldApiName,
+    Season: weekSeason.fieldApiName,
+    SortOrder: weekSortOrder.fieldApiName,
+    StartDate: weekStartDate.fieldApiName
+  })
+});
+
+/** A lookup's parent record on a read row: row[PARENT.Season.CopiedFrom].Name. */
+Object.freeze({
+  ActivityEligibility: Object.freeze({
+    Activity: FIELD.ActivityEligibility.Activity.replace(/__c$/, "__r"),
+    Division: FIELD.ActivityEligibility.Division.replace(/__c$/, "__r"),
+    Group: FIELD.ActivityEligibility.Group.replace(/__c$/, "__r")
+  }),
+  ActivityLeader: Object.freeze({
+    Activity: FIELD.ActivityLeader.Activity.replace(/__c$/, "__r"),
+    StaffMember: FIELD.ActivityLeader.StaffMember.replace(/__c$/, "__r")
+  }),
+  ActivityOffTime: Object.freeze({
+    Activity: FIELD.ActivityOffTime.Activity.replace(/__c$/, "__r"),
+    TimeBlock: FIELD.ActivityOffTime.TimeBlock.replace(/__c$/, "__r")
+  }),
+  Activity: Object.freeze({
+    CopiedFrom: FIELD.Activity.CopiedFrom.replace(/__c$/, "__r"),
+    Location: FIELD.Activity.Location.replace(/__c$/, "__r"),
+    RainPlan: FIELD.Activity.RainPlan.replace(/__c$/, "__r"),
+    Season: FIELD.Activity.Season.replace(/__c$/, "__r")
+  }),
+  Assignment: Object.freeze({
+    Camper: FIELD.Assignment.Camper.replace(/__c$/, "__r"),
+    ElectiveRun: FIELD.Assignment.ElectiveRun.replace(/__c$/, "__r"),
+    Group: FIELD.Assignment.Group.replace(/__c$/, "__r"),
+    LinkedChoice: FIELD.Assignment.LinkedChoice.replace(/__c$/, "__r"),
+    Offering: FIELD.Assignment.Offering.replace(/__c$/, "__r"),
+    TimeBlock: FIELD.Assignment.TimeBlock.replace(/__c$/, "__r")
+  }),
+  CampLabel: Object.freeze({
+    Camp: FIELD.CampLabel.Camp.replace(/__c$/, "__r")
+  }),
+  Camper: Object.freeze({
+    Season: FIELD.Camper.Season.replace(/__c$/, "__r")
+  }),
+  Coverage: Object.freeze({
+    Division: FIELD.Coverage.Division.replace(/__c$/, "__r"),
+    ElectiveSet: FIELD.Coverage.ElectiveSet.replace(/__c$/, "__r"),
+    Group: FIELD.Coverage.Group.replace(/__c$/, "__r"),
+    LinkedChoice: FIELD.Coverage.LinkedChoice.replace(/__c$/, "__r"),
+    RecurringActivity: FIELD.Coverage.RecurringActivity.replace(/__c$/, "__r"),
+    Season: FIELD.Coverage.Season.replace(/__c$/, "__r")
+  }),
+  Division: Object.freeze({
+    CopiedFrom: FIELD.Division.CopiedFrom.replace(/__c$/, "__r"),
+    Program: FIELD.Division.Program.replace(/__c$/, "__r")
+  }),
+  ElectiveRun: Object.freeze({
+    ElectiveSet: FIELD.ElectiveRun.ElectiveSet.replace(/__c$/, "__r"),
+    FinalSchedule: FIELD.ElectiveRun.FinalSchedule.replace(/__c$/, "__r"),
+    FinalizedBy: FIELD.ElectiveRun.FinalizedBy.replace(/__c$/, "__r"),
+    NewVersionOf: FIELD.ElectiveRun.NewVersionOf.replace(/__c$/, "__r"),
+    Schedule: FIELD.ElectiveRun.Schedule.replace(/__c$/, "__r"),
+    Season: FIELD.ElectiveRun.Season.replace(/__c$/, "__r"),
+    Week: FIELD.ElectiveRun.Week.replace(/__c$/, "__r")
+  }),
+  ElectiveSet: Object.freeze({
+    CopiedFrom: FIELD.ElectiveSet.CopiedFrom.replace(/__c$/, "__r"),
+    LastTimeBlock: FIELD.ElectiveSet.LastTimeBlock.replace(/__c$/, "__r"),
+    Season: FIELD.ElectiveSet.Season.replace(/__c$/, "__r"),
+    TimeBlock: FIELD.ElectiveSet.TimeBlock.replace(/__c$/, "__r")
+  }),
+  ErrorLog: Object.freeze({
+    Person: FIELD.ErrorLog.Person.replace(/__c$/, "__r")
+  }),
+  FixedActivity: Object.freeze({
+    CopiedFrom: FIELD.FixedActivity.CopiedFrom.replace(/__c$/, "__r"),
+    LastTimeBlock: FIELD.FixedActivity.LastTimeBlock.replace(/__c$/, "__r"),
+    Location: FIELD.FixedActivity.Location.replace(/__c$/, "__r"),
+    Program: FIELD.FixedActivity.Program.replace(/__c$/, "__r"),
+    TimeBlock: FIELD.FixedActivity.TimeBlock.replace(/__c$/, "__r")
+  }),
+  Group: Object.freeze({
+    CopiedFrom: FIELD.Group.CopiedFrom.replace(/__c$/, "__r"),
+    Division: FIELD.Group.Division.replace(/__c$/, "__r")
+  }),
+  ImportAnswer: Object.freeze({
+    Camp: FIELD.ImportAnswer.Camp.replace(/__c$/, "__r")
+  }),
+  Import: Object.freeze({
+    Season: FIELD.Import.Season.replace(/__c$/, "__r")
+  }),
+  LearnedEvent: Object.freeze({
+    Camp: FIELD.LearnedEvent.Camp.replace(/__c$/, "__r")
+  }),
+  LinkedChoiceTime: Object.freeze({
+    LinkedChoice: FIELD.LinkedChoiceTime.LinkedChoice.replace(/__c$/, "__r"),
+    TimeBlock: FIELD.LinkedChoiceTime.TimeBlock.replace(/__c$/, "__r")
+  }),
+  LinkedChoice: Object.freeze({
+    CopiedFrom: FIELD.LinkedChoice.CopiedFrom.replace(/__c$/, "__r"),
+    ElectiveSet: FIELD.LinkedChoice.ElectiveSet.replace(/__c$/, "__r"),
+    Offering: FIELD.LinkedChoice.Offering.replace(/__c$/, "__r")
+  }),
+  LocationType: Object.freeze({
+    CopiedFrom: FIELD.LocationType.CopiedFrom.replace(/__c$/, "__r"),
+    Season: FIELD.LocationType.Season.replace(/__c$/, "__r")
+  }),
+  Location: Object.freeze({
+    CopiedFrom: FIELD.Location.CopiedFrom.replace(/__c$/, "__r"),
+    LocationType: FIELD.Location.LocationType.replace(/__c$/, "__r"),
+    Season: FIELD.Location.Season.replace(/__c$/, "__r")
+  }),
+  Offering: Object.freeze({
+    Activity: FIELD.Offering.Activity.replace(/__c$/, "__r"),
+    CopiedFrom: FIELD.Offering.CopiedFrom.replace(/__c$/, "__r"),
+    ElectiveSet: FIELD.Offering.ElectiveSet.replace(/__c$/, "__r")
+  }),
+  PlanPart: Object.freeze({
+    Season: FIELD.PlanPart.Season.replace(/__c$/, "__r"),
+    SpecialDay: FIELD.PlanPart.SpecialDay.replace(/__c$/, "__r"),
+    SpecialEvent: FIELD.PlanPart.SpecialEvent.replace(/__c$/, "__r")
+  }),
+  Preference: Object.freeze({
+    Camper: FIELD.Preference.Camper.replace(/__c$/, "__r"),
+    ElectiveRun: FIELD.Preference.ElectiveRun.replace(/__c$/, "__r"),
+    Group: FIELD.Preference.Group.replace(/__c$/, "__r")
+  }),
+  Program: Object.freeze({
+    CopiedFrom: FIELD.Program.CopiedFrom.replace(/__c$/, "__r"),
+    Season: FIELD.Program.Season.replace(/__c$/, "__r")
+  }),
+  PublishedPlan: Object.freeze({
+    Schedule: FIELD.PublishedPlan.Schedule.replace(/__c$/, "__r")
+  }),
+  RecurringActivity: Object.freeze({
+    CopiedFrom: FIELD.RecurringActivity.CopiedFrom.replace(/__c$/, "__r"),
+    LastTimeBlock: FIELD.RecurringActivity.LastTimeBlock.replace(/__c$/, "__r"),
+    Location: FIELD.RecurringActivity.Location.replace(/__c$/, "__r"),
+    Program: FIELD.RecurringActivity.Program.replace(/__c$/, "__r"),
+    TimeBlock: FIELD.RecurringActivity.TimeBlock.replace(/__c$/, "__r")
+  }),
+  ScheduleDay: Object.freeze({
+    Schedule: FIELD.ScheduleDay.Schedule.replace(/__c$/, "__r")
+  }),
+  Schedule: Object.freeze({
+    Program: FIELD.Schedule.Program.replace(/__c$/, "__r"),
+    PublishedBy: FIELD.Schedule.PublishedBy.replace(/__c$/, "__r"),
+    SourceSchedule: FIELD.Schedule.SourceSchedule.replace(/__c$/, "__r"),
+    Week: FIELD.Schedule.Week.replace(/__c$/, "__r")
+  }),
+  Season: Object.freeze({
+    Camp: FIELD.Season.Camp.replace(/__c$/, "__r"),
+    CopiedFrom: FIELD.Season.CopiedFrom.replace(/__c$/, "__r")
+  }),
+  Send: Object.freeze({
+    Season: FIELD.Send.Season.replace(/__c$/, "__r")
+  }),
+  SpecialDate: Object.freeze({
+    Season: FIELD.SpecialDate.Season.replace(/__c$/, "__r"),
+    SpecialDay: FIELD.SpecialDate.SpecialDay.replace(/__c$/, "__r"),
+    SpecialEvent: FIELD.SpecialDate.SpecialEvent.replace(/__c$/, "__r"),
+    Week: FIELD.SpecialDate.Week.replace(/__c$/, "__r")
+  }),
+  SpecialDay: Object.freeze({
+    Season: FIELD.SpecialDay.Season.replace(/__c$/, "__r")
+  }),
+  SpecialEvent: Object.freeze({
+    Location: FIELD.SpecialEvent.Location.replace(/__c$/, "__r"),
+    Season: FIELD.SpecialEvent.Season.replace(/__c$/, "__r")
+  }),
+  StaffMember: Object.freeze({
+    CopiedFrom: FIELD.StaffMember.CopiedFrom.replace(/__c$/, "__r"),
+    Season: FIELD.StaffMember.Season.replace(/__c$/, "__r")
+  }),
+  TimeBlock: Object.freeze({
+    CopiedFrom: FIELD.TimeBlock.CopiedFrom.replace(/__c$/, "__r"),
+    Program: FIELD.TimeBlock.Program.replace(/__c$/, "__r")
+  }),
+  WeekException: Object.freeze({
+    Activity: FIELD.WeekException.Activity.replace(/__c$/, "__r"),
+    FixedActivity: FIELD.WeekException.FixedActivity.replace(/__c$/, "__r"),
+    Group: FIELD.WeekException.Group.replace(/__c$/, "__r"),
+    Location: FIELD.WeekException.Location.replace(/__c$/, "__r"),
+    RecurringActivity: FIELD.WeekException.RecurringActivity.replace(/__c$/, "__r"),
+    Week: FIELD.WeekException.Week.replace(/__c$/, "__r")
+  }),
+  Week: Object.freeze({
+    Season: FIELD.Week.Season.replace(/__c$/, "__r")
+  })
+});/**
  * A saved schedule row (wiki data model, compact grid format version 1): one group's day, a cell
  * per time block, "" Open, a number for an item of the day's list from 1, or "^" (the item before
  * carries on). Read and written here for the engine (c/shoreshEngine grid.js, which re-exports
@@ -7814,6 +8374,9 @@ function groupCells(day, groupIndex) {
     });
   });
   return cells;
+}
+function readable(view) {
+  return (view && view.days || []).filter(day => !day.problem);
 }
 const NO_PLAN = {
   blocks: [],
@@ -8014,8 +8577,37 @@ function column(key, label, sub, gone) {
   };
 }
 
-/** Daily View: one day, a column per group. */
-function dailyGrid(view, dayIndex, t) {
+/**
+ * DIV-1.4: the groups to show with their divisions, "Bunk 1 (Seniors)", where two of them share a
+ * name (each group counted once over the week, by its first name): Map(group key -> name shown).
+ * Any other group is shown by its own name that day. divisionOf: Map(group id -> division name);
+ * a group it does not know is not in the map.
+ */
+function shownNames(refs, divisionOf) {
+  const nameOf = new Map();
+  refs.forEach(grp => {
+    if (!nameOf.has(refKey(grp))) {
+      nameOf.set(refKey(grp), grp.name);
+    }
+  });
+  const count = new Map();
+  nameOf.forEach(name => count.set(name, (count.get(name) || 0) + 1));
+  const shown = new Map();
+  refs.forEach(grp => {
+  });
+  return shown;
+}
+
+/** Every group of the week's readable days, and of one more day (a special day's plan). */
+function weekGroups(view, day) {
+  const all = [...readable(view || {
+    days: []
+  }), ...(day ? [day] : [])];
+  return all.flatMap(d => d.groups || []);
+}
+
+/** Daily View: one day, a column per group. divisionOf: see shownNames (DIV-1.4). */
+function dailyGrid(view, dayIndex, t, divisionOf) {
   const day = view && view.days[dayIndex];
   if (!day || day.problem) {
     return null;
@@ -8046,8 +8638,9 @@ function dailyGrid(view, dayIndex, t) {
       cells.push(drawn);
     });
   });
+  const shown = shownNames(weekGroups(view, day));
   return {
-    columns: day.groups.map(grp => column(refKey(grp), grp.name, null, grp.gone)),
+    columns: day.groups.map(grp => column(refKey(grp), shown.get(refKey(grp)) || grp.name, null, grp.gone)),
     rows: blockRows(day.blocks),
     cells
   };

@@ -17,6 +17,7 @@ import {
   eventsOn,
   groupGrid,
   groups,
+  withDivisionNames,
   withRaindrops,
   withSpecials
 } from "c/shoreshScheduleViews";
@@ -369,10 +370,17 @@ export default class ShoreshSchedules extends LightningElement {
    * desktop's workbook has no marks).
    */
   get shown() {
-    if (this.shownMemo.of !== this.opened) {
+    if (
+      this.shownMemo.of !== this.opened ||
+      this.shownMemo.setup !== this._setup
+    ) {
       this.shownMemo = {
         of: this.opened,
-        view: withRaindrops(withSpecials(this.opened))
+        setup: this._setup,
+        // DIV-1.4: two groups of one name shown with their divisions.
+        view: withRaindrops(
+          withDivisionNames(withSpecials(this.opened), this._setup)
+        )
       };
     }
     return this.shownMemo.view;

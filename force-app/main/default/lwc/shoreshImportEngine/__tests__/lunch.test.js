@@ -138,8 +138,8 @@ describe("INGEST-3.13: a day the file shows no Lunch for a group", () => {
         r.groups.includes("Bunk 2") &&
         r.days.includes("Tuesday")
     );
-    // Its own Tuesday Lunch at block 3 stands; no Lunch is added beside it.
-    expect(twice).toEqual([]);
+    // Its own Tuesday Lunch at block 3 stands (set up, INGEST-3.14); no Lunch is added beside it.
+    expect(twice.map((r) => [r.block, r.days])).toEqual([[3, ["Tuesday"]]]);
   });
 
   it("INGEST-3.13: importing the same file again finds the Lunch it set up, trip day and all", () => {

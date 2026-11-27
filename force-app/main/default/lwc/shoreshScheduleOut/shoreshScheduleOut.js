@@ -4,6 +4,7 @@ import PRINT_STYLE from "@salesforce/resourceUrl/ShoreshPrint";
 import { failed } from "c/shoreshErrors";
 import { downloadWorkbook, fileNameOf } from "c/shoreshDownload";
 import { offeringNames } from "c/shoreshElectiveDetails";
+import { withDivisionNames } from "c/shoreshScheduleViews";
 import {
   fileTitle,
   pagesFor,
@@ -52,6 +53,22 @@ export default class ShoreshScheduleOut extends LightningElement {
     return this.t.s("TimeBlock");
   }
 
+  /** DIV-1.4: the week as printed and exported, two groups of one name with their divisions. */
+  get shownView() {
+    if (
+      this.shownMemo.view !== this.view ||
+      this.shownMemo.setup !== this.setup
+    ) {
+      this.shownMemo = {
+        view: this.view,
+        setup: this.setup,
+        shown: withDivisionNames(this.view, this.setup)
+      };
+    }
+    return this.shownMemo.shown;
+  }
+  shownMemo = {};
+
   /** What the menus offer for the week shown, worked out once per week and setup. */
   get choices() {
     const memo = this.choicesMemo;
@@ -64,7 +81,7 @@ export default class ShoreshScheduleOut extends LightningElement {
         view: this.view,
         setup: this.setup,
         terms: this.terms,
-        list: printChoices(this.view, this.catalogue, this.setup, this.t)
+        list: printChoices(this.shownView, this.catalogue, this.setup, this.t)
       };
     }
     return this.choicesMemo.list;
@@ -80,7 +97,8 @@ export default class ShoreshScheduleOut extends LightningElement {
       return;
     }
     const choice = event.detail;
-    const { view, catalogue, setup, t } = this;
+    const { catalogue, setup, t } = this;
+    const view = this.shownView;
     this.exporting = true;
     try {
       await downloadWorkbook(
@@ -115,7 +133,7 @@ export default class ShoreshScheduleOut extends LightningElement {
       }
     }
     const pages = pagesFor(
-      this.view,
+      this.shownView,
       event.detail,
       this.catalogue,
       this.setup,

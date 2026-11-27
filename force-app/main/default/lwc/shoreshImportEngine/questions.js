@@ -256,7 +256,14 @@ function kindWhy(ask, t) {
     0
   );
   if (f.reason === "scattered") {
-    return `At a set time (${set.join("; ")}), and ${times1(strays)} at other times.`;
+    // INGEST-3.14: a group's moved day is one of its set times, so no other time may be left in
+    // the first week; another week may still have it elsewhere.
+    if (strays > 0) {
+      return `At a set time (${set.join("; ")}), and ${times1(strays)} at other times.`;
+    }
+    return f.elsewhereLater
+      ? `At a set time (${set.join("; ")}), and at other times in another week.`
+      : `At a set time (${set.join("; ")}).`;
   }
   if (f.reason === "nearFixed") {
     return `${set.join("; ")}, but not every day: some days it is empty or something else is there.`;
@@ -280,7 +287,7 @@ function kindCard(ask, t) {
   options.push({
     value: "recurring",
     label: capital(article(t.sIn("RecurringActivity"))),
-    description: `At the set time${f.patterns.length > 1 ? "s" : ""} above, every week. The other times are not set up.`
+    description: `At the set time${f.patterns.length > 1 ? "s" : ""} above, every week.${f.strays.length > 0 || f.elsewhereLater ? " The other times are not set up." : ""}`
   });
   options.push({
     value: "activity",

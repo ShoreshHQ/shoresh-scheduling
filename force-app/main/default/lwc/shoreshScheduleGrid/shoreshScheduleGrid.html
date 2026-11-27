@@ -43,7 +43,10 @@
               style={column.style}
               data-column={column.key}
             >
-              <span class={column.labelClass} aria-hidden={column.labelHidden}
+              <span
+                class={column.labelClass}
+                aria-hidden={column.labelHidden}
+                title={column.label}
                 >{column.label}</span
               >
               <template lwc:if={column.labelHidden}>
