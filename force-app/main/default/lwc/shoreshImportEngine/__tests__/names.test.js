@@ -490,3 +490,93 @@ describe("rules 1-3 with rule 7 (whole divisions at once) and rule 8 (one group)
     expect(readAsOf(p)).toContain("division|CIT");
   });
 });
+
+// INGEST-2.31: three spellings or more asked as one question. Made-up camp only.
+describe("INGEST-2.31: one card for every spelling of a name", () => {
+  const BUNKS = ["Bunk 1", "Bunk 2", "Bunk 3"];
+  const SPELLING = ["Music", "Musik", "Muzic"];
+  // Music most days; written Musik on Tuesday and Muzic on Thursday (slips, each once).
+  const music = (d, other) => ({ 1: "Musik", 3: other })[d] || "Music";
+  const spellingWeek = (other) =>
+    DAYS.map((day, d) =>
+      csv(`Camp ${day}.csv`, [
+        ["Time", ...BUNKS],
+        [BLOCKS[0], music(d, other), "Art", "Drama"],
+        [BLOCKS[1], "Drama", music(d, other), "Art"],
+        [BLOCKS[2], "Art", "Drama", music(d, other)]
+      ])
+    );
+  const files = spellingWeek("Muzic");
+  const itemNames = (p) =>
+    [...p.fixed, ...p.recurring, ...p.activities].map((x) => x.name);
+  const proposeWith = (answers = {}) =>
+    buildProposal({ files, existing: null, terms, answers });
+  const spellingCard = (p, answers = {}) =>
+    questionCards(p, terms, answers).filter((c) =>
+      /^(similar|spellings)\|/.test(c.id)
+    );
+
+  it("INGEST-2.31: the spellings are one question, each a name to choose", () => {
+    const cards = spellingCard(proposeWith());
+    expect(cards.map((c) => c.id)).toEqual([
+      "spellings|activity|Music|Musik|Muzic"
+    ]);
+    expect(cards[0].options.map((o) => o.label)).toEqual([
+      "Same: call them all “Music”",
+      "Same: call them all “Musik”",
+      "Same: call them all “Muzic”",
+      "Different: keep them all",
+      "Leave it out for now"
+    ]);
+  });
+
+  it("INGEST-2.31: the name chosen is the one kept for all, and remembered", () => {
+    const id = "spellings|activity|Music|Musik|Muzic";
+    const answers = { [id]: "Muzic" };
+    const p = proposeWith(answers);
+    const kept = itemNames(p);
+    expect(kept).toContain("Muzic");
+    expect(kept).not.toContain("Music");
+    expect(kept).not.toContain("Musik");
+    expect(planFor(p, null, "s1", { answers }).remember).toContainEqual({
+      key: id,
+      answer: "Muzic"
+    });
+  });
+
+  it("INGEST-2.31: counter-case: kept apart, all three stay; two spellings are still one pair", () => {
+    const p = proposeWith({
+      "spellings|activity|Music|Musik|Muzic": "different"
+    });
+    expect(itemNames(p)).toEqual(expect.arrayContaining(SPELLING));
+    const two = buildProposal({
+      files: spellingWeek("Music"),
+      existing: null,
+      terms,
+      answers: {}
+    });
+    expect(spellingCard(two).map((c) => c.id)).toEqual([
+      "similar|activity|music|musik|Music|Musik"
+    ]);
+  });
+
+  it("INGEST-2.31: counter-case: a spelling paired with a name the camp has, or a pair answered alone, keeps the pairs' questions", () => {
+    const withCamp = buildProposal({
+      files,
+      existing: existingSetup({
+        programs: [program("p1", "Main")],
+        activities: [{ Id: "a1", Name: "Musics", Length__c: 1 }]
+      }),
+      terms,
+      answers: {}
+    });
+    const ids = spellingCard(withCamp).map((c) => c.id);
+    // The camp's "Musics" is asked beside "Music", so the three spellings are asked by pairs.
+    expect(ids.some((id) => id.includes("Musics"))).toBe(true);
+    expect(ids.filter((id) => id.startsWith("spellings|"))).toEqual([]);
+    expect(ids.filter((id) => id.startsWith("similar|"))).toHaveLength(3);
+    const pairId = proposeWith().reading.spellings[0].pairs[0].id;
+    const answered = proposeWith({ [pairId]: "a" });
+    expect(answered.reading.spellings).toEqual([]);
+  });
+});

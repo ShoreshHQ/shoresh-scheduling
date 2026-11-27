@@ -17,7 +17,9 @@ import {
   formerNamesOf,
   mergesFrom,
   readWithoutAsking,
-  similarPairs
+  similarPairs,
+  spellingAnswers,
+  spellingGroups
 } from "./names";
 import { baseName, distinctName, filesToPages, sharedPrefix } from "./sheets";
 import {
@@ -530,26 +532,33 @@ export function readImport(input) {
     pairs,
     read.placements
   );
-  const settled = { ...answersFor(readAsNames), ...answers };
+  // INGEST-2.31: three spellings or more asked as one question.
+  const spellings = spellingGroups(asked, answers);
+  const { pairAnswers, chosen } = spellingAnswers(spellings, answers);
+  const given = { ...pairAnswers, ...answers };
+  const settled = { ...answersFor(readAsNames), ...given };
   const merges = {
     activity: mergesFrom(
       pairs.filter((p) => p.kind === "activity"),
-      settled
+      settled,
+      chosen.activity
     ),
     group: mergesFrom(
       pairs.filter((p) => p.kind === "group"),
-      settled
+      settled,
+      chosen.group
     ),
     division: mergesFrom(
       pairs.filter((p) => p.kind === "division"),
-      settled
+      settled,
+      chosen.division
     )
   };
   const named = applyNames(
     read.placements,
     read.noted,
     merges,
-    leftOutByPairs(pairs, answers)
+    leftOutByPairs(pairs, given)
   );
   // A group is its division and its name (Bunk 1 in Juniors is not Bunk 1 in Seniors).
   // Timetables first (they do not depend on which group is which), then each group's
@@ -607,6 +616,8 @@ export function readImport(input) {
     timedCells,
     colours,
     pairs: asked,
+    spellings,
+    pairAnswers,
     disagreements,
     timetables,
     placements: together.placements,

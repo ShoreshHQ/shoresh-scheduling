@@ -200,6 +200,8 @@ function readAsIds(proposal) {
 function answersToKeep(proposal, answers) {
   const ids = new Set([
     ...proposal.reading.pairs.map((x) => x.id),
+    // INGEST-2.31: one answer for three spellings or more.
+    ...(proposal.reading.spellings || []).map((x) => x.id),
     ...proposal.reading.disagreements.map((x) => x.id),
     ...proposal.reading.groupAsks.map((x) => x.id),
     ...(proposal.reading.splitAsks || []).map((x) => x.id),
