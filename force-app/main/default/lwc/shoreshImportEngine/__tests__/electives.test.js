@@ -10,6 +10,7 @@ import {
   questionCards,
   unplacedLines
 } from "./data/engine";
+import { listShape, readElectives } from "../electives";
 import { byGroupFiles, existingSetup, terms } from "./data/samples";
 import { buildTerms } from "c/shoreshTerms";
 
@@ -548,5 +549,62 @@ describe("same files, same reading", () => {
     });
     const again = inLanguage("he", () => propose(mixed, {}, camp));
     expect(setNamed(again, name)).toMatchObject({ key: "set-1", isNew: false });
+  });
+});
+
+describe("INGEST-2.26: a list needs two names of two letters or more", () => {
+  it("INGEST-2.26: a group's number, a code or week numbers are no list", () => {
+    expect(listShape("Baking with 4/5C")).toBeNull();
+    expect(listShape("B/D")).toBeNull();
+    expect(listShape("Water Slide Weeks 2, 4, 6-8")).toBeNull();
+  });
+
+  it("INGEST-2.26: two names are still asked, three short ones still a choice", () => {
+    expect(listShape("Arts/Crafts")).toEqual({
+      parts: ["Arts", "Crafts"],
+      strict: false
+    });
+    expect(listShape("Archery, Drama, Music")).toEqual({
+      parts: ["Archery", "Drama", "Music"],
+      strict: true
+    });
+  });
+
+  it("INGEST-2.26: counter-case: a list of days or with a colon is asked, never read as a choice", () => {
+    expect(listShape("Swim: Monday, Wednesday, Friday").strict).toBe(false);
+    expect(listShape("Monday, Wednesday, Friday").strict).toBe(false);
+  });
+
+  it("INGEST-2.26: names are counted over every mark; a nested mark or a repeat is asked", () => {
+    expect(listShape("Soccer/Basketball 1, 2")).not.toBeNull();
+    expect(listShape("Art, Music/Dance, Drama").strict).toBe(false);
+    expect(listShape("Arts, Arts, Arts").strict).toBe(false);
+  });
+
+  it("INGEST-2.26: a list of the camp's own groups is asked, never read as a choice", () => {
+    const cell = {
+      text: "Otters, Wolves, Herons",
+      timetable: 0,
+      group: "Foxes",
+      day: "Monday",
+      block: 1,
+      week: ""
+    };
+    const read = (who) =>
+      readElectives([cell], {
+        who,
+        terms,
+        answers: {},
+        timetables: [{ program: null }],
+        existing: null,
+        deletions: new Map(),
+        camp: { activities: new Set(), fixed: new Set(), recurring: new Set() }
+      });
+    expect(read([]).asks.map((a) => a.id)).not.toContain(
+      "list|Otters, Wolves, Herons"
+    );
+    expect(
+      read(["Otters", "Wolves", "Herons", "Foxes"]).asks.map((a) => a.id)
+    ).toContain("list|Otters, Wolves, Herons");
   });
 });

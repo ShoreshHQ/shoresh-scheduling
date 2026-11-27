@@ -9,9 +9,10 @@
  *   elective set, without a question: shown as "Read as electives: ..." with one escape, "Not
  *   electives", answered per set and remembered.
  * - A list cell ("Hiking, Fishing, Kayaking") is a set of those choices, proposed, only under the
- *   desktop's strict rule (a comma, semicolon or spaced slash; three parts or more; none empty,
- *   none with "&" or "and", none longer than four words). Anything else list-like is one question:
- *   one activity, or a choice of several.
+ *   desktop's strict rule (`listShape`, INGEST-2.26: a comma, semicolon or spaced slash; three
+ *   different names or more, each of two letters or more, four words at most, no "&" or "and"; no
+ *   ":" in the cell; none the camp's own group or division). Anything else list-like is one
+ *   question: one activity, or a choice of several; a cell with fewer than two names is no list.
  * - A name the camp already has as an activity, fixed or recurring activity stays what it is; a set
  *   the camp has of that name is used, and only offerings it doesn't have are added, proposed.
  * - A set or offering the director deleted stays deleted (Greg, decision 45), with Bring back.
@@ -59,9 +60,20 @@ export function electiveWord(t) {
   return t.pIn(electiveTerm(t));
 }
 
+const letters = (part) => (part.match(/\p{L}/gu) || []).length;
+const digits = (part) => (part.match(/\d/g) || []).length;
+const WEEKDAY =
+  /^(mon|tue|tues|wed|thu|thur|thurs|fri|sat|sun)(day|sday|nesday|rsday|urday)?\.?$/i;
+
 /**
  * A cell that lists several names: { parts, strict } (strict: read as a choice of them without a
- * question), or null when it is not list-like at all.
+ * question), or null when it is not list-like at all. INGEST-2.26, as the desktop splits and asks
+ * (splitListCell.js strictSplit, looksListLike): a part is a name only with two letters or more,
+ * and a list needs two such parts, split on every mark; a strict choice needs three different
+ * parts or more on one mark, each such a name with no other mark in it, no "&" or "and", four
+ * words at most, no more digits than letters and no day's name, in a cell with no ":".
+ * "Baking with 4/5C", "B/D" and "Water Slide Weeks 2, 4, 6-8" are one name. A list of the
+ * camp's own groups or divisions is asked, never a choice (`readingOf`).
  */
 export function listShape(text) {
   const value = String(text || "");
@@ -71,19 +83,28 @@ export function listShape(text) {
   if (!delimiter) {
     return null;
   }
-  const raw = value.split(delimiter).map((part) => part.trim());
-  const parts = raw.filter(Boolean);
-  if (parts.length < 2) {
+  const names = value
+    .split(/\s*[,;/]\s*/)
+    .filter((part) => letters(part.trim()) >= 2);
+  if (names.length < 2) {
     return null;
   }
+  const raw = value.split(delimiter).map((part) => part.trim());
+  const parts = raw.filter(Boolean);
+  const different = new Set(parts.map((part) => part.toLowerCase()));
   const strict =
     delimiter !== "/" &&
-    raw.length >= 3 &&
+    !value.includes(":") &&
+    different.size >= 3 &&
     raw.every(
       (part) =>
         part &&
+        !/[,;/]/.test(part) &&
         !/&|\band\b/i.test(part) &&
-        part.split(/\s+/).length <= MAX_WORDS
+        part.split(/\s+/).length <= MAX_WORDS &&
+        letters(part) >= 2 &&
+        digits(part) <= letters(part) &&
+        !WEEKDAY.test(part)
     );
   return { parts, strict };
 }
@@ -105,8 +126,12 @@ function listSetName(parts, t) {
   return limited(`${word} (${sorted.join(", ")})`);
 }
 
-/** What a cell's name is as an elective: { setName, choices } or { ask, parts }, else null. */
-function readingOf(text, t) {
+/**
+ * What a cell's name is as an elective: { setName, choices } or { ask, parts }, else null. A list
+ * naming one of the camp's own groups or divisions ("Bunk 1, Bunk 2, Bunk 3") is who, not a
+ * choice: asked (desktop buildPlan.js).
+ */
+function readingOf(text, t, who) {
   if (notedKindByWords(text, t) === "E") {
     return { setName: limited(text), choices: [] };
   }
@@ -114,7 +139,8 @@ function readingOf(text, t) {
   if (!shape) {
     return null;
   }
-  return shape.strict
+  const ofWho = shape.parts.some((part) => who.has(foldName(part)));
+  return shape.strict && !ofWho
     ? { setName: listSetName(shape.parts, t), choices: shape.parts }
     : { ask: true, parts: shape.parts };
 }
@@ -184,9 +210,10 @@ export function readElectives(usable, ctx) {
   const texts = new Map();
   const found = new Map();
   const named = new Set(usable.map((p) => foldName(p.text)));
+  const who = new Set((ctx.who || []).map(foldName));
   for (const text of [...new Set(usable.map((p) => p.text))].sort(byText)) {
     const cells = usable.filter((p) => p.text === text);
-    let reading = readingOf(text, t);
+    let reading = readingOf(text, t, who);
     if (!reading || campHas(text, cells, ctx)) {
       continue;
     }

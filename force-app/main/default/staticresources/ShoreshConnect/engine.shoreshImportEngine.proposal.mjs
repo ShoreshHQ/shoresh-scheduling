@@ -568,6 +568,7 @@ export function buildProposal(input) {
   const deletions = deletionsIn(answers);
   // Electives first (slice E9): an elective set is not a fixed, recurring or activity name.
   const electives = readElectives(usable, {
+    who: people.groups.flatMap((g) => [g.name, g.division].filter(Boolean)),
     timetables: programs.timetables,
     terms: input.terms,
     answers,
