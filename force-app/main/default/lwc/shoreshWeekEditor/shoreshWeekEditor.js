@@ -10,6 +10,7 @@ import {
   dailyGrid,
   dayLabel,
   days,
+  divisionsOfGroups,
   groupGrid,
   gridMinWidth,
   groups,
@@ -862,7 +863,8 @@ export default class ShoreshWeekEditor extends SaveQueue(LightningElement) {
   }
 
   get groupPills() {
-    return groups(this.schedule).map((grp) => ({
+    // DIV-1.4: two groups of one name shown with their divisions.
+    return groups(this.schedule, divisionsOfGroups(this.setup)).map((grp) => ({
       ...grp,
       pressed: String(grp.key === this.groupKey),
       className:
@@ -889,7 +891,12 @@ export default class ShoreshWeekEditor extends SaveQueue(LightningElement) {
       return null;
     }
     const grid = this.isDaily
-      ? dailyGrid(this.schedule, this.dayIndex, this.t)
+      ? dailyGrid(
+          this.schedule,
+          this.dayIndex,
+          this.t,
+          divisionsOfGroups(this.setup)
+        )
       : this.groupKey && groupGrid(this.schedule, this.groupKey, this.t);
     if (!grid) {
       return null;
@@ -938,7 +945,12 @@ export default class ShoreshWeekEditor extends SaveQueue(LightningElement) {
 
   /** Its own schedule, as that day's grid (read-only). */
   get planShown() {
-    return planGrid(this.replacedShown, this.t);
+    return planGrid(
+      this.replacedShown,
+      this.t,
+      divisionsOfGroups(this.setup),
+      (this.schedule && this.schedule.days) || []
+    );
   }
 
   /** Why its schedule isn't drawn: it can't be read, or it has no time blocks yet. */

@@ -1244,6 +1244,7 @@ function exportModules(m) {
     EVERY: m.scheduleExport.EVERY,
     withRaindrops: m.views.withRaindrops,
     withSpecials: m.views.withSpecials,
+    withDivisionNames: m.views.withDivisionNames,
     offeringNames: m.offerings.offeringNames,
     readDownload: m.electives.readDownload,
     downloadTitle: m.electives.downloadTitle,
