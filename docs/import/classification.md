@@ -66,10 +66,11 @@ example, test.
    a division together, but at three or more different times a week".
 
 3. **Held, and the grid shows it repeats → recurring.**
-   Clue: every placement is held (whole divisions of the program, most groups at once, or one
-   group in its one slot on most days), the same in every week that has it, and the grid shows
-   repetition: the same groups in the same slot on two days or more; every group together (or most
-   of them: an all-camp moment, even once a week); or the same slots in two weeks or more. A
+   Clue: every placement is held (whole divisions of the program, most groups at once, one group
+   in its one slot on most days, or a group in its own slot, rule 12), the same in every week
+   that has it, and the grid shows repetition: the same groups in the same slot on two days or
+   more; every group together (or most of them: an all-camp moment, even once a week); or the same
+   slots in two weeks or more. A
    stagger repeats when each division has its slot on two days or more (Swim for one division in
    Period 2 and the next in Period 3, every day). One record per pattern.
    Example: Lunch 1 to 3, Menucha, Ruach, Shabbat, All Camp Activity, CIT's blocks (plant camp).
@@ -217,6 +218,28 @@ example, test.
     Code: `clashes.js` (`settleClashes`); the card is `clashCard` in `questions.js`. Test:
     `__tests__/clashes.test.js` "INGEST-3.11: …"; the screen's "INGEST-3.11: a recurring
     activity over the camp's fixed Lunch is a row in Needs a look, …".
+
+12. **A group's own slot holds when its item moves one day (import battle test, 2026-11-27).**
+    Clue: a group has the name in one slot on more than half of its days with it (two days or
+    more, most of the week), and elsewhere on the other days ("Lunch" in Period 4 four days, in
+    Period 5 on Wednesday when a special activity took Period 4). Rule 3's "one group in its one
+    slot" asked for a single slot, so one moved day made every one of the group's placements a
+    stray, and a name held by pairs of groups without divisions (Lunch in two sittings) was read
+    as an activity without a question.
+    Meaning: that slot is the group's own and its placements there are held; the moved day is a
+    placement elsewhere, so the name is asked as ask A ("mostly at a set time"), its set times
+    listed, and answering "a recurring activity" sets them up group by group. The desktop keeps an
+    item per group when it is at the same block on more than half of that group's days
+    (`src/ingest/fixedEvents.js`, per-group pass), so pairs of groups at their own Lunch each come
+    out recurring; Shoresh counts the program's days, stricter for a group away on a trip, and
+    asks where the desktop decides.
+    Example: Otters and Wolves at Lunch in block 2, Herons and Foxes in block 3, every day; Wolves'
+    Lunch in block 3 on Wednesday, Foxes' in block 2 on Thursday. One group's swim in its own slot Monday to Thursday and earlier
+    on Friday.
+    Test: `__tests__/classify.test.js` "INGEST-3.12: …" (Lunch in pairs with one day moved is
+    asked, and set up per pair; one group's swim four days of five is kept). Counter-case: a
+    group with the name in two slots half the days each has no own slot. Code: `classify.js`
+    `ownSlot`, `daysBySlot`, `isHeld`.
 
 ## Asked, because the grid supports both readings
 
