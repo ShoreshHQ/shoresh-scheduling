@@ -280,6 +280,27 @@ describe("INGEST-2.27: a file that writes each cell's room on its second line", 
     ).toBeGreaterThan(0);
   });
 
+  it("INGEST-2.27: an activity named for its room leaves the room a room, a slip over it too", () => {
+    // Drama is played in the Gym and also written "Gym" over "Gym"; one cell slips: "Gyms" / "Gym".
+    const slip = (g, b, d) => {
+      if (g === 0 && b === 0 && d === 0) return "Gyms\nGym";
+      if (g === 1 && b === 3) return "Gym\nGym";
+      return roomed(g, b, d);
+    };
+    const p = propose(sheetFile(slip));
+    // Bunk 2's Gym every day in one block is a set time.
+    const names = [...p.activities, ...p.recurring].map((a) => a.name);
+    expect(names).not.toContain("Gyms Gym");
+    expect(names).not.toContain("Drama Gym");
+    expect(names).toEqual(expect.arrayContaining(["Gym", "Gyms"]));
+    expect(p.offeredPlaces.map((x) => x.name)).toContain("Gym");
+    expect(
+      questionCards(p, terms, {}).some(
+        (c) => c.id.startsWith("similar|activity|") && /Gyms/.test(c.id)
+      )
+    ).toBe(true);
+  });
+
   it("INGEST-2.27: counter-case: a few two-line cells keep both lines in the name, with no place", () => {
     const few = (g, b, d) => {
       return g === 0 && b === 0 ? `Art\n${ROOMS[d]}` : ACTS[(g + b + d) % 4];

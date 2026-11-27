@@ -381,7 +381,9 @@ Each rule is clue, meaning, example, test.
     Clue: a file whose cells are written as two lines, an activity over a room ("Art" over "101"):
     ten such cells or more, a fifth of its filled cells or more, and one second line under two
     different activities or more. A second line the file also writes as another activity ("Art"
-    over "Drama") is no room ("Gym" over "Gym" is), and only the grid's cells are read so: a
+    over "Drama") is no room ("Gym" over "Gym" is, and does not make Gym another activity: "Drama"
+    over "Gym", or a slip "Gyms" over "Gym", is a room, the slip's spelling asked as any other;
+    it was glued into one name, "Gyms Gym"), and only the grid's cells are read so: a
     heading on two lines stays the group's name. Most of the activities have one room each, or
     the second lines are no rooms ("Art / Rest", "Drama / Rest", "Art / Snack").
     Meaning: the first line is the activity and the second a place it may be at, asked on the
