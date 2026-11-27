@@ -31,7 +31,7 @@ import {
   owner,
   slots
 } from "./engine.shoreshEngine.grid.mjs";
-import { compareText } from "./engine.shoreshTerms.shoreshTerms.mjs";
+import { areaWord, compareText } from "./engine.shoreshTerms.shoreshTerms.mjs";
 import { earlyDates, minutes, runsAt, weekdayOf } from "./engine.shoreshEngine.setup.mjs";
 import { BUSY, OFF_TIME, RELAX_ORDER, RULE as RULES } from "./engine.shoreshEngine.week.mjs";
 import { reasonFor } from "./engine.shoreshEngine.words.mjs";
@@ -735,7 +735,7 @@ function walks(ctx, words) {
             dateValue: day.dateValue,
             groupId: grp.id,
             changes,
-            text: `${grp.name} changes area ${changes} times on ${words.dayName(day.dateValue)}`
+            text: `${grp.name} changes ${areaWord(ctx.t)} ${changes} times on ${words.dayName(day.dateValue)}`
           });
         }
       });

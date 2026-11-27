@@ -193,9 +193,11 @@ approved by Greg on 2026-11-26.
   compared with capitals and spacing aside ("Lakefront" and "lakefront " are one area); there is
   no list of areas to keep, so a typo makes a second area, which the Why list then shows.
 - **Camp Setup's Locations table** has an Area column after the groups that fit, and the
-  Locations list's import and download carry it. In a camp whose word for a location type is
-  "Area" (a camp word), the column is "Area of camp", so the two are never one heading; a
-  heading another column has in the camp's words always goes to that column.
+  Locations list's import and download carry it (more than 80 characters can't be read, with
+  why, as a name). In a camp whose word for a location or a location type is "Area" (a camp
+  word), it is "Area of camp" there and in the Why list, so two ideas never share a word; a
+  heading another column has in the camp's words always goes to that column. Merging
+  same-named locations keeps the kept one's area, as it keeps its notes.
 - **The generator** (protocol GEN-4.6): in steps 4.3 (which day a multi-block session goes on)
   and 4.5 (which activity a cell takes), after every preference it had, and before the stable
   tie key, it takes the placement that adds the fewest changes of area for the group that day.
@@ -210,7 +212,9 @@ approved by Greg on 2026-11-26.
 - **The Why list** (CORE-6.21): "Bunk 4 changes area 3 times on Monday", once per group and day
   that changes area **two or more** times, among the lines to look at, never fixed. One change
   (the lakefront in the morning, the fields in the afternoon) is a camp's usual plan, so it is
-  not said; saying it would put a line for nearly every group and day. It shows on both
+  not said; saying it would put a line for nearly every group and day. The threshold of two is
+  the coordinator's call on 2026-11-27 (the desktop has no such rule; its facility-topology ADR
+  of 2026-08-20 only shapes the data for a travel cost later); Greg can change it. It shows on both
   schedules and in the connector's week checks, as every Why line does, and Accept brings it back
   only if that day gets more changes.
 - **AI and command line:** `read_from_setup` / `change_in_setup` read and change a location's

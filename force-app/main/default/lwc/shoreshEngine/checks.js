@@ -31,7 +31,7 @@ import {
   owner,
   slots
 } from "./grid";
-import { compareText } from "c/shoreshTerms";
+import { areaWord, compareText } from "c/shoreshTerms";
 import { earlyDates, minutes, runsAt, weekdayOf } from "./setup";
 import { BUSY, OFF_TIME, RELAX_ORDER, RULE as RULES } from "./week";
 import { reasonFor } from "./words";
@@ -735,7 +735,7 @@ function walks(ctx, words) {
             dateValue: day.dateValue,
             groupId: grp.id,
             changes,
-            text: `${grp.name} changes area ${changes} times on ${words.dayName(day.dateValue)}`
+            text: `${grp.name} changes ${areaWord(ctx.t)} ${changes} times on ${words.dayName(day.dateValue)}`
           });
         }
       });

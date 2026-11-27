@@ -5,6 +5,7 @@
  * before. The Why list says a day a group changes area often, and never fixes it.
  */
 import { generateWeek, measureWeek } from "c/shoreshEngine";
+import { buildTerms } from "c/shoreshTerms";
 import { activity, at, block, camp, dateAt, group } from "./data/camp";
 import { randomCamp, withHistory } from "./data/randomCamp";
 
@@ -68,31 +69,45 @@ describe("Areas of camp", () => {
     expect(placedAt(plain, 0, 1)).toContain("Canoe");
   });
 
-  // GEN-4.6: a multi-block session goes on the day it walks least (4.3), as long as nothing
-  // else decides; without areas, the stable key spreads the groups over both days.
+  // GEN-4.6: a multi-block session goes on the day it walks least (4.3) when nothing else
+  // decides: one group, one session a week, in 12 camps (each its own tie keys); without areas,
+  // the stable key puts some on the other day.
   it("a multi-block session goes where it walks least", () => {
-    const hikes = (places) =>
-      camp({
-        mode: "fillOpen",
-        groups: GROUPS,
-        blocks: [block(0), block(1), block(2)],
-        days: 2,
-        locations: places,
-        activities: [
-          activity("Swim", { atOnce: null, location: "lake", max: 0 }),
-          activity("Soccer", { atOnce: null, location: "field", max: 0 }),
-          activity("Hike", { atOnce: null, location: "dock", span: 2, min: 1 })
-        ],
-        cells: GROUPS.flatMap((g) => [
-          { day: 0, group: g.id, block: "b0", act: "Swim" },
-          { day: 1, group: g.id, block: "b0", act: "Soccer" }
-        ])
+    const hikeDays = (places) =>
+      Array.from({ length: 12 }, (_, i) => {
+        const result = generateWeek(
+          camp({
+            mode: "fillOpen",
+            programId: `p${i}`,
+            groups: [group("g1")],
+            blocks: [block(0), block(1), block(2)],
+            days: 2,
+            locations: places,
+            activities: [
+              activity("Swim", { atOnce: null, location: "lake", max: 0 }),
+              activity("Soccer", { atOnce: null, location: "field", max: 0 }),
+              activity("Hike", {
+                atOnce: null,
+                location: "dock",
+                span: 2,
+                min: 1,
+                max: 1
+              }),
+              // Fill the other day (each once a day), so never-blank needn't bend Hike's max.
+              // No area: never a walk.
+              activity("Song", { atOnce: null }),
+              activity("Games", { atOnce: null })
+            ],
+            cells: [
+              { day: 0, group: "g1", block: "b0", act: "Swim" },
+              { day: 1, group: "g1", block: "b0", act: "Soccer" }
+            ]
+          })
+        );
+        return at(result, 0, "g1", 1) === "Hike" ? 0 : 1;
       });
-    expect(placedAt(generateWeek(hikes(PLACES)), 0, 1)).toEqual(
-      GROUPS.map(() => "Hike")
-    );
-    const plain = generateWeek(hikes(NO_AREAS));
-    expect(placedAt(plain, 1, 1)).toContain("Hike");
+    expect(hikeDays(PLACES)).toEqual(Array(12).fill(0));
+    expect(hikeDays(NO_AREAS)).toContain(1);
   });
 
   // GEN-4.6: last, after "the one the group has had least".
@@ -185,6 +200,38 @@ describe("Areas of camp", () => {
       groupId: "g1",
       dateValue: dateAt(0)
     });
+  });
+
+  // CORE-6.21: a camp whose location types are Areas reads "area of camp", never one word for two.
+  it("a camp that calls its location types Areas reads area of camp", () => {
+    const result = generateWeek({
+      ...camp({
+        mode: "fillOpen",
+        groups: [group("g1")],
+        blocks: [block(0), block(1), block(2)],
+        locations: PLACES,
+        activities: [
+          activity("Swim", { atOnce: null, location: "lake" }),
+          activity("Soccer", { atOnce: null, location: "field" })
+        ],
+        cells: [
+          { day: 0, group: "g1", block: "b0", act: "Swim" },
+          { day: 0, group: "g1", block: "b1", act: "Soccer" },
+          { day: 0, group: "g1", block: "b2", act: "Swim" }
+        ]
+      }),
+      terms: buildTerms([
+        {
+          term: "LocationType",
+          singular: "Area",
+          plural: "Areas",
+          isCustom: true
+        }
+      ])
+    });
+    expect(result.walks.map((l) => l.text)).toEqual([
+      "Bunk g1 changes area of camp 2 times on Monday"
+    ]);
   });
 
   // CORE-6.21: a camp with no areas reads exactly as before.

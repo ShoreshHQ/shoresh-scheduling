@@ -404,6 +404,27 @@ describe("adversarial downloads read back with nothing to do", () => {
       "Area of camp"
     ]);
     expect(rows[1].slice(1, 4)).toEqual(["Water, front", 2, "Lakefront"]);
+    const file = roundTrip([{ name: "List", rows }]);
+    expect(readBack("locations", file, oddCamp(), oddTerms).changed).toEqual(
+      []
+    );
+  });
+
+  // ADR 0031 piece C: so does a camp that calls its locations Areas.
+  it("a camp whose locations are Areas has its area of camp under its own heading", () => {
+    const areaTerms = buildTerms([word("Location", "Area", "Areas")]);
+    const rows = listRows("locations", camp(), areaTerms);
+    expect(rows[0].slice(0, 4)).toEqual([
+      "Area",
+      "Location type",
+      "Groups that fit",
+      "Area of camp"
+    ]);
+    const file = roundTrip([{ name: "List", rows }]);
+    expect(readBack("locations", file, camp(), areaTerms)).toMatchObject({
+      changed: [],
+      questions: []
+    });
   });
 
   it("a quote inside a quoted list name is written twice and read back once", () => {

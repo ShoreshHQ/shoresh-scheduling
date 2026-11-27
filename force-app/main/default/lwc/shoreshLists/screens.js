@@ -13,7 +13,7 @@
  * cell would give it).
  */
 import { CHILDREN, childRows, FIELD } from "c/shoreshSchema";
-import { buildTerms } from "c/shoreshTerms";
+import { areaWord, buildTerms, capital } from "c/shoreshTerms";
 import { foldName } from "c/shoreshImportEngine";
 import { spokenWeekday } from "c/shoreshDayNames";
 import { newRow } from "c/shoreshNewRows";
@@ -98,14 +98,9 @@ function staffScreen(t) {
   };
 }
 
-/**
- * A location's area of camp column (ADR 0031 piece C): "Area", or "Area of camp" in a camp whose
- * word for a location type is Area, so the two are never one heading.
- */
+/** A location's area of camp column (ADR 0031 piece C), never one heading with a location type. */
 export function areaHeading(t) {
-  return ["area", "areas"].includes(foldName(t.s("LocationType")))
-    ? "Area of camp"
-    : "Area";
+  return capital(areaWord(t));
 }
 
 function nameOf(list, id) {
@@ -152,6 +147,8 @@ function locationsScreen(t) {
         heading: areaHeading(t),
         words: ["area", "area of camp", "zone", "part of camp"],
         type: "text",
+        // Location__c.Area__c keeps 80 characters.
+        most: 80,
         fromRecord: (r) => r[LOCATION.Area] || null,
         write: (v) => ({ [LOCATION.Area]: v || null })
       },

@@ -80,6 +80,7 @@ private class LocationAreasTest {
     System.runAs(KeptCamp.scheduler(ids)) {
       Test.startTest();
       List<Object> before = pool(season, 'read', new Map<String, Object>());
+      Integer queriesBefore = Limits.getQueries();
       List<Object> changed = pool(
         season,
         'change',
@@ -88,6 +89,7 @@ private class LocationAreasTest {
           'seen' => new Map<String, Object>{ 'area' => '(blank)' }
         }
       );
+      Integer changeQueries = Limits.getQueries() - queriesBefore;
       List<Object> after = pool(season, 'read', new Map<String, Object>());
       List<Object> cleared = pool(
         season,
@@ -98,6 +100,8 @@ private class LocationAreasTest {
         }
       );
       Test.stopTest();
+      // One change is one request, well under Salesforce's 100 queries.
+      Assert.isTrue(changeQueries <= 30, 'Queries: ' + changeQueries);
       Assert.areEqual(200, before[0], String.valueOf(before[1]));
       Assert.isTrue(
         String.valueOf(before[1]).contains('area: (blank)'),

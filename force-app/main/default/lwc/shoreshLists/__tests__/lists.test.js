@@ -290,6 +290,19 @@ describe("rows", () => {
     ]);
     expect(ref.rows[0].problems).toEqual([
       `Location: "${"L".repeat(40)}…" is longer than 80 characters`
+    ]); // A location's area of camp (ADR 0031 piece C) keeps 80 characters too.
+    const area = read("locations", [
+      ["Location", "Area"],
+      ["Lake", "Z".repeat(81)],
+      ["Field", "Y".repeat(80)]
+    ]);
+    expect(area.rows.map((r) => [r.rowNumber, r.status, r.problems])).toEqual([
+      [
+        2,
+        "unreadable",
+        [`Area: "${"Z".repeat(40)}…" is longer than 80 characters`]
+      ],
+      [3, "new", []]
     ]);
   });
 
