@@ -235,14 +235,14 @@ Each rule is clue, meaning, example, test.
     time rather than on its edge is placed in the times it covers by more than half; two boxes that
     fall in one place are kept there together. Each of these is said with the review, after it, in
     one line each: "Not plain from the PDF (show the person; each is left as said, not guessed):
-    camp.pdf: Page 32, 9:50-10:25, Monday: filled in with no words; left empty". A page that is a
+    camp.pdf: Page 3, 9:50-10:25, Monday: filled in with no words; left empty". A page that is a
     picture (scanned) or has no table drawn with lines is left out and said; a PDF of nothing else
     is refused ("<file> is a picture of a schedule (scanned), not text; Shoresh can't read it.
     Nothing was imported."). Pages are read in a process of their own, so the same PDF always gives
     the same sheets. Save sends the same files again and they are read again, as any file is.
-    Example: a 33-page PDF, a page per bunk, with Field Trip drawn as one box down Thursday and a
-    preschool's first block blacked out: 33 sheets, read By group; Field Trip is one cell over its
-    eight blocks; each blacked-out box is a line under the review, and the cell is empty.
+    Example: a made-up camp's PDF, a page per bunk, with Field Trip drawn as one box down Thursday
+    and one bunk's first block blacked out: a sheet per page, read By group; Field Trip is one cell
+    over its blocks; the blacked-out box is a line under the review, and its cell is empty.
     Test: `connect/__tests__/pdf.test.js`, "INGEST-1.11: every corpus layout, printed, reads back
     as the same table, merged cells and all"; "INGEST-1.11: the same PDF always gives the same
     sheets"; "INGEST-1.11: lines above the table, a title and the group, come first, each a row of

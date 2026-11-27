@@ -54,7 +54,7 @@ into spreadsheets by hand in a sandbox to find out what reading a PDF takes. Wha
    `read_a_pdf` tool was considered and dropped, for two reasons. It would be a tool with no web
    address, outside API-1.6 ("a person's AI brings data in only as the screens do") and
    `matchesTheApi`. And the AI would have to copy every page's cells back into `import_last_year`
-   by hand, 33 pages for one camp, where one slip goes unseen.
+   by hand, dozens of pages for one camp, where one slip goes unseen.
 5. **The instructions travel in the tool's own words.** `import_last_year`'s description tells any
    AI to send the PDF, not retype it; to tell the person each thing the review says the PDF
    doesn't make plain, before saving, and fill none in; and to ask for the original file when a
