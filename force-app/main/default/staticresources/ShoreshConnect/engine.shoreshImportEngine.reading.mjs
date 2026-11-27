@@ -28,7 +28,7 @@ import {
   collectGroups,
   crossCheck
 } from "./engine.shoreshImportEngine.structure.mjs";
-import { WEEKDAYS, looseKey, timeCount } from "./engine.shoreshImportEngine.text.mjs";
+import { WEEKDAYS, looseKey, timeCount, timesWritten } from "./engine.shoreshImportEngine.text.mjs";
 import { withoutWeek } from "./engine.shoreshImportEngine.weekLabels.mjs";
 import { identifyGroups } from "./engine.shoreshImportEngine.identity.mjs";
 import { countDaysFrom } from "./engine.shoreshDayNames.shoreshDayNames.mjs";
@@ -502,12 +502,17 @@ export function readImport(input) {
     ).values()
   ];
   // INGEST-2.29: a cell read with times of its own its row's block doesn't hold, as written; one
-  // with more than two ("9:40 Change 9:50 Swim …"), by its name.
+  // with more than two ("9:40 Change 9:50 Swim …"), by its name and the times it writes.
   const timedCells = [
     ...new Set(
       read.placements
         .filter((p) => p.written)
-        .map((p) => (timeCount(p.written) <= 2 ? p.written : p.text))
+        .map((p) => {
+          if (timeCount(p.written) <= 2) {
+            return p.written;
+          }
+          return `${p.text} (${timesWritten(p.written).join(", ")})`;
+        })
     )
   ];
   const camp = campNames(input.existing);
