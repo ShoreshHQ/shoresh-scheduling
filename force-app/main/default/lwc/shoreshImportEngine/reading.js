@@ -488,7 +488,7 @@ export function readImport(input) {
       firstDayOnceSaved(input.existing, saved, again.read.dayNumbers) === saved;
     reading = settles ? again : readFrom(now);
   }
-  const { unread, colours, skipped, read } = reading;
+  const { unread, colours, skipped, read, roomFiles } = reading;
   const camp = campNames(input.existing);
   const pairs = [
     ...similarPairs(
@@ -583,6 +583,7 @@ export function readImport(input) {
     pages: read.info,
     unread,
     skipped,
+    roomFiles,
     colours,
     pairs: asked,
     disagreements,

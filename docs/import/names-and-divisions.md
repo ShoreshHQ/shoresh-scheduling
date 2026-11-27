@@ -376,6 +376,29 @@ Each rule is clue, meaning, example, test.
     asked, never read as a choice; a nested mark or a repeat is asked; a list of the camp's own
     groups is asked. Code: `electives.js` `listShape`, `readingOf`; `proposal.js` (who).
 
+27. **A room written on a cell's second line is its place** (import battle test, 2026-11-27;
+    coordinator's call 2026-11-27, Greg can change).
+    Clue: a file whose cells are written as two lines, an activity over a room ("Art" over "101"):
+    ten such cells or more, a fifth of its filled cells or more, and one second line under two
+    different activities or more. A second line the file also writes as another activity ("Art"
+    over "Drama") is no room ("Gym" over "Gym" is), and only the grid's cells are read so: a
+    heading on two lines stays the group's name. Most of the activities have one room each, or
+    the second lines are no rooms ("Art / Rest", "Drama / Rest", "Art / Snack").
+    Meaning: the first line is the activity and the second its place, offered under the places that
+    come in on the review and ticked, so the director sees them and unticks one that is not a
+    place; unticked, it stays out on the next import. As with "Art @ Art room", an activity written
+    in two rooms or more gets no place. It was "Art 101", one activity per room and activity, and
+    no places. The desktop reads a room printed under its activity so in a PDF
+    (`src/ingest/textGrid.js`) and proposes places for the director to confirm
+    (`src/ingest/locationsFromActivities.js`).
+    Test: `reading.test.js` "INGEST-2.27: …"; `kinds.test.js` (an unticked place reads "Left out"
+    under remembered answers). Counter-cases: a few two-line cells, rooms that each hold one
+    activity, or under a fifth of the cells keep both lines in the name, with no place; two
+    activities in a cell are no activity and room; a second line under every activity is no room; a
+    heading on two lines stays the group's name.
+    Code: `sheets.js` `writesRooms`, `sectionToPage`; `proposal.js` `placesFor`; `shoreshImport.js`
+    `handlePlace`.
+
 ## With the classification rules
 
 - A division of one is a whole division for classification rule 7: an item only CIT has in one

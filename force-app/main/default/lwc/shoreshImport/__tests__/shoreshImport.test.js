@@ -1470,6 +1470,33 @@ describe("c-shoresh-import", () => {
       expect(places.querySelector("p")).toBeNull();
     });
 
+    it("INGEST-2.27: a place unticked is remembered as left out", async () => {
+      getAnswers.mockResolvedValue([{ key: "place|Pool", answer: "add" }]);
+      const element = await renderWith(WITH_WEEK);
+      const rows = [
+        "Time,Bunk 1,Bunk 2",
+        "9:00-9:45,Swim @ Pool,Art",
+        "12:00-12:45,Lunch,Lunch"
+      ].join("\n");
+      await choose(element, ["Monday.csv", "Tuesday.csv"], {
+        "Monday.csv": rows,
+        "Tuesday.csv": rows
+      });
+      const box = $(element, '[data-place="place|Pool"] lightning-input');
+      expect(box.checked).toBe(true);
+      box.checked = false;
+      box.dispatchEvent(new CustomEvent("change"));
+      await flush();
+      add(element).click();
+      await flush();
+      await flush();
+      const plan = JSON.parse(saveSetup.mock.calls[0][0].plan);
+      expect(plan.remember).toContainEqual({
+        key: "place|Pool",
+        answer: "leave"
+      });
+    });
+
     it("a place deleted before is not brought back silently: it is listed with Bring back", async () => {
       // Deleted on the Locations screen after an earlier import that ticked it.
       getAnswers.mockResolvedValue([

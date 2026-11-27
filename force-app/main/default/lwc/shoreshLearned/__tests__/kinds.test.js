@@ -161,6 +161,11 @@ describe("each remembered question in camp words", () => {
   });
 
   // MEMO-4.4
+  it("INGEST-2.27: a place left out on the review reads Left out", () => {
+    expect(kindOf("place|Gym", "leave", t).answer).toBe("Left out");
+    expect(kindOf("place|Gym", "add", t).answer).toBe("Added");
+  });
+
   it("offers the same choices the server accepts", () => {
     expect(
       kindOf("kind|Lunch", "fixed", t).choices.map((c) => c.value)

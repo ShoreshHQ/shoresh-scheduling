@@ -350,7 +350,7 @@ function groupsAtOncePer(usable) {
   return most;
 }
 
-function placesFor(records, existing, answers, usable) {
+function placesFor(records, existing, answers, usable, roomFiles) {
   const fits = groupsAtOncePer(usable);
   const deletions = deletionsIn(answers);
   const deleted = [];
@@ -359,6 +359,12 @@ function placesFor(records, existing, answers, usable) {
   );
   const offered = [];
   const locations = [];
+  // INGEST-2.27: a place a file writes as its cells' second line comes in unless unticked.
+  const rooms = new Set(
+    usable
+      .filter((p) => p.place && (roomFiles || []).includes(p.file))
+      .map((p) => p.place)
+  );
   for (const name of [
     ...new Set(records.map((r) => r.place).filter(Boolean))
   ].sort()) {
@@ -378,7 +384,8 @@ function placesFor(records, existing, answers, usable) {
       deleted.push({ key: gone, kind: "Location", name, program: "" });
       continue;
     }
-    const ticked = answers[id] === "add";
+    const ticked =
+      answers[id] === "add" || (rooms.has(name) && answers[id] !== "leave");
     offered.push({
       id,
       name,
@@ -637,7 +644,8 @@ export function buildProposal(input) {
     [...setTime, ...activities],
     input.existing,
     answers,
-    usable
+    usable,
+    reading.roomFiles
   );
   const proposal = {
     reading,
