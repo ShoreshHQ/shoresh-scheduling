@@ -386,8 +386,8 @@ Each rule is clue, meaning, example, test.
     the second lines are no rooms ("Art / Rest", "Drama / Rest", "Art / Snack").
     Meaning: the first line is the activity and the second its place, offered under the places that
     come in on the review and ticked, so the director sees them and unticks one that is not a
-    place; unticked, it stays out on the next import. As with "Art @ Art room", an activity written
-    in two rooms or more gets no place. It was "Art 101", one activity per room and activity, and
+    place; unticked, it stays out on the next import. An activity written in two rooms or more is at
+    the one written most (rule 33). It was "Art 101", one activity per room and activity, and
     no places. The desktop reads a room printed under its activity so in a PDF
     (`src/ingest/textGrid.js`) and proposes places for the director to confirm
     (`src/ingest/locationsFromActivities.js`).
@@ -478,6 +478,20 @@ Each rule is clue, meaning, example, test.
     camp has, or a pair answered alone, keeps the pairs' questions. Code: `names.js` `spellingGroups`,
     `spellingAnswers`, `mergesFrom`; `reading.js`; `questions.js` `pairCards`, `spellingCard`;
     `plan.js` `answersToKeep`; `shoreshLearned/kinds.js` `spellings`.
+
+33. **An activity written in two places is at the one written most** (Greg, 2026-11-27: "All
+    activities have a location. The location rarely changes. But it could for rain purposes.").
+    Clue: an activity, set time or Lunch whose cells name two places or more, as a room on the
+    second line (rule 27) or after "@" ("Archery @ Field", "Archery @ Barn").
+    Meaning: its place is the one it is written in most often; a tie goes to the one written first
+    in the files. The review says it under the import's notes: "Archery: Field (also written in
+    Barn)". The other places come in only if something else is at them. It was no place at all.
+    The rain plan is unchanged: a rainy-day place is the activity's Rain plan, set on its own.
+    The desktop has one place per activity and does not say what to do with two
+    (`src/ingest/locationsFromActivities.js`).
+    Test: `reading.test.js` "INGEST-2.33: …" (the room written most; a tie goes to the first; "@"
+    places; counter-case: one room says nothing). Code: `items.js` `placesOf`; `plan.js`
+    `importNotes`.
 
 ## With the classification rules
 

@@ -405,9 +405,24 @@ function mostCommon(values) {
   return [...counts].sort((a, b) => b[1] - a[1] || a[0] - b[0])[0][0];
 }
 
-function onePlace(cells) {
-  const places = new Set(cells.map((c) => c.place).filter(Boolean));
-  return places.size === 1 ? [...places][0] : null;
+/**
+ * INGEST-2.33 (Greg, 2026-11-27): where an item is, the place it is written in most often, a tie
+ * going to the one written first; `also` holds the others, most written first, said on the review.
+ */
+function placesOf(cells) {
+  const counts = new Map();
+  cells
+    .map((c) => c.place)
+    .filter(Boolean)
+    .forEach((place) => counts.set(place, (counts.get(place) || 0) + 1));
+  // Map order is the order first written, and the sort keeps it for equal counts.
+  const places = [...counts]
+    .sort((a, b) => b[1] - a[1])
+    .map(([place]) => place);
+  return {
+    place: places[0] || null,
+    ...(places.length > 1 ? { alsoPlaces: places.slice(1) } : {})
+  };
 }
 
 export function blockRecordKey(t, index) {
@@ -465,7 +480,7 @@ export function earlyOf(cells, block) {
 
 export function setTimeRecords(decision, keyOf) {
   const t = decision.timetable;
-  const place = onePlace(decision.cells);
+  const where = placesOf(decision.cells);
   if (decision.kind === "fixed") {
     const several = decision.patterns.length > 1;
     return decision.patterns.map((p) => ({
@@ -478,11 +493,11 @@ export function setTimeRecords(decision, keyOf) {
       blockKey: blockRecordKey(t, p.block),
       length: p.length,
       ...earlyOf(decision.cells, p.block),
-      place
+      ...where
     }));
   }
   return withLunchFilled(decision).map((p) =>
-    recurringRecord(decision, keyOf, t, place, p)
+    recurringRecord(decision, keyOf, t, where, p)
   );
 }
 
@@ -571,7 +586,7 @@ export function withLunchFilled(decision) {
   return patterns;
 }
 
-function recurringRecord(decision, keyOf, t, place, p) {
+function recurringRecord(decision, keyOf, t, where, p) {
   return {
     kind: "recurring",
     key: `R|${t.key}|${decision.name}|${p.block}|${p.length}|${p.days.join(",")}`,
@@ -584,7 +599,7 @@ function recurringRecord(decision, keyOf, t, place, p) {
     length: p.length,
     days: WEEKDAYS.filter((d) => p.days.includes(d)),
     who: whoOf(p.groups, decision.facts, keyOf, t.key),
-    place,
+    ...where,
     lunchFor: p.lunchFor
   };
 }
@@ -593,7 +608,7 @@ function recurringRecord(decision, keyOf, t, place, p) {
  * One activity from every placement of its name: how long it runs (the length it has most
  * often), how many times a week each group had it (fewest and most, counting none for a group
  * that could do it and did not), how many groups at once, who can do it (whole divisions, only
- * when no other group did it), and its place when the file names one place for it.
+ * when no other group did it), and its place: the one written most (INGEST-2.33).
  */
 /**
  * Who can do an activity, written out whenever it is not everyone in the season: whole divisions
@@ -666,7 +681,7 @@ export function activityRecord(name, cells, allGroups, divisionOf, keyOf) {
     max: Math.max(...perGroupWeek),
     groupsAtOnce: Math.max(...atOnce.values()),
     who,
-    place: onePlace(cells)
+    ...placesOf(cells)
   };
 }
 

@@ -705,6 +705,17 @@ export function importNotes(proposal, t) {
         text: `${a.name} runs for different lengths in the file; it is set up as ${a.length} ${a.length === 1 ? t.sIn("TimeBlock") : t.pIn("TimeBlock")}, the length it has most often.`
       })
     );
+  // INGEST-2.33: an item written in two places or more is at the one written most, the others said.
+  const placed = new Map();
+  [...proposal.activities, ...proposal.fixed, ...proposal.recurring]
+    .filter((x) => x.alsoPlaces)
+    .forEach((x) => placed.set(x.name, x));
+  for (const x of placed.values()) {
+    notes.push({
+      key: `places|${x.name}`,
+      text: `${x.name}: ${x.place} (also written in ${listed(x.alsoPlaces)})`
+    });
+  }
   // INGEST-4.14: a single-day file comes in as a special day on its day.
   proposal.notes
     .filter((n) => n.type === "oneDay")

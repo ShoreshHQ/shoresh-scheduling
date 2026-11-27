@@ -260,6 +260,64 @@ describe("INGEST-2.27: a file that writes each cell's room on its second line", 
       expect.arrayContaining(["Art 101"])
     );
   });
+
+  // Drama in the Studio on the first day, in the Gym after.
+  const moved = (days) => (g, b, d) => {
+    const act = ACTS[(g + b + d) % 4];
+    const room = act === "Drama" && days.includes(d) ? "Studio" : ROOM_OF[act];
+    return `${act}\n${room}`;
+  };
+  const dramaOf = (p) => p.activities.find((a) => a.name === "Drama");
+  const placeNotes = (p) =>
+    importNotes(p, terms)
+      .filter((n) => n.key.startsWith("places|"))
+      .map((n) => n.text);
+
+  it("INGEST-2.33: an activity written in two rooms is at the one written most, and the review says the other", () => {
+    const p = propose(sheetFile(moved([0])));
+    expect(dramaOf(p)).toMatchObject({ place: "Gym", alsoPlaces: ["Studio"] });
+    expect(dramaOf(p).locationKey).toBe("L|Gym");
+    expect(placeNotes(p)).toEqual(["Drama: Gym (also written in Studio)"]);
+  });
+
+  it("INGEST-2.33: written as often in each, it is at the one written first", () => {
+    const p = propose(sheetFile(moved([0]), { days: ["Monday", "Tuesday"] }));
+    expect(dramaOf(p)).toMatchObject({ place: "Studio", alsoPlaces: ["Gym"] });
+    expect(placeNotes(p)).toEqual(["Drama: Studio (also written in Gym)"]);
+  });
+
+  it("INGEST-2.33: counter-case: an activity in one room says nothing", () => {
+    const p = propose(sheetFile(roomed));
+    expect(dramaOf(p).place).toBe("Gym");
+    expect(dramaOf(p).alsoPlaces).toBeUndefined();
+    expect(placeNotes(p)).toEqual([]);
+  });
+});
+
+describe("INGEST-2.33: an activity written at two places", () => {
+  it("INGEST-2.33: “Archery @ Field” most days and “Archery @ Barn” once is at the Field", () => {
+    const p = buildProposal({
+      files: [
+        csv("Week.csv", [
+          ["Time", "Monday", "Tuesday", "Wednesday"],
+          ["9:00-9:45", "Archery @ Field", "Archery @ Barn", "Archery @ Field"],
+          ["10:00-10:45", "Canoe @ Lake", "Canoe @ Lake", "Canoe @ Lake"]
+        ])
+      ],
+      existing: null,
+      terms,
+      answers: {}
+    });
+    const archery = [...p.activities, ...p.recurring, ...p.fixed].find(
+      (a) => a.name === "Archery"
+    );
+    expect(archery).toMatchObject({ place: "Field", alsoPlaces: ["Barn"] });
+    expect(
+      importNotes(p, terms)
+        .filter((n) => n.key.startsWith("places|"))
+        .map((n) => n.text)
+    ).toEqual(["Archery: Field (also written in Barn)"]);
+  });
 });
 
 // INGEST-2.28: a cell over two blocks written one line per block. Made-up camp only.
