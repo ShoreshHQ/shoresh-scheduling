@@ -14,7 +14,8 @@ import {
   notedKind,
   notedNames,
   setTimeRecords,
-  usablePlacements
+  usablePlacements,
+  withLunchFilled
 } from "./items";
 import { readAvailability } from "./availability";
 import { deletedAs, deletionsIn } from "./deleted";
@@ -163,7 +164,9 @@ function sameDays(record, days) {
 
 function compareRecurring(decision, record, ctx) {
   const t = decision.timetable;
-  if (decision.patterns.length !== 1 || decision.strays.length > 0) {
+  // INGEST-3.13: the file's Lunch as the import sets it up, its trip days filled.
+  const patterns = withLunchFilled(decision);
+  if (patterns.length !== 1 || decision.strays.length > 0) {
     ctx.notes.push({
       type: "kindDiffers",
       name: decision.name,
@@ -172,7 +175,7 @@ function compareRecurring(decision, record, ctx) {
     });
     return;
   }
-  const p = decision.patterns[0];
+  const p = patterns[0];
   const blockId = t.blocks[p.block].id;
   if (
     blockId === record[FIELD.RecurringActivity.TimeBlock] &&
