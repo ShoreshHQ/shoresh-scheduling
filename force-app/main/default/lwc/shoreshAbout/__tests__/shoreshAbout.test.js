@@ -144,6 +144,7 @@ describe("what Legal says matches the repo", () => {
       "SheetJS Community Edition 0.20.3",
       "Lightning Web Components 8.28.2",
       "tslib",
+      "PDF.js 4.10.38",
       "Inter",
       "JetBrains Mono",
       "SIL Open Font"

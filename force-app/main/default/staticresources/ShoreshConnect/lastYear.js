@@ -16,6 +16,7 @@ const {
   engineWord
 } = require("./imports");
 const { asTheScreenReads, changedSince, refused } = require("./common");
+const { pdfFile } = require("./pdf");
 
 /** The person's answers over the review's: an empty answer takes one back (an unticked place). */
 function answered(m, answers, given) {
@@ -287,11 +288,20 @@ async function importLastYear(capability, given, { read, send, answer, load }) {
   }
   const m = await load();
   const files = [];
+  // What a PDF doesn't make plain, said with the review (INGEST-1.11).
+  const unclear = [];
   if (reopened) {
     files.push(...JSON.parse(raw.open_files));
   } else {
-    for (const f of input.files) {
-      const { file, problem } = fileOf(f || {}, m);
+    for (const given of input.files) {
+      let f = given || {};
+      if (f.pdf_path !== undefined) {
+        const pdf = await pdfFile(f, m);
+        if (pdf.problem) return refused(pdf.problem);
+        f = pdf.file;
+        unclear.push(...pdf.unclear.map((u) => `${f.file_name}: ${u}`));
+      }
+      const { file, problem } = fileOf(f, m);
       if (problem) return refused(problem);
       files.push(file);
     }
@@ -304,7 +314,14 @@ async function importLastYear(capability, given, { read, send, answer, load }) {
     );
   }
   if (!input.save) {
-    return { ok: true, status: 200, text: reviewText(m, body, review, input) };
+    const text = reviewText(m, body, review, input);
+    return {
+      ok: true,
+      status: 200,
+      text: unclear.length
+        ? `${text}\nNot plain from the PDF: ${unclear.join(" ")}`
+        : text
+    };
   }
   const cards = m.yearCards(state.proposal, t, state.answers);
   const must = cards.filter(

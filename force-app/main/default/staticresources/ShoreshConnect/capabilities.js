@@ -2073,7 +2073,7 @@ const CAPABILITIES = [
     method: "POST",
     importsLastYear: true,
     description:
-      "Import last year's schedule files, as Import last year does: the files are read, set against what the season has, and reviewed exactly as the screen reviews them, with the same code (each file's layout, questions such as which program a group is in or whether two similar names are the same thing, answers filled in from the camp's steady patterns, locations named in the files, what an earlier import added that these files lack, what comes in, last year's schedule kept as a version). Send the files first without save: the answer is the review, its questions and its seen. Answer the questions (ask the person about anything the files don't make plain), send again with the same files, then send them with save: true and the seen. A question that can wait may be left open: it waits on Roots for later, as Add does. It is done as you, with your own access, all or none. If someone changed the setup, a week's schedule or the special days since the review, nothing is saved. undo_import undoes it.",
+      "Import last year's schedule files, as Import last year does: the files are read, set against what the season has, and reviewed exactly as the screen reviews them, with the same code (each file's layout, questions such as which program a group is in or whether two similar names are the same thing, answers filled in from the camp's steady patterns, locations named in the files, what an earlier import added that these files lack, what comes in, last year's schedule kept as a version). Send the files first without save: the answer is the review, its questions and its seen. Answer the questions (ask the person about anything the files don't make plain), send again with the same files, then send them with save: true and the seen. A question that can wait may be left open: it waits on Roots for later, as Add does. It is done as you, with your own access, all or none. If someone changed the setup, a week's schedule or the special days since the review, nothing is saved. undo_import undoes it. A schedule PDF the person has (a page per group, or a page per day): send it as {file_name, pdf_path}, never retyped; Shoresh reads each page's table as a sheet, exactly as it would read the same table from Excel. The review then lists what the PDF doesn't make plain (a box filled in with no words, words hidden in a box's colour, a box that doesn't line up with the times): tell the person each one as it is said, before saving, and don't fill any in yourself; they can change those cells on the schedule afterwards. A PDF that is a picture (scanned) can't be read: say so, and ask for the file the schedule was made in.",
     inputSchema: {
       type: "object",
       properties: {
@@ -2081,7 +2081,7 @@ const CAPABILITIES = [
         files: {
           type: "array",
           description:
-            "The files, each {file_name, csv_text} or {file_name, sheets: [{name, rows, merges}]}, every row a list of its cells as text as the sheet shows them (merges as Excel's merged ranges, if any).",
+            "The files, each {file_name, csv_text}, {file_name, sheets: [{name, rows, merges}]} or {file_name, pdf_path}, every row a list of its cells as text as the sheet shows them (merges as Excel's merged ranges, if any); pdf_path is where a PDF is on this computer, read here.",
           items: { type: "object" }
         },
         layouts: {

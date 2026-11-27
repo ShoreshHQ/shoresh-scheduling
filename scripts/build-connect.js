@@ -99,6 +99,12 @@ const SHEETJS = path.resolve(
   "../force-app/main/default/staticresources/SheetJS.js"
 );
 const SHEETJS_FILE = "engine.SheetJS.cjs";
+// pdf.js (pdfjs-dist's legacy build for Node, unchanged), which connect/pdfPages.js reads a
+// schedule PDF with (INGEST-1.11, ADR 0032), and the worker it runs its parsing in.
+const PDFJS_FILES = {
+  "engine.pdfjs.mjs": "pdf.min.mjs",
+  "engine.pdfjs.worker.mjs": "pdf.worker.min.mjs"
+};
 
 /** A component's module as its flat file name: c/shoreshEngine/week.js -> engine.shoreshEngine.week.mjs */
 function flatName(file) {
@@ -290,11 +296,16 @@ async function printViewFile() {
 }
 
 // Shoresh's licence and NOTICE, carried in the extension (a zip a camp downloads on its own),
-// with the licence texts of what the views bundle: the LWC engine (MIT) and tslib (0BSD) (API-1.157).
+// with the licence texts of what the views bundle, the LWC engine (MIT) and tslib (0BSD), and of
+// pdf.js (Apache-2.0), which it reads PDFs with (API-1.157).
 const ROOT = path.resolve(__dirname, "..");
 const LICENSE_FILE = "LICENSE.txt";
 const NOTICE_FILE = "NOTICE.txt";
-const BUNDLED_LICENCES = ["LWC-MIT.txt", "tslib-0BSD.txt"];
+const BUNDLED_LICENCES = [
+  "LWC-MIT.txt",
+  "tslib-0BSD.txt",
+  "pdfjs-Apache-2.0.txt"
+];
 
 function noticeFile() {
   return [
@@ -360,6 +371,12 @@ async function build() {
     fs.writeFileSync(path.join(TO, f), text);
   }
   fs.copyFileSync(SHEETJS, path.join(TO, SHEETJS_FILE));
+  for (const [f, built] of Object.entries(PDFJS_FILES)) {
+    fs.copyFileSync(
+      require.resolve(`pdfjs-dist/legacy/build/${built}`),
+      path.join(TO, f)
+    );
+  }
   fs.writeFileSync(path.join(TO, VIEW_FILE), await viewFile());
   fs.writeFileSync(path.join(TO, PRINT_FILE), await printViewFile());
   fs.copyFileSync(path.join(ROOT, "LICENSE"), path.join(TO, LICENSE_FILE));
@@ -386,6 +403,7 @@ module.exports = {
   printViewFile,
   PRINT_FILE,
   SHEETJS_FILE,
+  PDFJS_FILES,
   LICENSE_FILE,
   NOTICE_FILE,
   flatName,
