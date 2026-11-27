@@ -28,6 +28,7 @@ import { LEAVE_OUT, readImport } from "./engine.shoreshImportEngine.reading.mjs"
 import { COLOUR_ADD } from "./engine.shoreshImportEngine.reading-constants.mjs";
 import { WEEKDAYS, looseKey } from "./engine.shoreshImportEngine.text.mjs";
 import { versionsFor } from "./engine.shoreshImportEngine.version.mjs";
+import { weeksWritten } from "./engine.shoreshImportEngine.weeksWritten.mjs";
 import { settleClashes, specialByAnswer } from "./engine.shoreshImportEngine.clashes.mjs";
 import { compareNames, compareText } from "./engine.shoreshImportEngine.order.mjs";
 
@@ -709,6 +710,18 @@ export function buildProposal(input) {
     ...dayNumbersFor(reading, input.existing)
   };
   const last = versionsFor(proposal, input);
+  // INGEST-2.34: an activity whose cells name its weeks runs only in them.
+  const written = weeksWritten(
+    activities,
+    setTime,
+    usable,
+    last.seasonWeeks.map((w) => ({
+      Id: w.Id,
+      Name: w.Name,
+      filled: !!w.filled
+    })),
+    proposal.leftOutNames
+  );
   // review.md INGEST-5.8: what an earlier import brought in that these files lack.
   proposal.missing = missingItems({
     existing: input.existing,
@@ -727,9 +740,13 @@ export function buildProposal(input) {
     versions: last.versions,
     unmatched: last.unmatched,
     noWeeks: last.noWeeks,
-    fillWeeks: last.fillWeeks,
+    // The weeks the import fills in are added when an activity's weeks name them too.
+    fillWeeks:
+      last.fillWeeks.length || !written.usesFilled
+        ? last.fillWeeks
+        : last.filledWeeks,
     specialDays: last.specialDays,
-    notes: [...proposal.notes, ...last.notes],
+    notes: [...proposal.notes, ...last.notes, ...written.notes],
     asks: [...proposal.asks, ...last.asks]
   };
 }

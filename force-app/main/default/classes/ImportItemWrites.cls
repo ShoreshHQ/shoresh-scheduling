@@ -67,6 +67,38 @@ public with sharing class ImportItemWrites {
       }
     }
     writer.saveTracked('ActivityEligibility', who);
+    saveWeeksOff(entries);
+  }
+
+  /**
+   * INGEST-2.34: the weeks a new activity is off, as its cells named the weeks it runs in: a
+   * season week by Id, or one this import fills in, by its key ("Week:<start>").
+   */
+  private void saveWeeksOff(List<ImportPlan.Entry> entries) {
+    List<SObject> off = new List<SObject>();
+    for (ImportPlan.Entry entry : entries) {
+      if (!entry.isNew()) {
+        continue;
+      }
+      for (String week : entry.texts('offWeeks')) {
+        off.add(
+          new WeekException__c(
+            Activity__c = keys.of(entry.key()),
+            Week__c = weekOff(week)
+          )
+        );
+      }
+    }
+    writer.saveTracked('WeekException', off);
+  }
+
+  /** A week the plan names for a week off: a week of the season, or one this import adds. */
+  private Id weekOff(String week) {
+    Id found = keys.of(week);
+    if (found == null || found.getSObjectType() != Week__c.SObjectType) {
+      throw ImportListSaves.unreadable();
+    }
+    return found;
   }
 
   private Activity__c newActivity(ImportPlan.Entry entry) {
