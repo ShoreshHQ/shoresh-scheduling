@@ -681,6 +681,20 @@ export function importNotes(proposal, t) {
       text: `${named} is read as morning: ${who.join(", ")} ${who.length === 1 ? "is" : "are"} here for it and then go${who.length === 1 ? "es" : ""} home.`
     });
   }
+  // INGEST-3.13: a group with no Lunch in the file on a day has its division's, or its own.
+  const lunchFor = new Map();
+  proposal.recurring.forEach((item) =>
+    (item.lunchFor || []).forEach((g) =>
+      lunchFor.set(item.name, new Set([...(lunchFor.get(item.name) || []), g]))
+    )
+  );
+  for (const [name, groups] of lunchFor) {
+    const who = [...groups].sort(compareText);
+    notes.push({
+      key: `lunchFor|${name}`,
+      text: `${who.join(", ")} ${who.length === 1 ? "has" : "have"} no ${name} in the file, so ${who.length === 1 ? "it has" : "they have"} ${who.length === 1 ? "its" : "their"} ${t.sIn("Division")}'s ${name} then, or ${who.length === 1 ? "its" : "their"} own of another day.`
+    });
+  }
   proposal.activities
     .filter((a) => a.lengthsVary)
     .forEach((a) =>

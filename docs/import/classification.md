@@ -241,6 +241,31 @@ example, test.
     group with the name in two slots half the days each has no own slot. Code: `classify.js`
     `ownSlot`, `daysBySlot`, `isHeld`.
 
+13. **A group with no Lunch on a day has Lunch at its usual time that day** (import battle test,
+    2026-11-27; coordinator's call 2026-11-27, Greg can change).
+    Clue: a Lunch set up as a recurring activity, and groups at camp on a day some group has Lunch
+    (something else scheduled that day) with a trip or event written over their Lunch's time
+    block and no Lunch read or written that day ("Field Trip" over the middle of Tuesday). A blank
+    block is a group gone home, not one away at lunch.
+    Meaning: they have Lunch that day at their own Lunch's time block (the one they have on the
+    most days): in their division's Lunch there when it runs on exactly those days, else with their
+    own Lunch's days widened, and two alike are one (never a second Lunch on a day they have one). Only when each is at camp in that block (not a group here
+    the other half of the day) with nothing else there; no record is added, and a later import of the
+    same file compares the saved Lunch with the filled one, so it finds nothing changed. The review's notes say so ("Bunk 5 has no Lunch in the file, so it
+    has its division's Lunch then, or its own of another day"). A group away all day (a trip all
+    day, no cells), with a Lunch read that day, with its Lunch written another way ("Early
+    Lunch"), or with no Lunch of its own set up (a Lunch on two days of five) has none added;
+    nothing but a name with the word Lunch is filled in. It was no Lunch on those days. The
+    desktop has no such rule; a trip is noted, not set up (Greg, 2026-10-16), so Shoresh
+    schedules the group at camp then.
+    Test: `__tests__/lunch.test.js` "INGEST-3.13: …". Counter-cases: a group away all day, or with
+    Lunch at another time, has none added; another Lunch name, or a block taken, has nothing
+    added; an activity not named Lunch has nothing added; a Lunch at another time one day is never
+    joined to one on more days; a day no group has Lunch (a short Friday, a cookout) has none
+    added; the same file imported again finds its Lunch unchanged. Code:
+    `items.js` `withLunchFilled`, `setTimeRecords`; `proposal.js` `compareRecurring`; `plan.js`
+    `importNotes`.
+
 ## Asked, because the grid supports both readings
 
 Only these three (and rule 11's clash, asked once the kinds are read). Each card offers set time, activity, or leave it out.
