@@ -231,6 +231,9 @@ export {
   nextKeyOf
 } from "./engine.shoreshImportEngine.deleted.mjs";
 
+// A schedule PDF read as sheets (INGEST-1.11), by the screen and the connector alike.
+export { sheetsFromPdf, textOf } from "./engine.shoreshImportEngine.pdfSheets.mjs";
+
 // Shared with the per-screen list imports (c/shoreshLists, slice 4c).
 export {
   similarity,

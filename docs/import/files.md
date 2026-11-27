@@ -224,22 +224,31 @@ Each rule is clue, meaning, example, test.
     (ADR 0032).
     Meaning: the file is held to rules 1 and 2 first (over 10 MB, or more than 256 pages, and it is
     refused unread). A file that isn't a PDF, or that can't be opened, is refused: "Shoresh
-    couldn't read <file> as a PDF. Nothing was imported." Then each page's table, drawn with lines,
-    becomes a sheet named "Page n" in the page's own layout (a page per group, a page per day, by
-    activity), so the import finds its layout, its group, its times and its days exactly as for the
-    same table from Excel: a box drawn over several cells is one merged cell, lines of text above
-    the table come first, each a row of its own, and each box's text is what it shows, its lines as
-    lines. The rows are the boxes down the table's first column (the times). Nothing is guessed:
-    a box filled in with no words that can be seen is left empty; words drawn in a box's own colour,
-    or covered by a box drawn over them, are left out; a box whose top or bottom falls inside a
-    time rather than on its edge is placed in the times it covers by more than half; two boxes that
-    fall in one place are kept there together. Each of these is said with the review, after it, in
-    one line each: "Not plain from the PDF (show the person; each is left as said, not guessed):
+    couldn't read <file> as a PDF. Nothing was imported."; a locked one: "<file> is locked with a
+    password, so Shoresh can't read it."; one that takes over 2 minutes: "Reading <file> took too
+    long (over 2 minutes), so Shoresh stopped." Then each page's table, drawn with lines, becomes a
+    sheet named "Page n" in the page's own layout (a page per group, a page per day, by activity),
+    so the import finds its layout, its group, its times and its days exactly as for the same table
+    from Excel: a box drawn over several cells is one merged cell, lines of text above the table
+    come first and lines under it (notes) come after it, each a row of its own, and each box's text
+    is what it shows, its lines as lines, Hebrew read right to left. A page turned to landscape is
+    read the right way up. The table is the largest set of lines that touch: a frame round the
+    page is not part of it. The rows are the boxes down the table's first column (the times).
+    Nothing is guessed: a box filled in dark with no words that can be seen is left empty; words
+    drawn in a box's own colour, or covered by a box drawn over them, are left out; a box whose top
+    or bottom falls inside a time rather than on its edge is placed in the times it covers by more
+    than half; two boxes that fall in one place are kept there together; a box that isn't a
+    rectangle keeps its words in the cells they sit in; words beside the table are left out. Each
+    of these is said with the review, after it, in one line each: "Not plain from the PDF:
     camp.pdf: Page 3, 9:50-10:25, Monday: filled in with no words; left empty". A page that is a
     picture (scanned) or has no table drawn with lines is left out and said; a PDF of nothing else
     is refused ("<file> is a picture of a schedule (scanned), not text; Shoresh can't read it.
-    Nothing was imported."). Pages are read in a process of their own, so the same PDF always gives
-    the same sheets. Save sends the same files again and they are read again, as any file is.
+    Nothing was imported."). The same PDF always gives the same sheets. Save sends the same files
+    again and they are read again, as any file is; the questions an import left for later (API-1.144)
+    reopen the sheets it saved, so what the PDF didn't make plain is said with its first review
+    only. The reading is the import engine's own (`shoreshImportEngine/pdfSheets.js`), so the
+    screen can use it too; the connector runs pdf.js on the file, in a process of its own of at
+    most 768 MB, and hands it each page's drawing.
     Example: a made-up camp's PDF, a page per bunk, with Field Trip drawn as one box down Thursday
     and one bunk's first block blacked out: a sheet per page, read By group; Field Trip is one cell
     over its blocks; the blacked-out box is a line under the review, and its cell is empty.
@@ -253,4 +262,9 @@ Each rule is clue, meaning, example, test.
     the times beside it goes in the times it mostly covers, and is said"; "INGEST-1.11: a scanned
     page or a page with no table is left out and said; a PDF of nothing else is refused";
     "INGEST-1.11: a missing file, a file that isn't a PDF, and a PDF over 10 MB are refused before
-    any of it is read".
+    any of it is read"; "INGEST-1.11: the connector as shipped reads a PDF on a computer with
+    nothing else installed"; "INGEST-1.11: a landscape page made by turning a portrait one reads the
+    right way up"; "INGEST-1.11: notes under the table come after it; words beside it and a frame
+    round the page are not the table, and words beside it are said"; "INGEST-1.11: Hebrew is read
+    in its own direction, right to left". Not tested: a PDF locked with a password (the test
+    library can't make one).

@@ -139,6 +139,48 @@ describe("a schedule PDF read as the import's sheets", () => {
     }
   });
 
+  it("INGEST-1.11: the connector as shipped reads a PDF on a computer with nothing else installed", async () => {
+    // pdf.js asks for packages the connector doesn't ship and says so; only the pages reach stdout.
+    const { execFileSync } = require("child_process");
+    const shipped = fs.mkdtempSync(
+      path.join(os.tmpdir(), "shoresh-connector-")
+    );
+    const RESOURCE = path.resolve(
+      __dirname,
+      "../../force-app/main/default/staticresources/ShoreshConnect"
+    );
+    for (const f of [
+      "pdfPages.js",
+      "engine.pdfjs.mjs",
+      "engine.pdfjs.worker.mjs"
+    ]) {
+      fs.copyFileSync(path.join(RESOURCE, f), path.join(shipped, f));
+    }
+    const file = await printed("shipped.pdf", [
+      {
+        rows: [
+          ["Time", "Monday"],
+          ["9:00-9:45", "Art"]
+        ],
+        merges: []
+      }
+    ]);
+    const out = execFileSync(
+      process.execPath,
+      [path.join(shipped, "pdfPages.js"), file, "256"],
+      { cwd: shipped, stdio: ["ignore", "pipe", "ignore"] }
+    );
+    fs.rmSync(shipped, { recursive: true, force: true });
+    const drawn = JSON.parse(out.toString());
+    expect(drawn.pageCount).toBe(1);
+    expect(
+      engine.sheetsFromPdf(drawn.pages, drawn.OPS, "shipped.pdf").sheets[0].rows
+    ).toEqual([
+      ["Time", "Monday"],
+      ["9:00-9:45", "Art"]
+    ]);
+  });
+
   it("INGEST-1.11: the same PDF always gives the same sheets", async () => {
     const camp = ordinaryCamp(3);
     const file = await printed(
@@ -325,6 +367,115 @@ describe("a schedule PDF read as the import's sheets", () => {
     ]);
   });
 
+  it("INGEST-1.11: a landscape page made by turning a portrait one reads the right way up", async () => {
+    const {
+      concatTransformationMatrix,
+      pushGraphicsState,
+      popGraphicsState
+    } = require("pdf-lib");
+    // A landscape table, drawn turned a quarter on a portrait page that is told to turn it back.
+    const flat = await PDFDocument.create();
+    const font = await flat.embedFont(StandardFonts.Helvetica);
+    const table = flat.addPage([300, 200]);
+    table.drawRectangle({
+      x: 20,
+      y: 20,
+      width: 200,
+      height: 100,
+      borderColor: rgb(0, 0, 0),
+      borderWidth: 1
+    });
+    table.drawLine({
+      start: { x: 120, y: 20 },
+      end: { x: 120, y: 120 },
+      thickness: 1
+    });
+    table.drawText("Monday", { x: 30, y: 60, size: 10, font });
+    table.drawText("Swim", { x: 130, y: 60, size: 10, font });
+    const turned = await PDFDocument.create();
+    const placed = await turned.embedPage(table);
+    const portrait = turned.addPage([200, 300]);
+    portrait.pushOperators(
+      pushGraphicsState(),
+      concatTransformationMatrix(0, 1, -1, 0, 200, 0)
+    );
+    portrait.drawPage(placed, { x: 0, y: 0 });
+    portrait.pushOperators(popGraphicsState());
+    portrait.setRotation(degrees(90));
+    const file = path.join(DIR, "turned.pdf");
+    fs.writeFileSync(file, await turned.save());
+    const { file: got } = await read(file);
+    expect(shown(got.sheets[0].rows)).toEqual([["Monday", "Swim"]]);
+  });
+
+  it("INGEST-1.11: notes under the table come after it; words beside it and a frame round the page are not the table, and words beside it are said", async () => {
+    const file = await printed(
+      "framed.pdf",
+      [
+        {
+          rows: [
+            ["Time", "Monday"],
+            ["9:00-9:45", "Swim"]
+          ],
+          merges: []
+        }
+      ],
+      {
+        extra: (page, { x, y }) => {
+          const { width, height } = page.getSize();
+          page.drawRectangle({
+            x: 8,
+            y: 8,
+            width: width - 16,
+            height: height - 16,
+            borderColor: rgb(0, 0, 0),
+            borderWidth: 1
+          });
+          page.drawText("* Swim moves to Tuesday if it rains", {
+            x: x(0),
+            y: y(2) - 20,
+            size: SIZE
+          });
+          page.drawText("Bring a towel", {
+            x: x(2) + 4,
+            y: y(1) - 11,
+            size: SIZE
+          });
+        }
+      }
+    );
+    const { file: got, unclear } = await read(file);
+    expect(shown(got.sheets[0].rows)).toEqual([
+      ["Time", "Monday"],
+      ["9:00-9:45", "Swim"],
+      ["* Swim moves to Tuesday if it rains"]
+    ]);
+    expect(unclear).toEqual([
+      "Page 1: words beside the table were left out: “Bring a towel”"
+    ]);
+  });
+
+  it("INGEST-1.11: Hebrew is read in its own direction, right to left", () => {
+    // Letters as a page lays them out, left to right: ם ו ל ש reads שלום; a number stays as written.
+    const glyph = (text, x) => ({
+      text,
+      x: x + 3,
+      y: 10,
+      start: [x, 12],
+      end: [x + 6, 12],
+      dir: [1, 0],
+      size: 10,
+      seen: true
+    });
+    const laidOut = [..."םולש"].map((ch, i) => glyph(ch, i * 6));
+    expect(engine.textOf(laidOut)).toBe("שלום");
+    const withNumber = [
+      glyph("2", 0),
+      ...[..."קנוב"].map((ch, i) => glyph(ch, 12 + i * 6))
+    ];
+    expect(engine.textOf(withNumber)).toBe("2 בונק");
+  });
+
   it("INGEST-1.11: a scanned page or a page with no table is left out and said; a PDF of nothing else is refused", async () => {
     const png =
       "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==";
@@ -384,7 +535,8 @@ describe("a schedule PDF read as the import's sheets", () => {
 
   it("INGEST-1.11: a missing file, a file that isn't a PDF, and a PDF over 10 MB are refused before any of it is read", async () => {
     expect(await read(path.join(DIR, "gone.pdf"))).toEqual({
-      problem: `There's no file at ${path.join(DIR, "gone.pdf")}. Nothing was imported.`
+      problem:
+        "There's no file named gone.pdf where it was said to be. Nothing was imported."
     });
     const text = path.join(DIR, "notes.pdf");
     fs.writeFileSync(text, "Monday: Art");
@@ -474,9 +626,7 @@ describe("import_last_year with a PDF", () => {
     });
     expect(done.ok).toBe(true);
     expect(done.text).toMatch(/File camp\.pdf: \d+ pages, read as By group/);
-    expect(done.text).toMatch(
-      /Not plain from the PDF \(show the person; each is left as said, not guessed\): camp\.pdf: Page \d+, /
-    );
+    expect(done.text).toMatch(/Not plain from the PDF: camp\.pdf: Page \d+, /);
     // The same table sent as sheets is reviewed the same, but for what the PDF said.
     const asSheets = await send({
       season: "Summer 2026",
@@ -501,7 +651,7 @@ describe("import_last_year with a PDF", () => {
     });
     expect(done).toMatchObject({ ok: false });
     expect(done.text).toMatch(
-      /^There's no file at .*gone\.pdf\. Nothing was imported\./
+      /^There's no file named gone\.pdf where it was said to be\. Nothing was imported\./
     );
     expect(sent).toHaveLength(1);
   });

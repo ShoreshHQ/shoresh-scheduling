@@ -40,13 +40,15 @@ into spreadsheets by hand in a sandbox to find out what reading a PDF takes. Wha
    same review. No second shape and no second reader of layouts.
 2. **Read by what the page draws.** Borders are the stroked lines (and filled boxes a few points
    thin); cells with no border between them are one box; a box that isn't a rectangle is its cells.
-   Each character goes in the box its centre falls in, read in its own direction. The rows are the
+   Each character goes in the box its centre falls in, read in its own direction (Hebrew right to
+   left), and a page is read as it is shown (a turned page the right way up). The table is the
+   largest set of lines that touch, so a frame round the page isn't part of it. The rows are the
    boxes down the first column (the times); a finer box goes in the times it covers by more than
-   half.
+   half. Words above the table come before it and notes under it after it, each a row.
 3. **Nothing is guessed** (product principle: show problems, don't resolve them silently). A box
-   filled in with no words, words hidden in a box's colour or under a box drawn over them, a box
-   whose edge falls inside a time, and two boxes in one place are each said in one line with the
-   review. The cell is left empty, or placed by what it covers. Scanned pages and pages with no
+   filled in dark with no words, words hidden in a box's colour or under a box drawn over them, a
+   box whose edge falls inside a time, two boxes in one place, a box that isn't a rectangle and
+   words beside the table are each said in one line with the review. The cell is left empty, or placed by what it covers. Scanned pages and pages with no
    table are left out and said. A PDF of nothing else is refused. No OCR.
 4. **Through Import last year's own door, not a tool of its own.** `import_last_year` takes a file
    as `{file_name, pdf_path}`; the connector reads the PDF on the person's computer, then sends the
@@ -63,8 +65,11 @@ into spreadsheets by hand in a sandbox to find out what reading a PDF takes. Wha
 6. **pdf.js, run apart.** `pdfjs-dist` 4.10.38's legacy build for Node (Apache-2.0), unchanged, is
    carried in the connector as `engine.pdfjs.mjs` and `engine.pdfjs.worker.mjs`, with its licence in
    NOTICE and Settings' Legal (API-1.157). It needs Node 20 or later, as the connector already does.
-   `connect/pdfPages.js` runs it in a process of its own, so a broken or huge PDF can't take the
-   connector down, and the same code runs under Jest. `isEvalSupported: false`, as advised after
+   `connect/pdfPages.js` runs it in a process of its own, of at most 768 MB and 2 minutes, so a
+   broken or huge PDF can't take the connector or the computer down, and the same code runs under
+   Jest. It writes out only pdf.js's own drawing operations; turning them into sheets is the import
+   engine's (`shoreshImportEngine/pdfSheets.js`, plain JavaScript with nothing to import), so the
+   screen can later read a PDF with the very same code (coordinator, 2026-11-27). `isEvalSupported: false`, as advised after
    CVE-2024-4367 (fixed in 4.2.67). The 10 MB and 256-sheet limits are checked first (INGEST-1.1,
    1.2); a file that doesn't start `%PDF-` is refused unread.
 7. **Size.** The connector ships as the ShoreshConnect static resource, at most 5 MB as a zip.

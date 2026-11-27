@@ -231,6 +231,9 @@ export {
   nextKeyOf
 } from "./deleted";
 
+// A schedule PDF read as sheets (INGEST-1.11), by the screen and the connector alike.
+export { sheetsFromPdf, textOf } from "./pdfSheets";
+
 // Shared with the per-screen list imports (c/shoreshLists, slice 4c).
 export {
   similarity,

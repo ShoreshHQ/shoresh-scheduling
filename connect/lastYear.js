@@ -319,7 +319,7 @@ async function importLastYear(capability, given, { read, send, answer, load }) {
       ok: true,
       status: 200,
       text: unclear.length
-        ? `${text}\nNot plain from the PDF (show the person; each is left as said, not guessed): ${unclear.join(" ")}`
+        ? `${text}\nNot plain from the PDF: ${unclear.join(" ")}`
         : text
     };
   }

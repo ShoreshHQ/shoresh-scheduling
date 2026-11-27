@@ -4754,6 +4754,7 @@ describe("Shoresh for AI tools and the command line", () => {
           f,
           [
             "fs",
+            "os",
             "path",
             "child_process",
             "crypto",
