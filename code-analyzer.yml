@@ -88,7 +88,8 @@ suppressions:
       max_suppressed_violations: 1
       reason: "One answer carrying everything the engine and screen need for a week."
   # The same for SeasonSetupReader.SeasonSetup: one answer carrying the season as every setup screen
-  # reads it (its staff too, ADR 0031 piece B); splitting it would add a round trip for nothing.
+  # reads it (its staff too, ADR 0031 piece B); splitting it into nested parts would change the
+  # shape every setup screen, Manual Build, the AI tools and the connector read, for no change.
   "main/default/classes/SeasonSetupReader.cls":
     - rule_selector: "pmd:TooManyFields"
       max_suppressed_violations: 1
