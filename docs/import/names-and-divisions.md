@@ -399,6 +399,25 @@ Each rule is clue, meaning, example, test.
     Code: `sheets.js` `writesRooms`, `sectionToPage`; `proposal.js` `placesFor`; `shoreshImport.js`
     `handlePlace`.
 
+28. **A cell over blocks written a line for each gives each block its line** (import battle test,
+    2026-11-27; coordinator's call 2026-11-27, Greg can change).
+    Clue: a cell merged over two blocks or more, written on as many lines, none with a time, each
+    line (or each part of one, split at "/", "," or ";") written alone in another cell of the file
+    ("Art / Swim" over "Music" across two blocks, with Art, Swim and Music elsewhere).
+    Meaning: the first block has the first line and the second the second, each its own activity
+    for one block. A name wrapped over two lines ("Outdoor" over "Adventure"), or the same words
+    written on one line anywhere in the file, stays one name over the blocks, as before. With more or fewer
+    lines than blocks it stays one name over them all, and when its lines are activities the
+    review's notes say so once ("… is
+    over 2 time blocks without a line for each, so it is one activity over both"). In a file that
+    writes rooms (rule 27) a two-line cell is an activity and its room, not two activities. It was
+    one activity, the lines joined, over both blocks. The desktop reads a merged cell as one entry
+    over its blocks (`src/ingest/sheetGrid.js`, `docs/adr/2026-08-24-merged-cell-multiblock-ingest.md`);
+    a file that says block 1 is the first line means two activities.
+    Test: `reading.test.js` "INGEST-2.28: …". Counter-cases: a name wrapped over two lines, the same
+    words on one line elsewhere, and a two-line cell in one block keep one name. Code: `sheets.js`
+    `cellLines`, `linePerBlock`; `plan.js` `importNotes`.
+
 ## With the classification rules
 
 - A division of one is a whole division for classification rule 7: an item only CIT has in one

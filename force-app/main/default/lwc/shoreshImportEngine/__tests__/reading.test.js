@@ -196,6 +196,14 @@ describe("INGEST-2.27: a file that writes each cell's room on its second line", 
     expect(p.locations.map((l) => l.name)).toEqual(ROOMS);
   });
 
+  it("INGEST-2.27: empty cells and a sheet with nothing on it change nothing", () => {
+    const file = sheetFile(roomed);
+    file.sheets[0].rows[1].push(null, undefined);
+    file.sheets.push({ name: "Notes" });
+    const p = propose(file);
+    expect(p.locations.map((l) => l.name)).toEqual(ROOMS);
+  });
+
   it("INGEST-2.27: a place unticked stays out", () => {
     const p = propose(sheetFile(roomed), { "place|Gym": "leave" });
     expect(p.offeredPlaces.find((x) => x.name === "Gym").ticked).toBe(false);
@@ -251,6 +259,96 @@ describe("INGEST-2.27: a file that writes each cell's room on its second line", 
     expect(p.activities.map((a) => a.name)).toEqual(
       expect.arrayContaining(["Art 101"])
     );
+  });
+});
+
+// INGEST-2.28: a cell over two blocks written one line per block. Made-up camp only.
+describe("INGEST-2.28: a cell over blocks, a line for each", () => {
+  const sheet = (cell, other = "Swim") => ({
+    name: "Monday",
+    rows: [
+      ["Time", "Bunk 1", "Bunk 2"],
+      ["9:00-9:45", cell, "Art"],
+      ["10:00-10:45", "", "Music"],
+      ["11:00-11:45", "Swim", other]
+    ],
+    merges: [{ s: { r: 1, c: 1 }, e: { r: 2, c: 1 } }]
+  });
+  const bunk1 = (page) => page.rows.map((row) => [row.cells[0], row.spans[0]]);
+
+  it("INGEST-2.28: each block gets its own line when each is an activity of the file", () => {
+    const [page] = sheetToPages(sheet("Art / Swim\nMusic"));
+    expect(bunk1(page)).toEqual([
+      ["Art / Swim", 1],
+      ["Music", 1],
+      ["Swim", 1]
+    ]);
+    expect(page.oneName).toEqual([]);
+  });
+
+  it("INGEST-2.28: more lines than blocks stay one name over both, and the review says so once", () => {
+    const [page] = sheetToPages(sheet("Art\nMusic\nSwim"));
+    expect(bunk1(page)[0]).toEqual(["Art Music Swim", 2]);
+    expect(page.oneName).toEqual([{ text: "Art Music Swim", blocks: 2 }]);
+    const days = ["Monday", "Tuesday"].map((name) => ({
+      ...sheet("Art\nMusic\nSwim"),
+      name
+    }));
+    const p = buildProposal({
+      files: [{ name: "Week.xlsx", sheets: days }],
+      existing: null,
+      terms,
+      answers: {}
+    });
+    const said = importNotes(p, terms)
+      .map((n) => n.text)
+      .filter((text) => text.includes("without a line for each"));
+    expect(said).toEqual([
+      "Week.xlsx: “Art Music Swim” is over 2 time blocks without a line for each, so it is one activity over both."
+    ]);
+  });
+
+  it("INGEST-2.28: counter-case: a name wrapped over two lines stays one name, with no note", () => {
+    const [page] = sheetToPages(sheet("Outdoor\nAdventure"));
+    expect(bunk1(page)[0]).toEqual(["Outdoor Adventure", 2]);
+    expect(page.oneName).toEqual([]);
+  });
+
+  it("INGEST-2.28: counter-case: the same words on one line elsewhere keep the cell one name", () => {
+    const [page] = sheetToPages(sheet("Art\nMusic", "Art Music"));
+    expect(bunk1(page)[0]).toEqual(["Art Music", 2]);
+  });
+
+  it("INGEST-2.28: counter-case: on another sheet of the file too, and a wrapped name over three blocks has no note", () => {
+    const monday = sheet("Art\nMusic");
+    const tuesday = { ...sheet("Swim", "Art Music"), name: "Tuesday" };
+    const p = buildProposal({
+      files: [{ name: "Week.xlsx", sheets: [monday, tuesday] }],
+      existing: null,
+      terms,
+      answers: {}
+    });
+    expect(p.activities.map((a) => a.name)).toContain("Art Music");
+    const [page] = sheetToPages({
+      ...sheet("Outdoor\nAdventure"),
+      merges: [{ s: { r: 1, c: 1 }, e: { r: 3, c: 1 } }]
+    });
+    expect(page.oneName).toEqual([]);
+  });
+
+  it("INGEST-2.28: counter-case: the same words broken two ways are not split", () => {
+    const twice = sheet("Art\nMusic Swim");
+    twice.rows[3][2] = "Art Music\nSwim";
+    const [page] = sheetToPages(twice);
+    expect(bunk1(page)[0]).toEqual(["Art Music Swim", 2]);
+  });
+
+  it("INGEST-2.28: counter-case: a two-line cell in one block keeps both lines in its name", () => {
+    const [page] = sheetToPages({
+      ...sheet("Art\nMusic"),
+      merges: []
+    });
+    expect(bunk1(page)[0]).toEqual(["Art Music", 1]);
   });
 });
 
