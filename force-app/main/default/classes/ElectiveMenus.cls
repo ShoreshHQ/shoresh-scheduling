@@ -1,6 +1,7 @@
 /**
  * The season's elective sets, as the Electives setup screen shows them (repo ADR 0018, slice E4):
- * each set, its offerings, and its linked choices with their periods and the divisions they name.
+ * each set with who its time is for, its offerings, and its linked choices with their periods and
+ * the divisions they name.
  * Three queries for any number of sets, in user mode; someone who may not read elective sets
  * gets none rather than a refusal of the whole season.
  */
@@ -21,24 +22,52 @@ public with sharing class ElectiveMenus {
     if (!canRead()) {
       return result;
     }
-    // With its time (repo ADR 0027), shown and edited on the Electives screen.
-    result.sets = [
-      SELECT
-        Id,
-        Name,
-        TimeBlock__c,
-        Monday__c,
-        Tuesday__c,
-        Wednesday__c,
-        Thursday__c,
-        Friday__c,
-        Saturday__c,
-        Sunday__c
-      FROM ElectiveSet__c
-      WHERE Season__c = :seasonId
-      WITH USER_MODE
-      ORDER BY Name, Id
-    ];
+    // With its time (repo ADR 0027), shown and edited on the Electives screen: its last block
+    // (ELECT-7.5) and who it is for (Coverages__r, ELECT-7.4) too, each when the user can read
+    // it (left out otherwise, never a refusal).
+    List<String> fields = new List<String>{ 'Id', 'Name' };
+    for (
+      Schema.SObjectField field : new List<Schema.SObjectField>{
+        ElectiveSet__c.TimeBlock__c,
+        ElectiveSet__c.Monday__c,
+        ElectiveSet__c.Tuesday__c,
+        ElectiveSet__c.Wednesday__c,
+        ElectiveSet__c.Thursday__c,
+        ElectiveSet__c.Friday__c,
+        ElectiveSet__c.Saturday__c,
+        ElectiveSet__c.Sunday__c
+      }
+    ) {
+      fields.add(ShoreshSchema.queryName(field));
+    }
+    if (ElectiveSetTimes.lastReadable()) {
+      fields.add(ShoreshSchema.queryName(ElectiveSet__c.LastTimeBlock__c));
+    }
+    if (ElectiveSetWho.readable()) {
+      fields.add(
+        '(SELECT Id, ' +
+          ShoreshSchema.queryName(Coverage__c.Division__c) +
+          ', ' +
+          ShoreshSchema.queryName(Coverage__c.Group__c) +
+          ' FROM ' +
+          ShoreshSchema.childRelationship(
+            ElectiveSet__c.SObjectType,
+            Coverage__c.ElectiveSet__c
+          ) +
+          ' ORDER BY Id)'
+      );
+    }
+    result.sets = Database.queryWithBinds(
+      'SELECT ' +
+        String.join(fields, ', ') +
+        ' FROM ' +
+        ShoreshSchema.queryName(ElectiveSet__c.SObjectType) +
+        ' WHERE ' +
+        ShoreshSchema.queryName(ElectiveSet__c.Season__c) +
+        ' = :seasonId ORDER BY Name, Id',
+      new Map<String, Object>{ 'seasonId' => seasonId },
+      AccessLevel.USER_MODE
+    );
     if (result.sets.isEmpty()) {
       return result;
     }

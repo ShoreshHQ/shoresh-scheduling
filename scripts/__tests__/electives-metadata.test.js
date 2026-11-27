@@ -40,7 +40,9 @@ const NOT_RESTRICT = new Set([
   "ElectiveRun__c.NewVersionOf__c",
   "ElectiveRun__c.FinalizedBy__c",
   // Deleting a time block leaves the set with no time (repo ADR 0027 choice 5).
-  "ElectiveSet__c.TimeBlock__c"
+  "ElectiveSet__c.TimeBlock__c",
+  // Deleting its last time block leaves the set in its first block only (ADR 0027 amendment).
+  "ElectiveSet__c.LastTimeBlock__c"
 ]);
 
 function tag(xml, name) {
@@ -130,7 +132,10 @@ describe("electives data", () => {
     const { fields } = granted();
     const missing = ELECTIVE_OBJECTS.flatMap(fieldsOf)
       .filter(needsPermission)
-      .concat([{ name: "Coverage__c.LinkedChoice__c" }])
+      .concat([
+        { name: "Coverage__c.LinkedChoice__c" },
+        { name: "Coverage__c.ElectiveSet__c" }
+      ])
       .filter((f) => {
         const p = fields.get(f.name);
         return !p || !p.readable || (f.type !== "Summary" && !p.editable);

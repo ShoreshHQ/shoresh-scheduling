@@ -2,7 +2,9 @@
  * Who a recurring activity covers: the row belongs to the recurring activity's season, and the
  * division or group named must be in the recurring activity's own program. After a save or
  * delete, the clash check runs (removing a row can widen it to everyone). Rows owned by a linked
- * choice are checked by LinkedChoiceTriggers and take no part in the clash check.
+ * choice are checked by LinkedChoiceTriggers and take no part in the clash check. Rows saying who
+ * an elective set's time is for (ELECT-7.4) name one owner and one division or group, all of the
+ * set's season (ElectiveSetWhoRows), and take no part in the clash check either.
  */
 public with sharing class CoverageTriggerHandler {
   // The program of each division and group named.
@@ -33,6 +35,32 @@ public with sharing class CoverageTriggerHandler {
     }
   }
 
+  /**
+   * Before a save: rows of a linked choice or an elective set go to their own checks
+   * (LinkedChoiceTriggers, ElectiveSetWhoRows); the rest, a recurring activity's, come back.
+   */
+  private static List<Coverage__c> afterOtherChecks(List<Coverage__c> allRows) {
+    List<Coverage__c> rows = new List<Coverage__c>();
+    List<Coverage__c> linkedChoiceRows = new List<Coverage__c>();
+    List<Coverage__c> setRows = new List<Coverage__c>();
+    for (Coverage__c row : allRows) {
+      if (row.ElectiveSet__c != null) {
+        setRows.add(row);
+      } else if (row.LinkedChoice__c != null) {
+        linkedChoiceRows.add(row);
+      } else {
+        rows.add(row);
+      }
+    }
+    if (!linkedChoiceRows.isEmpty()) {
+      LinkedChoiceTriggers.linkedChoiceCoverageSaving(linkedChoiceRows);
+    }
+    if (!setRows.isEmpty()) {
+      ElectiveSetWhoRows.check(setRows);
+    }
+    return rows;
+  }
+
   private static List<Coverage__c> recurringRows(List<Coverage__c> rows) {
     List<Coverage__c> result = new List<Coverage__c>();
     for (Coverage__c row : rows) {
@@ -44,18 +72,7 @@ public with sharing class CoverageTriggerHandler {
   }
 
   public static void beforeSave(List<Coverage__c> allRows) {
-    List<Coverage__c> rows = new List<Coverage__c>();
-    List<Coverage__c> linkedChoiceRows = new List<Coverage__c>();
-    for (Coverage__c row : allRows) {
-      if (row.LinkedChoice__c != null) {
-        linkedChoiceRows.add(row);
-      } else {
-        rows.add(row);
-      }
-    }
-    if (!linkedChoiceRows.isEmpty()) {
-      LinkedChoiceTriggers.linkedChoiceCoverageSaving(linkedChoiceRows);
-    }
+    List<Coverage__c> rows = afterOtherChecks(allRows);
     if (rows.isEmpty()) {
       return;
     }

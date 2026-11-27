@@ -123,8 +123,10 @@ public with sharing class ScreenSaves {
     // The Electives screen (repo ADR 0018, slice E4); linked choices are edited in slice E8.
     ElectiveSet__c.SObjectType => new Set<Schema.SObjectField>{
       ElectiveSet__c.Name,
-      // Its time (repo ADR 0027): a time block and its days.
+      // Its time (repo ADR 0027): a time block, its last block (ELECT-7.5) and its days; who
+      // it is for (ELECT-7.4) comes with the row's extras (SetTimeWho).
       ElectiveSet__c.TimeBlock__c,
+      ElectiveSet__c.LastTimeBlock__c,
       ElectiveSet__c.Monday__c,
       ElectiveSet__c.Tuesday__c,
       ElectiveSet__c.Wednesday__c,
@@ -162,7 +164,10 @@ public with sharing class ScreenSaves {
     Offering__c.SObjectType => Offering__c.ElectiveSet__c
   };
 
-  /** What a table sends with its rows: week ticks, and who each recurring activity covers. */
+  /**
+   * What a table sends with its rows: week ticks, and who each recurring activity covers or each
+   * elective set's time is for.
+   */
   public class Extras {
     @AuraEnabled
     public List<RunsIn.WeekOff> weeksOff { get; set; }
@@ -192,6 +197,8 @@ public with sharing class ScreenSaves {
     }
 
     public void write() {
+      // ELECT-7.4: a set's block and who change in one save (its new who is checked instead).
+      SetTimeWho.willReplace(given.who);
       SetTimeAround.split(rows, given.around);
       NoDivisions.holdNew(rows, given.noDivisionProgram);
       RunsIn.save(rows, given.weeksOff, given.weeksBackOn);

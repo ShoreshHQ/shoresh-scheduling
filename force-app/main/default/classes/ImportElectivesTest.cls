@@ -301,6 +301,108 @@ private class ImportElectivesTest {
     }
   }
 
+  /** The plan with Chugim on Tuesdays from Period 1 to Lunch, for the Seniors and Bunk 1. */
+  private static Map<String, Object> planWithWhoAndDoublePeriod(
+    Season__c season
+  ) {
+    Map<String, Object> plan = planWithElectives(season);
+    Map<String, Object> chugimEntry = (Map<String, Object>) ((List<Object>) plan.get(
+      'electiveSets'
+    ))[0];
+    chugimEntry.put('days', new List<Object>{ 'Tuesday' });
+    chugimEntry.put('blockKey', 'B|P0|0');
+    chugimEntry.put('lastBlockKey', 'B|P0|1');
+    chugimEntry.put('who', new List<Object>{ 'D|P0|Seniors', 'G|Bunk 1' });
+    return plan;
+  }
+
+  private static ElectiveSet__c chugimWithWho(Id seasonId) {
+    return [
+      SELECT
+        Id,
+        TimeBlock__r.Name,
+        LastTimeBlock__r.Name,
+        (
+          SELECT Season__c, Division__r.Name, Group__r.Name
+          FROM Coverages__r
+          ORDER BY Id
+        )
+      FROM ElectiveSet__c
+      WHERE Season__c = :seasonId
+      WITH USER_MODE
+    ];
+  }
+
+  // ELECT-7.4, ELECT-7.5
+  @IsTest
+  static void aSetKeepsItsDoublePeriodAndWhoItIsForAndUndoTakesThemAway() {
+    Map<String, Id> kept = KeptCamp.keptIds();
+    System.runAs(scheduler(kept)) {
+      Season__c season = keptSeason(kept);
+
+      Test.startTest();
+      ImportSetupSaves.Result result = save(planWithWhoAndDoublePeriod(season));
+      ElectiveSet__c chugim = chugimWithWho(season.Id);
+      ImportController.undoImport(result.importId);
+      Test.stopTest();
+
+      Assert.areEqual('Period 1', chugim.TimeBlock__r.Name);
+      Assert.areEqual('Lunch', chugim.LastTimeBlock__r.Name);
+      Set<String> who = new Set<String>();
+      for (Coverage__c row : chugim.Coverages__r) {
+        Assert.areEqual(season.Id, row.Season__c);
+        who.add(
+          row.Division__c != null ? row.Division__r.Name : row.Group__r.Name
+        );
+      }
+      Assert.areEqual(new Set<String>{ 'Seniors', 'Bunk 1' }, who);
+      // Undo: the set goes, and who its time was for with it.
+      Assert.areEqual(
+        0,
+        [
+          SELECT COUNT()
+          FROM ElectiveSet__c
+          WHERE Season__c = :season.Id
+          WITH USER_MODE
+        ]
+      );
+      Assert.areEqual(
+        0,
+        [
+          SELECT COUNT()
+          FROM Coverage__c
+          WHERE ElectiveSet__c != NULL AND Season__c = :season.Id
+          WITH USER_MODE
+        ]
+      );
+    }
+  }
+
+  // ELECT-7.4: a set Undo keeps (renamed since) keeps who its time is for.
+  @IsTest
+  static void aSetUndoKeepsKeepsWhoItsTimeIsFor() {
+    Map<String, Id> kept = KeptCamp.keptIds();
+    System.runAs(scheduler(kept)) {
+      Season__c season = keptSeason(kept);
+      ImportSetupSaves.Result result = save(planWithWhoAndDoublePeriod(season));
+      ElectiveSet__c chugim = chugimWithWho(season.Id);
+      Database.update(
+        new ElectiveSet__c(Id = chugim.Id, Name = 'Chugim A'),
+        AccessLevel.USER_MODE
+      );
+
+      Test.startTest();
+      ImportUndo.Result undone = ImportController.undoImport(result.importId);
+      Test.stopTest();
+
+      Assert.isTrue(
+        undone.keptEdited.contains('Chugim A'),
+        'kept: ' + undone.keptEdited
+      );
+      Assert.areEqual(2, chugimWithWho(season.Id).Coverages__r.size());
+    }
+  }
+
   @IsTest
   static void linkedPeriodsAreMarkedAsGuessedUntilLooksRightOrAChange() {
     Map<String, Id> kept = KeptCamp.keptIds();

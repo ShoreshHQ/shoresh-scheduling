@@ -2505,18 +2505,41 @@ export default class ShoreshCampSetup extends LightningElement {
   }
   /**
    * A set's name, then its time, as a recurring activity's (repo ADR 0027): the time block (none
-   * left blank: no time, placed by hand) and its days. A fresh week starts with the set there.
+   * left blank: no time, placed by hand), the block it runs until (ELECT-7.5: a later block of
+   * the same program; none, its block only), its days, and who it is for (ELECT-7.4: the
+   * recurring screen's who; none, everyone). A fresh week starts with the set there.
    */
   readElectiveSetColumns() {
     const t = this.terms;
     const programs = (this.setup && this.setup.programs) || [];
     const many = programs.length > 1;
+    const named = (entry, name) => {
+      return many ? `${entry.program.Name} · ${name}` : name;
+    };
     const blocks = programs.flatMap((entry) =>
       (entry.timeBlocks || []).map((block) => ({
-        label: many ? `${entry.program.Name} · ${block.Name}` : block.Name,
+        label: named(entry, block.Name),
         value: block.Id
       }))
     );
+    // Each block's later blocks, in its program's order, and its program.
+    const laterThan = new Map();
+    const programOf = new Map();
+    programs.forEach((entry) => {
+      const own = entry.timeBlocks || [];
+      own.forEach((block) => programOf.set(block.Id, entry.program.Id));
+      own.forEach((block, i) =>
+        laterThan.set(
+          block.Id,
+          own.slice(i + 1).map((later) => ({
+            label: named(entry, later.Name),
+            value: later.Id
+          }))
+        )
+      );
+    });
+    const onlyItsBlock = { label: "None", value: "" };
+    const who = this.electiveWhoOptions(programs);
     const SET = FIELD.ElectiveSet;
     return [
       { fieldName: "Name", label: "Name", type: "text", required: true },
@@ -2525,6 +2548,17 @@ export default class ShoreshCampSetup extends LightningElement {
         label: t.s("TimeBlock"),
         type: "picklist",
         options: blocks
+      },
+      {
+        fieldName: SET.LastTimeBlock,
+        label: "Until",
+        type: "picklist",
+        options: [onlyItsBlock, ...blocks],
+        // The later blocks of the time block the row holds now; none without one.
+        optionsForValues: (values) => [
+          onlyItsBlock,
+          ...(laterThan.get(values[SET.TimeBlock]) || [])
+        ]
       },
       {
         fieldName: "days",
@@ -2539,8 +2573,59 @@ export default class ShoreshCampSetup extends LightningElement {
         })),
         every: "Every day",
         none: "No days"
+      },
+      {
+        fieldName: CHILDREN.ElectiveSet.Coverages,
+        label: "Who",
+        type: "who",
+        everyone: "Everyone",
+        options: who.all,
+        // The divisions and groups of the time block's program (as the save checks); any
+        // program's before the set has a block.
+        optionsForValues: (values) =>
+          who.byProgram.get(programOf.get(values[SET.TimeBlock])) || who.all,
+        width: 12
       }
     ];
+  }
+
+  /**
+   * ELECT-7.4: the divisions, then the groups (with their division), as a recurring activity's
+   * who (shoreshProgram whoOptions): { all, named with their program when there are several,
+   * byProgram: program Id -> its own }.
+   */
+  electiveWhoOptions(programs) {
+    const t = this.terms;
+    const many = programs.length > 1;
+    const all = { divisions: [], groups: [] };
+    const byProgram = new Map();
+    programs.forEach((entry) => {
+      const prefix = many ? `${entry.program.Name} · ` : "";
+      const own = { divisions: [], groups: [] };
+      const add = (kind, label, value) => {
+        own[kind].push({ label, value });
+        all[kind].push({ label: `${prefix}${label}`, value });
+      };
+      (entry.divisions || []).forEach((d) => {
+        const none = !!d.division[FIELD.Division.NoDivision];
+        if (!none) {
+          add(
+            "divisions",
+            `${t.s("Division")}: ${d.division.Name}`,
+            d.division.Id
+          );
+        }
+        (d.groups || []).forEach((grp) => {
+          add(
+            "groups",
+            none ? grp.Name : `${grp.Name} (${d.division.Name})`,
+            grp.Id
+          );
+        });
+      });
+      byProgram.set(entry.program.Id, [...own.divisions, ...own.groups]);
+    });
+    return { all: [...all.divisions, ...all.groups], byProgram };
   }
 
   get electiveSetDefaults() {

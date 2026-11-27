@@ -79,6 +79,7 @@ const camperSourceSystem = schemaName("Camper__c.SourceSystem__c");
 const camperWithdrawn = schemaName("Camper__c.Withdrawn__c");
 const coverageObject = schemaName("Coverage__c");
 const coverageDivision = schemaName("Coverage__c.Division__c");
+const coverageElectiveSet = schemaName("Coverage__c.ElectiveSet__c");
 const coverageGroup = schemaName("Coverage__c.Group__c");
 const coverageLinkedChoice = schemaName("Coverage__c.LinkedChoice__c");
 const coverageRecurringActivity = schemaName("Coverage__c.RecurringActivity__c");
@@ -114,6 +115,7 @@ const electiveSetObject = schemaName("ElectiveSet__c");
 const electiveSetCopiedFrom = schemaName("ElectiveSet__c.CopiedFrom__c");
 const electiveSetFriday = schemaName("ElectiveSet__c.Friday__c");
 const electiveSetKey = schemaName("ElectiveSet__c.Key__c");
+const electiveSetLastTimeBlock = schemaName("ElectiveSet__c.LastTimeBlock__c");
 const electiveSetMonday = schemaName("ElectiveSet__c.Monday__c");
 const electiveSetSaturday = schemaName("ElectiveSet__c.Saturday__c");
 const electiveSetSeason = schemaName("ElectiveSet__c.Season__c");
@@ -479,6 +481,7 @@ export const FIELD = Object.freeze({
   }),
   Coverage: Object.freeze({
     Division: coverageDivision.fieldApiName,
+    ElectiveSet: coverageElectiveSet.fieldApiName,
     Group: coverageGroup.fieldApiName,
     LinkedChoice: coverageLinkedChoice.fieldApiName,
     RecurringActivity: coverageRecurringActivity.fieldApiName,
@@ -517,6 +520,7 @@ export const FIELD = Object.freeze({
     CopiedFrom: electiveSetCopiedFrom.fieldApiName,
     Friday: electiveSetFriday.fieldApiName,
     Key: electiveSetKey.fieldApiName,
+    LastTimeBlock: electiveSetLastTimeBlock.fieldApiName,
     Monday: electiveSetMonday.fieldApiName,
     Saturday: electiveSetSaturday.fieldApiName,
     Season: electiveSetSeason.fieldApiName,
@@ -802,6 +806,7 @@ export const PARENT = Object.freeze({
   }),
   Coverage: Object.freeze({
     Division: FIELD.Coverage.Division.replace(/__c$/, "__r"),
+    ElectiveSet: FIELD.Coverage.ElectiveSet.replace(/__c$/, "__r"),
     Group: FIELD.Coverage.Group.replace(/__c$/, "__r"),
     LinkedChoice: FIELD.Coverage.LinkedChoice.replace(/__c$/, "__r"),
     RecurringActivity: FIELD.Coverage.RecurringActivity.replace(/__c$/, "__r"),
@@ -822,6 +827,7 @@ export const PARENT = Object.freeze({
   }),
   ElectiveSet: Object.freeze({
     CopiedFrom: FIELD.ElectiveSet.CopiedFrom.replace(/__c$/, "__r"),
+    LastTimeBlock: FIELD.ElectiveSet.LastTimeBlock.replace(/__c$/, "__r"),
     Season: FIELD.ElectiveSet.Season.replace(/__c$/, "__r"),
     TimeBlock: FIELD.ElectiveSet.TimeBlock.replace(/__c$/, "__r")
   }),
@@ -982,6 +988,7 @@ export const CHILDREN = Object.freeze({
   }),
   ElectiveSet: Object.freeze({
     Copies: `${NAMESPACE_PREFIX}Copies__r`,
+    Coverages: `${NAMESPACE_PREFIX}Coverages__r`,
     ElectiveRuns: `${NAMESPACE_PREFIX}ElectiveRuns__r`,
     LinkedChoices: `${NAMESPACE_PREFIX}LinkedChoices__r`,
     Offerings: `${NAMESPACE_PREFIX}Offerings__r`
@@ -1077,6 +1084,7 @@ export const CHILDREN = Object.freeze({
     Assignments: `${NAMESPACE_PREFIX}Assignments__r`,
     Copies: `${NAMESPACE_PREFIX}Copies__r`,
     ElectiveSets: `${NAMESPACE_PREFIX}ElectiveSets__r`,
+    ElectiveSetsEnding: `${NAMESPACE_PREFIX}ElectiveSetsEnding__r`,
     EndingFixedActivities: `${NAMESPACE_PREFIX}EndingFixedActivities__r`,
     EndingRecurringActivities: `${NAMESPACE_PREFIX}EndingRecurringActivities__r`,
     FixedActivities: `${NAMESPACE_PREFIX}FixedActivities__r`,

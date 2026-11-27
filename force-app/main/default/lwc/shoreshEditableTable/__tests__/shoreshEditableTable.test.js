@@ -2329,6 +2329,29 @@ describe("c-shoresh-editable-table", () => {
       expect(sent[0].seenWho).toEqual([]);
     });
 
+    // ELECT-7.4: a set's who follows its time block's program, and what it names stays offered.
+    it("a row's own who ticks (optionsForValues) keep what it names, so it can be unticked", async () => {
+      const element = render({
+        objectApiName: "RecurringActivity__c",
+        columns: [
+          { fieldName: "Name", label: "Name", type: "text", required: true },
+          {
+            ...WHO,
+            optionsForValues: (values) => {
+              return values.Name === "Swim" ? [WHO.options[0]] : WHO.options;
+            }
+          }
+        ],
+        rows: SWIM
+      });
+      await flush();
+      toggle(element, 0).click();
+      await flush();
+      // Swim's own choice is the division; Bunk 1, which it names, stays; Bunk 2 doesn't show.
+      expect(picker(element).options).toEqual([WHO.options[0], WHO.options[1]]);
+      expect(picker(element).value).toEqual(["g1"]);
+    });
+
     it("who is compared with what the director first saw, across reloads and a save in between", async () => {
       const element = renderRecurring();
       const sent = listen(element);
