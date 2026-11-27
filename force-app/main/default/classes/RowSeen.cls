@@ -68,8 +68,9 @@ public with sharing class RowSeen {
   }
 
   /**
-   * Who a row covers now (divisions and groups): a recurring activity's coverage, or who can do
-   * an activity (none: everyone); nobody for other rows.
+   * Who a row covers now (divisions and groups): a recurring activity's coverage, who an elective
+   * set's time is for (ELECT-7.4), or who can do an activity (none: everyone); nobody for other
+   * rows.
    */
   public static List<Id> whoNow(SObject record) {
     List<Id> result = new List<Id>();
@@ -85,13 +86,16 @@ public with sharing class RowSeen {
       }
       return result;
     }
-    if (record.getSObjectType() != RecurringActivity__c.SObjectType) {
+    if (
+      record.getSObjectType() != RecurringActivity__c.SObjectType &&
+      record.getSObjectType() != ElectiveSet__c.SObjectType
+    ) {
       return result;
     }
     for (Coverage__c row : [
       SELECT Division__c, Group__c
       FROM Coverage__c
-      WHERE RecurringActivity__c = :record.Id
+      WHERE RecurringActivity__c = :record.Id OR ElectiveSet__c = :record.Id
       WITH USER_MODE
       ORDER BY Id
     ]) {

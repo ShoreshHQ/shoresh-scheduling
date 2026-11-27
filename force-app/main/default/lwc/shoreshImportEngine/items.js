@@ -415,8 +415,11 @@ export function blockRecordKey(t, index) {
   return block.id || `B|${t.key}|${block.fileKey}`;
 }
 
-/** Who a pattern covers: everyone ([]), whole divisions, or the groups by name. */
-function whoOf(groups, facts, keyOf, programKey) {
+/**
+ * Who a pattern covers: everyone ([]), whole divisions, or the groups by name. Also who a new
+ * elective set's time is for (electives.js, ELECT-7.4).
+ */
+export function whoOf(groups, facts, keyOf, programKey) {
   if (
     groups.length === facts.groups.length &&
     keyOf.coveredBy(programKey, groups)

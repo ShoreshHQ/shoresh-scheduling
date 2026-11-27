@@ -26,10 +26,12 @@ export { timeText };
 const FIELDS_OF = Object.fromEntries(
   Object.keys(OBJECT).map((kind) => [OBJECT[kind], FIELD[kind]])
 );
-// Who an item is for: who can do an activity, or who a recurring activity covers.
+// Who an item is for: who can do an activity, who a recurring activity covers, or who an elective
+// set's time is for (ELECT-7.4).
 const WHO_FIELDS = {
   [OBJECT.Activity]: FIELD.ActivityEligibility,
-  [OBJECT.RecurringActivity]: FIELD.Coverage
+  [OBJECT.RecurringActivity]: FIELD.Coverage,
+  [OBJECT.ElectiveSet]: FIELD.Coverage
 };
 const OFF = FIELD.WeekException;
 const WEEK = FIELD.Week;
@@ -85,7 +87,9 @@ const SHARED_MIN = 12;
  *   excludeSelf: a picklist of records leaves out the row's own record; optionsFor(saved): the
  *   choices one row offers, from its saved record ({} for the blank row), where they differ by
  *   row (an outdoor rain plan only where it is held); options still names every value;
- *   savedOnly: the blank row shows the value as text, not a field to change)
+ *   savedOnly: the blank row shows the value as text, not a field to change;
+ *   optionsForValues(values): the choices one row offers from what it holds now, edits included,
+ *   for a picklist or a who column, where they follow another field)
  * When the screen reloads after something else was saved, anything typed here and not yet
  * saved stays on screen.
  *
@@ -1334,7 +1338,7 @@ export default class ShoreshEditableTable extends LightningElement {
       whoKey: `${draft.key}-who`,
       whoOpen: !!whoColumn && draft.whoOpen,
       who: draft.who,
-      whoOptions: whoColumn ? whoColumn.options : [],
+      whoOptions: this.whoOptionsOf(whoColumn, draft),
       // The ticks' label: whose they are, and "everyone" while none is ticked.
       whoLabel: whoColumn
         ? `${whoColumn.label}: ${name}${
@@ -1675,12 +1679,36 @@ export default class ShoreshEditableTable extends LightningElement {
   /** A picklist's choices in one row: its own (optionsFor), less the row's own record. */
   rowOptions(col, draft) {
     const saved = draft.isNew ? {} : draft.original || {};
-    const options = col.optionsFor ? col.optionsFor(saved) : col.options;
+    let options = col.optionsFor ? col.optionsFor(saved) : col.options;
+    if (col.optionsForValues) {
+      options = col.optionsForValues(draft.values || {});
+    }
     return col.excludeSelf
       ? (options || []).filter(
           (option) => !option.value || option.value !== saved.Id
         )
       : options;
+  }
+
+  /**
+   * The who ticks one row offers: its own (optionsForValues, from what it holds now), or all. A
+   * division or group the row names, saved or ticked, stays offered among its own, so it can be
+   * unticked (ELECT-7.4: a set's block moved to another program).
+   */
+  whoOptionsOf(column, draft) {
+    if (!column) {
+      return [];
+    }
+    if (!column.optionsForValues) {
+      return column.options;
+    }
+    const own = column.optionsForValues(draft.values || {});
+    const offered = new Set(own.map((option) => option.value));
+    const named = new Set([...(draft.savedWho || []), ...(draft.who || [])]);
+    const kept = (column.options || []).filter(
+      (option) => named.has(option.value) && !offered.has(option.value)
+    );
+    return [...own, ...kept];
   }
 
   /** Names for these choices; with `known`, only those on screen (never a record Id). */

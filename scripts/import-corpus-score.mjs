@@ -31,9 +31,24 @@ function schemaModule(name) {
   return `export default ${JSON.stringify(value)};`;
 }
 
-// Node: the names Jest maps (c/<module>, @salesforce/schema), and extensionless imports.
+// What @salesforce/i18n/<name> gives a component under Jest (@lwc/jest-transformer), here too.
+const I18N = { timeZone: "America/Los_Angeles" };
+
+// Node: the names Jest maps (c/<module>, @salesforce/schema, @salesforce/i18n), and
+// extensionless imports.
 registerHooks({
   resolve(specifier, context, next) {
+    const i18n = /^@salesforce\/i18n\/(.+)$/.exec(specifier);
+    if (i18n) {
+      // A name not given here stops the run: give it its Jest value above.
+      if (!Object.hasOwn(I18N, i18n[1])) {
+        throw new Error(`score:import: no value for ${specifier}`);
+      }
+      return {
+        url: `data:text/javascript,${encodeURIComponent(`export default ${JSON.stringify(I18N[i18n[1]])};`)}`,
+        shortCircuit: true
+      };
+    }
     const schema = /^@salesforce\/schema\/(.+)$/.exec(specifier);
     if (schema) {
       return {

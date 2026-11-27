@@ -44,3 +44,25 @@ it.
 
 - A fresh week shows the set where last year had it; the seats screen finds it there.
 - New package fields; the Shoresh Scheduler permission set grants them.
+
+## Amendment, 2026-11-27: who a set's time is for, and a set over two blocks
+
+Greg's decision of 2026-11-27 (option B, after the import battle test): a set read for some
+groups only, and a set over a double period, are no longer "placed by hand". Choices 2 and 4 change:
+
+2. **Who** (ELECT-7.4): a set's time may name who it is for, as Coverage rows of its own
+   (`Coverage__c.ElectiveSet__c`, the same rows a recurring activity's who uses: a division or a
+   group each). No rows means every group of the time block's program at camp then, as before, so a
+   camp with no rows gets exactly the weeks it got. With rows, a blank week and a first Generate
+   place the set only for the groups they name (a division names its groups).
+3. **A double period** (ELECT-7.5): a set's time may end in a later block of the same program
+   (`ElectiveSet__c.LastTimeBlock__c`); the set is placed in every block from its time block to that
+   one, as one set cell, for a group only when all of them are free. Import last year now keeps a
+   new set's time when its cells are one block, or one run of consecutive blocks, on days of the
+   week, with who the cells are for: the divisions whose every group has it, and other groups by
+   name. A set over blocks that are not one run, or at different blocks on different days, keeps
+   none, as before.
+4. The Electives screen shows and edits both in the set's row ("Until", "Who"), Copy season carries
+   them into the copy's own blocks, divisions and groups, deleting a set removes its who rows first,
+   and Undo removes them with it. The Shoresh Scheduler permission set grants both fields, and a
+   Coverage row's one-owner rule counts a set as its owner.

@@ -78,6 +78,7 @@ import camperSourceSystem from "@salesforce/schema/Camper__c.SourceSystem__c";
 import camperWithdrawn from "@salesforce/schema/Camper__c.Withdrawn__c";
 import coverageObject from "@salesforce/schema/Coverage__c";
 import coverageDivision from "@salesforce/schema/Coverage__c.Division__c";
+import coverageElectiveSet from "@salesforce/schema/Coverage__c.ElectiveSet__c";
 import coverageGroup from "@salesforce/schema/Coverage__c.Group__c";
 import coverageLinkedChoice from "@salesforce/schema/Coverage__c.LinkedChoice__c";
 import coverageRecurringActivity from "@salesforce/schema/Coverage__c.RecurringActivity__c";
@@ -113,6 +114,7 @@ import electiveSetObject from "@salesforce/schema/ElectiveSet__c";
 import electiveSetCopiedFrom from "@salesforce/schema/ElectiveSet__c.CopiedFrom__c";
 import electiveSetFriday from "@salesforce/schema/ElectiveSet__c.Friday__c";
 import electiveSetKey from "@salesforce/schema/ElectiveSet__c.Key__c";
+import electiveSetLastTimeBlock from "@salesforce/schema/ElectiveSet__c.LastTimeBlock__c";
 import electiveSetMonday from "@salesforce/schema/ElectiveSet__c.Monday__c";
 import electiveSetSaturday from "@salesforce/schema/ElectiveSet__c.Saturday__c";
 import electiveSetSeason from "@salesforce/schema/ElectiveSet__c.Season__c";
@@ -478,6 +480,7 @@ export const FIELD = Object.freeze({
   }),
   Coverage: Object.freeze({
     Division: coverageDivision.fieldApiName,
+    ElectiveSet: coverageElectiveSet.fieldApiName,
     Group: coverageGroup.fieldApiName,
     LinkedChoice: coverageLinkedChoice.fieldApiName,
     RecurringActivity: coverageRecurringActivity.fieldApiName,
@@ -516,6 +519,7 @@ export const FIELD = Object.freeze({
     CopiedFrom: electiveSetCopiedFrom.fieldApiName,
     Friday: electiveSetFriday.fieldApiName,
     Key: electiveSetKey.fieldApiName,
+    LastTimeBlock: electiveSetLastTimeBlock.fieldApiName,
     Monday: electiveSetMonday.fieldApiName,
     Saturday: electiveSetSaturday.fieldApiName,
     Season: electiveSetSeason.fieldApiName,
@@ -801,6 +805,7 @@ export const PARENT = Object.freeze({
   }),
   Coverage: Object.freeze({
     Division: FIELD.Coverage.Division.replace(/__c$/, "__r"),
+    ElectiveSet: FIELD.Coverage.ElectiveSet.replace(/__c$/, "__r"),
     Group: FIELD.Coverage.Group.replace(/__c$/, "__r"),
     LinkedChoice: FIELD.Coverage.LinkedChoice.replace(/__c$/, "__r"),
     RecurringActivity: FIELD.Coverage.RecurringActivity.replace(/__c$/, "__r"),
@@ -821,6 +826,7 @@ export const PARENT = Object.freeze({
   }),
   ElectiveSet: Object.freeze({
     CopiedFrom: FIELD.ElectiveSet.CopiedFrom.replace(/__c$/, "__r"),
+    LastTimeBlock: FIELD.ElectiveSet.LastTimeBlock.replace(/__c$/, "__r"),
     Season: FIELD.ElectiveSet.Season.replace(/__c$/, "__r"),
     TimeBlock: FIELD.ElectiveSet.TimeBlock.replace(/__c$/, "__r")
   }),
@@ -981,6 +987,7 @@ export const CHILDREN = Object.freeze({
   }),
   ElectiveSet: Object.freeze({
     Copies: `${NAMESPACE_PREFIX}Copies__r`,
+    Coverages: `${NAMESPACE_PREFIX}Coverages__r`,
     ElectiveRuns: `${NAMESPACE_PREFIX}ElectiveRuns__r`,
     LinkedChoices: `${NAMESPACE_PREFIX}LinkedChoices__r`,
     Offerings: `${NAMESPACE_PREFIX}Offerings__r`
@@ -1076,6 +1083,7 @@ export const CHILDREN = Object.freeze({
     Assignments: `${NAMESPACE_PREFIX}Assignments__r`,
     Copies: `${NAMESPACE_PREFIX}Copies__r`,
     ElectiveSets: `${NAMESPACE_PREFIX}ElectiveSets__r`,
+    ElectiveSetsEnding: `${NAMESPACE_PREFIX}ElectiveSetsEnding__r`,
     EndingFixedActivities: `${NAMESPACE_PREFIX}EndingFixedActivities__r`,
     EndingRecurringActivities: `${NAMESPACE_PREFIX}EndingRecurringActivities__r`,
     FixedActivities: `${NAMESPACE_PREFIX}FixedActivities__r`,

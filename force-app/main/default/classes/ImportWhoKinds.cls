@@ -1,7 +1,8 @@
 /**
  * The two kinds of who list a list import writes and Undo puts back (slice 4c): who can do an
  * activity (ActivityEligibility__c rows) and who a recurring activity covers (Coverage__c rows,
- * which also belong to the season). Objects, fields, and relationships are the platform's own
+ * which also belong to the season). Import last year also writes who a new elective set's time is
+ * for (Coverage__c rows too, ELECT-7.4). Objects, fields, and relationships are the platform's own
  * references here, never names from the screen or a log.
  */
 public with sharing class ImportWhoKinds {
@@ -23,6 +24,14 @@ public with sharing class ImportWhoKinds {
           'Coverage',
           new List<Schema.SObjectField>{
             Coverage__c.RecurringActivity__c,
+            Coverage__c.Division__c,
+            Coverage__c.Group__c
+          }
+        ),
+        'ElectiveSet' => new Kind(
+          'Coverage',
+          new List<Schema.SObjectField>{
+            Coverage__c.ElectiveSet__c,
             Coverage__c.Division__c,
             Coverage__c.Group__c
           }
@@ -95,7 +104,7 @@ public with sharing class ImportWhoKinds {
     }
   }
 
-  /** By the owner's kind ("Activity", "RecurringActivity"). */
+  /** By the owner's kind ("Activity", "RecurringActivity", "ElectiveSet"). */
   public static Kind forOwner(String ownerKind) {
     return kinds().get(ownerKind);
   }
@@ -108,7 +117,10 @@ public with sharing class ImportWhoKinds {
     String name = childType instanceof String
       ? ShoreshSchema.withoutPrefix((String) childType)
       : null;
-    for (Kind kind : kinds().values()) {
+    // A list's who changes name an activity or a recurring activity, never a set (sets are only
+    // added): Coverage__c rows in a log are a recurring activity's.
+    for (String owner : new List<String>{ 'Activity', 'RecurringActivity' }) {
+      Kind kind = kinds().get(owner);
       if (
         name != null &&
         name.equalsIgnoreCase(ShoreshSchema.localName(kind.childType))

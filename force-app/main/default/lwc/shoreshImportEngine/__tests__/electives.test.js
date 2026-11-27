@@ -10,7 +10,7 @@ import {
   questionCards,
   unplacedLines
 } from "./data/engine";
-import { listShape, readElectives } from "../electives";
+import { electiveRecords, listShape, readElectives } from "../electives";
 import { byGroupFiles, existingSetup, terms } from "./data/samples";
 import { buildTerms } from "c/shoreshTerms";
 
@@ -133,12 +133,22 @@ describe("electives read from last year's file", () => {
     const p = propose();
     const plan = planFor(p, existingSetup(), "s");
     expect(plan.electiveSets.map((s) => s.name)).toEqual(["Chugim", LIST_SET]);
-    // ELECT-7.2: Chugim, one block on Tuesdays, keeps that time; the double period does not.
-    expect(plan.electiveSets[0]).toMatchObject({
+    // ELECT-7.2: Chugim, one block on Tuesdays, keeps that time, for everyone (no who).
+    expect(plan.electiveSets[0]).toEqual({
+      key: "ES|Chugim",
+      id: null,
+      name: "Chugim",
       days: ["Tuesday"],
-      blockKey: "B|P0|780-825"
+      blockKey: "B|P0|780-825",
+      who: []
     });
-    expect(plan.electiveSets[1].blockKey).toBeUndefined();
+    // ELECT-7.5: the list, on Periods 1 and 2 back to back, keeps them as one double period.
+    expect(plan.electiveSets[1]).toMatchObject({
+      days: ["Thursday"],
+      blockKey: "B|P0|540-585",
+      lastBlockKey: "B|P0|590-635",
+      who: []
+    });
     expect(plan.offerings).toEqual([
       {
         key: `O|ES|${LIST_SET}|Fishing`,
@@ -606,5 +616,127 @@ describe("INGEST-2.26: a list needs two names of two letters or more", () => {
     expect(
       read(["Otters", "Wolves", "Herons", "Foxes"]).asks.map((a) => a.id)
     ).toContain("list|Otters, Wolves, Herons");
+  });
+});
+
+describe("a set's time: who it is for and a double period (ELECT-7.4, ELECT-7.5)", () => {
+  // Groups 0-1 are Juniors (Bunk 1, Bunk 2), 2-3 Seniors (Bunk 3, Bunk 4). Blocks 0 Period 1
+  // (9:00), 1 Period 2 (9:50), 2 Lunch, 3 Period 3.
+  const P1 = "B|P0|540-585";
+  const P2 = "B|P0|590-635";
+  const P3 = "B|P0|780-825";
+  const chugimOn = (test) =>
+    planFor(propose(withCells(test, "Chugim", rotation)), existingSetup(), "s")
+      .electiveSets[0];
+
+  it("ELECT-7.4: a set every group of a division has is for that division", () => {
+    expect(chugimOn((g, d, b) => d === 1 && b === 3 && g < 2)).toEqual({
+      key: "ES|Chugim",
+      id: null,
+      name: "Chugim",
+      days: ["Tuesday"],
+      blockKey: P3,
+      who: ["D|P0|Juniors"]
+    });
+  });
+
+  it("ELECT-7.4: a set some groups of a division have is for those groups by name", () => {
+    expect(
+      chugimOn((g, d, b) => d === 1 && b === 3 && (g === 0 || g === 2))
+    ).toMatchObject({ blockKey: P3, who: ["G|Bunk 1", "G|Bunk 3"] });
+  });
+
+  it("ELECT-7.4: a set every group has is for no one by name (everyone)", () => {
+    expect(chugimOn((g, d, b) => d === 1 && b === 3).who).toEqual([]);
+  });
+
+  it("ELECT-7.5: adjacent cells, back to back, are one double period, with who", () => {
+    expect(
+      chugimOn((g, d, b) => (d === 1 || d === 3) && b <= 1 && g >= 2)
+    ).toMatchObject({
+      days: ["Tuesday", "Thursday"],
+      blockKey: P1,
+      lastBlockKey: P2,
+      who: ["D|P0|Seniors"]
+    });
+  });
+
+  it("ELECT-7.5: a span cell is one run of blocks", () => {
+    const timetables = [
+      {
+        index: 0,
+        key: "P0",
+        name: "Main",
+        blocks: [
+          { fileKey: "540-585", name: "Period 1", start: 540, end: 585 },
+          { fileKey: "590-635", name: "Period 2", start: 590, end: 635 }
+        ]
+      }
+    ];
+    const groups = [
+      { name: "Bunk 1", key: "G|Bunk 1", timetable: 0, division: "Juniors" },
+      { name: "Bunk 2", key: "G|Bunk 2", timetable: 0, division: "Juniors" }
+    ];
+    const set = {
+      name: "Chugim",
+      key: "ES|Chugim",
+      isNew: true,
+      camp: null,
+      choices: [],
+      offerings: [],
+      linked: [],
+      unlinked: [],
+      cells: groups.map((g) => ({
+        timetable: 0,
+        week: "",
+        day: "Wednesday",
+        group: g.name,
+        blockIndex: 0,
+        span: 2
+      }))
+    };
+    electiveRecords(
+      { sets: [set] },
+      {
+        timetables,
+        groups,
+        deletions: new Map(),
+        existing: null,
+        keyOf: {
+          group: (name) => `G|${name}`,
+          divisionOf: () => "D|P0|Juniors",
+          coveredBy: () => true
+        },
+        divisionOf: new Map(groups.map((g) => [g.name, g.division])),
+        activities: [],
+        activityRecord: () => ({})
+      }
+    );
+    expect(set.time).toEqual({
+      days: ["Wednesday"],
+      blockKey: P1,
+      lastBlockKey: P2,
+      who: []
+    });
+  });
+
+  it("ELECT-7.5: counter-case: blocks with lunch between are not one run, so no time", () => {
+    const set = chugimOn((g, d, b) => d === 1 && (b === 1 || b === 3));
+    expect(set.blockKey).toBeUndefined();
+    expect(set.who).toBeUndefined();
+  });
+
+  it("ELECT-7.2: counter-case: different blocks on different days keep no time", () => {
+    const set = chugimOn(
+      (g, d, b) => (d === 1 && b === 0) || (d === 2 && b === 3)
+    );
+    expect(set.blockKey).toBeUndefined();
+  });
+
+  it("ELECT-7.5: counter-case: one group's double period beside another's single keeps no time", () => {
+    const set = chugimOn(
+      (g, d, b) => d === 1 && ((g === 0 && b <= 1) || (g === 1 && b === 0))
+    );
+    expect(set.blockKey).toBeUndefined();
   });
 });

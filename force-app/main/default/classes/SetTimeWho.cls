@@ -1,9 +1,17 @@
 /**
- * Who a recurring activity covers, saved from the Recurring activities table with its rows. Who is
- * a list of divisions and groups in the activity's program; an empty list means every group in the
- * program (as for activities' "Who can do it"). The list sent replaces the saved one.
+ * Who a recurring activity covers, saved from the Recurring activities table with its rows, and who
+ * an elective set's time is for, from the Electives table (ELECT-7.4). Who is a list of divisions
+ * and groups; an empty list means every group in the program (as for activities' "Who can do it").
+ * The list sent replaces the saved one.
  */
 public with sharing class SetTimeWho {
+  // The season and camp of each owner, read once.
+  private Map<Id, Id> seasonOf = new Map<Id, Id>();
+  private Map<Id, Id> campOf = new Map<Id, Id>();
+  // ELECT-7.4: saved sets whose who this save replaces: their old rows don't hold their time
+  // block in its program (ElectiveSetMoves); the new rows are checked instead.
+  private static Set<Id> replacing = new Set<Id>();
+
   /** One row's who: a saved row (target), or a new one (its place in the rows sent). */
   public class Who {
     @AuraEnabled
@@ -14,37 +22,84 @@ public with sharing class SetTimeWho {
     public List<Id> targets { get; set; }
   }
 
+  /** Before the rows are saved: the saved elective sets whose who the same save replaces. */
+  public static void willReplace(List<Who> who) {
+    replacing.clear();
+    for (Who entry : who ?? new List<Who>()) {
+      if (
+        entry.target != null &&
+        entry.target.getSObjectType() == ElectiveSet__c.SObjectType
+      ) {
+        replacing.add(entry.target);
+      }
+    }
+  }
+
+  /** Whether this save replaces who the set is for. */
+  public static Boolean replaces(Id setId) {
+    return replacing.contains(setId);
+  }
+
   public static void save(List<SObject> rows, List<Who> who) {
     if (who == null || who.isEmpty()) {
       return;
     }
     Map<Id, List<Id>> targetsByItem = new Map<Id, List<Id>>();
+    Set<Id> recurringIds = new Set<Id>();
+    Set<Id> setIds = new Set<Id>();
     for (Who entry : who) {
-      targetsByItem.put(itemOf(entry, rows), entry.targets);
+      Id item = itemOf(entry, rows);
+      targetsByItem.put(item, entry.targets);
+      if (item.getSObjectType() == RecurringActivity__c.SObjectType) {
+        recurringIds.add(item);
+      } else {
+        setIds.add(item);
+      }
     }
-    Map<Id, RecurringActivity__c> items = new Map<Id, RecurringActivity__c>(
-      [
-        SELECT Id, Program__r.Season__c, Program__r.Season__r.Camp__c
-        FROM RecurringActivity__c
-        WHERE Id IN :targetsByItem.keySet()
-        WITH USER_MODE
-      ]
-    );
+    SetTimeWho owners = new SetTimeWho();
+    owners.read(recurringIds, setIds);
     List<Coverage__c> adds = new List<Coverage__c>();
     for (Id itemId : targetsByItem.keySet()) {
-      adds.addAll(rowsFor(items.get(itemId), targetsByItem.get(itemId)));
+      adds.addAll(owners.rowsFor(itemId, targetsByItem.get(itemId)));
     }
     Database.delete(
       [
         SELECT Id
         FROM Coverage__c
-        WHERE RecurringActivity__c IN :targetsByItem.keySet()
+        WHERE RecurringActivity__c IN :recurringIds OR ElectiveSet__c IN :setIds
         WITH USER_MODE
       ],
       true,
       AccessLevel.USER_MODE
     );
     Database.insert(adds, AccessLevel.USER_MODE);
+    replacing.removeAll(setIds);
+  }
+
+  /** Each owner's season and camp, in user mode: one query per kind named. */
+  private void read(Set<Id> recurringIds, Set<Id> setIds) {
+    if (!recurringIds.isEmpty()) {
+      for (RecurringActivity__c item : [
+        SELECT Id, Program__r.Season__c, Program__r.Season__r.Camp__c
+        FROM RecurringActivity__c
+        WHERE Id IN :recurringIds
+        WITH USER_MODE
+      ]) {
+        seasonOf.put(item.Id, item.Program__r.Season__c);
+        campOf.put(item.Id, item.Program__r.Season__r.Camp__c);
+      }
+    }
+    if (!setIds.isEmpty()) {
+      for (ElectiveSet__c item : [
+        SELECT Id, Season__c, Season__r.Camp__c
+        FROM ElectiveSet__c
+        WHERE Id IN :setIds
+        WITH USER_MODE
+      ]) {
+        seasonOf.put(item.Id, item.Season__c);
+        campOf.put(item.Id, item.Season__r.Camp__c);
+      }
+    }
   }
 
   private static Id itemOf(Who entry, List<SObject> rows) {
@@ -59,22 +114,18 @@ public with sharing class SetTimeWho {
     }
     if (
       item == null ||
-      item.getSObjectType() != RecurringActivity__c.SObjectType
+      (item.getSObjectType() != RecurringActivity__c.SObjectType &&
+      item.getSObjectType() != ElectiveSet__c.SObjectType)
     ) {
-      throw new ShoreshException(
-        'These screens can only save who a recurring activity covers.'
-      );
+      throw new ShoreshException('These screens can\'t save that.');
     }
     return item;
   }
 
   /** One row per division or group named (each once). */
-  private static List<Coverage__c> rowsFor(
-    RecurringActivity__c item,
-    List<Id> targets
-  ) {
+  private List<Coverage__c> rowsFor(Id itemId, List<Id> targets) {
     List<Coverage__c> result = new List<Coverage__c>();
-    if (item == null) {
+    if (!seasonOf.containsKey(itemId)) {
       throw new ShoreshException(
         'That was not found, or you do not have access to it.'
       );
@@ -85,10 +136,13 @@ public with sharing class SetTimeWho {
         continue;
       }
       Schema.SObjectType kind = target.getSObjectType();
-      refuseOtherKinds(kind, item);
-      Coverage__c row = new Coverage__c(
-        Season__c = item.Program__r.Season__c,
-        RecurringActivity__c = item.Id
+      refuseOtherKinds(kind, campOf.get(itemId));
+      Coverage__c row = new Coverage__c(Season__c = seasonOf.get(itemId));
+      row.put(
+        itemId.getSObjectType() == ElectiveSet__c.SObjectType
+          ? Coverage__c.ElectiveSet__c
+          : Coverage__c.RecurringActivity__c,
+        itemId
       );
       row.put(
         kind == Division__c.SObjectType
@@ -101,12 +155,9 @@ public with sharing class SetTimeWho {
     return result;
   }
 
-  private static void refuseOtherKinds(
-    Schema.SObjectType kind,
-    RecurringActivity__c item
-  ) {
+  private static void refuseOtherKinds(Schema.SObjectType kind, Id campId) {
     if (kind != Division__c.SObjectType && kind != Group__c.SObjectType) {
-      CampLabels labels = CampLabels.forCamp(item.Program__r.Season__r.Camp__c);
+      CampLabels labels = CampLabels.forCamp(campId);
       throw new ShoreshException(
         'Who it covers can only name ' +
           labels.pluralInSentence('Division') +

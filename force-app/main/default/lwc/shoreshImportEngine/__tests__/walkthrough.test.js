@@ -158,7 +158,8 @@ describe("Import last year, as the walkthrough tells it", () => {
         id: null,
         name: "Chugim",
         days: ["Tuesday"],
-        blockKey: "B|P0|840-885"
+        blockKey: "B|P0|840-885",
+        who: []
       }
     ]);
     expect(firstPlan.recurringActivities.map((r) => r.name)).toEqual([
