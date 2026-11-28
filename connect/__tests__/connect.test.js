@@ -401,7 +401,9 @@ describe("Shoresh for AI tools and the command line", () => {
       "",
       "Error (ETIMEDOUT): socket hang up",
       "Error: Command failed: sf api request rest",
-      "Error (RefreshTokenAuthError): Error authenticating with the refresh token due to: connect ETIMEDOUT"
+      "Error (RefreshTokenAuthError): Error authenticating with the refresh token due to: connect ETIMEDOUT",
+      // A web page while Salesforce is down: not a sign-in.
+      "Error (1): HTTP response contains html content.\nCheck that the org exists and can be reached.\n\nHTTP status code: 503.\nREST API Status Codes and Error Responses:"
     ]) {
       await expect(
         call(
@@ -414,7 +416,9 @@ describe("Shoresh for AI tools and the command line", () => {
     for (const out of [
       SIGNED_OUT,
       "Error (RefreshTokenAuthError): Error authenticating with the refresh token due to: expired access/refresh token",
-      "ENOENT"
+      "ENOENT",
+      // The sign-in's org is gone: Salesforce answers its address with a page and 420.
+      "Error (1): HTTP response contains html content.\nCheck that the org exists and can be reached.\n\nHTTP status code: 420.\nREST API Status Codes and Error Responses:"
     ]) {
       await expect(
         call(
