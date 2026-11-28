@@ -854,7 +854,7 @@ const CAPABILITIES = [
     ...change(
       "rainy_day",
       "rainy_day",
-      'Switch one day of a week\'s Generated Schedule or Manual Build to its rain plans, as Edit > Rainy day… on the screen does: each outdoor activity on that day that has an indoor rain plan switches to it. One with no rain plan, one longer than one time block, and a locked cell stay as they are; one whose rain plan has no room keeps its activity and is marked "Rain plan full: choose another". The answer says how many of each. As on the screen, the week as it was is kept first in Versions as "Before rainy <day>", and undo_last_change switches the day back while this conversation lasts.',
+      'Switch one day of a week\'s Generated Schedule or Manual Build to its rain plans, as Edit > Rainy day… on the screen does. Each one-block outdoor activity on that day switches indoors, to its rain plan when that fits, or else to the first indoor activity, in the Activities screen\'s order, that fits (one block long, set up for the group, runs then, not closed this week nor at a location closed this week, has room, and not already the group\'s that day). One longer than one time block, a locked cell and a group away from camp stay as they are; one that nothing indoors fits keeps its activity, and if it has an indoor rain plan it is marked "Rain plan full: choose another". The answer says how many of each. As on the screen, the week as it was is kept first in Versions as "Before rainy <day>", and undo_last_change switches the day back while this conversation lasts.',
       {
         day: {
           ...CELL.day,
