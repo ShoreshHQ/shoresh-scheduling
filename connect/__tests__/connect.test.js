@@ -6429,6 +6429,7 @@ describe("both MCP revisions are answered (API-1.161)", () => {
         }
       },
       _meta: { "io.modelcontextprotocol/serverInfo": init.result.serverInfo },
+      instructions: init.result.instructions,
       ttlMs: 0,
       cacheScope: "private"
     });

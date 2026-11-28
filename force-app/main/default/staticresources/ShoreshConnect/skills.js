@@ -122,8 +122,23 @@ function readSkillFile(uri, dir = __dirname) {
   };
 }
 
+/**
+ * The skill's golden rules (API-1.165): SKILL.md's text between its golden-rules markers, which
+ * the connector sends every AI as its startup `instructions`. Null when the skill or a marker is
+ * missing, so the connector still starts.
+ */
+const GOLDEN_RULES =
+  /<!-- golden-rules:start[^>]*-->\r?\n([\s\S]*?)\r?\n<!-- golden-rules:end -->/;
+
+function goldenRules(dir = __dirname) {
+  const file = readSkillFile(uriOf("shoresh-camp-scheduling", "SKILL.md"), dir);
+  const m = file && GOLDEN_RULES.exec(file.text);
+  return m ? m[1].trim() : null;
+}
+
 module.exports = {
   SCHEME,
+  goldenRules,
   shippedFiles,
   frontmatter,
   skills,

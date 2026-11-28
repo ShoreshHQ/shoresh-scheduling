@@ -38,6 +38,7 @@ camp scheduling would.
    week only, with no checks. To change a week, read its draft with `read_week_draft`. When a week
    has both a Generated Schedule and a Manual Build, ask which one (API-1.41, API-1.123).
 
+<!-- golden-rules:start (the connector sends this section to every AI at startup, API-1.165) -->
 ## Never do these silently
 
 1. **Show problems; never resolve them out of sight** (CORE-6.1). A refusal is for the person to
@@ -45,9 +46,10 @@ camp scheduling would.
 2. **The person's choices beat anything generated:** locks, hand edits and their answers stay
    (LOCK-4.3, CORE-4.8).
 3. **The yes is the person's.** When Shoresh asks first over the connector (MCP), it asks the
-   person on their own screen. On the command line or in code mode, its first answer says what it
-   would do and gives a `confirm`: show the person exactly that, and send the `confirm` only after
-   they said yes. Never give their yes yourself (API-1.106, API-1.153).
+   person on their own screen, and a script run through the connector does the same; there is no
+   `confirm` to send. On the command line, its first answer says what it would do and gives a
+   `confirm`: show the person exactly that, and send the `confirm` only after they said yes. Never
+   give their yes yourself (API-1.106, API-1.153).
 4. **Never answer an import's questions, say "Looks right", or invent campers or choices** for the
    person. Show each question and wait (CORE-2.3, MEMO-6.1, API-1.98).
 5. **Do only what was asked.** No extra week, rebuild, publish, merge or setup change (API-1.148,
@@ -59,6 +61,7 @@ camp scheduling would.
 8. **Use the camp's words and Shoresh's terms.** No record IDs, field names or jargon (CORE-6.6).
 9. **When Salesforce didn't answer, say you can't tell whether it was done**, and read before
    trying again (API-1.126).
+<!-- golden-rules:end -->
 
 ## Where to look next
 

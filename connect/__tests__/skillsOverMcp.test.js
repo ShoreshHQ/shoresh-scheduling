@@ -80,7 +80,10 @@ describe("the skill over MCP (API-1.164)", () => {
         await ask("initialize", { protocolVersion: "2025-06-18" }, 0)
       )
     ).toBe(
-      '{"jsonrpc":"2.0","id":0,"result":{"protocolVersion":"2025-06-18","capabilities":{"tools":{},"resources":{},"extensions":{"io.modelcontextprotocol/ui":{}}},"serverInfo":{"name":"shoresh","version":"0.0.0"}}}'
+      // Pinned byte for byte; the only change since API-1.164 is the golden rules (API-1.165).
+      '{"jsonrpc":"2.0","id":0,"result":{"protocolVersion":"2025-06-18","capabilities":{"tools":{},"resources":{},"extensions":{"io.modelcontextprotocol/ui":{}}},"serverInfo":{"name":"shoresh","version":"0.0.0"},"instructions":' +
+        JSON.stringify(skills.goldenRules()) +
+        "}}"
     );
     expect(JSON.stringify(await ask("tools/list", {}, 1))).toBe(
       JSON.stringify({ jsonrpc: "2.0", id: 1, result: { tools: tools() } })
@@ -396,5 +399,102 @@ describe("the skill over MCP (API-1.164)", () => {
     ]) {
       expect(() => skills.frontmatter(`---\n${header}\n---\n`)).toThrow();
     }
+  });
+});
+
+// API-1.165
+describe("the golden rules at startup (API-1.165)", () => {
+  const START = "<!-- golden-rules:start";
+  const END = "<!-- golden-rules:end -->";
+  const skillText = () =>
+    fs.readFileSync(path.join(SKILL_DIR, "SKILL.md"), "utf8");
+  /** The section between the markers, read here without the connector's own reader. */
+  const marked = (text) => {
+    const from = text.indexOf("\n", text.indexOf(START)) + 1;
+    return text.slice(from, text.indexOf(END)).trim();
+  };
+
+  it("theMarkersAreThereOnce: SKILL.md marks its never-do-silently rules once, start before end", () => {
+    const text = skillText();
+    expect(text.split(START).length).toBe(2);
+    expect(text.split(END).length).toBe(2);
+    expect(text.indexOf(START)).toBeLessThan(text.indexOf(END));
+    expect(marked(text)).toMatch(/^## Never do these silently\n/);
+    expect(marked(text)).not.toMatch(/\n## /);
+  });
+
+  it("bothStartupAnswersSayTheGoldenRules: initialize and server/discover carry SKILL.md's marked section as instructions, word for word", async () => {
+    const rules = marked(skillText());
+    const init = await ask("initialize", { protocolVersion: "2025-06-18" }, 0);
+    expect(init.result.instructions).toBe(rules);
+    const found = await modern("server/discover");
+    expect(found.result.instructions).toBe(rules);
+    expect(skills.goldenRules(TO)).toBe(rules);
+  });
+
+  it("theRulesStayShort: under the 4,096 characters Claude Code keeps of a server's instructions", () => {
+    expect(marked(skillText()).length).toBeLessThanOrEqual(4096);
+  });
+
+  it("theRulesFollowTheSkill: a changed section changes the instructions, and without markers the connector still starts", async () => {
+    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "shoresh-rules-"));
+    const write = (text) =>
+      fs.writeFileSync(
+        path.join(tmp, "skill.shoresh-camp-scheduling.SKILL.md"),
+        text
+      );
+    try {
+      write(skillText().replace("out of sight", "out of view"));
+      expect(skills.goldenRules(tmp)).toBe(
+        marked(skillText()).replace("out of sight", "out of view")
+      );
+      write(skillText().replace(END, ""));
+      expect(skills.goldenRules(tmp)).toBeNull();
+    } finally {
+      fs.rmSync(tmp, { recursive: true, force: true });
+    }
+    jest.spyOn(skills, "goldenRules").mockReturnValue(null);
+    expect(
+      JSON.stringify(
+        await ask("initialize", { protocolVersion: "2025-06-18" }, 0)
+      )
+    ).toBe(
+      '{"jsonrpc":"2.0","id":0,"result":{"protocolVersion":"2025-06-18","capabilities":{"tools":{},"resources":{},"extensions":{"io.modelcontextprotocol/ui":{}}},"serverInfo":{"name":"shoresh","version":"0.0.0"}}}'
+    );
+  });
+});
+
+describe("a uri sent back (API-1.164)", () => {
+  it("aUriCantAddLogLines: line breaks and other controls in a uri are dropped from the log and the answer", async () => {
+    const lines = [];
+    const uri = "skill://nothing/SKILL.md\nShoresh: made-up line\r\u0007\u2028";
+    const answer = await handle(
+      {
+        jsonrpc: "2.0",
+        id: 1,
+        method: "skills/get",
+        params: { uri, _meta: META }
+      },
+      { log: (line) => lines.push(line) }
+    );
+    expect(answer.error.code).toBe(-32602);
+    expect(answer.error.message).toBe(
+      "No skill is served at skill://nothing/SKILL.mdShoresh: made-up line"
+    );
+    expect(lines).toEqual([
+      "Shoresh: no skill file at skill://nothing/SKILL.mdShoresh: made-up line"
+    ]);
+    const page = await ask("resources/read", { uri: "ui://x\ny" });
+    expect(page.error.message).toBe("No such page: ui://xy");
+    // A made-up method is said back without its line breaks too.
+    const unknown = await handle({
+      jsonrpc: "2.0",
+      id: 2,
+      method: "x\nShoresh: made-up line",
+      params: { _meta: META }
+    });
+    expect(unknown.error.message).toBe(
+      "Unknown request: xShoresh: made-up line"
+    );
   });
 });

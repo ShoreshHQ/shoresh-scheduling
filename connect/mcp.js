@@ -59,6 +59,26 @@ const DISCOVERED = {
   }
 };
 
+/**
+ * The skill's golden rules as both startup answers' `instructions` (API-1.165), so every AI that
+ * connects gets them, one that never reads the skill included. Left out if they can't be read:
+ * the connector still starts.
+ */
+function startupInstructions() {
+  try {
+    const text = skills.goldenRules();
+    return text ? { instructions: text } : {};
+  } catch {
+    return {};
+  }
+}
+
+/** A value an AI app sent (a uri, a method), as it may go in the log or an answer: no line breaks or other controls. */
+function printable(uri) {
+  // eslint-disable-next-line no-control-regex
+  return String(uri).replace(/[\u0000-\u001f\u007f-\u009f\u2028\u2029]/g, "");
+}
+
 // 2026-07-28's cache hint on lists, reads and server/discover: never kept, so an AI app never
 // works from a tool list an update has changed; and only this person's.
 const NOT_KEPT = { ttlMs: 0, cacheScope: "private" };
@@ -251,7 +271,7 @@ async function handle(
     name: "shoresh",
     version: ownVersion() ?? "0.0.0"
   });
-  const unknown = () => fail(-32601, `Unknown request: ${method}`);
+  const unknown = () => fail(-32601, `Unknown request: ${printable(method)}`);
   // A uri that isn't text is refused before anything reads it.
   const badUri = () =>
     params?.uri !== undefined && typeof params.uri !== "string";
@@ -273,21 +293,23 @@ async function handle(
         return fail(-32603, "The skill couldn't be read.");
       }
     }
-    log(`Shoresh: no skill file at ${params?.uri}`);
-    return fail(-32602, `No skill is served at ${params?.uri}`);
+    log(`Shoresh: no skill file at ${printable(params?.uri)}`);
+    return fail(-32602, `No skill is served at ${printable(params?.uri)}`);
   };
   switch (method) {
     case "initialize":
       return reply({
         protocolVersion: LEGACY_VERSION,
         capabilities: CAPABILITIES_DECLARED,
-        serverInfo: serverInfo()
+        serverInfo: serverInfo(),
+        ...startupInstructions()
       });
     case "server/discover":
       return kept({
         supportedVersions: VERSIONS,
         capabilities: DISCOVERED,
-        _meta: { "io.modelcontextprotocol/serverInfo": serverInfo() }
+        _meta: { "io.modelcontextprotocol/serverInfo": serverInfo() },
+        ...startupInstructions()
       });
     case "ping":
       return reply({});
@@ -305,7 +327,10 @@ async function handle(
       }
       if (params?.uri !== WEEK_VIEW.uri) {
         // A page that isn't there: 2026-07-28 calls it invalid params.
-        return fail(modern ? -32602 : -32002, `No such page: ${params?.uri}`);
+        return fail(
+          modern ? -32602 : -32002,
+          `No such page: ${printable(params?.uri)}`
+        );
       }
       log("Shoresh: Claude asked for the week view");
       return kept({
@@ -427,6 +452,7 @@ module.exports = {
   serve,
   hostFrom,
   toolResult,
+  printable,
   WEEK_VIEW,
   VERSIONS
 };
