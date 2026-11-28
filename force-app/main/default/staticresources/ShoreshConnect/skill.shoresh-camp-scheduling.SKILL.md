@@ -38,6 +38,7 @@ camp scheduling would.
    week only, with no checks. To change a week, read its draft with `read_week_draft`. When a week
    has both a Generated Schedule and a Manual Build, ask which one (API-1.41, API-1.123).
 
+<!-- golden-rules:start (the connector sends this section to every AI at startup, API-1.165) -->
 ## Never do these silently
 
 1. **Show problems; never resolve them out of sight** (CORE-6.1). A refusal is for the person to
@@ -59,6 +60,7 @@ camp scheduling would.
 8. **Use the camp's words and Shoresh's terms.** No record IDs, field names or jargon (CORE-6.6).
 9. **When Salesforce didn't answer, say you can't tell whether it was done**, and read before
    trying again (API-1.126).
+<!-- golden-rules:end -->
 
 ## Where to look next
 
