@@ -18,8 +18,9 @@
 
 ## Versions
 
-Shoresh keeps a version only where the screen does: Rebuild, Try another, Start over, Restore,
-rain plans and Clear day or week each keep one (API-1.12); a cell edit keeps none. A first Generate and Fill the open
+Shoresh keeps a version only where the screen does: Rebuild, Try another, bringing an option
+back, Start over, Restore and rain plans each keep one (API-1.12), and so do Clear day and Clear
+week (WEEK-6.14); a cell edit keeps none. A first Generate and Fill the open
 cells keep none, and Update to match setup keeps one only when it replaces hand work. Never tell
 the person "you can go back" unless a version exists: check with `list_versions` first.
 

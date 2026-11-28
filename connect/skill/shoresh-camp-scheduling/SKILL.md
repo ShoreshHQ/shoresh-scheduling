@@ -20,9 +20,9 @@ don't want to know Shoresh's machinery. Answer in the camp's words, in a few wor
 
 Shoresh enforces its own rules. It asks the person before anything that takes something away for
 good (API-1.106), refuses most changes made on a stale read, and refuses what the screen would
-refuse. What keeps a version, like Start over (it lifts every lock) or Try another, it does
-without asking, as the screen does. This skill
-doesn't keep anyone safe; it helps you work with those rules well, the way a colleague who knows
+refuse. Start over (it lifts every lock) and Try another keep a version and don't ask, as the
+screen does; Clear day, Clear week and Update to match setup keep a version and still ask first
+(WEEK-6.15, API-1.106). This skill doesn't keep anyone safe; it helps you work with those rules well, the way a colleague who knows
 camp scheduling would.
 
 ## Every conversation
