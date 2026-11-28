@@ -10,6 +10,7 @@ const { CAPABILITIES, byName } = require("./capabilities");
 const { call, sfInstalled, signIn, toAgent } = require("./client");
 const { ownVersion } = require("./camp");
 const script = require("./script");
+const skills = require("./skills");
 const { askPerson, withPersonsYes } = require("./yes");
 
 /**
@@ -37,15 +38,25 @@ const LEGACY_VERSION = "2025-06-18";
 const VERSIONS = ["2026-07-28"];
 const VERSION_KEY = "io.modelcontextprotocol/protocolVersion";
 
-/**
- * What the connector does, the same under both revisions. Skills over MCP
- * (io.modelcontextprotocol/skills) is declared here, with skills/list and skills/get in handle(),
- * once Shoresh serves a skill.
- */
+/** What the connector does under both revisions. */
 const CAPABILITIES_DECLARED = {
   tools: {},
   resources: {},
   extensions: { "io.modelcontextprotocol/ui": {} }
+};
+
+/**
+ * 2026-07-28 also declares Skills over MCP (io.modelcontextprotocol/skills, API-1.164): skills/list,
+ * skills/get, and the skill's files through resources/read. No directory reads: skills/list already
+ * names every file. 2025-06-18's answers stay as they were.
+ */
+const SKILLS_EXTENSION = "io.modelcontextprotocol/skills";
+const DISCOVERED = {
+  ...CAPABILITIES_DECLARED,
+  extensions: {
+    ...CAPABILITIES_DECLARED.extensions,
+    [SKILLS_EXTENSION]: { directoryRead: false }
+  }
 };
 
 // 2026-07-28's cache hint on lists, reads and server/discover: never kept, so an AI app never
@@ -240,6 +251,31 @@ async function handle(
     name: "shoresh",
     version: ownVersion() ?? "0.0.0"
   });
+  const unknown = () => fail(-32601, `Unknown request: ${method}`);
+  // A uri that isn't text is refused before anything reads it.
+  const badUri = () =>
+    params?.uri !== undefined && typeof params.uri !== "string";
+  const notText = () => fail(-32602, "The uri must be text.");
+  /**
+   * A skills answer (2026-07-28 only): a skill or file that isn't served, or a file gone from
+   * disk, is the extension's -32602; anything else that fails reading it is -32603.
+   */
+  const skillAnswer = (answer) => {
+    try {
+      const result = answer();
+      if (result) return kept(result);
+    } catch (e) {
+      if (e.code !== "ENOENT") {
+        // Fixed words: the error's own message can hold a file path and the person's username.
+        log(
+          `Shoresh: a skill file couldn't be read${e.code ? ` (${e.code})` : ""}`
+        );
+        return fail(-32603, "The skill couldn't be read.");
+      }
+    }
+    log(`Shoresh: no skill file at ${params?.uri}`);
+    return fail(-32602, `No skill is served at ${params?.uri}`);
+  };
   switch (method) {
     case "initialize":
       return reply({
@@ -250,7 +286,7 @@ async function handle(
     case "server/discover":
       return kept({
         supportedVersions: VERSIONS,
-        capabilities: CAPABILITIES_DECLARED,
+        capabilities: DISCOVERED,
         _meta: { "io.modelcontextprotocol/serverInfo": serverInfo() }
       });
     case "ping":
@@ -260,6 +296,13 @@ async function handle(
     case "resources/list":
       return kept({ resources: [WEEK_VIEW] });
     case "resources/read":
+      if (badUri()) return notText();
+      if (modern && String(params?.uri).startsWith(skills.SCHEME)) {
+        return skillAnswer(() => {
+          const file = skills.readSkillFile(params.uri);
+          return file && { contents: [file] };
+        });
+      }
       if (params?.uri !== WEEK_VIEW.uri) {
         // A page that isn't there: 2026-07-28 calls it invalid params.
         return fail(modern ? -32602 : -32002, `No such page: ${params?.uri}`);
@@ -297,9 +340,18 @@ async function handle(
       delete result.said;
       return reply(result);
     }
-    // skills/list and skills/get go here with the skills extension above.
+    case "skills/list":
+      if (!modern) return unknown();
+      return skillAnswer(() => ({ skills: skills.skills() }));
+    case "skills/get":
+      if (!modern) return unknown();
+      if (badUri()) return notText();
+      return skillAnswer(() => {
+        const entry = skills.skill(params?.uri);
+        return entry && { skill: entry };
+      });
     default:
-      return fail(-32601, `Unknown request: ${method}`);
+      return unknown();
   }
 }
 
@@ -348,9 +400,19 @@ function serve(org, env = process.env) {
         );
         continue;
       }
-      handle(message, options).then((answer) => {
-        if (answer) process.stdout.write(`${JSON.stringify(answer)}\n`);
-      });
+      handle(message, options)
+        .catch((e) => {
+          // Anything thrown is answered, and the connector stays up for the next request.
+          process.stderr.write(`Shoresh: a request failed (${e?.name})\n`);
+          return {
+            jsonrpc: "2.0",
+            id: message?.id ?? null,
+            error: { code: -32603, message: "Shoresh couldn't answer that." }
+          };
+        })
+        .then((answer) => {
+          if (answer) process.stdout.write(`${JSON.stringify(answer)}\n`);
+        });
     }
   });
 }

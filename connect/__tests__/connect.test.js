@@ -4822,9 +4822,8 @@ describe("Shoresh for AI tools and the command line", () => {
       fs.mkdirSync(path.join(root, "a"));
       fs.writeFileSync(path.join(root, "a", "b.md"), "one");
       fs.writeFileSync(path.join(root, "a.b.md"), "two");
-      expect(() => skillFiles(root)).toThrow(
-        /Two skill files ship as skill\.a\.b\.md/
-      );
+      // a.b.md is refused outright: only a plain name.md ships, so no two files share one.
+      expect(() => skillFiles(root)).toThrow("Skill file a.b.md can't ship");
     } finally {
       fs.rmSync(root, { recursive: true, force: true });
     }
@@ -6401,7 +6400,7 @@ describe("both MCP revisions are answered (API-1.161)", () => {
     expect(called.result.isError).toBe(false);
   });
 
-  it("serverDiscoverSaysTheSame: 2026-07-28's discover names its revision and declares what initialize does", async () => {
+  it("serverDiscoverSaysTheSame: 2026-07-28's discover names its revision and declares what initialize does, and Skills over MCP (API-1.164)", async () => {
     const init = await handle({
       jsonrpc: "2.0",
       id: 0,
@@ -6422,7 +6421,13 @@ describe("both MCP revisions are answered (API-1.161)", () => {
     expect(found.result).toEqual({
       resultType: "complete",
       supportedVersions: ["2026-07-28"],
-      capabilities: init.result.capabilities,
+      capabilities: {
+        ...init.result.capabilities,
+        extensions: {
+          ...init.result.capabilities.extensions,
+          "io.modelcontextprotocol/skills": { directoryRead: false }
+        }
+      },
       _meta: { "io.modelcontextprotocol/serverInfo": init.result.serverInfo },
       ttlMs: 0,
       cacheScope: "private"

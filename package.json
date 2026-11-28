@@ -39,6 +39,7 @@
     "eslint": "^9.29.0",
     "eslint-plugin-import": "^2.31.0",
     "eslint-plugin-jest": "^28.14.0",
+    "js-yaml": "^4.3.2",
     "pdf-lib": "1.17.1",
     "pdfjs-dist": "4.10.38",
     "playwright-core": "1.63.0",

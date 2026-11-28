@@ -301,8 +301,9 @@ async function printViewFile() {
 const SKILL = path.join(FROM, "skill");
 
 /**
- * The skill's files, { flat name in the resource: its path in connect/skill }. Two files that
- * flatten to the same name (a/b.md and a.b.md) stop the build: one would overwrite the other.
+ * The skill's files, { flat name in the resource: its path in connect/skill }. A file with a dot
+ * in its path but its .md ending stops the build, so no two files (a/b.md and a.b.md) flatten to
+ * one name and the connector reads each name back as the path it came from.
  */
 function skillFiles(root = SKILL, dir = root, out = {}) {
   for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
@@ -311,12 +312,16 @@ function skillFiles(root = SKILL, dir = root, out = {}) {
       skillFiles(root, full, out);
       continue;
     }
-    const flat = `skill.${path.relative(root, full).split(path.sep).join(".")}`;
-    if (out[flat])
+    const parts = path.relative(root, full).split(path.sep);
+    // The connector turns every dot but the last back into a "/", so only plain names ship.
+    if (
+      parts.slice(0, -1).some((p) => p.includes(".")) ||
+      !/^[^.]+\.md$/.test(parts[parts.length - 1])
+    )
       throw new Error(
-        `Two skill files ship as ${flat}: ${path.relative(root, out[flat])} and ${path.relative(root, full)}. Rename one.`
+        `Skill file ${parts.join("/")} can't ship: every skill file is a .md, with no other dot in its path. Rename or remove it.`
       );
-    out[flat] = full;
+    out[`skill.${parts.join(".")}`] = full;
   }
   return out;
 }
