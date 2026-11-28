@@ -36,7 +36,9 @@ a general code review misses: the items Salesforce's AppExchange security review
 ## What to review
 
 The PR diff by default (`gh pr diff <n>` or `git diff origin/main...HEAD`), reading whole files
-where context matters. When asked for an audit, the named scope. Project rules: `CLAUDE.md`;
+where context matters. When asked for an audit, the named scope. Project rules: `CLAUDE.md`, and
+every file in `.claude/rules/` (Apex and field-name lessons from real failures; read them in full,
+since they load only when a matching file is opened, and a diff doesn't open one);
 build choices: `docs/adr/`. ADR 0001 point 6 is the system-mode rule: screen writes are user-mode
 DML, reads are `WITH USER_MODE`, and **only trigger checks read in system mode** (duplicate keys
 must be found even in records the user cannot see).

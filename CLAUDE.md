@@ -43,7 +43,7 @@ decisions live in the wiki (`~/Dev/wiki`: `projects/shoresh-scheduling-sf.md`, i
   (`.claude/skills/SOURCES.md`). Each starts with "Shoresh overrides (these win)": those lines and
   this file beat the skill text. Never install sf-skills plugins.
 - Apex and field-name lessons are in `.claude/rules/` (`apex.md`, `names.md`); they load when
-  matching files are touched.
+  matching files are touched. Every reviewer reads them in full alongside the diff.
 - **Every PR also gets the `salesforce-reviewer` agent** (`.claude/agents/salesforce-reviewer.md`,
   read-only) alongside the general review: AppExchange security items, user mode and system-mode
   justification, package hygiene, accessibility, design-guide wording.
