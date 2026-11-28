@@ -4822,9 +4822,8 @@ describe("Shoresh for AI tools and the command line", () => {
       fs.mkdirSync(path.join(root, "a"));
       fs.writeFileSync(path.join(root, "a", "b.md"), "one");
       fs.writeFileSync(path.join(root, "a.b.md"), "two");
-      expect(() => skillFiles(root)).toThrow(
-        /Two skill files ship as skill\.a\.b\.md/
-      );
+      // a.b.md is refused outright: only a plain name.md ships, so no two files share one.
+      expect(() => skillFiles(root)).toThrow("Skill file a.b.md can't ship");
     } finally {
       fs.rmSync(root, { recursive: true, force: true });
     }

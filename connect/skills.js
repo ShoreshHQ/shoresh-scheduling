@@ -23,7 +23,8 @@ function shippedFiles(dir = __dirname) {
       for (const entry of fs.readdirSync(at, { withFileTypes: true })) {
         const full = path.join(at, entry.name);
         if (entry.isDirectory()) walk(full);
-        else {
+        else if (entry.name.endsWith(".md")) {
+          // Only the skill's markdown: no .DS_Store or other stray file is served.
           const [name, ...rest] = path.relative(folder, full).split(path.sep);
           found.push([name, rest.join("/"), full]);
         }
@@ -50,7 +51,7 @@ function shippedFiles(dir = __dirname) {
 
 /**
  * SKILL.md's YAML header as an object, unchanged. Only what the skill's header uses: `key: value`
- * and folded `key: >-` blocks. Anything else throws (skills.test.js checks the shipped header
+ * and folded `key: >-` blocks. Anything else throws (skillsOverMcp.test.js checks the shipped header
  * against a full YAML reader).
  */
 function frontmatter(text) {

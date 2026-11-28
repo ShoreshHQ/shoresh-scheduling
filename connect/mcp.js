@@ -252,6 +252,10 @@ async function handle(
     version: ownVersion() ?? "0.0.0"
   });
   const unknown = () => fail(-32601, `Unknown request: ${method}`);
+  // A uri that isn't text is refused before anything reads it.
+  const badUri = () =>
+    params?.uri !== undefined && typeof params.uri !== "string";
+  const notText = () => fail(-32602, "The uri must be text.");
   /**
    * A skills answer (2026-07-28 only): a skill or file that isn't served, or a file gone from
    * disk, is the extension's -32602; anything else that fails reading it is -32603.
@@ -262,7 +266,11 @@ async function handle(
       if (result) return kept(result);
     } catch (e) {
       if (e.code !== "ENOENT") {
-        return fail(-32603, `The skill couldn't be read: ${e.message}`);
+        // Fixed words: the error's own message can hold a file path and the person's username.
+        log(
+          `Shoresh: a skill file couldn't be read${e.code ? ` (${e.code})` : ""}`
+        );
+        return fail(-32603, "The skill couldn't be read.");
       }
     }
     log(`Shoresh: no skill file at ${params?.uri}`);
@@ -288,6 +296,7 @@ async function handle(
     case "resources/list":
       return kept({ resources: [WEEK_VIEW] });
     case "resources/read":
+      if (badUri()) return notText();
       if (modern && String(params?.uri).startsWith(skills.SCHEME)) {
         return skillAnswer(() => {
           const file = skills.readSkillFile(params.uri);
@@ -336,6 +345,7 @@ async function handle(
       return skillAnswer(() => ({ skills: skills.skills() }));
     case "skills/get":
       if (!modern) return unknown();
+      if (badUri()) return notText();
       return skillAnswer(() => {
         const entry = skills.skill(params?.uri);
         return entry && { skill: entry };
@@ -390,9 +400,19 @@ function serve(org, env = process.env) {
         );
         continue;
       }
-      handle(message, options).then((answer) => {
-        if (answer) process.stdout.write(`${JSON.stringify(answer)}\n`);
-      });
+      handle(message, options)
+        .catch((e) => {
+          // Anything thrown is answered, and the connector stays up for the next request.
+          process.stderr.write(`Shoresh: a request failed (${e?.name})\n`);
+          return {
+            jsonrpc: "2.0",
+            id: message?.id ?? null,
+            error: { code: -32603, message: "Shoresh couldn't answer that." }
+          };
+        })
+        .then((answer) => {
+          if (answer) process.stdout.write(`${JSON.stringify(answer)}\n`);
+        });
     }
   });
 }

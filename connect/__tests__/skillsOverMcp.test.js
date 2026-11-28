@@ -3,6 +3,7 @@
  * API-1.164): skills/list, skills/get and skill:// reads under 2026-07-28 only, from the files
  * shipped; 2025-06-18's answers unchanged. No Salesforce here.
  */
+const { spawn } = require("child_process");
 const crypto = require("crypto");
 const fs = require("fs");
 const os = require("os");
@@ -10,7 +11,7 @@ const path = require("path");
 const yaml = require("js-yaml");
 const { handle, tools } = require("../mcp");
 const skills = require("../skills");
-const { TO } = require("../../scripts/build-connect");
+const { TO, skillFiles } = require("../../scripts/build-connect");
 
 const META = { "io.modelcontextprotocol/protocolVersion": "2026-07-28" };
 const URI = "skill://shoresh-camp-scheduling/SKILL.md";
@@ -30,6 +31,43 @@ function filesIn(dir, at = dir, out = []) {
     else out.push(path.relative(dir, full).split(path.sep).join("/"));
   }
   return out.sort();
+}
+
+/**
+ * The connector run as Claude desktop runs it: each line sent waits for its answer, so a crash
+ * shows as a request left unanswered.
+ */
+function connector() {
+  const child = spawn(process.execPath, [path.join(__dirname, "../mcp.js")], {
+    stdio: ["pipe", "pipe", "pipe"]
+  });
+  let out = "";
+  const waiting = [];
+  const settle = () => {
+    let end;
+    while (waiting.length && (end = out.indexOf("\n")) >= 0) {
+      const line = out.slice(0, end);
+      out = out.slice(end + 1);
+      waiting.shift().resolve(JSON.parse(line));
+    }
+  };
+  child.stdout.setEncoding("utf8");
+  child.stdout.on("data", (chunk) => {
+    out += chunk;
+    settle();
+  });
+  child.on("exit", (code) => {
+    while (waiting.length) waiting.shift().reject(new Error(`exited ${code}`));
+  });
+  return {
+    send: (line) =>
+      new Promise((resolve, reject) => {
+        waiting.push({ resolve, reject });
+        child.stdin.write(`${line}\n`);
+        settle();
+      }),
+    stop: () => child.kill()
+  };
 }
 
 afterEach(() => jest.restoreAllMocks());
@@ -149,6 +187,47 @@ describe("the skill over MCP (API-1.164)", () => {
     }
   });
 
+  it("aUriThatIsntTextIsInvalidParams: skills/get and resources/read refuse a uri that isn't a string with -32602, under either revision", async () => {
+    for (const uri of [{ toString: 1 }, 7, ["skill://x"], null]) {
+      expect((await modern("skills/get", { uri })).error.code).toBe(-32602);
+      expect((await modern("resources/read", { uri })).error.code).toBe(-32602);
+      expect((await ask("resources/read", { uri })).error.code).toBe(-32602);
+    }
+  });
+
+  it("theConnectorStaysUp: a uri that isn't text, or a request that throws, is answered and the next ping is still answered", async () => {
+    const c = connector();
+    try {
+      const bad = { uri: { toString: 1 }, _meta: META };
+      for (const [id, method] of [
+        [1, "skills/get"],
+        [2, "resources/read"]
+      ]) {
+        const answer = await c.send(
+          JSON.stringify({ jsonrpc: "2.0", id, method, params: bad })
+        );
+        expect([id, answer.error.code]).toEqual([id, -32602]);
+        expect(
+          await c.send(
+            JSON.stringify({ jsonrpc: "2.0", id: 9, method: "ping" })
+          )
+        ).toEqual({ jsonrpc: "2.0", id: 9, result: {} });
+      }
+      // `null` is JSON that handle() throws on: answered -32603, and the connector carries on.
+      const thrown = await c.send("null");
+      expect(thrown).toEqual({
+        jsonrpc: "2.0",
+        id: null,
+        error: { code: -32603, message: "Shoresh couldn't answer that." }
+      });
+      expect(
+        await c.send(JSON.stringify({ jsonrpc: "2.0", id: 10, method: "ping" }))
+      ).toEqual({ jsonrpc: "2.0", id: 10, result: {} });
+    } finally {
+      c.stop();
+    }
+  });
+
   it("aFileGoneIsInvalidParamsNotACrash: a skill file missing from disk is -32602, a file that can't be read -32603", async () => {
     const real = fs.readFileSync;
     const failing = (code) =>
@@ -166,6 +245,45 @@ describe("the skill over MCP (API-1.164)", () => {
     failing("EACCES");
     expect((await modern("resources/read", { uri })).error.code).toBe(-32603);
     expect((await modern("skills/list")).error.code).toBe(-32603);
+  });
+
+  it("anUnreadableFileSaysNoPath: a file that can't be read is answered in fixed words, and nothing logged holds its path", async () => {
+    const real = fs.readFileSync;
+    const secret = "/Users/someone/Library/skill/reference/camp-words.md";
+    jest.spyOn(fs, "readFileSync").mockImplementation((file, ...rest) => {
+      if (String(file).endsWith("camp-words.md")) {
+        throw Object.assign(
+          new Error(`EACCES: permission denied, open '${secret}'`),
+          { code: "EACCES" }
+        );
+      }
+      return real(file, ...rest);
+    });
+    const logged = [];
+    const uri = "skill://shoresh-camp-scheduling/reference/camp-words.md";
+    for (const [method, params] of [
+      ["resources/read", { uri }],
+      ["skills/list", {}]
+    ]) {
+      const answer = await handle(
+        {
+          jsonrpc: "2.0",
+          id: 1,
+          method,
+          params: { ...params, _meta: META }
+        },
+        { log: (line) => logged.push(line) }
+      );
+      expect(answer.error).toEqual({
+        code: -32603,
+        message: "The skill couldn't be read."
+      });
+    }
+    expect(logged.length).toBeGreaterThan(0);
+    for (const line of logged) {
+      expect(line).not.toContain("someone");
+      expect(line).not.toContain("camp-words");
+    }
   });
 
   it("anUnreadableHeaderIsAnInternalError: a SKILL.md header the connector can't read is -32603, never a crash", async () => {
@@ -219,6 +337,50 @@ describe("the skill over MCP (API-1.164)", () => {
       const file = parts.pop();
       expect([f, parts.every((p) => !p.includes("."))]).toEqual([f, true]);
       expect([f, file.split(".").length]).toEqual([f, 2]);
+    }
+  });
+
+  it("onlyPlainMarkdownShips: the build refuses a skill file with another dot or no .md ending, and the repo listing skips files that aren't .md", () => {
+    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "shoresh-skill-"));
+    const put = (rel, text = "A\n") => {
+      fs.mkdirSync(path.dirname(path.join(tmp, rel)), { recursive: true });
+      fs.writeFileSync(path.join(tmp, rel), text);
+    };
+    try {
+      put(
+        "skill/made-up/SKILL.md",
+        "---\nname: made-up\ndescription: B.\n---\n"
+      );
+      put("skill/made-up/reference/a.md");
+      expect(skillFiles(path.join(tmp, "skill"))).toEqual({
+        "skill.made-up.SKILL.md": path.join(tmp, "skill/made-up/SKILL.md"),
+        "skill.made-up.reference.a.md": path.join(
+          tmp,
+          "skill/made-up/reference/a.md"
+        )
+      });
+      put("skill/made-up/.DS_Store");
+      expect(skills.shippedFiles(tmp).map(([, f]) => f)).toEqual([
+        "SKILL.md",
+        "reference/a.md"
+      ]);
+      for (const bad of [
+        ".DS_Store",
+        "reference/notes.txt",
+        "reference/a.b.md",
+        "ref.x/c.md"
+      ]) {
+        const root = path.join(tmp, `case-${bad.replace(/\W/g, "_")}`);
+        fs.mkdirSync(path.dirname(path.join(root, "made-up", bad)), {
+          recursive: true
+        });
+        fs.writeFileSync(path.join(root, "made-up", bad), "A\n");
+        expect(() => skillFiles(root)).toThrow(
+          `Skill file made-up/${bad} can't ship`
+        );
+      }
+    } finally {
+      fs.rmSync(tmp, { recursive: true, force: true });
     }
   });
 
