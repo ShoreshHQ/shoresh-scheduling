@@ -17,9 +17,9 @@
 3. Programs, divisions, groups, time blocks, locations, staff: `add_to_setup`, `read_from_setup`,
    `change_in_setup`, `rename_in_setup`.
 4. Activities, then fixed and recurring activities, special events, electives. An activity's
-   length, how often, who can do it and who leads it: `read_activity_details`,
-   `change_activity_details` (API-1.159). Blank "who can do it" means every group (CORE-3.5); blank
-   groups fit means 1 (CORE-3.6).
+   length, how often, location and rain plan: `read_from_setup`, `change_in_setup`. Who can do it,
+   who leads it and when it runs: `read_activity_details`, `change_activity_details` (API-1.159).
+   Blank "who can do it" means every group (CORE-3.5); blank groups fit means 1 (CORE-3.6).
 
 Season details (name, dates, short weeks): `change_season`.
 
