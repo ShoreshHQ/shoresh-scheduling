@@ -29,7 +29,7 @@ module.exports = {
   // CSS-only modules (shared colours) have no JavaScript for Jest to find.
   moduleNameMapper: {
     ...(jestConfig.moduleNameMapper || {}),
-    "^c/(shoreshTokens|shoreshScheduleScreen)$":
+    "^c/(shoreshTokens|shoreshScheduleScreen|shoreshClicks)$":
       "<rootDir>/force-app/main/default/lwc/$1/$1.css",
     // Test helpers shared by suites (jest/namespace.js: namespace-safe fixtures).
     "^shoresh-jest/(.*)$": "<rootDir>/jest/$1.js",
