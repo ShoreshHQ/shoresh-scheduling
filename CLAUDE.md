@@ -4,9 +4,8 @@ Step 1 of Shoresh: a free, Salesforce-native day-camp scheduling app. Design, gl
 decisions live in the wiki (`~/Dev/wiki`: `projects/shoresh-scheduling-sf.md`, its build log,
 `projects/shoresh-scheduling-data-model.md`, `decisions/`). Read the build log before starting.
 
-- **Exactly two Salesforce orgs: the Dev Hub (`shoresh-devhub`) and one test org
-  (`shoresh-test`).** Never create another org, for any reason. Everything (CI, trying things,
-  prototypes) deploys to the test org. See `docs/ci-setup.md`.
+- Salesforce orgs: the Dev Hub is `shoresh-devhub` and the one test org is `shoresh-test`.
+  The two-org rule is in `~/Dev/Shoresh/CLAUDE.md`, and the guard enforces it.
 - **Never work in `~/Dev/Shoresh/shoresh-scheduling` itself.** That folder is Greg's local copy: it
   stays on `main`, clean, and is fast-forwarded after every merge. Do all work in your own git
   worktree under `~/Dev/Shoresh/worktrees/` (`git worktree add ~/Dev/Shoresh/worktrees/<name> -b <branch> origin/main`),
@@ -40,36 +39,11 @@ decisions live in the wiki (`~/Dev/wiki`: `projects/shoresh-scheduling-sf.md`, i
   not with sessions. Before deploying or running tests there, check
   `gh run list --repo ShoreshHQ/shoresh-scheduling --status in_progress` (and `--status queued`), and
   wait until no "Scratch org deploy and Apex tests" job is running.
-- **No field or object names written as text** (`"StartDate__c"`, `record.StartDate__c`, `'Week__c'`,
-  `day + '__c'`): once the package has its `shoresh` namespace they find nothing. LWC takes names
-  from `c/shoreshSchema` (generated: `node scripts/generate-shoresh-schema.js`); Apex uses typed
-  references and `ShoreshSchema`; stored names (import logs, answer keys) are bare local names.
-  `npm run check:namespace` fails on any one, and every component's tests also run namespaced (except the engine's seed sweeps listed in `jest.namespaced.config.js`)
-  (`npm run test:unit:namespaced`). Rules and guards: `docs/adr/0009-namespace-safe-names.md`.
 - **Salesforce skills** in `.claude/skills/` are a vetted copy of Salesforce's sf-skills
   (`.claude/skills/SOURCES.md`). Each starts with "Shoresh overrides (these win)": those lines and
   this file beat the skill text. Never install sf-skills plugins.
-- **Apex tests that act as a scheduler create their records inside the same `System.runAs`.** Under
-  sharing the scheduler can't see a camp the test's admin made, so such tests pass locally in review
-  and fail only in the org (seen in #45, #46, #48). Keep a whole request well under 100 SOQL queries;
-  its test must assert the bound with `Limits.getQueries()` for a realistic camp.
-- **Read camp words, labels and describe data once per request**, never per row or in a loop (#60).
-- **Every new Apex class or trigger ships with its `-meta.xml`** (#55). `npm run check:meta` fails
-  without one, `npm run check:name-clash` fails on a variable named like a class or static under
-  another spelling (Apex ignores case; #46, #48), and `npm run check:reserved-words` on a name that
-  is an Apex reserved word (`number`, #46). All run in CI; see `docs/ci-setup.md`.
-- **Compile against the test org before pushing Apex:**
-  `sf project deploy start --dry-run --source-dir force-app --target-org shoresh-test --test-level NoTestRun --ignore-conflicts`,
-  with 0 errors. It runs
-  no tests and changes nothing, but it is still a deployment: follow the rule above and run it only when
-  no CI run is using the org (during one it would wait on or hold up CI, and compile against that
-  branch's code). If the org is busy, push without it: CI's deploy step fails within minutes on a
-  compile error, while waiting only loses your place in the queue. It can't catch a clash with a class
-  only `main` has deleted, since the org may still hold it. #46 and #48 were pushed with Apex that
-  didn't compile.
-- **Test setup goes before `Test.startTest()`**, so the code under test gets its own limits; read
-  `Limits.getQueries()` (or the bound you care about) before `Test.stopTest()`, and assert async
-  results after it.
+- Apex and field-name lessons are in `.claude/rules/` (`apex.md`, `names.md`); they load when
+  matching files are touched.
 - **Every PR also gets the `salesforce-reviewer` agent** (`.claude/agents/salesforce-reviewer.md`,
   read-only) alongside the general review: AppExchange security items, user mode and system-mode
   justification, package hygiene, accessibility, design-guide wording.
