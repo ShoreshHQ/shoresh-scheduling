@@ -271,6 +271,22 @@ describe("Shoresh in an AI chat", () => {
     });
     expect(page.result.contents[0].mimeType).toBe("text/html;profile=mcp-app");
     expect(page.result.contents[0].text).toMatch(/ui\/initialize/);
+    // The same page under MCP 2026-07-28, each request naming its revision (API-1.161).
+    const pageNow = await shipped.handle({
+      jsonrpc: "2.0",
+      id: 4,
+      method: "resources/read",
+      params: {
+        uri: WEEK_VIEW.uri,
+        _meta: { "io.modelcontextprotocol/protocolVersion": "2026-07-28" }
+      }
+    });
+    expect(pageNow.result).toEqual({
+      resultType: "complete",
+      ...page.result,
+      ttlMs: 0,
+      cacheScope: "private"
+    });
   });
 
   // API-1.26
