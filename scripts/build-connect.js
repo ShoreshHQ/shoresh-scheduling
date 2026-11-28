@@ -295,6 +295,32 @@ async function printViewFile() {
     .replace("/* SHORESH_PRINTOUT_CODE */", () => code);
 }
 
+// The skill a camp's AI reads (API-1.163): connect/skill/<name>/, in the open Agent Skills format.
+// The resource stays flat (a folder entry stops Claude's extension installer), so each file ships
+// as skill.<its path, "/" as ".">: skill.shoresh-camp-scheduling.reference.camp-words.md.
+const SKILL = path.join(FROM, "skill");
+
+/**
+ * The skill's files, { flat name in the resource: its path in connect/skill }. Two files that
+ * flatten to the same name (a/b.md and a.b.md) stop the build: one would overwrite the other.
+ */
+function skillFiles(root = SKILL, dir = root, out = {}) {
+  for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+    const full = path.join(dir, entry.name);
+    if (entry.isDirectory()) {
+      skillFiles(root, full, out);
+      continue;
+    }
+    const flat = `skill.${path.relative(root, full).split(path.sep).join(".")}`;
+    if (out[flat])
+      throw new Error(
+        `Two skill files ship as ${flat}: ${path.relative(root, out[flat])} and ${path.relative(root, full)}. Rename one.`
+      );
+    out[flat] = full;
+  }
+  return out;
+}
+
 // Shoresh's licence and NOTICE, carried in the extension (a zip a camp downloads on its own),
 // with the licence texts of what the views bundle, the LWC engine (MIT) and tslib (0BSD), and of
 // pdf.js (Apache-2.0), which it reads PDFs with (API-1.157).
@@ -361,7 +387,9 @@ function describeVersion() {
 async function build() {
   const before = contents();
   for (const f of fs.readdirSync(TO)) {
-    if (/\.(js|mjs|cjs)$/.test(f)) fs.rmSync(path.join(TO, f));
+    if (/\.(js|mjs|cjs)$/.test(f) || f.startsWith("skill.")) {
+      fs.rmSync(path.join(TO, f));
+    }
   }
   for (const f of connectorFiles()) {
     fs.copyFileSync(path.join(FROM, f), path.join(TO, f));
@@ -379,12 +407,15 @@ async function build() {
   }
   fs.writeFileSync(path.join(TO, VIEW_FILE), await viewFile());
   fs.writeFileSync(path.join(TO, PRINT_FILE), await printViewFile());
+  for (const [f, from] of Object.entries(skillFiles())) {
+    fs.copyFileSync(from, path.join(TO, f));
+  }
   fs.copyFileSync(path.join(ROOT, "LICENSE"), path.join(TO, LICENSE_FILE));
   fs.writeFileSync(path.join(TO, NOTICE_FILE), noticeFile());
   bumpVersionIfChanged(before);
   describeVersion();
   console.log(
-    `Copied ${connectorFiles().length} files, ${Object.keys(engine).length} engine files and the week view into ${TO}`
+    `Copied ${connectorFiles().length} files, ${Object.keys(engine).length} engine files, the week view and the skill into ${TO}`
   );
 }
 
@@ -398,6 +429,8 @@ if (require.main === module) {
 module.exports = {
   connectorFiles,
   engineFiles,
+  skillFiles,
+  SKILL,
   viewFile,
   VIEW_FILE,
   printViewFile,
