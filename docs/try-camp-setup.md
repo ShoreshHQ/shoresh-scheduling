@@ -1437,6 +1437,22 @@ adds them (**Users**, then **New User**).
 Next time they sign in, **Shoresh** is in their App Launcher (the nine dots, top left), and in
 every season of your camp they can do everything you can in Shoresh.
 
+### How long someone's AI stays signed in
+
+A person's AI (Claude desktop, or an app that runs commands) reaches Shoresh through the Salesforce
+command line, signed in as that person once in their browser. How long that sign-in lasts is your
+camp's call, set once for everyone by a Salesforce administrator. Shoresh follows it, and asks the
+person to sign in again when Salesforce says the sign-in has ended. Left alone, the sign-in lasts
+until it is revoked or goes unused for a while (Salesforce set 30 days for the command line's own
+app in November 2026).
+
+1. In Setup, type _Connected Apps OAuth Usage_ in **Quick Find** and click it. A list of the apps
+   people have signed in with shows; the command line is **Salesforce CLI**.
+2. In its row, under **App Actions**, click **Install**. Its settings page opens.
+3. Click **Edit Policies**. Under **OAuth Policies**, **Refresh Token Policy** offers: valid until
+   revoked, expire right away (sign in every time), expire after a set time, or expire if not used
+   for a set time. Pick one and click **Save**.
+
 ### Take Shoresh away from someone who stays
 
 Do steps 1 to 3 above. In **Enabled Permission Sets**, click **Shoresh Scheduler**, click the

@@ -233,7 +233,9 @@ These never bend for Shoresh.
   address; outside an installed package it MUST show none. The About page MUST stay as it is
   (ADR 0030; Greg 2026-11-21). Tests: ShoreshVersionTest; shoreshLearned.test.js "CORE-6.16".
 - **CORE-6.17** Settings MUST have **Getting started** after Help and before About, closed until
-  opened: the first steps (the admin assigns the Shoresh Scheduler permission set, the sample camp,
+  opened: the first steps (the admin assigns the Shoresh Scheduler permission set, the admin sets how long
+  a person's AI stays signed in (the Salesforce CLI app's Refresh Token Policy; the camp's call, never
+  Shoresh's, Greg 2026-11-28), the sample camp,
   a season, building a week, electives, Publish), each a short name and the exact clicks in the
   screens' and Salesforce's words, drawn as buttons, with no sentences; it MUST offer the made-up
   sample camp, its Electives list and its campers' choices to download, the same bytes as
