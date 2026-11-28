@@ -629,10 +629,11 @@ async function ask(request, org, run) {
 
 // What sf says when its sign-in is missing, expired or refused (API-1.126): a refresh that failed
 // for the network ("due to: connect ETIMEDOUT") is not one. A sign-in whose org is gone is one:
-// Salesforce answers that org's address with a web page and status 420; any other page (a 503
-// while Salesforce is down) is Salesforce not answering.
+// Salesforce answers that org's address with a web page and status 420 (sf says it either way,
+// as html content or as ERROR_HTTP_420); any other page (a 503 while Salesforce is down) is
+// Salesforce not answering.
 const SIGNED_OUT =
-  /ENOENT|NamedOrgNotFound|NoOrgFound|NoDefaultEnv|No authorization information|No default (target|environment)|expired access\/refresh token|invalid_grant|inactive user|authentication failure|INVALID_SESSION_ID|Session expired|HTTP status code: 420\b/i;
+  /ENOENT|NamedOrgNotFound|NoOrgFound|NoDefaultEnv|No authorization information|No default (target|environment)|expired access\/refresh token|invalid_grant|inactive user|authentication failure|INVALID_SESSION_ID|Session expired|HTTP status code: 420\b|ERROR_HTTP_420\b/i;
 
 // Signed in, but Salesforce didn't answer (API-1.126): never a sign-in, and never "nothing changed".
 const NO_ANSWER =

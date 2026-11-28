@@ -418,7 +418,8 @@ describe("Shoresh for AI tools and the command line", () => {
       "Error (RefreshTokenAuthError): Error authenticating with the refresh token due to: expired access/refresh token",
       "ENOENT",
       // The sign-in's org is gone: Salesforce answers its address with a page and 420.
-      "Error (1): HTTP response contains html content.\nCheck that the org exists and can be reached.\n\nHTTP status code: 420.\nREST API Status Codes and Error Responses:"
+      "Error (1): HTTP response contains html content.\nCheck that the org exists and can be reached.\n\nHTTP status code: 420.\nREST API Status Codes and Error Responses:",
+      "Error (ERROR_HTTP_420): <html><head><title>Org not found</title></head></html>"
     ]) {
       await expect(
         call(
