@@ -30,7 +30,7 @@ const call = (name, input, options) =>
     camp: async () => ({ namespace: "", version: null }),
     ...options
   });
-const { tools, handle, orgFrom, hostFrom } = require("../mcp");
+const { tools, handle, orgFrom, hostFrom, WEEK_VIEW } = require("../mcp");
 const { parse, main } = require("../cli");
 
 const CLASSES = path.resolve(__dirname, "../../force-app/main/default/classes");
@@ -6300,5 +6300,138 @@ describe("a list import says its days as its own season (WEEK-2.6)", () => {
       { run: async () => `HTTP/1.1 200\n\n${read}`, imports }
     );
     expect(chosen.text).toContain('"Location" → Rain plan');
+  });
+});
+
+// API-1.161
+describe("both MCP revisions are answered (API-1.161)", () => {
+  const META = { "io.modelcontextprotocol/protocolVersion": "2026-07-28" };
+  const listSeasons = (meta) =>
+    handle(
+      {
+        jsonrpc: "2.0",
+        id: 3,
+        method: "tools/call",
+        params: { name: "list_seasons", arguments: {}, ...meta }
+      },
+      {
+        callFn: (n, input, opts) =>
+          call(n, input, {
+            ...opts,
+            run: sfAnswering(200, '{"text":"Summer 2026 (now)."}')
+          })
+      }
+    );
+
+  it("theOldHandshakeIsAnsweredAsBefore: initialize gets 2025-06-18, and its answers have no 2026-07-28 fields", async () => {
+    const init = await handle({
+      jsonrpc: "2.0",
+      id: 0,
+      method: "initialize",
+      params: { protocolVersion: "2025-06-18" }
+    });
+    expect(init.result.protocolVersion).toBe("2025-06-18");
+    expect(init.result.serverInfo.name).toBe("shoresh");
+    expect(init.result.resultType).toBeUndefined();
+    const listed = await handle({
+      jsonrpc: "2.0",
+      id: 1,
+      method: "tools/list"
+    });
+    expect(listed.result).toEqual({ tools: tools() });
+    const called = await listSeasons({});
+    expect(called.result.resultType).toBeUndefined();
+    expect(called.result.content.map((c) => c.text).join("\n")).toContain(
+      "Summer 2026"
+    );
+    expect(called.result.isError).toBe(false);
+  });
+
+  it("serverDiscoverSaysTheSame: 2026-07-28's discover names its revision and declares what initialize does", async () => {
+    const init = await handle({
+      jsonrpc: "2.0",
+      id: 0,
+      method: "initialize",
+      params: {}
+    });
+    const found = await handle({
+      jsonrpc: "2.0",
+      id: "discover-1",
+      method: "server/discover",
+      params: {
+        _meta: {
+          ...META,
+          "io.modelcontextprotocol/clientCapabilities": {}
+        }
+      }
+    });
+    expect(found.result).toEqual({
+      resultType: "complete",
+      supportedVersions: ["2026-07-28"],
+      capabilities: init.result.capabilities,
+      _meta: { "io.modelcontextprotocol/serverInfo": init.result.serverInfo },
+      ttlMs: 0,
+      cacheScope: "private"
+    });
+  });
+
+  it("eachRequestNamesItsRevision: a 2026-07-28 tool list and tool call are the same tools and answers", async () => {
+    const listed = await handle({
+      jsonrpc: "2.0",
+      id: 1,
+      method: "tools/list",
+      params: { _meta: META }
+    });
+    expect(listed.result).toEqual({
+      resultType: "complete",
+      tools: tools(),
+      ttlMs: 0,
+      cacheScope: "private"
+    });
+    const before = await listSeasons({});
+    const now = await listSeasons({ _meta: META });
+    expect(now.result).toEqual({ resultType: "complete", ...before.result });
+    const pages = await handle({
+      jsonrpc: "2.0",
+      id: 2,
+      method: "resources/list",
+      params: { _meta: META }
+    });
+    expect(pages.result).toEqual({
+      resultType: "complete",
+      resources: [WEEK_VIEW],
+      ttlMs: 0,
+      cacheScope: "private"
+    });
+  });
+
+  it("anUnknownRevisionIsRefusedWithTheOnesKnown: -32022 names the revision asked and the ones answered", async () => {
+    for (const method of ["server/discover", "tools/list", "tools/call"]) {
+      const refused = await handle({
+        jsonrpc: "2.0",
+        id: 4,
+        method,
+        params: {
+          _meta: { "io.modelcontextprotocol/protocolVersion": "1900-01-01" }
+        }
+      });
+      expect(refused.error).toEqual({
+        code: -32022,
+        message: "Unsupported protocol version",
+        data: { supported: ["2026-07-28"], requested: "1900-01-01" }
+      });
+    }
+  });
+
+  it("aMissingPageIsEachRevisionsOwnError: -32002 under 2025-06-18, -32602 under 2026-07-28", async () => {
+    const ask = (meta) =>
+      handle({
+        jsonrpc: "2.0",
+        id: 5,
+        method: "resources/read",
+        params: { uri: "ui://shoresh/nothing.html", ...meta }
+      });
+    expect((await ask({})).error.code).toBe(-32002);
+    expect((await ask({ _meta: META })).error.code).toBe(-32602);
   });
 });
