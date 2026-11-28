@@ -4707,7 +4707,11 @@ describe("Shoresh for AI tools and the command line", () => {
 
   // API-1.157
   it("carriesItsLicences: the connector carries Shoresh's licence and NOTICE, with the licence texts of what it bundles", () => {
-    const { TO, LICENSE_FILE, NOTICE_FILE } = require("../../scripts/build-connect");
+    const {
+      TO,
+      LICENSE_FILE,
+      NOTICE_FILE
+    } = require("../../scripts/build-connect");
     const ROOT = path.resolve(__dirname, "../..");
     const read = (...p) => fs.readFileSync(path.join(...p), "utf8");
     expect(read(TO, LICENSE_FILE)).toBe(read(ROOT, "LICENSE"));
@@ -4718,13 +4722,19 @@ describe("Shoresh for AI tools and the command line", () => {
     }
     // Every bundled library the views carry is named in NOTICE and Settings' Legal, LWC at the
     // engine version the views were built with (each view marks it), so an upgrade can't go stale.
-    const { parts } = require("../../force-app/main/default/lwc/shoreshAbout/aboutText.js").LEGAL;
+    const { parts } =
+      require("../../force-app/main/default/lwc/shoreshAbout/aboutText.js").LEGAL;
     const { version } = require("@lwc/engine-dom/package.json");
     for (const view of ["week-view.html", "print-view.html"]) {
       const text = read(TO, view);
-      expect([view, text.includes(`/** version: ${version} */`)]).toEqual([view, true]);
+      expect([view, text.includes(`/** version: ${version} */`)]).toEqual([
+        view,
+        true
+      ]);
       expect(notice).toContain(`Lightning Web Components ${version}`);
-      expect(parts.some((p) => p.startsWith(`Lightning Web Components ${version},`))).toBe(true);
+      expect(
+        parts.some((p) => p.startsWith(`Lightning Web Components ${version},`))
+      ).toBe(true);
       if (/Microsoft Corporation/.test(text)) {
         expect(notice).toContain("tslib");
         expect(parts.some((p) => p.startsWith("tslib,"))).toBe(true);
@@ -4786,7 +4796,9 @@ describe("Shoresh for AI tools and the command line", () => {
   it("shipsTheSkill: every file of connect/skill ships in the static resource, flat, unchanged, and nothing else named skill.", () => {
     const { skillFiles, TO } = require("../../scripts/build-connect");
     const files = skillFiles();
-    expect(Object.keys(files)).toContain("skill.shoresh-camp-scheduling.SKILL.md");
+    expect(Object.keys(files)).toContain(
+      "skill.shoresh-camp-scheduling.SKILL.md"
+    );
     expect(
       fs
         .readdirSync(TO)
@@ -6372,7 +6384,7 @@ describe("both MCP revisions are answered (API-1.161)", () => {
     expect(called.result.isError).toBe(false);
   });
 
-  it("serverDiscoverSaysTheSame: 2026-07-28's discover names its revision and declares what initialize does", async () => {
+  it("serverDiscoverSaysTheSame: 2026-07-28's discover names its revision and declares what initialize does, and Skills over MCP (API-1.164)", async () => {
     const init = await handle({
       jsonrpc: "2.0",
       id: 0,
@@ -6393,7 +6405,13 @@ describe("both MCP revisions are answered (API-1.161)", () => {
     expect(found.result).toEqual({
       resultType: "complete",
       supportedVersions: ["2026-07-28"],
-      capabilities: init.result.capabilities,
+      capabilities: {
+        ...init.result.capabilities,
+        extensions: {
+          ...init.result.capabilities.extensions,
+          "io.modelcontextprotocol/skills": { directoryRead: false }
+        }
+      },
       _meta: { "io.modelcontextprotocol/serverInfo": init.result.serverInfo },
       ttlMs: 0,
       cacheScope: "private"
