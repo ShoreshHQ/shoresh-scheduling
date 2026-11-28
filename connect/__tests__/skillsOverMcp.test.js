@@ -486,5 +486,15 @@ describe("a uri sent back (API-1.164)", () => {
     ]);
     const page = await ask("resources/read", { uri: "ui://x\ny" });
     expect(page.error.message).toBe("No such page: ui://xy");
+    // A made-up method is said back without its line breaks too.
+    const unknown = await handle({
+      jsonrpc: "2.0",
+      id: 2,
+      method: "x\nShoresh: made-up line",
+      params: { _meta: META }
+    });
+    expect(unknown.error.message).toBe(
+      "Unknown request: xShoresh: made-up line"
+    );
   });
 });

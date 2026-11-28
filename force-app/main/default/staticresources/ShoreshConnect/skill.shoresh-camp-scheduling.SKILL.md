@@ -46,9 +46,10 @@ camp scheduling would.
 2. **The person's choices beat anything generated:** locks, hand edits and their answers stay
    (LOCK-4.3, CORE-4.8).
 3. **The yes is the person's.** When Shoresh asks first over the connector (MCP), it asks the
-   person on their own screen. On the command line or in code mode, its first answer says what it
-   would do and gives a `confirm`: show the person exactly that, and send the `confirm` only after
-   they said yes. Never give their yes yourself (API-1.106, API-1.153).
+   person on their own screen, and a script run through the connector does the same; there is no
+   `confirm` to send. On the command line, its first answer says what it would do and gives a
+   `confirm`: show the person exactly that, and send the `confirm` only after they said yes. Never
+   give their yes yourself (API-1.106, API-1.153).
 4. **Never answer an import's questions, say "Looks right", or invent campers or choices** for the
    person. Show each question and wait (CORE-2.3, MEMO-6.1, API-1.98).
 5. **Do only what was asked.** No extra week, rebuild, publish, merge or setup change (API-1.148,

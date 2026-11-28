@@ -73,7 +73,7 @@ function startupInstructions() {
   }
 }
 
-/** A uri an AI app sent, as it may go in the log or an answer: no line breaks or other controls. */
+/** A value an AI app sent (a uri, a method), as it may go in the log or an answer: no line breaks or other controls. */
 function printable(uri) {
   // eslint-disable-next-line no-control-regex
   return String(uri).replace(/[\u0000-\u001f\u007f-\u009f\u2028\u2029]/g, "");
@@ -271,7 +271,7 @@ async function handle(
     name: "shoresh",
     version: ownVersion() ?? "0.0.0"
   });
-  const unknown = () => fail(-32601, `Unknown request: ${method}`);
+  const unknown = () => fail(-32601, `Unknown request: ${printable(method)}`);
   // A uri that isn't text is refused before anything reads it.
   const badUri = () =>
     params?.uri !== undefined && typeof params.uri !== "string";
