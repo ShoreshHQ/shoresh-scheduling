@@ -4744,7 +4744,8 @@ describe("Shoresh for AI tools and the command line", () => {
             !f.endsWith(".mjs") &&
             !f.endsWith(".cjs") &&
             !f.endsWith(".html") &&
-            !f.endsWith(".txt")
+            !f.endsWith(".txt") &&
+            !f.startsWith("skill.")
         )
         .sort()
     ).toEqual(connectorFiles());
@@ -4779,6 +4780,25 @@ describe("Shoresh for AI tools and the command line", () => {
       fs.readFileSync(path.resolve(__dirname, "../../package.json"), "utf8")
     );
     expect(pkg.bin).toBeUndefined(); // nothing fetched from GitHub or a registry
+  });
+
+  // API-1.163
+  it("shipsTheSkill: every file of connect/skill ships in the static resource, flat, unchanged, and nothing else named skill.", () => {
+    const { skillFiles, TO } = require("../../scripts/build-connect");
+    const files = skillFiles();
+    expect(Object.keys(files)).toContain("skill.shoresh-camp-scheduling.SKILL.md");
+    expect(
+      fs
+        .readdirSync(TO)
+        .filter((f) => f.startsWith("skill."))
+        .sort()
+    ).toEqual(Object.keys(files).sort());
+    for (const [f, from] of Object.entries(files)) {
+      expect([f, fs.readFileSync(path.join(TO, f), "utf8")]).toEqual([
+        f,
+        fs.readFileSync(from, "utf8")
+      ]);
+    }
   });
 
   // API-1.15
