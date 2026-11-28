@@ -27,6 +27,31 @@ function weekViewPage() {
   return fs.readFileSync(path.join(__dirname, "week-view.html"), "utf8");
 }
 
+/**
+ * The MCP revisions the connector answers (API-1.161). An AI app that starts with `initialize`
+ * gets 2025-06-18 as before. One that names 2026-07-28 on each request, in `_meta`, gets
+ * 2026-07-28: no handshake, `server/discover` says what the connector does. Claude desktop asks
+ * `server/discover` first and starts with `initialize` only when that fails.
+ */
+const LEGACY_VERSION = "2025-06-18";
+const VERSIONS = ["2026-07-28"];
+const VERSION_KEY = "io.modelcontextprotocol/protocolVersion";
+
+/**
+ * What the connector does, the same under both revisions. Skills over MCP
+ * (io.modelcontextprotocol/skills) is declared here, with skills/list and skills/get in handle(),
+ * once Shoresh serves a skill.
+ */
+const CAPABILITIES_DECLARED = {
+  tools: {},
+  resources: {},
+  extensions: { "io.modelcontextprotocol/ui": {} }
+};
+
+// 2026-07-28's cache hint on lists, reads and server/discover: never kept, so an AI app never
+// works from a tool list an update has changed; and only this person's.
+const NOT_KEPT = { ttlMs: 0, cacheScope: "private" };
+
 /** An ask-first tool as the AI sees it: no confirm to send, the person's screen asks (API-1.153). */
 function forTheAi(capability) {
   if (!capability.asksFirst) return capability;
@@ -185,35 +210,62 @@ async function handle(
 ) {
   const { id, method, params } = message;
   if (id === undefined || id === null) return null;
-  const reply = (result) => ({ jsonrpc: "2.0", id, result });
+  const fail = (code, text, data) => ({
+    jsonrpc: "2.0",
+    id,
+    error: { code, message: text, ...(data ? { data } : {}) }
+  });
+  // 2026-07-28 when the request names it; `initialize` and 2025-06-18 named are 2025-06-18's.
+  const version = params?._meta?.[VERSION_KEY];
+  const modern =
+    method === "server/discover" ||
+    (method !== "initialize" &&
+      version !== undefined &&
+      version !== LEGACY_VERSION);
+  if (modern && version !== undefined && !VERSIONS.includes(version)) {
+    // 2025-06-18 named too, so an AI app that can't use 2026-07-28 starts with `initialize`.
+    return fail(-32022, "Unsupported protocol version", {
+      supported: [...VERSIONS, LEGACY_VERSION],
+      requested: version
+    });
+  }
+  const reply = (result) => ({
+    jsonrpc: "2.0",
+    id,
+    result: modern ? { resultType: "complete", ...result } : result
+  });
+  const kept = (result) => reply(modern ? { ...result, ...NOT_KEPT } : result);
+  // This copy's own version (its manifest.json); none in the repo.
+  const serverInfo = () => ({
+    name: "shoresh",
+    version: ownVersion() ?? "0.0.0"
+  });
   switch (method) {
     case "initialize":
       return reply({
-        protocolVersion: "2025-06-18",
-        capabilities: {
-          tools: {},
-          resources: {},
-          extensions: { "io.modelcontextprotocol/ui": {} }
-        },
-        // This copy's own version (its manifest.json); none in the repo.
-        serverInfo: { name: "shoresh", version: ownVersion() ?? "0.0.0" }
+        protocolVersion: LEGACY_VERSION,
+        capabilities: CAPABILITIES_DECLARED,
+        serverInfo: serverInfo()
+      });
+    case "server/discover":
+      return kept({
+        supportedVersions: VERSIONS,
+        capabilities: CAPABILITIES_DECLARED,
+        _meta: { "io.modelcontextprotocol/serverInfo": serverInfo() }
       });
     case "ping":
       return reply({});
     case "tools/list":
-      return reply({ tools: tools() });
+      return kept({ tools: tools() });
     case "resources/list":
-      return reply({ resources: [WEEK_VIEW] });
+      return kept({ resources: [WEEK_VIEW] });
     case "resources/read":
       if (params?.uri !== WEEK_VIEW.uri) {
-        return {
-          jsonrpc: "2.0",
-          id,
-          error: { code: -32002, message: `No such page: ${params?.uri}` }
-        };
+        // A page that isn't there: 2026-07-28 calls it invalid params.
+        return fail(modern ? -32602 : -32002, `No such page: ${params?.uri}`);
       }
       log("Shoresh: Claude asked for the week view");
-      return reply({
+      return kept({
         contents: [{ ...WEEK_VIEW, text: weekViewPage() }]
       });
     case "tools/call": {
@@ -245,12 +297,9 @@ async function handle(
       delete result.said;
       return reply(result);
     }
+    // skills/list and skills/get go here with the skills extension above.
     default:
-      return {
-        jsonrpc: "2.0",
-        id,
-        error: { code: -32601, message: `Unknown request: ${method}` }
-      };
+      return fail(-32601, `Unknown request: ${method}`);
   }
 }
 
@@ -316,5 +365,6 @@ module.exports = {
   serve,
   hostFrom,
   toolResult,
-  WEEK_VIEW
+  WEEK_VIEW,
+  VERSIONS
 };
