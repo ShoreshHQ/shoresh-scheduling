@@ -26,6 +26,25 @@
         onclick={handleCopy}
       ></lightning-button>
     </div>
+    <!-- How long a person's AI stays signed in: the camp admin's clicks in Salesforce (API-1.162) -->
+    <div class="sign-in" data-id="ai-sign-in">
+      <div class="sign-in-head">
+        <h4 class="sign-in-title">AI sign-in</h4>
+        <span class="who">Salesforce admin</span>
+      </div>
+      <template for:each={signInPaths} for:item="path">
+        <p key={path.key} class="path" data-path={path.key}>
+          <template for:each={path.clicks} for:item="click">
+            <span key={click.key} class="click-wrap"
+              ><template lwc:if={click.after}
+                ><span class="arrow" aria-hidden="true">›</span
+                ><span class="slds-assistive-text">then</span></template
+              ><span class="click" data-click>{click.label}</span></span
+            >
+          </template>
+        </p>
+      </template>
+    </div>
     <div class="shoresh-hairline" role="presentation"></div>
     <p class="slds-assistive-text" role="status" aria-live="polite">{said}</p>
     <template lwc:if={copyFailed}>

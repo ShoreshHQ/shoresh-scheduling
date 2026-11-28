@@ -169,6 +169,38 @@ describe("Connect your AI", () => {
     await expect(element).toBeAccessible();
   });
 
+  // API-1.162
+  it("theAdminSetsHowLongAnAiStaysSignedIn: the Salesforce admin's clicks for the CLI app's Refresh Token Policy", async () => {
+    const element = mount("maple-grove.lightning.force.com");
+    await flush();
+    const row = element.shadowRoot.querySelector('[data-id="ai-sign-in"]');
+    expect(row.querySelector(".sign-in-title").textContent.trim()).toBe(
+      "AI sign-in"
+    );
+    expect(row.querySelector(".who").textContent.trim()).toBe(
+      "Salesforce admin"
+    );
+    expect(
+      [...row.querySelectorAll("[data-path]")].map((path) =>
+        [...path.querySelectorAll("[data-click]")].map((c) =>
+          c.textContent.trim()
+        )
+      )
+    ).toEqual([
+      [
+        "Setup",
+        "Connected Apps OAuth Usage",
+        "Salesforce CLI",
+        "Install",
+        "Install"
+      ],
+      ["Edit Policies", "Refresh Token Policy", "Save"]
+    ]);
+    // Read aloud as "then" between clicks; the drawn chevron is hidden from screen readers.
+    expect(row.querySelectorAll(".slds-assistive-text")).toHaveLength(6);
+    await expect(element).toBeAccessible();
+  });
+
   it("shows nothing on a page whose host isn't a Salesforce one", async () => {
     const element = mount("localhost");
     await flush();

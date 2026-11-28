@@ -1,4 +1,5 @@
 @import "c/shoreshTokens";
+@import "c/shoreshClicks";
 
 /*
  * Getting started in Settings' rail grammar (as Help and About): the rail title, here a button
@@ -113,37 +114,6 @@
   margin: 0;
   font-size: var(--shoresh-font-size);
   font-weight: 600;
-}
-
-.who {
-  color: var(--shoresh-text-2);
-}
-
-.path {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--shoresh-s1) 0;
-  margin: 0 0 var(--shoresh-s2);
-}
-
-.click-wrap {
-  display: inline-flex;
-  align-items: center;
-}
-
-.click {
-  padding: 2px var(--shoresh-s2);
-  border: 1px solid var(--shoresh-edge);
-  border-radius: var(--shoresh-radius);
-  background: var(--shoresh-surface-grid);
-  box-shadow: var(--shoresh-raise);
-  white-space: nowrap;
-}
-
-.arrow {
-  padding: 0 var(--shoresh-s2);
-  color: var(--shoresh-text-2);
 }
 
 .downloads {

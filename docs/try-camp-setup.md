@@ -1437,6 +1437,34 @@ adds them (**Users**, then **New User**).
 Next time they sign in, **Shoresh** is in their App Launcher (the nine dots, top left), and in
 every season of your camp they can do everything you can in Shoresh.
 
+### How long someone's AI stays signed in
+
+A person's AI (Claude desktop, or an app that runs commands) reaches Shoresh through the Salesforce
+command line, signed in as that person once in their browser. How long that sign-in lasts is your
+camp's call, set once by a Salesforce administrator. Shoresh follows it and asks the person to sign
+in again when Salesforce ends the sign-in. Left alone, it lasts until it is revoked or goes unused
+for 30 days (Salesforce's setting for the command line from November 9, 2026, announced at
+https://github.com/forcedotcom/cli/issues/3668).
+
+The setting covers everyone at your camp who uses the Salesforce command line, not only Shoresh's
+AI: a developer, or a job that signs in with it, is signed out on the same schedule.
+
+**Settings**, **Connect your AI**, shows these clicks under **AI sign-in**. The command line is
+listed only after someone has signed in with it, so connect one AI first.
+
+1. In Setup, type _Connected Apps OAuth Usage_ in **Quick Find** and click it. A list of the apps
+   people have signed in with shows; the command line is **Salesforce CLI**.
+2. In its row, under **App Actions**, click **Install**. A page asks **Install connected app?**:
+   click **Install**. The app's page opens, **Connected App Detail**. (Once installed, the row
+   offers **Manage App Policies** instead, which opens the same page.)
+3. Click **Edit Policies**. Under **Refresh Token Policy**, pick **Immediately expire refresh token**
+   (sign in every time), **Expire refresh token if not used for** a number of hours, days or
+   months (Salesforce starts it at 30 days), or **Expire refresh token after** a number of hours,
+   days or months. Click **Save**.
+
+As seen on screen in November 2026. Installing changes nothing by itself: everyone may still sign
+in, with the same 30 days.
+
 ### Take Shoresh away from someone who stays
 
 Do steps 1 to 3 above. In **Enabled Permission Sets**, click **Shoresh Scheduler**, click the
