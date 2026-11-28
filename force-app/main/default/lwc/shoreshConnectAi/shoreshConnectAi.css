@@ -1,4 +1,5 @@
 @import "c/shoreshTokens";
+@import "c/shoreshClicks";
 
 /* The setup screens' rail, as What Shoresh has learned draws it. */
 :host {
@@ -23,6 +24,28 @@
   padding: 0 var(--shoresh-space-control-x);
   font-size: var(--shoresh-font-size);
   font-weight: 600;
+}
+
+/* The admin's clicks for how long an AI stays signed in, drawn as Getting started draws them. */
+.sign-in {
+  padding: 0 var(--shoresh-space-pad) var(--shoresh-space-pad);
+}
+
+.sign-in-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--shoresh-s2);
+  margin: 0 0 var(--shoresh-s2);
+  padding: 0 var(--shoresh-space-control-x);
+}
+
+.sign-in-title {
+  font-weight: 600;
+}
+
+.sign-in .path {
+  padding: 0 var(--shoresh-space-control-x);
 }
 
 /* Shown only when copying isn't allowed: the prompt, to copy by hand. */

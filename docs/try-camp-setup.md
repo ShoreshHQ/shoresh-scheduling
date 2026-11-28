@@ -1441,17 +1441,25 @@ every season of your camp they can do everything you can in Shoresh.
 
 A person's AI (Claude desktop, or an app that runs commands) reaches Shoresh through the Salesforce
 command line, signed in as that person once in their browser. How long that sign-in lasts is your
-camp's call, set once for everyone by a Salesforce administrator. Shoresh follows it, and asks the
-person to sign in again when Salesforce says the sign-in has ended. Left alone, the sign-in lasts
-until it is revoked or goes unused for a while (Salesforce set 30 days for the command line's own
-app in November 2026).
+camp's call, set once by a Salesforce administrator. Shoresh follows it and asks the person to sign
+in again when Salesforce ends the sign-in. Left alone, it lasts until it is revoked or goes unused
+for 30 days (Salesforce's setting for the command line from November 2026).
+
+The setting covers everyone at your camp who uses the Salesforce command line, not only Shoresh's
+AI: a developer, or a job that signs in with it, is signed out on the same schedule.
+
+**Settings**, **Connect your AI**, shows these clicks under **AI sign-in**. The command line is
+listed only after someone has signed in with it, so connect one AI first.
 
 1. In Setup, type _Connected Apps OAuth Usage_ in **Quick Find** and click it. A list of the apps
    people have signed in with shows; the command line is **Salesforce CLI**.
-2. In its row, under **App Actions**, click **Install**. Its settings page opens.
-3. Click **Edit Policies**. Under **OAuth Policies**, **Refresh Token Policy** offers: valid until
-   revoked, expire right away (sign in every time), expire after a set time, or expire if not used
-   for a set time. Pick one and click **Save**.
+2. In its row, under **App Actions**, click **Install**.
+3. Click **Edit Policies**. Under **Refresh Token Policy**, pick how long a sign-in lasts: until
+   it's revoked, expire right away (sign in every time), expire after a set time, or expire if not
+   used for a set time. Click **Save**.
+
+Steps 1 and 2 are as seen on screen in November 2026. The names in step 3 are from Salesforce's own
+guides and not yet checked on screen.
 
 ### Take Shoresh away from someone who stays
 

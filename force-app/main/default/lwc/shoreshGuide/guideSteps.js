@@ -28,17 +28,6 @@ export function guideSteps(t) {
         ["Shoresh Scheduler", "Add", "Save"]
       ]
     },
-    {
-      // How long a person's AI stays signed in is the camp's call (Greg 2026-11-28): the
-      // Salesforce CLI app's refresh token policy, which the connector's sign-in follows.
-      key: "aiSignIn",
-      title: "AI sign-in",
-      who: "Salesforce admin",
-      paths: [
-        ["Setup", "Connected Apps OAuth Usage", "Salesforce CLI", "Install"],
-        ["Edit Policies", "Refresh Token Policy", "Save"]
-      ]
-    },
     { key: "sample", title: "Sample camp", sample: true, paths: [] },
     {
       key: "season",

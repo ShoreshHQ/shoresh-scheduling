@@ -61,7 +61,6 @@ describe("c-shoresh-guide (CORE-6.17)", () => {
     const steps = $$(element, "[data-step]");
     expect(steps.map((s) => s.dataset.step)).toEqual([
       "people",
-      "aiSignIn",
       "sample",
       "season",
       "week",
@@ -74,21 +73,9 @@ describe("c-shoresh-guide (CORE-6.17)", () => {
     expect(text(steps[0].querySelector('[data-id="who"]'))).toBe(
       "Salesforce admin"
     );
-    expect(text(steps[1].querySelector(".step-title"))).toBe("AI sign-in");
-    expect(text(steps[1].querySelector('[data-id="who"]'))).toBe(
-      "Salesforce admin"
-    );
     expect(
-      steps.slice(2).map((s) => s.querySelector('[data-id="who"]'))
+      steps.slice(1).map((s) => s.querySelector('[data-id="who"]'))
     ).toEqual([null, null, null, null, null]);
-  });
-
-  it("gives the admin's exact Salesforce clicks for how long an AI stays signed in", async () => {
-    const element = await opened();
-    expect(clicks(element, "aiSignIn")).toEqual([
-      ["Setup", "Connected Apps OAuth Usage", "Salesforce CLI", "Install"],
-      ["Edit Policies", "Refresh Token Policy", "Save"]
-    ]);
   });
 
   it("gives the admin's exact Salesforce clicks for the Shoresh Scheduler permission set", async () => {
