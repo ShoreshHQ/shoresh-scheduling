@@ -6406,21 +6406,56 @@ describe("both MCP revisions are answered (API-1.161)", () => {
   });
 
   it("anUnknownRevisionIsRefusedWithTheOnesKnown: -32022 names the revision asked and the ones answered", async () => {
+    const callFn = jest.fn();
     for (const method of ["server/discover", "tools/list", "tools/call"]) {
-      const refused = await handle({
-        jsonrpc: "2.0",
-        id: 4,
-        method,
-        params: {
-          _meta: { "io.modelcontextprotocol/protocolVersion": "1900-01-01" }
-        }
-      });
+      const refused = await handle(
+        {
+          jsonrpc: "2.0",
+          id: 4,
+          method,
+          params: {
+            name: "list_seasons",
+            arguments: {},
+            _meta: { "io.modelcontextprotocol/protocolVersion": "1900-01-01" }
+          }
+        },
+        { callFn }
+      );
       expect(refused.error).toEqual({
         code: -32022,
         message: "Unsupported protocol version",
-        data: { supported: ["2026-07-28"], requested: "1900-01-01" }
+        data: {
+          supported: ["2026-07-28", "2025-06-18"],
+          requested: "1900-01-01"
+        }
       });
     }
+    expect(callFn).not.toHaveBeenCalled();
+  });
+
+  it("theOldRevisionIsAnsweredAsBeforeHoweverItIsNamed: initialize with any _meta, and 2025-06-18 named on a request, get the old answers", async () => {
+    for (const named of ["2026-07-28", "1900-01-01"]) {
+      const init = await handle({
+        jsonrpc: "2.0",
+        id: 0,
+        method: "initialize",
+        params: {
+          protocolVersion: "2025-06-18",
+          _meta: { "io.modelcontextprotocol/protocolVersion": named }
+        }
+      });
+      expect(init.result.protocolVersion).toBe("2025-06-18");
+      expect(init.result.resultType).toBeUndefined();
+    }
+    const listed = await handle({
+      jsonrpc: "2.0",
+      id: 1,
+      method: "tools/list",
+      params: {
+        _meta: { "io.modelcontextprotocol/protocolVersion": "2025-06-18" }
+      }
+    });
+    expect(listed.result).toEqual({ tools: tools() });
   });
 
   it("aMissingPageIsEachRevisionsOwnError: -32002 under 2025-06-18, -32602 under 2026-07-28", async () => {

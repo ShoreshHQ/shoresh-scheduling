@@ -29,8 +29,9 @@ function weekViewPage() {
 
 /**
  * The MCP revisions the connector answers (API-1.161). An AI app that starts with `initialize`
- * (Claude desktop today) gets 2025-06-18 as before. One that names its revision on each request,
- * in `_meta`, gets 2026-07-28: no handshake, `server/discover` says what the connector does.
+ * gets 2025-06-18 as before. One that names 2026-07-28 on each request, in `_meta`, gets
+ * 2026-07-28: no handshake, `server/discover` says what the connector does. Claude desktop asks
+ * `server/discover` first and starts with `initialize` only when that fails.
  */
 const LEGACY_VERSION = "2025-06-18";
 const VERSIONS = ["2026-07-28"];
@@ -214,14 +215,17 @@ async function handle(
     id,
     error: { code, message: text, ...(data ? { data } : {}) }
   });
-  // 2026-07-28 when the request names its revision; `initialize` is always 2025-06-18's.
+  // 2026-07-28 when the request names it; `initialize` and 2025-06-18 named are 2025-06-18's.
   const version = params?._meta?.[VERSION_KEY];
   const modern =
     method === "server/discover" ||
-    (method !== "initialize" && version !== undefined);
+    (method !== "initialize" &&
+      version !== undefined &&
+      version !== LEGACY_VERSION);
   if (modern && version !== undefined && !VERSIONS.includes(version)) {
+    // 2025-06-18 named too, so an AI app that can't use 2026-07-28 starts with `initialize`.
     return fail(-32022, "Unsupported protocol version", {
-      supported: VERSIONS,
+      supported: [...VERSIONS, LEGACY_VERSION],
       requested: version
     });
   }
