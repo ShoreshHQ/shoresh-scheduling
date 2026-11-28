@@ -148,7 +148,9 @@ function activityRecords(proposal, existing) {
     groupsAtOnce: a.groupsAtOnce,
     locationKey: a.locationKey,
     who: a.who.keys,
-    sortOrder: base + i + 1
+    sortOrder: base + i + 1,
+    // INGEST-2.34: the season's weeks it is off (Ids, or keys of weeks this import adds).
+    ...(a.offWeeks ? { offWeeks: a.offWeeks } : {})
   }));
   const changed = proposal.updates.activities.map((u) => ({
     key: u.id,
@@ -608,6 +610,24 @@ const KEPT = {
   remembered: "but an answer about them is remembered, so they stay as they are"
 };
 
+/** INGEST-2.34: "Water Slide runs in Weeks 2, 4 and 5." and its other notes. */
+function weeksText(n, t) {
+  const weeks = `${n.weeks && n.weeks.length === 1 ? t.s("Week") : t.p("Week")} ${listed((n.weeks || []).map(String))}`;
+  if (n.type === "weeksRunsIn") {
+    return `${n.name} runs in ${weeks}.`;
+  }
+  if (n.type === "weeksUnknown") {
+    return `${n.name}: the files name ${weeks}, which the ${t.sIn("Season")} doesn't have.`;
+  }
+  if (n.type === "weeksSetTime") {
+    return `${n.name} is at a set time, so it runs every ${t.sIn("Week")}.`;
+  }
+  if (n.type === "weeksAsIs") {
+    return `${n.name}: the files name ${weeks}; its ${t.pIn("Week")} stay as they are.`;
+  }
+  return `${n.name} runs every ${t.sIn("Week")}: the files have it in other ${t.pIn("Week")} too.`;
+}
+
 // INGEST-2.29: how many cells with their own times the note names.
 const TIMED_SHOWN = 3;
 
@@ -731,6 +751,15 @@ export function importNotes(proposal, t) {
       notes.push({
         key: `kind|${n.name}`,
         text: `${n.name} is already set up as ${n.kind === "fixed" ? t.sIn("FixedActivity") : t.sIn("RecurringActivity")} in ${n.program}, but the file has it at other times. It stays as it is.`
+      })
+    );
+  // INGEST-2.34: the weeks an activity's cells name, said in camp words.
+  proposal.notes
+    .filter((n) => String(n.type || "").startsWith("weeks"))
+    .forEach((n) =>
+      notes.push({
+        key: `${n.type}|${n.name}`,
+        text: weeksText(n, t)
       })
     );
   // INGEST-2.20: a name written with emoji is read without them, the emoji kept here.

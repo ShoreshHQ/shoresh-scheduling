@@ -363,7 +363,8 @@ Each rule is clue, meaning, example, test.
 26. **A list needs two names of two letters or more** (import battle test, 2026-11-27).
     Clue: a cell with "/", "," or ";" whose parts are not names: a group's number ("Baking
     with 4/5C"), a code ("B/D"), week numbers ("Water Slide Weeks 2, 4, 6-8").
-    Meaning: one name, as written, with no question. A list (asked "one activity or a choice?")
+    Meaning: one name, as written, with no question (a name ending in its weeks is the
+    activity and the weeks it runs in, rule 34). A list (asked "one activity or a choice?")
     needs two parts of two letters or more, counted over every mark ("Soccer/Basketball 1, 2" is
     asked). A choice read without asking needs three different parts or more on one mark, each a
     name of two letters or more with no other mark in it, no "&" or "and", four words at most, no
@@ -530,6 +531,35 @@ Each rule is clue, meaning, example, test.
     room only once it comes in); `kinds.test.js` (the usual place in
     camp words). Code: `items.js` `placesOf`; `proposal.js` `placesFor`; `questions.js`
     `usualPlaceCard`; `shoreshLearned/kinds.js` `usualPlace`.
+
+34. **An activity named with its weeks runs in those weeks** (Greg, 2026-11-27: "Set the
+    weeks."; refines rule 26, which kept "Weeks 1, 3, 5-7" as part of the name).
+    Clue: a cell whose name ends with the weeks it is for, before any place or times: "Water
+    Slide Weeks 2, 4, 6-8", "Water Slide (Week 3)", "Water Slide Week 1 (Pond)", "Hike Week 1-2,
+    Week 4". Ranges and lists are read as written ("6-8" is 6, 7 and 8). A name with a week in
+    it ("Week 1 Kickoff", "Spirit Week") is a name.
+    Meaning: the activity is the name without its weeks, one activity, and a new one runs only in
+    those weeks of the season, as the weeks unticked on the Activities screen (a week off, the
+    same record): "Water Slide runs in Weeks 2, 4, 6, 7 and 8." on the review. Week 2 is the
+    season's week named a word and 2 ("Week 2"), as a file's own "Week 2" sheet is matched; by
+    its place in the season when no week is named so ("Week of 6/21", "Session 1 Week 2"). A week number the season doesn't have
+    is said ("the files name Week 9, which the season doesn't have"), never guessed; when it
+    names none the season has, or every week, it runs every week. When the same activity is also
+    written without weeks, those cells win: it runs every week, and the review says so ("runs
+    every week: the files have it in other weeks too"). A set time named with weeks runs every
+    week ("is at a set time, so it runs every week"). An activity the camp already has, or an
+    elective's choice, keeps its own weeks, said ("its weeks stay as they are"); a name left out
+    says nothing. In a season
+    with no weeks yet, the weeks the import adds from the season's dates are added for it too.
+    Undo takes its weeks off away with it.
+    Test: `__tests__/weeksWritten.test.js` "INGEST-2.34: …" (the weeks read off a name, before a
+    place or times, the word written again; one activity running in them, off in the others; a
+    week matched by its name; a season with no weeks yet; a week the season doesn't have; a set
+    time; an activity the camp has; weeks named by dates or sessions); `ImportWeeksOffTest.cls`
+    (the weeks off come in, and Undo takes them away). Counter-cases: a name with a week in it;
+    written without weeks elsewhere, every week named, or none the season has: every week. Code:
+    `text.js` `weeksNote`, `cellName`; `weeksWritten.js`; `proposal.js`; `plan.js` (`offWeeks`,
+    `importNotes`); `ImportItemWrites.cls` `saveWeeksOff`.
 
 ## With the classification rules
 

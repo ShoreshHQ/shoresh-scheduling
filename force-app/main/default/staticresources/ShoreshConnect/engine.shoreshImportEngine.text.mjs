@@ -480,9 +480,44 @@ function withoutCellTimes(text) {
     .replace(/^[\s\-–—:,]+|[\s\-–—:,]+$/g, "");
 }
 
+/**
+ * INGEST-2.34: the weeks a cell's name ends with ("Water Slide Weeks 2, 4-5"), as numbers,
+ * each once and in order, and the name without them; null when it names no weeks. Ranges and
+ * lists are read as written ("5-7" is 5, 6 and 7).
+ */
+const WEEKS_NOTE =
+  /^(.*?\S)[\s,(\-–]+weeks?\s+(\d+(?:\s*(?:-|–|to)\s*\d+)?(?:\s*(?:,|&|and)\s*(?:weeks?\s+)?\d+(?:\s*(?:-|–|to)\s*\d+)?)*)\s*\)?$/i;
+
+function weeksNote(text) {
+  const found = text.match(WEEKS_NOTE);
+  if (!found) {
+    return null;
+  }
+  const weeks = new Set();
+  for (const part of found[2].split(/\s*(?:,|&|and)\s*/i)) {
+    const [from, to] = part
+      .replace(/^weeks?\s+/i, "")
+      .split(/\s*(?:-|–|to)\s*/i)
+      .map(Number);
+    const last = to || from;
+    // A range written backwards or far too long is no week list.
+    if (!from || last < from || last - from > 52) {
+      return null;
+    }
+    for (let n = from; n <= last; n++) {
+      weeks.add(n);
+    }
+  }
+  return { text: found[1], weeks: [...weeks].sort((a, b) => a - b) };
+}
+
 export function cellName(value) {
   const plain = withoutEmoji(value);
   let text = plain.text;
+  let note = weeksNote(text);
+  if (note) {
+    text = note.text;
+  }
   let place = null;
   let bracket = false;
   const at = text.match(/^(.+?)\s+@\s+(.+)$/);
@@ -495,7 +530,14 @@ export function cellName(value) {
     place = tidy(inBrackets[2]);
     bracket = true;
   }
-  const name = withoutCellTimes(text).replace(/^[\s\-–—:*]+|[\s\-–—:*]+$/g, "");
+  let name = withoutCellTimes(text).replace(/^[\s\-–—:*]+|[\s\-–—:*]+$/g, "");
+  // Weeks written before a place or times ("Swim Week 1 (Pool)", "Art Weeks 2-3 @ Barn").
+  if (!note) {
+    note = weeksNote(name);
+    if (note) {
+      name = note.text;
+    }
+  }
   if (name.length < 2 || NOT_A_NAME.some((pattern) => pattern.test(name))) {
     return null;
   }
@@ -504,7 +546,9 @@ export function cellName(value) {
     place: place || null,
     // Where the place came from: "Art (Barn)" (INGEST-2.21), and any emoji left off.
     bracket: bracket && !!place,
-    emoji: plain.emoji
+    emoji: plain.emoji,
+    // INGEST-2.34: the weeks its cell names, or null.
+    weeks: note ? note.weeks : null
   };
 }
 
