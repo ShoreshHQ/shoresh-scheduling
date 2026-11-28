@@ -773,6 +773,9 @@ export function versionsFor(proposal, input) {
     unmatched: context.unmatched,
     asks: [...mapped.asks, ...context.asks],
     noWeeks: weeks.length === 0,
+    // INGEST-2.34: the season's weeks in order, saved or to fill in, and the ones to fill in.
+    seasonWeeks: weeks,
+    filledWeeks: filled,
     // Only when last year's week is kept in one of them.
     fillWeeks: [...versions, ...context.specialDays].some((v) => v.weekKey)
       ? filled

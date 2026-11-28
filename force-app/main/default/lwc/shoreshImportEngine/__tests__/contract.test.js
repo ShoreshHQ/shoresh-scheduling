@@ -6,7 +6,7 @@ import { autoAppliedIn, withLearning } from "c/shoreshPatterns";
 import { readFileSync } from "fs";
 import { join } from "path";
 import { buildProposal, customKeys, planFor } from "./data/engine";
-import { NAMESPACE_PREFIX } from "c/shoreshSchema";
+import { FIELD, NAMESPACE_PREFIX } from "c/shoreshSchema";
 import {
   csv,
   existingSetup,
@@ -116,6 +116,35 @@ function halfDayPlan() {
   );
 }
 
+// INGEST-2.34: an activity named with its weeks, in a season of two weeks.
+function weeksPlan() {
+  const existing = existingSetup({
+    weeks: [
+      { Id: "w1", Name: "Week 1", [FIELD.Week.StartDate]: "2027-06-28" },
+      { Id: "w2", Name: "Week 2", [FIELD.Week.StartDate]: "2027-07-05" }
+    ]
+  });
+  const file = {
+    name: "Week.xlsx",
+    sheets: [
+      {
+        name: "Week",
+        merges: [],
+        rows: [
+          ["Time", "Monday", "Tuesday"],
+          ["9:00-9:45", "Water Slide Week 2", "Art"],
+          ["10:00-10:45", "Art", "Canoe"]
+        ]
+      }
+    ]
+  };
+  return planFor(
+    buildProposal({ files: [file], existing, terms, answers: {} }),
+    existing,
+    "s"
+  );
+}
+
 /** A new camp whose Thursday ends early (INGEST-4.13): a fixed Dismissal's early day. */
 function earlyEndPlan() {
   const day = [
@@ -162,11 +191,17 @@ describe("the save request matches what the server reads", () => {
     })
   };
   const sent = new Set(
-    [plan, placesPlan(), halfDayPlan(), earlyEndPlan(), learning].flatMap(
-      (one) =>
-        Object.values(one)
-          .filter(Array.isArray)
-          .flatMap((list) => list.flatMap((entry) => Object.keys(entry)))
+    [
+      plan,
+      placesPlan(),
+      halfDayPlan(),
+      earlyEndPlan(),
+      weeksPlan(),
+      learning
+    ].flatMap((one) =>
+      Object.values(one)
+        .filter(Array.isArray)
+        .flatMap((list) => list.flatMap((entry) => Object.keys(entry)))
     )
   );
 
