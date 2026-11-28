@@ -181,15 +181,20 @@ describe("Connect your AI", () => {
       "Salesforce admin"
     );
     expect(
-      [...row.querySelectorAll("[data-click]")].map((c) => c.textContent.trim())
+      [...row.querySelectorAll("[data-path]")].map((path) =>
+        [...path.querySelectorAll("[data-click]")].map((c) =>
+          c.textContent.trim()
+        )
+      )
     ).toEqual([
-      "Setup",
-      "Connected Apps OAuth Usage",
-      "Salesforce CLI",
-      "Install",
-      "Edit Policies",
-      "Refresh Token Policy",
-      "Save"
+      [
+        "Setup",
+        "Connected Apps OAuth Usage",
+        "Salesforce CLI",
+        "Install",
+        "Install"
+      ],
+      ["Edit Policies", "Refresh Token Policy", "Save"]
     ]);
     // Read aloud as "then" between clicks; the drawn chevron is hidden from screen readers.
     expect(row.querySelectorAll(".slds-assistive-text")).toHaveLength(6);

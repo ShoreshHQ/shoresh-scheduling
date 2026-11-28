@@ -32,16 +32,18 @@
         <h4 class="sign-in-title">AI sign-in</h4>
         <span class="who">Salesforce admin</span>
       </div>
-      <p class="path" data-id="ai-sign-in-clicks">
-        <template for:each={signInClicks} for:item="click">
-          <span key={click.key} class="click-wrap"
-            ><template lwc:if={click.after}
-              ><span class="arrow" aria-hidden="true">›</span
-              ><span class="slds-assistive-text">then</span></template
-            ><span class="click" data-click>{click.label}</span></span
-          >
-        </template>
-      </p>
+      <template for:each={signInPaths} for:item="path">
+        <p key={path.key} class="path" data-path={path.key}>
+          <template for:each={path.clicks} for:item="click">
+            <span key={click.key} class="click-wrap"
+              ><template lwc:if={click.after}
+                ><span class="arrow" aria-hidden="true">›</span
+                ><span class="slds-assistive-text">then</span></template
+              ><span class="click" data-click>{click.label}</span></span
+            >
+          </template>
+        </p>
+      </template>
     </div>
     <div class="shoresh-hairline" role="presentation"></div>
     <p class="slds-assistive-text" role="status" aria-live="polite">{said}</p>

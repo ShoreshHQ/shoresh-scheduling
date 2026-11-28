@@ -1454,13 +1454,16 @@ listed only after someone has signed in with it, so connect one AI first.
 
 1. In Setup, type _Connected Apps OAuth Usage_ in **Quick Find** and click it. A list of the apps
    people have signed in with shows; the command line is **Salesforce CLI**.
-2. In its row, under **App Actions**, click **Install**.
-3. Click **Edit Policies**. Under **Refresh Token Policy**, pick how long a sign-in lasts: until
-   it's revoked, expire right away (sign in every time), expire after a set time, or expire if not
-   used for a set time. Click **Save**.
+2. In its row, under **App Actions**, click **Install**. A page asks **Install connected app?**:
+   click **Install**. The app's page opens, **Connected App Detail**. (Once installed, the row
+   offers **Manage App Policies** instead, which opens the same page.)
+3. Click **Edit Policies**. Under **Refresh Token Policy**, pick **Immediately expire refresh token**
+   (sign in every time), **Expire refresh token if not used for** a number of hours, days or
+   months (Salesforce starts it at 30 days), or **Expire refresh token after** a number of hours,
+   days or months. Click **Save**.
 
-Steps 1 and 2 are as seen on screen in November 2026. The names in step 3 are from Salesforce's own
-guides and not yet checked on screen.
+As seen on screen in November 2026. Installing changes nothing by itself: everyone may still sign
+in, with the same 30 days.
 
 ### Take Shoresh away from someone who stays
 

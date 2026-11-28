@@ -2,14 +2,17 @@ import { LightningElement } from "lwc";
 import CONNECTOR from "@salesforce/resourceUrl/ShoreshConnect";
 import { connectPrompt, myDomainHost } from "./prompt";
 
-export const SIGN_IN_CLICKS = [
-  "Setup",
-  "Connected Apps OAuth Usage",
-  "Salesforce CLI",
-  "Install",
-  "Edit Policies",
-  "Refresh Token Policy",
-  "Save"
+// Seen in Setup, November 2026: Install asks again before it installs; once installed, the row
+// offers Manage App Policies instead, the way back to Edit Policies.
+export const SIGN_IN_PATHS = [
+  [
+    "Setup",
+    "Connected Apps OAuth Usage",
+    "Salesforce CLI",
+    "Install",
+    "Install"
+  ],
+  ["Edit Policies", "Refresh Token Policy", "Save"]
 ];
 
 /**
@@ -36,10 +39,13 @@ export default class ShoreshConnectAi extends LightningElement {
   // How long a person's AI stays signed in is the camp's call (API-1.162, Greg 2026-11-28): the
   // Salesforce CLI app's Refresh Token Policy, which the connector's sign-in follows. Salesforce's
   // own words; the app is listed there once someone has signed in with an AI.
-  signInClicks = SIGN_IN_CLICKS.map((label, i) => ({
-    key: `click-${i}`,
-    label,
-    after: i > 0
+  signInPaths = SIGN_IN_PATHS.map((clicks, p) => ({
+    key: `path-${p}`,
+    clicks: clicks.map((label, i) => ({
+      key: `click-${i}`,
+      label,
+      after: i > 0
+    }))
   }));
 
   get copyLabel() {
