@@ -18,7 +18,11 @@
 
 ## Versions
 
-Shoresh keeps a version before anything replaces a week (CORE-1.27), so restoring is safe.
+Shoresh keeps a version only where the screen does: Rebuild, Try another, bringing an option
+back, Start over, Restore and rain plans each keep one (API-1.12), and so do Clear day and Clear
+week (WEEK-6.14); a cell edit keeps none. A first Generate and Fill the open
+cells keep none, and Update to match setup keeps one only when it replaces hand work. Never tell
+the person "you can go back" unless a version exists: check with `list_versions` first.
 
 - `list_versions` to find a version by its name; never guess one.
 - `restore_version` keeps the week as it is now first ("Before Restore").
@@ -31,8 +35,8 @@ Shoresh keeps a version before anything replaces a week (CORE-1.27), so restorin
   as the screen's Undo does (API-1.14). It is gone in a new conversation, or if the AI app
   restarted the connector.
 - Some actions have no Undo, as on the screen: Generate, Try another, bringing back an option,
-  Fill the open cells, Set it up, Update to match setup. The answer names the version to restore
-  instead.
+  Fill the open cells, Set it up, Update to match setup. Where a version was kept, the answer
+  names it; Fill the open cells and a first Generate keep none.
 - Anything from an earlier conversation: `restore_version`.
 - Imports and learned answers have their own: `undo_import`, `undo_learned_answer`.
 

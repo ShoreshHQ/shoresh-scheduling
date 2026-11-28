@@ -50,5 +50,6 @@ the camp's Elective words, never "offering" (CORE-1.36).
 - "chug", "club", "major" → the camp's word for Elective.
 - "Seniors" → a Division: its groups, not one group.
 - "the lake is closed week 3" → a closure for that week, not cell edits.
-- "Seniors don't swim on Fridays" → a setup change to Swim (who can do it, or when it runs), not
-  cell edits. Ask before changing setup.
+- "Seniors don't swim on Fridays" → neither setting says exactly that: "who can do it" without
+  Seniors drops their Swim all week; Friday in "when it runs" drops Swim on Friday for every group.
+  Say so and ask which they mean; never pick either yourself. Not cell edits.

@@ -35,7 +35,7 @@ minimum to clear the line.
 
 > **Director:** Noa Birch joined Bunk 4. She wants Archery, then Swim, then Drama.
 
-1. `import_choices` with a sheet of one camper: Noa Birch, Bunk 4, Archery, Swim, Drama. Not saved.
+1. `import_choices` with a sheet of one camper: Noa Birch (made up), Bunk 4, Archery, Swim, Drama. Not saved.
 2. The review counts one new camper and leaves everyone else's choices as they were.
 3. The AI saves it with the review's `seen`, then offers: "Noa's in, with her three picks. Assign
    seats again for Week 2?"
@@ -51,9 +51,9 @@ would have stopped and asked.
 1. `rainy_day` for Tuesday of Week 2.
 2. The answer: 9 switched, 2 with no rain plan, 1 "Rain plan full: choose another" (Swim, Bunk 3,
    Period 2).
-3. The AI says: "Tuesday is on rain plans: 9 activities moved indoors. Canoeing and Hiking have no
-   rain plan and stayed. Bunk 3's Swim at Period 2 couldn't move: the Gym is full then. What
-   should Bunk 3 do instead?"
+3. The AI says: "Tuesday is on rain plans: 9 activities moved indoors. Canoeing and Hiking stayed:
+   no indoor rain plan, and nothing indoors fit. Bunk 3's Swim at Period 2 couldn't move: its rain
+   plan and every other indoor activity are full then. What should Bunk 3 do instead?"
 
 Not done: choosing Bunk 3's activity itself. If the director wants the day back, `undo_last_change`
 does it in this conversation; later, `restore_version` with "Before rainy Tuesday".

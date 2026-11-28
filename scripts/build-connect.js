@@ -300,14 +300,23 @@ async function printViewFile() {
 // as skill.<its path, "/" as ".">: skill.shoresh-camp-scheduling.reference.camp-words.md.
 const SKILL = path.join(FROM, "skill");
 
-/** The skill's files, { flat name in the resource: its path in connect/skill }. */
-function skillFiles(dir = SKILL, out = {}) {
+/**
+ * The skill's files, { flat name in the resource: its path in connect/skill }. Two files that
+ * flatten to the same name (a/b.md and a.b.md) stop the build: one would overwrite the other.
+ */
+function skillFiles(root = SKILL, dir = root, out = {}) {
   for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
     const full = path.join(dir, entry.name);
-    if (entry.isDirectory()) skillFiles(full, out);
-    else
-      out[`skill.${path.relative(SKILL, full).split(path.sep).join(".")}`] =
-        full;
+    if (entry.isDirectory()) {
+      skillFiles(root, full, out);
+      continue;
+    }
+    const flat = `skill.${path.relative(root, full).split(path.sep).join(".")}`;
+    if (out[flat])
+      throw new Error(
+        `Two skill files ship as ${flat}: ${path.relative(root, out[flat])} and ${path.relative(root, full)}. Rename one.`
+      );
+    out[flat] = full;
   }
   return out;
 }

@@ -13,15 +13,20 @@ assistants have got wrong in tests of Shoresh.
 - Before changing a cell → `read_week_draft`, not `read_group_schedule` **(often missed)**: the
   published week can differ from the draft, and changes need the draft's `seen`.
 - "What seasons do we have?" → `list_seasons`.
-- "How long is Swim, who can do it, who leads it?" → `read_activity_details`. Other setup records
-  → `read_from_setup`.
+- "Who can do Swim, who leads it, when can't it run?" → `read_activity_details`. "How long is
+  Swim, how often a week?" → `read_from_setup` (an activity), as are other setup records.
 - "What would a copy of this season look like?" → `read_season_copy`, never `copy_season`
   **(often missed)** (API-1.61).
 
 ## Setup
 
 - "Rename Gym games to Gaga" → `rename_in_setup`.
-- "Seniors don't swim on Fridays" → `change_activity_details` on Swim, after asking; not cell edits.
+- "Swim is always two periods long" / "Swim three times a week" → `change_in_setup` on Swim, not
+  `change_activity_details`.
+- "Seniors don't swim on Fridays" → no setting says exactly that. Say so and ask which they
+  mean: take Seniors off "who can do it" (no Swim for Seniors any day), or add Friday's periods to
+  "when it runs" (no Swim on Friday for any group). Then `change_activity_details` on Swim for the
+  one they chose. Never pick either broader change yourself; not cell edits.
 - "Add a Week 3" when the season has weeks → `fill_in_weeks` is refused; tell the person and add
   nothing yourself **(often missed)** (API-1.151).
 - "Are these two art rooms the same?" → `read_same_locations`; `merge_locations` only on the
@@ -45,7 +50,7 @@ assistants have got wrong in tests of Shoresh.
 
 ## Electives
 
-- "A new camper, Maya, wants Archery then Swim" → `import_choices` with a sheet of that one camper
+- "A new camper, Maya (made up), wants Archery then Swim" → `import_choices` with a sheet of that one camper
   **(often missed)** (API-1.151).
 - "Assign chug seats" → `read_elective_seats_now`, then `assign_elective_seats`, once, after any
   new camper is in **(often missed)**.

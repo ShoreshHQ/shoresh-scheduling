@@ -20,20 +20,36 @@ function skillTexts(dir = SKILL, out = {}) {
 }
 
 const TOOLS = new Set(CAPABILITIES.map((c) => c.name));
-// What a tool takes (open_questions, from_week): named as the tool's own input, never a tool.
+// The few input and answer field names the skill names that aren't tools, each checked to be one
+// a tool really takes or says. Anything else snake_case must be a tool, so a misspelt tool fails.
+const FIELDS = new Set(["open_questions"]);
 const INPUTS = new Set(
   CAPABILITIES.flatMap((c) => Object.keys(c.inputSchema.properties || {}))
 );
+// The first word of every tool (read, change, list…): a hyphenated word starting with one, three
+// words or more, is a tool written with hyphens.
+const VERBS = new Set([...TOOLS].map((t) => t.split("_")[0]));
 
 /**
- * What a text names that isn't there: every snake_case word must be a tool (or a tool's input),
- * and every rule ID ("CORE-6.1", or a range "CORE-1.1 to CORE-1.39" or "CORE-1.1 to 1.39", both
- * ends) one the protocol has.
+ * What a text names that isn't there: every snake_case word must be a tool or on FIELDS, a tool
+ * written with hyphens (`read-week-checks`, in backticks or looking like one) is named, and every
+ * rule ID ("CORE-6.1", or a range "CORE-1.1 to CORE-1.39" or "CORE-1.1 to 1.39", both ends) one
+ * the protocol has.
  */
 function unknownNames(text, ids) {
   const unknown = [];
   for (const [word] of text.matchAll(/\b[a-z]+(?:_[a-z]+)+\b/g)) {
-    if (!TOOLS.has(word) && !INPUTS.has(word)) unknown.push(word);
+    if (!TOOLS.has(word) && !FIELDS.has(word)) unknown.push(word);
+  }
+  for (const m of text.matchAll(/(`?)\b([a-z]+(?:-[a-z]+)+)\b(`?)/g)) {
+    const [, open, word, close] = m;
+    const parts = word.split("-");
+    if (
+      (open && close) ||
+      TOOLS.has(parts.join("_")) ||
+      (VERBS.has(parts[0]) && parts.length >= 3)
+    )
+      unknown.push(word);
   }
   const range =
     /\b([A-Z]+)-(\d+)\.(\d+)\b(?: to (?:([A-Z]+)-)?(?:(\d+)\.(\d+)))?/g;
@@ -62,14 +78,28 @@ describe("the Shoresh skill", () => {
     }
   });
 
-  it("catchesAMissingName: a tool, an input-like word, a rule ID or a range end that isn't there is named", () => {
+  it("catchesAMissingName: a misspelt tool, a tool's input that isn't on the list, a hyphenated tool, a rule ID or a range end that isn't there is named", () => {
     const known = new Set(["CORE-6.1", "CORE-1.1"]);
     expect(
       unknownNames(
-        "Use `read_week_checks`, `open_questions` and `read_the_weather` (CORE-6.1, CORE-9.99, CORE-1.1 to 1.99, ELECT-2.x).",
+        "Use `read_week_checks`, `open_questions`, `read_week_check`, `from_week`, `read-week-checks`, read-week-draft, `rainy-day` and a look-alike or one-off (CORE-6.1, CORE-9.99, CORE-1.1 to 1.99, ELECT-2.x).",
         known
       )
-    ).toEqual(["read_the_weather", "CORE-9.99", "CORE-1.99", "ELECT-2.x"]);
+    ).toEqual([
+      "read_week_check",
+      "from_week",
+      "read-week-checks",
+      "read-week-draft",
+      "rainy-day",
+      "CORE-9.99",
+      "CORE-1.99",
+      "ELECT-2.x"
+    ]);
+  });
+
+  it("listsOnlyRealFields: every field name the skill may name is one a tool really takes", () => {
+    for (const field of FIELDS)
+      expect([field, INPUTS.has(field)]).toEqual([field, true]);
   });
 
   it("isAnAgentSkill: SKILL.md's header has the open format's fields only, its name the folder's", () => {

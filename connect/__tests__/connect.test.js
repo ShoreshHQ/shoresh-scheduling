@@ -4813,6 +4813,23 @@ describe("Shoresh for AI tools and the command line", () => {
     }
   });
 
+  // API-1.163
+  it("refusesTwoSkillFilesWithOneFlatName: a/b.md and a.b.md would overwrite each other, so the build stops", () => {
+    const os = require("os");
+    const { skillFiles } = require("../../scripts/build-connect");
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "skill-"));
+    try {
+      fs.mkdirSync(path.join(root, "a"));
+      fs.writeFileSync(path.join(root, "a", "b.md"), "one");
+      fs.writeFileSync(path.join(root, "a.b.md"), "two");
+      expect(() => skillFiles(root)).toThrow(
+        /Two skill files ship as skill\.a\.b\.md/
+      );
+    } finally {
+      fs.rmSync(root, { recursive: true, force: true });
+    }
+  });
+
   // API-1.15
   it("testReadInOneSentence: the setup's test read says connected, a missing permission set, no Shoresh, or not signed in", async () => {
     const seen = [];
