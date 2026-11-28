@@ -41,6 +41,8 @@
 }
 
 .sign-in-title {
+  margin: 0;
+  font-size: var(--shoresh-font-size);
   font-weight: 600;
 }
 

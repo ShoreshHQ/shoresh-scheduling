@@ -28,10 +28,10 @@
     </div>
     <!-- How long a person's AI stays signed in: the camp admin's clicks in Salesforce (API-1.162) -->
     <div class="sign-in" data-id="ai-sign-in">
-      <p class="sign-in-head">
-        <span class="sign-in-title">AI sign-in</span>
+      <div class="sign-in-head">
+        <h4 class="sign-in-title">AI sign-in</h4>
         <span class="who">Salesforce admin</span>
-      </p>
+      </div>
       <p class="path" data-id="ai-sign-in-clicks">
         <template for:each={signInClicks} for:item="click">
           <span key={click.key} class="click-wrap"

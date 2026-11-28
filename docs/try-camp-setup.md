@@ -1443,7 +1443,8 @@ A person's AI (Claude desktop, or an app that runs commands) reaches Shoresh thr
 command line, signed in as that person once in their browser. How long that sign-in lasts is your
 camp's call, set once by a Salesforce administrator. Shoresh follows it and asks the person to sign
 in again when Salesforce ends the sign-in. Left alone, it lasts until it is revoked or goes unused
-for 30 days (Salesforce's setting for the command line from November 2026).
+for 30 days (Salesforce's setting for the command line from November 9, 2026, announced at
+https://github.com/forcedotcom/cli/issues/3668).
 
 The setting covers everyone at your camp who uses the Salesforce command line, not only Shoresh's
 AI: a developer, or a job that signs in with it, is signed out on the same schedule.
